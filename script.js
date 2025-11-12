@@ -24,13 +24,13 @@ const exportButton = document.getElementById('exportButton');
 const neuesSpielButton = document.getElementById('neuesSpielButton');
 const timerAnzeige = document.getElementById('timerAnzeige');
 
-// Spielstand & Korrektur (ANGEPASST)
+// Spielstand & Korrektur
 const scoreAnzeige = document.getElementById('scoreAnzeige'); // Spielstand
-const scoreWrapper = document.getElementById('scoreWrapper'); // NEU
-const heimScoreUp = document.getElementById('heimScoreUp'); // NEU
-const heimScoreDown = document.getElementById('heimScoreDown'); // NEU
-const gegnerScoreUp = document.getElementById('gegnerScoreUp'); // NEU
-const gegnerScoreDown = document.getElementById('gegnerScoreDown'); // NEU
+const scoreWrapper = document.getElementById('scoreWrapper'); 
+const heimScoreUp = document.getElementById('heimScoreUp'); 
+const heimScoreDown = document.getElementById('heimScoreDown'); 
+const gegnerScoreUp = document.getElementById('gegnerScoreUp'); 
+const gegnerScoreDown = document.getElementById('gegnerScoreDown'); 
 
 const zurueckButton = document.getElementById('zurueckButton');
 const vorButton = document.getElementById('vorButton');
@@ -41,6 +41,7 @@ const protokollAusgabe = document.getElementById('protokollAusgabe');
 // Globale Aktionen
 const globalAktionen = document.getElementById('globalAktionen');
 const gegnerTorButton = document.getElementById('gegnerTorButton');
+const gegner2minButton = document.getElementById('gegner2minButton'); // NEU
 
 // Modals
 const aktionsMenue = document.getElementById('aktionsMenue');
@@ -384,10 +385,11 @@ function setSteuerungAktiv(aktiv) {
     const spielerButtons = document.querySelectorAll('.spieler-button');
     spielerButtons.forEach(btn => btn.disabled = !aktiv);
     
-    // Auch globalen Knopf deaktivieren
+    // Auch globale Knöpfe deaktivieren
     gegnerTorButton.disabled = !aktiv;
+    gegner2minButton.disabled = !aktiv; // NEU
     
-    // NEU: Korrektur-Knöpfe deaktivieren
+    // Korrektur-Knöpfe deaktivieren
     heimScoreUp.disabled = !aktiv;
     heimScoreDown.disabled = !aktiv;
     gegnerScoreUp.disabled = !aktiv;
@@ -480,7 +482,7 @@ function logGlobalAktion(aktion, kommentar = null) {
     // Kein Modal zu schließen
 }
 
-// NEUE FUNKTION: Manuelle Score-Korrektur loggen
+// Manuelle Score-Korrektur loggen
 function logScoreKorrektur(team, change) {
     const aktuelleZeit = timerAnzeige.textContent;
 
@@ -661,8 +663,9 @@ vorButton.addEventListener('click', () => handleZeitSprung(30));
 neuesSpielButton.addEventListener('click', starteNeuesSpiel);
 exportButton.addEventListener('click', exportiereAlsTxt);
 gegnerTorButton.addEventListener('click', () => logGlobalAktion('Gegner Tor'));
+gegner2minButton.addEventListener('click', () => logGlobalAktion('Gegner 2 min')); // NEU
 
-// NEUE Score-Anpassungs-Listener
+// Score-Anpassungs-Listener
 heimScoreUp.addEventListener('click', () => logScoreKorrektur('heim', 1));
 heimScoreDown.addEventListener('click', () => logScoreKorrektur('heim', -1));
 gegnerScoreUp.addEventListener('click', () => logScoreKorrektur('gegner', 1));
