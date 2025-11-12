@@ -4,9 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Team-Tracker</title>
-    
-    <!-- ÄNDERUNG HIER: Ich habe "?v=1.1" hinzugefügt, um den Cache zu umgehen -->
-    <link rel="stylesheet" href="styles.css?v=1.1">
+    <!-- Die Version ?v=1.x hilft, Cache-Probleme zu vermeiden. Du kannst sie erhöhen (z.B. ?v=1.3), wenn der Browser Änderungen nicht lädt -->
+    <link rel="stylesheet" href="styles.css?v=1.3">
 </head>
 <body>
 
@@ -17,31 +16,26 @@
         <h1>Team-Erstellung</h1>
         <p>Füge deine Spieler hinzu. Das Team wird auf diesem Gerät gespeichert.</p>
         
+        <!-- Formular zum Hinzufügen/Bearbeiten -->
         <form id="addPlayerForm">
-            <!-- Verstecktes Feld, um den Index des bearbeiteten Spielers zu speichern -->
-            <input type="hidden" id="editPlayerIndex"> 
-            
+            <input type="hidden" id="editPlayerIndex"> <!-- Verstecktes Feld für Bearbeitung -->
             <input type="text" id="playerNameInput" placeholder="Name" required>
             <input type="number" id="playerNumberInput" placeholder="Nr." required>
-            <label>
-                <!-- ENTFERNT: Die "Start 7" Checkbox -->
-            </label>
             <button type="submit">Hinzufügen</button>
-            <!-- "Abbrechen" Knopf, nur sichtbar im Bearbeiten-Modus -->
             <button type="button" id="cancelEditButton" class="versteckt">Abbrechen</button>
         </form>
+
+        <!-- Team Import/Export -->
+        <div id="teamVerwaltung">
+            <button id="exportTeamButton" class="team-manage-btn">Team exportieren (.json)</button>
+            <button id="importTeamButton" class="team-manage-btn">Team importieren (.json)</button>
+            <input type="file" id="importFileInput" class="versteckt" accept=".json">
+        </div>
 
         <h3>Aktuelles Team</h3>
         <ul id="rosterListe">
             <!-- Spieler werden hier von JS eingefügt -->
         </ul>
-        
-        <!-- NEUER BEREICH FÜR IMPORT/EXPORT -->
-        <div id="teamVerwaltung">
-            <button type="button" id="exportTeamButton">Team exportieren (.json)</button>
-            <button type="button" id="importTeamButton">Team importieren (.json)</button>
-            <input type="file" id="importFileInput" class="versteckt" accept=".json">
-        </div>
         
         <button id="startGameButton" class="cta-button">Spiel starten</button>
     </div>
@@ -61,6 +55,20 @@
         <!-- 2. Timer-Steuerung -->
         <div id="timerContainer">
             <div id="timerAnzeige">00:00</div>
+
+            <!-- Spielstand-Anzeige mit Korrektur -->
+            <div id="scoreWrapper" class="versteckt">
+                <div class="score-team-control">
+                    <button id="heimScoreUp" class="score-korrektur" disabled>Heim +</button>
+                    <button id="heimScoreDown" class="score-korrektur" disabled>Heim -</button>
+                </div>
+                <div id="scoreAnzeige">0:0</div>
+                <div class="score-team-control">
+                    <button id="gegnerScoreUp" class="score-korrektur" disabled>Gegner +</button>
+                    <button id="gegnerScoreDown" class="score-korrektur" disabled>Gegner -</button>
+                </div>
+            </div>
+            
             <div id="zeitSprung">
                 <button id="zurueckButton" class="zeitButton">-30s</button>
                 <button id="vorButton" class="zeitButton">+30s</button>
@@ -68,13 +76,18 @@
             <button id="pauseButton">Spielstart</button>
         </div>
 
-        <!-- 3. Spieler-Raster -->
+        <!-- 3. Globale Aktionen -->
+        <div id="globalAktionen" class="versteckt">
+            <button id="gegnerTorButton" disabled>Gegner Tor</button>
+        </div>
+
+        <!-- 4. Spieler-Raster -->
         <h3>Spieler auswählen:</h3>
         <div id="spielerRaster">
             <!-- Spieler-Knöpfe werden hier von JS eingefügt -->
         </div>
 
-        <!-- 4. Protokoll -->
+        <!-- 5. Protokoll -->
         <div id="protokoll">
             <h3>Protokoll</h3>
             <div id="protokollAusgabe"></div>
@@ -96,13 +109,11 @@
             <button class="aktion-button" id="guteAktionModalButton">Gute Aktion</button>
             <button class="aktion-button" data-aktion="Fehlpass">Fehlpass</button>
             <button class="aktion-button" data-aktion="Technischer Fehler">Technischer Fehler</button>
-            
-            <!-- NEUE STRAFEN-KNÖPFE -->
+            <!-- Strafen -->
             <button class="aktion-button strafe-gelb" data-aktion="Gelbe Karte">Gelbe Karte</button>
-            <button class="aktion-button strafe-zwei" data-aktion="2 Minuten">2 Minuten</button>
+            <button class="aktion-button strafe-zeit" data-aktion="2 Minuten">2 Minuten</button>
             <button class="aktion-button strafe-rot" data-aktion="Rote Karte">Rote Karte</button>
             
-            <!-- ENTFERNT: Der "Wechseln" Knopf -->
             <button class="modal-abbrechen" id="aktionAbbrechen">Abbrechen</button>
         </div>
     </div>
@@ -129,7 +140,6 @@
     </div>
 
 
-    <!-- ÄNDERUNG HIER: Ich habe "?v=1.1" hinzugefügt, um den Cache zu umgehen -->
-    <script src="script.js?v=1.1"></script>
+    <script src="script.js?v=1.3"></script>
 </body>
 </html>
