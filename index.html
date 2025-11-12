@@ -4,8 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Team-Tracker</title>
-    <!-- Die Version ?v=1.x hilft, Cache-Probleme zu vermeiden. Du kannst sie erhöhen (z.B. ?v=1.3), wenn der Browser Änderungen nicht lädt -->
-    <link rel="stylesheet" href="styles.css?v=1.3">
+    <!-- Die Version ?v=1.4 hilft, Cache-Probleme zu vermeiden. -->
+    <link rel="stylesheet" href="styles.css?v=1.4">
 </head>
 <body>
 
@@ -76,9 +76,10 @@
             <button id="pauseButton">Spielstart</button>
         </div>
 
-        <!-- 3. Globale Aktionen -->
+        <!-- 3. Globale Aktionen (ANGEPASST) -->
         <div id="globalAktionen" class="versteckt">
             <button id="gegnerTorButton" disabled>Gegner Tor</button>
+            <button id="gegner2minButton" disabled>Gegner 2 min</button> <!-- NEUER KNOPF -->
         </div>
 
         <!-- 4. Spieler-Raster -->
@@ -140,6 +141,6 @@
     </div>
 
 
-    <script src="script.js?v=1.3"></script>
+    <script src="script.js?v=1.4"></script>
 </body>
 </html>
