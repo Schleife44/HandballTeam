@@ -183,15 +183,24 @@ input[type="text"], input[type="number"] {
     width: 80%;
 }
 
-/* Globale Aktionen */
+/* Globale Aktionen (ANGEPASST) */
 #globalAktionen {
     margin: -10px auto 20px auto;
+    display: flex; /* NEU */
+    justify-content: center; /* NEU */
+    flex-wrap: wrap; /* NEU */
+    gap: 10px; /* NEU */
 }
 #gegnerTorButton {
     background-color: #dc3545;
     font-size: 1.1rem;
-    width: 80%;
-    max-width: 480px;
+    /* width: 80%; */ /* ENTFERNT */
+    /* max-width: 480px; */ /* ENTFERNT */
+}
+/* NEUER STIL */
+#gegner2minButton {
+    background-color: #fd7e14; /* Orange, wie 2min Strafe */
+    font-size: 1.1rem;
 }
 
 /* Spieler-Raster */
