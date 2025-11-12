@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Team-Tracker</title>
+    
+    <!-- ÄNDERUNG HIER: Ich habe "?v=1.1" hinzugefügt, um den Cache zu umgehen -->
+    <link rel="stylesheet" href="styles.css?v=1.1">
+</head>
+<body>
+
+    <!-- ######################################## -->
+    <!-- BILDSCHIRM 1: TEAM-ERSTELLUNG (ROSTER) -->
+    <!-- ######################################## -->
+    <div id="rosterBereich">
+        <h1>Team-Erstellung</h1>
+        <p>Füge deine Spieler hinzu. Das Team wird auf diesem Gerät gespeichert.</p>
+        
+        <form id="addPlayerForm">
+            <!-- Verstecktes Feld, um den Index des bearbeiteten Spielers zu speichern -->
+            <input type="hidden" id="editPlayerIndex"> 
+            
+            <input type="text" id="playerNameInput" placeholder="Name" required>
+            <input type="number" id="playerNumberInput" placeholder="Nr." required>
+            <label>
+                <!-- ENTFERNT: Die "Start 7" Checkbox -->
+            </label>
+            <button type="submit">Hinzufügen</button>
+            <!-- "Abbrechen" Knopf, nur sichtbar im Bearbeiten-Modus -->
+            <button type="button" id="cancelEditButton" class="versteckt">Abbrechen</button>
+        </form>
+
+        <h3>Aktuelles Team</h3>
+        <ul id="rosterListe">
+            <!-- Spieler werden hier von JS eingefügt -->
+        </ul>
+        
+        <!-- NEUER BEREICH FÜR IMPORT/EXPORT -->
+        <div id="teamVerwaltung">
+            <button type="button" id="exportTeamButton">Team exportieren (.json)</button>
+            <button type="button" id="importTeamButton">Team importieren (.json)</button>
+            <input type="file" id="importFileInput" class="versteckt" accept=".json">
+        </div>
+        
+        <button id="startGameButton" class="cta-button">Spiel starten</button>
+    </div>
+
+    <!-- ######################################## -->
+    <!-- BILDSCHIRM 2: SPIEL-MODUS -->
+    <!-- ######################################## -->
+    <div id="spielBereich" class="versteckt">
+        
+        <!-- 1. Verwaltung (Zurück, Export, Neues Spiel) -->
+        <div id="verwaltung">
+            <button id="backToRosterButton">Team ändern</button>
+            <button id="exportButton">Export .txt</button>
+            <button id="neuesSpielButton">Neues Spiel</button>
+        </div>
+
+        <!-- 2. Timer-Steuerung -->
+        <div id="timerContainer">
+            <div id="timerAnzeige">00:00</div>
+            <div id="zeitSprung">
+                <button id="zurueckButton" class="zeitButton">-30s</button>
+                <button id="vorButton" class="zeitButton">+30s</button>
+            </div>
+            <button id="pauseButton">Spielstart</button>
+        </div>
+
+        <!-- 3. Spieler-Raster -->
+        <h3>Spieler auswählen:</h3>
+        <div id="spielerRaster">
+            <!-- Spieler-Knöpfe werden hier von JS eingefügt -->
+        </div>
+
+        <!-- 4. Protokoll -->
+        <div id="protokoll">
+            <h3>Protokoll</h3>
+            <div id="protokollAusgabe"></div>
+        </div>
+    </div>
+
+
+    <!-- ######################################## -->
+    <!-- MODALS (Pop-ups) -->
+    <!-- ######################################## -->
+
+    <!-- Modal 1: Haupt-Aktionsmenü (erscheint nach Klick auf Spieler) -->
+    <div id="aktionsMenue" class="modal-overlay versteckt">
+        <div class="modal-content">
+            <h3 id="aktionsMenueTitel">Aktion für...</h3>
+            <button class="aktion-button" data-aktion="Tor">Tor</button>
+            <button class="aktion-button" data-aktion="Fehlwurf">Fehlwurf</button>
+            <button class="aktion-button" data-aktion="7M Rausgeholt">7M Rausgeholt</button>
+            <button class="aktion-button" id="guteAktionModalButton">Gute Aktion</button>
+            <button class="aktion-button" data-aktion="Fehlpass">Fehlpass</button>
+            <button class="aktion-button" data-aktion="Technischer Fehler">Technischer Fehler</button>
+            
+            <!-- NEUE STRAFEN-KNÖPFE -->
+            <button class="aktion-button strafe-gelb" data-aktion="Gelbe Karte">Gelbe Karte</button>
+            <button class="aktion-button strafe-zwei" data-aktion="2 Minuten">2 Minuten</button>
+            <button class="aktion-button strafe-rot" data-aktion="Rote Karte">Rote Karte</button>
+            
+            <!-- ENTFERNT: Der "Wechseln" Knopf -->
+            <button class="modal-abbrechen" id="aktionAbbrechen">Abbrechen</button>
+        </div>
+    </div>
+    
+    <!-- Modal 2: "Gute Aktion" Vorauswahl -->
+    <div id="aktionVorauswahl" class="modal-overlay versteckt">
+        <div class="modal-content">
+            <h3>Gute Aktion:</h3>
+            <button class="aktion-button" data-aktion="Abwehr">Abwehr</button>
+            <button class="aktion-button" data-aktion="TG Pass">TG Pass</button>
+            <button class="aktion-button" data-aktion="Guter Pass">Guter Pass</button>
+            <button class="aktion-button" data-aktion="Anderes">Anderes</button>
+            <button class="modal-abbrechen" id="aktionVorauswahlAbbrechen">Zurück</button>
+        </div>
+    </div>
+
+    <!-- Modal 3: Kommentarfeld -->
+    <div id="kommentarBereich" class="modal-overlay versteckt">
+        <div class="modal-content">
+            <h3 id="kommentarTitel">Kommentar (optional)</h3>
+            <input type="text" id="kommentarInput" placeholder="Beschreibe die Aktion...">
+            <button id="kommentarSpeichernButton">Speichern</button>
+        </div>
+    </div>
+
+
+    <!-- ÄNDERUNG HIER: Ich habe "?v=1.1" hinzugefügt, um den Cache zu umgehen -->
+    <script src="script.js?v=1.1"></script>
+</body>
+</html>
