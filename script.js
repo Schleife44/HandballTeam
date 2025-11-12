@@ -23,11 +23,24 @@ const backToRosterButton = document.getElementById('backToRosterButton');
 const exportButton = document.getElementById('exportButton');
 const neuesSpielButton = document.getElementById('neuesSpielButton');
 const timerAnzeige = document.getElementById('timerAnzeige');
+
+// Spielstand & Korrektur (ANGEPASST)
+const scoreAnzeige = document.getElementById('scoreAnzeige'); // Spielstand
+const scoreWrapper = document.getElementById('scoreWrapper'); // NEU
+const heimScoreUp = document.getElementById('heimScoreUp'); // NEU
+const heimScoreDown = document.getElementById('heimScoreDown'); // NEU
+const gegnerScoreUp = document.getElementById('gegnerScoreUp'); // NEU
+const gegnerScoreDown = document.getElementById('gegnerScoreDown'); // NEU
+
 const zurueckButton = document.getElementById('zurueckButton');
 const vorButton = document.getElementById('vorButton');
 const pauseButton = document.getElementById('pauseButton');
 const spielerRaster = document.getElementById('spielerRaster');
 const protokollAusgabe = document.getElementById('protokollAusgabe');
+
+// Globale Aktionen
+const globalAktionen = document.getElementById('globalAktionen');
+const gegnerTorButton = document.getElementById('gegnerTorButton');
 
 // Modals
 const aktionsMenue = document.getElementById('aktionsMenue');
@@ -48,7 +61,8 @@ const SPEICHER_KEY = 'handballTeamState';
 let spielstand = {
     uiState: 'setup', // 'setup' oder 'game'
     roster: [], // { name: 'Anna', number: 7 }
-    gameLog: [], // { time: '00:00', playerId: 7, playerName: 'Anna', action: 'Tor' }
+    score: { heim: 0, gegner: 0 }, // Spielstand
+    gameLog: [], // { time: '00:00', playerId: 7, playerName: 'Anna', action: 'Tor', spielstand: '1:0' }
     timer: {
         istPausiert: true,
         segmentStartZeit: 0,
@@ -75,11 +89,18 @@ function ladeSpielstand() {
     }
     
     spielstand = JSON.parse(gespeicherterStand);
+
+    // Stellt sicher, dass alte Speicherstände ohne Score-Objekt funktionieren
+    if (!spielstand.score) {
+        spielstand.score = { heim: 0, gegner: 0 };
+    }
     
     if (spielstand.uiState === 'game') {
         // Spiel-Modus wiederherstellen
         rosterBereich.classList.add('versteckt');
         spielBereich.classList.remove('versteckt');
+        globalAktionen.classList.remove('versteckt'); // Global-Aktionen anzeigen
+        scoreWrapper.classList.remove('versteckt'); // Spielstand-Block anzeigen
         
         // Timer wiederherstellen (immer pausiert)
         spielstand.timer.istPausiert = true;
@@ -87,6 +108,7 @@ function ladeSpielstand() {
         pauseButton.textContent = spielstand.timer.gestartet ? 'Weiter' : 'Spielstart';
         setSteuerungAktiv(false); // Knöpfe deaktivieren
         
+        updateScoreDisplay(); // Spielstand aktualisieren
         zeichneSpielerRaster();
         updateProtokollAnzeige();
     } else {
@@ -219,6 +241,8 @@ function switchToGame() {
     
     rosterBereich.classList.add('versteckt');
     spielBereich.classList.remove('versteckt');
+    globalAktionen.classList.remove('versteckt'); // Global-Aktionen anzeigen
+    scoreWrapper.classList.remove('versteckt'); // Spielstand-Block anzeigen
     
     // Sicherstellen, dass der Timer-Status korrekt ist
     spielstand.timer.istPausiert = true;
@@ -226,6 +250,7 @@ function switchToGame() {
     timerAnzeige.textContent = formatiereZeit(spielstand.timer.verstricheneSekundenBisher);
     setSteuerungAktiv(false); // Spiel startet immer pausiert
     
+    updateScoreDisplay(); // Spielstand (z.B. 0:0) anzeigen
     zeichneSpielerRaster();
     updateProtokollAnzeige();
 }
@@ -236,6 +261,8 @@ function switchToRoster() {
     
     spielBereich.classList.add('versteckt');
     rosterBereich.classList.remove('versteckt');
+    globalAktionen.classList.add('versteckt'); // Global-Aktionen verstecken
+    scoreWrapper.classList.add('versteckt'); // Spielstand-Block verstecken
     
     zeichneRosterListe();
 }
@@ -297,12 +324,10 @@ function zeichneSpielerRaster() {
     spielstand.roster.forEach((player, index) => {
         const btn = document.createElement('button');
         
-        // --- ÄNDERUNG HIER: HTML für Name und Nummer ---
         btn.innerHTML = `
             <span class="spieler-nummer">#${player.number}</span>
             <span class="spieler-name">${player.name}</span>
         `;
-        // --- ENDE ÄNDERUNG ---
 
         btn.className = 'spieler-button';
         btn.onclick = () => oeffneAktionsMenue(index);
@@ -358,6 +383,15 @@ function setSteuerungAktiv(aktiv) {
     // Deaktiviert das Klicken auf Spieler, wenn pausiert
     const spielerButtons = document.querySelectorAll('.spieler-button');
     spielerButtons.forEach(btn => btn.disabled = !aktiv);
+    
+    // Auch globalen Knopf deaktivieren
+    gegnerTorButton.disabled = !aktiv;
+    
+    // NEU: Korrektur-Knöpfe deaktivieren
+    heimScoreUp.disabled = !aktiv;
+    heimScoreDown.disabled = !aktiv;
+    gegnerScoreUp.disabled = !aktiv;
+    gegnerScoreDown.disabled = !aktiv;
 }
 
 function handleZeitSprung(sekunden) {
@@ -396,12 +430,20 @@ function logAktion(aktion, kommentar = null) {
     const player = spielstand.roster[aktuellerSpielerIndex];
     const aktuelleZeit = timerAnzeige.textContent;
 
+    // Spielstand aktualisieren
+    if (aktion === "Tor") {
+        spielstand.score.heim++;
+    }
+    const aktuellerSpielstand = `${spielstand.score.heim}:${spielstand.score.gegner}`;
+    updateScoreDisplay(); // UI Anzeige aktualisieren
+
     spielstand.gameLog.unshift({
         time: aktuelleZeit,
         playerId: player.number,
         playerName: player.name,
         action: aktion,
-        kommentar: kommentar
+        kommentar: kommentar,
+        spielstand: aktuellerSpielstand // Spielstand im Log speichern
     });
 
     updateProtokollAnzeige();
@@ -413,6 +455,68 @@ function logAktion(aktion, kommentar = null) {
 
 // --- 9. Protokoll, Export & Neues Spiel ---
 
+// Funktion für globale Aktionen
+function logGlobalAktion(aktion, kommentar = null) {
+    const aktuelleZeit = timerAnzeige.textContent;
+
+    // Spielstand aktualisieren
+    if (aktion === "Gegner Tor") {
+        spielstand.score.gegner++;
+    }
+    const aktuellerSpielstand = `${spielstand.score.heim}:${spielstand.score.gegner}`;
+    updateScoreDisplay(); // UI Anzeige aktualisieren
+
+    spielstand.gameLog.unshift({
+        time: aktuelleZeit,
+        playerId: null, // Kein Spieler
+        playerName: "SPIEL", // Markiert als Spiel-Aktion
+        action: aktion,
+        kommentar: kommentar,
+        spielstand: aktuellerSpielstand // Spielstand im Log speichern
+    });
+
+    updateProtokollAnzeige();
+    speichereSpielstand();
+    // Kein Modal zu schließen
+}
+
+// NEUE FUNKTION: Manuelle Score-Korrektur loggen
+function logScoreKorrektur(team, change) {
+    const aktuelleZeit = timerAnzeige.textContent;
+
+    // 1. Spielstand anpassen
+    if (team === 'heim') {
+        spielstand.score.heim += change;
+        if (spielstand.score.heim < 0) spielstand.score.heim = 0;
+    } else { // team === 'gegner'
+        spielstand.score.gegner += change;
+        if (spielstand.score.gegner < 0) spielstand.score.gegner = 0;
+    }
+    
+    // 2. UI Anzeige aktualisieren
+    const aktuellerSpielstand = `${spielstand.score.heim}:${spielstand.score.gegner}`;
+    updateScoreDisplay();
+
+    // 3. Log-Eintrag erstellen
+    const teamName = team === 'heim' ? "Heim" : "Gegner";
+    const changeText = change > 0 ? "+1" : "-1";
+    const aktion = `Manuelle Korrektur (${teamName} ${changeText})`;
+
+    spielstand.gameLog.unshift({
+        time: aktuelleZeit,
+        playerId: null,
+        playerName: "SPIEL",
+        action: aktion,
+        kommentar: null,
+        spielstand: aktuellerSpielstand // Den neuen Spielstand loggen
+    });
+
+    // 4. UI/Speicher aktualisieren
+    updateProtokollAnzeige();
+    speichereSpielstand();
+}
+
+
 function updateProtokollAnzeige() {
     protokollAusgabe.innerHTML = '';
     
@@ -420,7 +524,18 @@ function updateProtokollAnzeige() {
         const p = document.createElement('p');
         const textSpan = document.createElement('span');
         
-        let text = `<strong>[${eintrag.time}] #${eintrag.playerId} (${eintrag.playerName}): ${eintrag.action}</strong>`;
+        let text;
+        // Spielstand aus dem Log-Eintrag holen
+        const spielstandText = eintrag.spielstand ? ` <strong>(${eintrag.spielstand})</strong>` : '';
+
+        if (eintrag.playerId) {
+            // Spieler-Aktion
+            text = `<strong>[${eintrag.time}] #${eintrag.playerId} (${eintrag.playerName}): ${eintrag.action}</strong>${spielstandText}`;
+        } else {
+            // Globale Aktion (z.B. Gegner Tor)
+            text = `<strong>[${eintrag.time}] ${eintrag.action.toUpperCase()}</strong>${spielstandText}`;
+        }
+        
         if (eintrag.kommentar) {
             text += `: ${eintrag.kommentar}`;
         }
@@ -440,8 +555,36 @@ function updateProtokollAnzeige() {
 function loescheProtokollEintrag(index) {
     // Zeige eine Bestätigungsbox
     if (confirm("Möchtest du diesen Eintrag wirklich löschen?")) {
-        spielstand.gameLog.splice(index, 1);
-        updateProtokollAnzeige();
+        
+        const geloeschterEintrag = spielstand.gameLog[index];
+
+        spielstand.gameLog.splice(index, 1); // Eintrag löschen
+
+        // Spielstand anpassen, falls ein Tor oder eine Korrektur gelöscht wurde
+        if (geloeschterEintrag.action === "Tor") {
+            spielstand.score.heim--;
+        } else if (geloeschterEintrag.action === "Gegner Tor") {
+            spielstand.score.gegner--;
+        } else if (geloeschterEintrag.action.includes("Korrektur")) {
+            // Umgekehrte Logik für Korrekturen anwenden
+            if (geloeschterEintrag.action.includes("Heim +1")) {
+                spielstand.score.heim--;
+            } else if (geloeschterEintrag.action.includes("Heim -1")) {
+                spielstand.score.heim++;
+            } else if (geloeschterEintrag.action.includes("Gegner +1")) {
+                spielstand.score.gegner--;
+            } else if (geloeschterEintrag.action.includes("Gegner -1")) {
+                spielstand.score.gegner++;
+            }
+        }
+        
+        // Sicherstellen, dass nichts negativ wird
+        if(spielstand.score.heim < 0) spielstand.score.heim = 0;
+        if(spielstand.score.gegner < 0) spielstand.score.gegner = 0;
+        
+        // UI und Protokoll aktualisieren
+        updateScoreDisplay(); // Score-Anzeige oben
+        updateProtokollAnzeige(); // Protokoll-Liste
         speichereSpielstand();
     }
 }
@@ -456,7 +599,17 @@ function exportiereAlsTxt() {
     dateiInhalt += `Team: ${spielstand.roster.map(p => `#${p.number} ${p.name}`).join(', ')}\n\n`;
     
     [...spielstand.gameLog].reverse().forEach(e => {
-        dateiInhalt += `[${e.time}] #${e.playerId} (${e.playerName}): ${e.action}`;
+        if (e.playerId) {
+            dateiInhalt += `[${e.time}] #${e.playerId} (${e.playerName}): ${e.action}`;
+        } else {
+            dateiInhalt += `[${e.time}] ${e.action.toUpperCase()}`;
+        }
+        
+        // Spielstand zum Export hinzufügen
+        if (e.spielstand) {
+            dateiInhalt += ` (${e.spielstand})`;
+        }
+
         if (e.kommentar) {
             dateiInhalt += `: ${e.kommentar}`;
         }
@@ -476,6 +629,7 @@ function starteNeuesSpiel() {
     if (confirm("Bist du sicher? Das löscht das gesamte Spielprotokoll, aber dein Team bleibt gespeichert.")) {
         // Setzt nur das Protokoll und den Timer zurück, nicht das Roster
         spielstand.gameLog = [];
+        spielstand.score = { heim: 0, gegner: 0 }; // Spielstand zurücksetzen
         spielstand.timer = {
             istPausiert: true,
             segmentStartZeit: 0,
@@ -506,6 +660,14 @@ zurueckButton.addEventListener('click', () => handleZeitSprung(-30));
 vorButton.addEventListener('click', () => handleZeitSprung(30));
 neuesSpielButton.addEventListener('click', starteNeuesSpiel);
 exportButton.addEventListener('click', exportiereAlsTxt);
+gegnerTorButton.addEventListener('click', () => logGlobalAktion('Gegner Tor'));
+
+// NEUE Score-Anpassungs-Listener
+heimScoreUp.addEventListener('click', () => logScoreKorrektur('heim', 1));
+heimScoreDown.addEventListener('click', () => logScoreKorrektur('heim', -1));
+gegnerScoreUp.addEventListener('click', () => logScoreKorrektur('gegner', 1));
+gegnerScoreDown.addEventListener('click', () => logScoreKorrektur('gegner', -1));
+
 
 // Modal 1: Haupt-Aktionsmenü
 aktionAbbrechen.addEventListener('click', schliesseAktionsMenue);
@@ -545,6 +707,13 @@ kommentarSpeichernButton.addEventListener('click', () => {
     kommentarInput.value = ''; // Feld leeren
 });
 
+
+// Aktualisiert die Spielstand-Anzeige (z.B. 1:0)
+function updateScoreDisplay() {
+    if (scoreAnzeige) {
+        scoreAnzeige.textContent = `${spielstand.score.heim}:${spielstand.score.gegner}`;
+    }
+}
 
 // --- 11. Initialisierung ---
 // Wenn die Seite geladen wird, lade den letzten Stand
