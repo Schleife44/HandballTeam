@@ -417,7 +417,7 @@ input[type="text"], input[type="number"] {
     #mainGameContent {
         flex-basis: auto;
         max-width: 100%;
-        order: 2; /* Hauptinhalt kommt als zweites */
+        order: 1; /* Hauptinhalt kommt als erstes */
     }
     #statistikSidebar {
         position: static; /* Nicht mehr sticky */
@@ -426,8 +426,6 @@ input[type="text"], input[type="number"] {
         max-width: 600px; /* Passt zur Protokoll-Breite */
         margin-left: auto;
         margin-right: auto;
-        order: 1; /* Statistik-Block kommt als erstes */
+        order: 2; /* Statistik-Block kommt als zweites */
     }
 }
-
-
