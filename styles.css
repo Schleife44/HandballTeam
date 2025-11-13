@@ -129,9 +129,9 @@ input[type="text"], input[type="number"] {
     max-width: 800px; /* Höchstbreite */
 }
 
-/* NEU: Tor-Tracker Seitenleiste */
-#torTracker {
-    flex-basis: 250px; /* Feste Breite für die Seitenleiste */
+/* ANGEPASST: Statistik-Seitenleiste (war #torTracker) */
+#statistikSidebar {
+    flex-basis: 300px; /* Feste Breite für die Seitenleiste */
     flex-shrink: 0;   /* Soll nicht schrumpfen */
     position: sticky; /* Bleibt beim Scrollen sichtbar */
     top: 20px;
@@ -140,7 +140,7 @@ input[type="text"], input[type="number"] {
     padding: 15px;
     box-shadow: 0 2px 5px rgba(0,0,0,0.1);
 }
-#torTracker h3 {
+#statistikSidebar h3 {
     text-align: center;
     margin-top: 0;
     border-bottom: 1px solid #eee;
@@ -159,18 +159,16 @@ input[type="text"], input[type="number"] {
     background-color: #f9f9f9;
     font-size: 0.9rem;
 }
-/* Name */
 #torTabelle td:first-child {
     font-size: 0.9rem;
     word-break: break-word;
 }
-/* Tore (Zahl) */
 #torTabelle td:last-child {
     text-align: center;
     font-weight: bold;
     font-size: 1.2rem;
 }
-/* Ende NEU */
+/* Ende Tor-Tracker Stile */
 
 
 #verwaltung {
@@ -236,21 +234,19 @@ input[type="text"], input[type="number"] {
     background-color: #6c757d;
 }
 
-/* NEU: Echter Pause-Knopf */
+/* Echter Pause-Knopf */
 #pauseButton {
     background-color: #ffc107;
     color: #333;
 }
 
-/* UMBENANNT: von #pauseButton zu #gamePhaseButton */
+/* Phasen-Knopf */
 #gamePhaseButton {
     background-color: #ffc107;
     color: #333;
     font-size: 1.2rem;
     width: 80%;
 }
-
-/* UMBENANNT: von #pauseButton.beendet zu #gamePhaseButton.beendet */
 #gamePhaseButton.beendet {
     background-color: #dc3545; /* Rot */
     color: white;
@@ -379,6 +375,40 @@ input[type="text"], input[type="number"] {
 .strafe-zeit { background-color: #fd7e14; }
 .strafe-rot { background-color: #dc3545; }
 
+/* 4. Statistik (jetzt in der Seitenleiste) */
+#statistikWrapper {
+    margin-top: 20px;
+    padding-top: 15px;
+    border-top: 2px solid #007bff; /* Blaue Trennlinie */
+}
+.statistik-container {
+    width: 100%;
+    overflow-x: auto; /* Erlaubt horizontales Scrollen auf Mobilgeräten */
+}
+#statistikTabelle {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 15px;
+}
+#statistikTabelle th, #statistikTabelle td {
+    border: 1px solid #ddd;
+    padding: 8px;
+    text-align: center;
+    min-width: 40px; /* Kleinere Mindestbreite */
+    font-size: 0.9rem;
+}
+#statistikTabelle th {
+    background-color: #f2f2f2;
+    font-size: 0.8rem;
+}
+#statistikTabelle td:first-child {
+    text-align: left;
+    font-weight: bold;
+    min-width: 100px; /* Kleinere Mindestbreite */
+    font-size: 0.9rem;
+}
+
+
 /* Responsivität für das neue Layout */
 @media (max-width: 900px) {
     #spielBereich {
@@ -389,13 +419,13 @@ input[type="text"], input[type="number"] {
         max-width: 100%;
         order: 2; /* Hauptinhalt kommt als zweites */
     }
-    #torTracker {
+    #statistikSidebar {
         position: static; /* Nicht mehr sticky */
         flex-basis: auto;
         width: 100%;
         max-width: 600px; /* Passt zur Protokoll-Breite */
         margin-left: auto;
         margin-right: auto;
-        order: 1; /* Tor-Tracker kommt als erstes */
+        order: 1; /* Statistik-Block kommt als erstes */
     }
 }
