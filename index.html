@@ -4,8 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Team-Tracker</title>
-    <!-- Die Version ?v=1.6 hilft, Cache-Probleme zu vermeiden. -->
-    <link rel="stylesheet" href="styles.css?v=1.6">
+    <!-- Die Version ?v=1.8 hilft, Cache-Probleme zu vermeiden. -->
+    <link rel="stylesheet" href="styles.css?v=1.8">
 </head>
 <body>
 
@@ -45,8 +45,10 @@
     <!-- ######################################## -->
     <div id="spielBereich" class="versteckt">
 
-        <!-- NEUE Seitenleiste für Tor-Statistik -->
-        <aside id="torTracker" class="versteckt">
+        <!-- ANGEPASST: Seitenleiste für ALLE Statistiken -->
+        <aside id="statistikSidebar" class="versteckt">
+            
+            <!-- Teil 1: Tor-Tracker (Immer sichtbar) -->
             <h3>Tor-Tracker</h3>
             <table id="torTabelle">
                 <thead>
@@ -59,6 +61,31 @@
                     <!-- Wird von JS gefüllt -->
                 </tbody>
             </table>
+
+            <!-- Teil 2: Spiel-Statistik (Nur am Ende sichtbar) -->
+            <div id="statistikWrapper" class="versteckt">
+                <h3>Spiel-Statistik</h3>
+                <div class="statistik-container">
+                    <table id="statistikTabelle">
+                        <thead>
+                            <tr>
+                                <th>Spieler</th>
+                                <th>7m Raus</th>
+                                <th>Gut</th>
+                                <th>Fehlwurf</th>
+                                <th>T. Fehler</th>
+                                <th>Gelb</th>
+                                <th>2min</th>
+                                <th>Rot</th>
+                            </tr>
+                        </thead>
+                        <tbody id="statistikTabelleBody">
+                            <!-- Wird von JS gefüllt -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
         </aside>
         
         <!-- Wrapper für den Hauptinhalt -->
@@ -100,7 +127,7 @@
             <!-- 3. Globale Aktionen -->
             <div id="globalAktionen" class="versteckt">
                 <button id="gegnerTorButton" disabled>Gegner Tor</button>
-                <button id="gegner2minButton" disabled>Gegner 2 min</button>
+                <button id="gegner2minButton" class="strafe-zeit" disabled>Gegner 2 min</button>
             </div>
 
             <!-- 4. Spieler-Raster -->
@@ -161,8 +188,9 @@
             <button id="kommentarSpeichernButton">Speichern</button>
         </div>
     </div>
+    
+    <!-- Modal 4: Statistik-Zusammenfassung (ENTFERNT) -->
 
-
-    <script src="script.js?v=1.6"></script>
+    <script src="script.js?v=1.8"></script>
 </body>
 </html>
