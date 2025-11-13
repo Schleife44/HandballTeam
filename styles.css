@@ -113,7 +113,66 @@ input[type="text"], input[type="number"] {
     background-color: #c82333;
 }
 
-/* 2. Spiel-Bereich */
+/* 2. Spiel-Bereich (ANGEPASST FÜR SEITENLEISTE) */
+#spielBereich {
+    display: flex;
+    flex-direction: row; /* Desktop: Nebeneinander */
+    justify-content: center;
+    align-items: flex-start;
+    gap: 20px;
+}
+
+/* Neuer Wrapper für den Hauptinhalt */
+#mainGameContent {
+    flex-grow: 1; /* Nimmt den verfügbaren Platz ein */
+    flex-basis: 600px; /* Mindestbreite */
+    max-width: 800px; /* Höchstbreite */
+}
+
+/* NEU: Tor-Tracker Seitenleiste */
+#torTracker {
+    flex-basis: 250px; /* Feste Breite für die Seitenleiste */
+    flex-shrink: 0;   /* Soll nicht schrumpfen */
+    position: sticky; /* Bleibt beim Scrollen sichtbar */
+    top: 20px;
+    background: white;
+    border-radius: 8px;
+    padding: 15px;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+}
+#torTracker h3 {
+    text-align: center;
+    margin-top: 0;
+    border-bottom: 1px solid #eee;
+    padding-bottom: 10px;
+}
+#torTabelle {
+    width: 100%;
+    border-collapse: collapse;
+}
+#torTabelle th, #torTabelle td {
+    padding: 8px;
+    text-align: left;
+    border-bottom: 1px solid #eee;
+}
+#torTabelle th {
+    background-color: #f9f9f9;
+    font-size: 0.9rem;
+}
+/* Name */
+#torTabelle td:first-child {
+    font-size: 0.9rem;
+    word-break: break-word;
+}
+/* Tore (Zahl) */
+#torTabelle td:last-child {
+    text-align: center;
+    font-weight: bold;
+    font-size: 1.2rem;
+}
+/* Ende NEU */
+
+
 #verwaltung {
     margin-bottom: 15px;
     display: flex;
@@ -176,28 +235,40 @@ input[type="text"], input[type="number"] {
     padding: 8px 12px;
     background-color: #6c757d;
 }
+
+/* NEU: Echter Pause-Knopf */
 #pauseButton {
+    background-color: #ffc107;
+    color: #333;
+}
+
+/* UMBENANNT: von #pauseButton zu #gamePhaseButton */
+#gamePhaseButton {
     background-color: #ffc107;
     color: #333;
     font-size: 1.2rem;
     width: 80%;
 }
 
-/* Globale Aktionen (ANGEPASST) */
+/* UMBENANNT: von #pauseButton.beendet zu #gamePhaseButton.beendet */
+#gamePhaseButton.beendet {
+    background-color: #dc3545; /* Rot */
+    color: white;
+    opacity: 0.8;
+}
+
+/* Globale Aktionen */
 #globalAktionen {
     margin: -10px auto 20px auto;
-    display: flex; /* NEU */
-    justify-content: center; /* NEU */
-    flex-wrap: wrap; /* NEU */
-    gap: 10px; /* NEU */
+    display: flex; 
+    justify-content: center; 
+    flex-wrap: wrap; 
+    gap: 10px; 
 }
 #gegnerTorButton {
     background-color: #dc3545;
     font-size: 1.1rem;
-    /* width: 80%; */ /* ENTFERNT */
-    /* max-width: 480px; */ /* ENTFERNT */
 }
-/* NEUER STIL */
 #gegner2minButton {
     background-color: #fd7e14; /* Orange, wie 2min Strafe */
     font-size: 1.1rem;
@@ -216,13 +287,12 @@ input[type="text"], input[type="number"] {
     padding: 15px 5px;
     background-color: #17a2b8;
     border: 3px solid transparent;
-    /* Damit Name/Nummer untereinander stehen */
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
     line-height: 1.4;
-    min-height: 70px; /* Gibt den Knöpfen eine einheitliche Höhe */
+    min-height: 70px; 
 }
 .spieler-nummer {
     font-size: 1.4rem;
@@ -230,7 +300,7 @@ input[type="text"], input[type="number"] {
 }
 .spieler-name {
     font-size: 0.8rem;
-    word-break: break-word; /* Bricht lange Namen um */
+    word-break: break-word; 
 }
 
 
@@ -301,10 +371,31 @@ input[type="text"], input[type="number"] {
 }
 #kommentarInput {
     width: 100%;
-    box-sizing: border-box; /* Stellt sicher, dass padding die Breite nicht sprengt */
+    box-sizing: border-box; 
 }
 
 /* Strafen-Farben */
 .strafe-gelb { background-color: #ffc107; color: #333; }
 .strafe-zeit { background-color: #fd7e14; }
 .strafe-rot { background-color: #dc3545; }
+
+/* Responsivität für das neue Layout */
+@media (max-width: 900px) {
+    #spielBereich {
+        flex-direction: column; /* Handy: Untereinander */
+    }
+    #mainGameContent {
+        flex-basis: auto;
+        max-width: 100%;
+        order: 2; /* Hauptinhalt kommt als zweites */
+    }
+    #torTracker {
+        position: static; /* Nicht mehr sticky */
+        flex-basis: auto;
+        width: 100%;
+        max-width: 600px; /* Passt zur Protokoll-Breite */
+        margin-left: auto;
+        margin-right: auto;
+        order: 1; /* Tor-Tracker kommt als erstes */
+    }
+}
