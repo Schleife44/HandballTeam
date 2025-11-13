@@ -44,9 +44,11 @@ const globalAktionen = document.getElementById('globalAktionen');
 const gegnerTorButton = document.getElementById('gegnerTorButton');
 const gegner2minButton = document.getElementById('gegner2minButton'); 
 
-// Tor-Tracker
-const torTracker = document.getElementById('torTracker');
+// Statistik-Seitenleiste (ANGEPASST)
+const statistikSidebar = document.getElementById('statistikSidebar'); // war torTracker
 const torTabelleBody = document.getElementById('torTabelleBody');
+const statistikWrapper = document.getElementById('statistikWrapper'); // NEU
+const statistikTabelleBody = document.getElementById('statistikTabelleBody'); // NEU
 
 // Modals
 const aktionsMenue = document.getElementById('aktionsMenue');
@@ -59,6 +61,8 @@ const kommentarBereich = document.getElementById('kommentarBereich');
 const kommentarTitel = document.getElementById('kommentarTitel');
 const kommentarInput = document.getElementById('kommentarInput');
 const kommentarSpeichernButton = document.getElementById('kommentarSpeichernButton');
+
+// (Statistik Modal Elemente ENTFERNT)
 
 
 // --- 2. Spiel-Zustand (Variablen) ---
@@ -110,7 +114,7 @@ function ladeSpielstand() {
         spielBereich.classList.remove('versteckt');
         globalAktionen.classList.remove('versteckt'); 
         scoreWrapper.classList.remove('versteckt'); 
-        torTracker.classList.remove('versteckt'); 
+        statistikSidebar.classList.remove('versteckt'); // Ganze Sidebar anzeigen
         
         // Timer und Button-Zustand wiederherstellen
         timerAnzeige.textContent = formatiereZeit(spielstand.timer.verstricheneSekundenBisher);
@@ -120,23 +124,27 @@ function ladeSpielstand() {
         const phase = spielstand.timer.gamePhase;
         if (phase === 1) {
             gamePhaseButton.textContent = 'Spielstart';
+            statistikWrapper.classList.add('versteckt'); // Stats verstecken
         } else if (phase === 2) {
-            // War mitten in 1. HZ -> jetzt pausiert
-            gamePhaseButton.textContent = 'Weiter (1. HZ)'; // Ermöglicht das Fortsetzen
-            spielstand.timer.gamePhase = 1.5; // Spezieller Lade-Pausen-Status
+            gamePhaseButton.textContent = 'Weiter (1. HZ)'; 
+            spielstand.timer.gamePhase = 1.5; 
+            statistikWrapper.classList.add('versteckt'); // Stats verstecken
         } else if (phase === 3) {
             gamePhaseButton.textContent = 'Weiter (2. HZ)';
+            statistikWrapper.classList.add('versteckt'); // Stats verstecken
         } else if (phase === 4) {
-            // War mitten in 2. HZ -> jetzt pausiert
             gamePhaseButton.textContent = 'Weiter (2. HZ)';
-            spielstand.timer.gamePhase = 3.5; // Spezieller Lade-Pausen-Status
+            spielstand.timer.gamePhase = 3.5; 
+            statistikWrapper.classList.add('versteckt'); // Stats verstecken
         } else if (phase === 5) {
             gamePhaseButton.textContent = 'Beendet';
             gamePhaseButton.disabled = true;
             gamePhaseButton.classList.add('beendet');
+            // STATISTIK ANZEIGEN, da Spiel beendet
+            zeichneStatistikTabelle(berechneStatistiken()); 
+            statistikWrapper.classList.remove('versteckt'); 
         }
         
-        // Echter Pause-Knopf ist beim Laden immer versteckt/deaktiviert
         pauseButton.classList.add('versteckt');
         pauseButton.disabled = true;
 
@@ -258,7 +266,8 @@ function switchToGame() {
     spielBereich.classList.remove('versteckt');
     globalAktionen.classList.remove('versteckt'); 
     scoreWrapper.classList.remove('versteckt'); 
-    torTracker.classList.remove('versteckt'); 
+    statistikSidebar.classList.remove('versteckt'); // Ganze Sidebar anzeigen
+    statistikWrapper.classList.add('versteckt'); // Aber Stats-Teil verstecken
     
     if (spielstand.timer.gamePhase === 1) {
         spielstand.timer.istPausiert = true;
@@ -283,7 +292,7 @@ function switchToRoster() {
     rosterBereich.classList.remove('versteckt');
     globalAktionen.classList.add('versteckt'); 
     scoreWrapper.classList.add('versteckt'); 
-    torTracker.classList.add('versteckt'); 
+    statistikSidebar.classList.add('versteckt'); // Ganze Sidebar verstecken
     
     // Timer stoppen, falls er lief (sollte nicht, aber sicher ist sicher)
     clearInterval(timerInterval);
@@ -449,6 +458,10 @@ function handleGamePhaseClick() {
         pauseButton.classList.add('versteckt'); // Echte Pause verstecken
         pauseButton.disabled = true;
         logGlobalAktion('Spiel Ende');
+        
+        // --- ANGEPASSTER AUFRUF ---
+        zeichneStatistikTabelle(berechneStatistiken());
+        statistikWrapper.classList.remove('versteckt'); // Zeige die Zusammenfassung
     }
     speichereSpielstand();
 }
@@ -522,7 +535,6 @@ function schliesseAktionsMenue() {
     aktuelleAktionTyp = '';
 }
 
-// --- KORRIGIERTE logAktion Funktion ---
 function logAktion(aktion, kommentar = null) {
     const player = spielstand.roster[aktuellerSpielerIndex];
     const aktuelleZeit = timerAnzeige.textContent;
@@ -546,13 +558,12 @@ function logAktion(aktion, kommentar = null) {
 
     // 3. UI basierend auf dem NEUEN Log aktualisieren
     updateProtokollAnzeige();
-    updateTorTracker(); // <-- KORRIGIERTE POSITION
+    updateTorTracker(); 
     speichereSpielstand();
     
     // 4. Modals schließen
     schliesseAktionsMenue();
 }
-// --- ENDE KORREKTUR ---
 
 // --- 9. Protokoll, Export & Neues Spiel ---
 
@@ -692,6 +703,7 @@ function loescheProtokollEintrag(index) {
     }
 }
 
+// --- ANGEPASSTE EXPORT-FUNKTION ---
 function exportiereAlsTxt() {
     if (spielstand.gameLog.length === 0) {
         alert("Das Protokoll ist leer. Es gibt nichts zu exportieren.");
@@ -710,7 +722,61 @@ function exportiereAlsTxt() {
     });
     dateiInhalt += "---------------------\n\n";
 
+    // Vollständige Statistik-Übersicht hinzufügen (JETZT MIT PADDING)
+    dateiInhalt += "--- SPIEL-STATISTIK ---\n";
+    const statsData = berechneStatistiken();
+    
+    // 1. Finde die maximale Namenslänge für die Spaltenausrichtung
+    let maxNameLength = "Spieler".length;
+    statsData.forEach(stats => {
+        const nameLength = (`#${stats.number} ${stats.name}`).length;
+        if (nameLength > maxNameLength) {
+            maxNameLength = nameLength;
+        }
+    });
+    maxNameLength += 2; // Füge 2 extra Leerzeichen als Puffer hinzu
 
+    // 2. Definiere Spaltenbreiten (basierend auf Header + Puffer)
+    const col7m = "7m Raus".length + 2;
+    const colGut = "Gut".length + 2;
+    const colFehlwurf = "Fehlwurf".length + 2;
+    const colTechFehler = "Tech. Fehler".length + 2;
+    const colGelb = "Gelb".length + 2;
+    const col2min = "2min".length + 2;
+    const colRot = "Rot".length + 2;
+
+    // 3. Header erstellen
+    let header = "Spieler".padEnd(maxNameLength);
+    header += "7m Raus".padEnd(col7m);
+    header += "Gut".padEnd(colGut);
+    header += "Fehlwurf".padEnd(colFehlwurf);
+    header += "Tech. Fehler".padEnd(colTechFehler);
+    header += "Gelb".padEnd(colGelb);
+    header += "2min".padEnd(col2min);
+    header += "Rot".padEnd(colRot);
+    dateiInhalt += header + "\n";
+
+    // 4. Trennlinie erstellen
+    const totalLength = maxNameLength + col7m + colGut + colFehlwurf + colTechFehler + colGelb + col2min + colRot;
+    dateiInhalt += "-".repeat(totalLength).substring(0, totalLength - (colRot.length-3)) + "\n"; // Etwas kürzer
+    
+    // 5. Datenzeilen erstellen
+    statsData.forEach(stats => {
+        let row = (`#${stats.number} ${stats.name}`).padEnd(maxNameLength);
+        row += String(stats.siebenMeter).padEnd(col7m);
+        row += String(stats.guteAktion).padEnd(colGut);
+        row += String(stats.fehlwurf).padEnd(colFehlwurf);
+        row += String(stats.techFehler).padEnd(colTechFehler);
+        row += String(stats.gelb).padEnd(colGelb);
+        row += String(stats.zweiMinuten).padEnd(col2min);
+        row += String(stats.rot).padEnd(colRot);
+        dateiInhalt += row + "\n";
+    });
+    
+    dateiInhalt += "-".repeat(totalLength).substring(0, totalLength - (colRot.length-3)) + "\n\n";
+
+
+    // Protokoll-Teil
     [...spielstand.gameLog].reverse().forEach(e => {
         if (e.playerId) {
             dateiInhalt += `[${e.time}] #${e.playerId} (${e.playerName}): ${e.action}`;
@@ -737,6 +803,7 @@ function exportiereAlsTxt() {
     a.click();
     document.body.removeChild(a);
 }
+
 
 function starteNeuesSpiel() {
     if (confirm("Bist du sicher? Das löscht das gesamte Spielprotokoll, aber dein Team bleibt gespeichert.")) {
@@ -798,7 +865,79 @@ function updateTorTracker() {
 }
 
 
-// --- 11. Event Listener Zuweisung ---
+// --- 11. Statistik-Funktionen (NICHT MEHR MODAL) ---
+
+function berechneStatistiken() {
+    // 1. Initialisiere ein Statistik-Objekt für jeden Spieler
+    const statsMap = new Map();
+    spielstand.roster.forEach(player => {
+        statsMap.set(player.number, {
+            name: player.name,
+            number: player.number,
+            fehlwurf: 0,
+            techFehler: 0,
+            siebenMeter: 0,
+            guteAktion: 0,
+            gelb: 0,
+            zweiMinuten: 0,
+            rot: 0
+        });
+    });
+
+    // 2. Gehe durch das Log und zähle die Aktionen
+    for (const eintrag of spielstand.gameLog) {
+        if (!eintrag.playerId || !statsMap.has(eintrag.playerId)) {
+            continue; // Überspringe globale Aktionen
+        }
+
+        const stats = statsMap.get(eintrag.playerId);
+
+        if (eintrag.action.startsWith("Gute Aktion")) {
+            stats.guteAktion++;
+        } else if (eintrag.action === "Fehlwurf") {
+            stats.fehlwurf++;
+        } else if (eintrag.action === "Technischer Fehler") {
+            stats.techFehler++;
+        } else if (eintrag.action === "7M Rausgeholt") {
+            stats.siebenMeter++;
+        } else if (eintrag.action === "Gelbe Karte") {
+            stats.gelb++;
+        } else if (eintrag.action === "2 Minuten") {
+            stats.zweiMinuten++;
+        } else if (eintrag.action === "Rote Karte") {
+            stats.rot++;
+        }
+    }
+    
+    // 3. Konvertiere die Map zu einem Array für einfaches Sortieren/Anzeigen
+    return Array.from(statsMap.values());
+}
+
+function zeichneStatistikTabelle(statsData) {
+    if (!statistikTabelleBody) return;
+
+    statistikTabelleBody.innerHTML = '';
+    
+    statsData.forEach(stats => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+            <td>#${stats.number} ${stats.name}</td>
+            <td>${stats.siebenMeter}</td>
+            <td>${stats.guteAktion}</td>
+            <td>${stats.fehlwurf}</td>
+            <td>${stats.techFehler}</td>
+            <td>${stats.gelb}</td>
+            <td>${stats.zweiMinuten}</td>
+            <td>${stats.rot}</td>
+        `;
+        statistikTabelleBody.appendChild(tr);
+    });
+}
+
+// (zeigeStatistikModal Funktion ENTFERNT)
+
+
+// --- 12. Event Listener Zuweisung ---
 
 // Bildschirm 1
 addPlayerForm.addEventListener('submit', addPlayer);
@@ -864,6 +1003,8 @@ kommentarSpeichernButton.addEventListener('click', () => {
     kommentarInput.value = ''; // Feld leeren
 });
 
+// (Event Listener für Statistik-Modal ENTFERNT)
+
 
 // Aktualisiert die Spielstand-Anzeige (z.B. 1:0)
 function updateScoreDisplay() {
@@ -872,6 +1013,6 @@ function updateScoreDisplay() {
     }
 }
 
-// --- 12. Initialisierung ---
+// --- 13. Initialisierung ---
 // Wenn die Seite geladen wird, lade den letzten Stand
 ladeSpielstand();
