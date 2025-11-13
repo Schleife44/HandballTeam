@@ -34,14 +34,19 @@ const gegnerScoreDown = document.getElementById('gegnerScoreDown');
 
 const zurueckButton = document.getElementById('zurueckButton');
 const vorButton = document.getElementById('vorButton');
-const pauseButton = document.getElementById('pauseButton');
+const pauseButton = document.getElementById('pauseButton'); // Echter Pause-Knopf
+const gamePhaseButton = document.getElementById('gamePhaseButton'); // Phasen-Knopf
 const spielerRaster = document.getElementById('spielerRaster');
 const protokollAusgabe = document.getElementById('protokollAusgabe');
 
 // Globale Aktionen
 const globalAktionen = document.getElementById('globalAktionen');
 const gegnerTorButton = document.getElementById('gegnerTorButton');
-const gegner2minButton = document.getElementById('gegner2minButton'); // NEU
+const gegner2minButton = document.getElementById('gegner2minButton'); 
+
+// Tor-Tracker
+const torTracker = document.getElementById('torTracker');
+const torTabelleBody = document.getElementById('torTabelleBody');
 
 // Modals
 const aktionsMenue = document.getElementById('aktionsMenue');
@@ -65,10 +70,10 @@ let spielstand = {
     score: { heim: 0, gegner: 0 }, // Spielstand
     gameLog: [], // { time: '00:00', playerId: 7, playerName: 'Anna', action: 'Tor', spielstand: '1:0' }
     timer: {
+        gamePhase: 1, // 1=Vor Spiel, 2=1. HZ, 3=Halbzeit, 4=2. HZ, 5=Beendet
         istPausiert: true,
         segmentStartZeit: 0,
         verstricheneSekundenBisher: 0,
-        gestartet: false
     }
 };
 
@@ -91,27 +96,54 @@ function ladeSpielstand() {
     
     spielstand = JSON.parse(gespeicherterStand);
 
-    // Stellt sicher, dass alte Speicherstände ohne Score-Objekt funktionieren
+    // Stellt sicher, dass alte Speicherstände kompatibel sind
     if (!spielstand.score) {
         spielstand.score = { heim: 0, gegner: 0 };
+    }
+    if (!spielstand.timer.gamePhase) {
+        spielstand.timer.gamePhase = 1;
     }
     
     if (spielstand.uiState === 'game') {
         // Spiel-Modus wiederherstellen
         rosterBereich.classList.add('versteckt');
         spielBereich.classList.remove('versteckt');
-        globalAktionen.classList.remove('versteckt'); // Global-Aktionen anzeigen
-        scoreWrapper.classList.remove('versteckt'); // Spielstand-Block anzeigen
+        globalAktionen.classList.remove('versteckt'); 
+        scoreWrapper.classList.remove('versteckt'); 
+        torTracker.classList.remove('versteckt'); 
         
-        // Timer wiederherstellen (immer pausiert)
-        spielstand.timer.istPausiert = true;
+        // Timer und Button-Zustand wiederherstellen
         timerAnzeige.textContent = formatiereZeit(spielstand.timer.verstricheneSekundenBisher);
-        pauseButton.textContent = spielstand.timer.gestartet ? 'Weiter' : 'Spielstart';
-        setSteuerungAktiv(false); // Knöpfe deaktivieren
+        spielstand.timer.istPausiert = true; // Beim Laden immer pausieren
+        setSteuerungAktiv(false); // Knöpfe immer deaktivieren beim Laden
         
-        updateScoreDisplay(); // Spielstand aktualisieren
+        const phase = spielstand.timer.gamePhase;
+        if (phase === 1) {
+            gamePhaseButton.textContent = 'Spielstart';
+        } else if (phase === 2) {
+            // War mitten in 1. HZ -> jetzt pausiert
+            gamePhaseButton.textContent = 'Weiter (1. HZ)'; // Ermöglicht das Fortsetzen
+            spielstand.timer.gamePhase = 1.5; // Spezieller Lade-Pausen-Status
+        } else if (phase === 3) {
+            gamePhaseButton.textContent = 'Weiter (2. HZ)';
+        } else if (phase === 4) {
+            // War mitten in 2. HZ -> jetzt pausiert
+            gamePhaseButton.textContent = 'Weiter (2. HZ)';
+            spielstand.timer.gamePhase = 3.5; // Spezieller Lade-Pausen-Status
+        } else if (phase === 5) {
+            gamePhaseButton.textContent = 'Beendet';
+            gamePhaseButton.disabled = true;
+            gamePhaseButton.classList.add('beendet');
+        }
+        
+        // Echter Pause-Knopf ist beim Laden immer versteckt/deaktiviert
+        pauseButton.classList.add('versteckt');
+        pauseButton.disabled = true;
+
+        updateScoreDisplay(); 
         zeichneSpielerRaster();
         updateProtokollAnzeige();
+        updateTorTracker(); 
     } else {
         // Setup-Modus
         zeichneRosterListe();
@@ -124,14 +156,13 @@ function addPlayer(e) {
     e.preventDefault();
     const name = playerNameInput.value.trim();
     const number = parseInt(playerNumberInput.value, 10);
-    const editIndex = editPlayerIndex.value; // Prüfen, ob wir im Bearbeiten-Modus sind
+    const editIndex = editPlayerIndex.value; 
 
     if (!name || isNaN(number)) {
         alert("Bitte gib einen gültigen Namen und eine Nummer ein.");
         return;
     }
     
-    // Prüfen, ob Nummer schon vergeben ist (außer bei Bearbeitung desselben Spielers)
     const existierenderSpieler = spielstand.roster.find((p, i) => p.number === number && i != editIndex);
     if (existierenderSpieler) {
         alert("Diese Nummer ist bereits vergeben.");
@@ -139,26 +170,18 @@ function addPlayer(e) {
     }
 
     if (editIndex) {
-        // --- BEARBEITEN MODUS ---
         const player = spielstand.roster[editIndex];
         player.name = name;
         player.number = number;
-        
         schliesseEditModus();
-
     } else {
-        // --- HINZUFÜGEN MODUS ---
-        spielstand.roster.push({ 
-            name, 
-            number
-        });
+        spielstand.roster.push({ name, number });
     }
 
-    spielstand.roster.sort((a, b) => a.number - b.number); // Nach Nummer sortieren
+    spielstand.roster.sort((a, b) => a.number - b.number); 
     speichereSpielstand();
     zeichneRosterListe();
 
-    // Formular zurücksetzen (außer im Bearbeiten-Modus, da schließt es eh)
     if (!editIndex) {
         playerNameInput.value = '';
         playerNumberInput.value = '';
@@ -176,30 +199,23 @@ function deletePlayer(index) {
 
 function oeffneEditModus(index) {
     const player = spielstand.roster[index];
-    
-    // Formular füllen
     playerNameInput.value = player.name;
     playerNumberInput.value = player.number;
-    editPlayerIndex.value = index; // Index setzen!
-    
-    // UI anpassen
+    editPlayerIndex.value = index; 
     addPlayerForm.querySelector('button[type="submit"]').textContent = 'Speichern';
     cancelEditButton.classList.remove('versteckt');
 }
 
 function schliesseEditModus() {
-    // Formular leeren
     playerNameInput.value = '';
     playerNumberInput.value = '';
-    editPlayerIndex.value = ''; // Index leeren!
-    
-    // UI zurücksetzen
+    editPlayerIndex.value = ''; 
     addPlayerForm.querySelector('button[type="submit"]').textContent = 'Hinzufügen';
     cancelEditButton.classList.add('versteckt');
 }
 
 function zeichneRosterListe() {
-    rosterListe.innerHTML = ''; // Liste leeren
+    rosterListe.innerHTML = ''; 
     if (spielstand.roster.length === 0) {
         rosterListe.innerHTML = '<li>Noch keine Spieler hinzugefügt.</li>';
         return;
@@ -207,12 +223,10 @@ function zeichneRosterListe() {
     
     spielstand.roster.forEach((player, index) => {
         const li = document.createElement('li');
-        
         const text = document.createElement('span');
         text.textContent = `#${player.number} - ${player.name}`;
         li.appendChild(text);
         
-        // Wrapper für Knöpfe
         const buttonWrapper = document.createElement('div');
         
         const editBtn = document.createElement('button');
@@ -242,18 +256,23 @@ function switchToGame() {
     
     rosterBereich.classList.add('versteckt');
     spielBereich.classList.remove('versteckt');
-    globalAktionen.classList.remove('versteckt'); // Global-Aktionen anzeigen
-    scoreWrapper.classList.remove('versteckt'); // Spielstand-Block anzeigen
+    globalAktionen.classList.remove('versteckt'); 
+    scoreWrapper.classList.remove('versteckt'); 
+    torTracker.classList.remove('versteckt'); 
     
-    // Sicherstellen, dass der Timer-Status korrekt ist
-    spielstand.timer.istPausiert = true;
-    pauseButton.textContent = spielstand.timer.gestartet ? 'Weiter' : 'Spielstart';
-    timerAnzeige.textContent = formatiereZeit(spielstand.timer.verstricheneSekundenBisher);
-    setSteuerungAktiv(false); // Spiel startet immer pausiert
+    if (spielstand.timer.gamePhase === 1) {
+        spielstand.timer.istPausiert = true;
+        gamePhaseButton.textContent = 'Spielstart';
+        timerAnzeige.textContent = formatiereZeit(0);
+        setSteuerungAktiv(false); 
+        updateScoreDisplay(); 
+        pauseButton.classList.add('versteckt');
+        pauseButton.disabled = true;
+    }
     
-    updateScoreDisplay(); // Spielstand (z.B. 0:0) anzeigen
     zeichneSpielerRaster();
     updateProtokollAnzeige();
+    updateTorTracker(); 
 }
 
 function switchToRoster() {
@@ -262,8 +281,12 @@ function switchToRoster() {
     
     spielBereich.classList.add('versteckt');
     rosterBereich.classList.remove('versteckt');
-    globalAktionen.classList.add('versteckt'); // Global-Aktionen verstecken
-    scoreWrapper.classList.add('versteckt'); // Spielstand-Block verstecken
+    globalAktionen.classList.add('versteckt'); 
+    scoreWrapper.classList.add('versteckt'); 
+    torTracker.classList.add('versteckt'); 
+    
+    // Timer stoppen, falls er lief (sollte nicht, aber sicher ist sicher)
+    clearInterval(timerInterval);
     
     zeichneRosterListe();
 }
@@ -288,9 +311,7 @@ function exportTeam() {
 
 function handleFileImport(event) {
     const file = event.target.files[0];
-    if (!file) {
-        return;
-    }
+    if (!file) { return; }
     
     const reader = new FileReader();
     reader.onload = function(e) {
@@ -324,12 +345,10 @@ function zeichneSpielerRaster() {
     spielerRaster.innerHTML = '';
     spielstand.roster.forEach((player, index) => {
         const btn = document.createElement('button');
-        
         btn.innerHTML = `
             <span class="spieler-nummer">#${player.number}</span>
             <span class="spieler-name">${player.name}</span>
         `;
-
         btn.className = 'spieler-button';
         btn.onclick = () => oeffneAktionsMenue(index);
         spielerRaster.appendChild(btn);
@@ -359,37 +378,112 @@ function updateTimer() {
     }
 }
 
-function handlePauseClick() {
-    if (spielstand.timer.istPausiert === false) {
-        // --- PAUSIEREN ---
-        clearInterval(timerInterval);
-        const segmentSekunden = (Date.now() - spielstand.timer.segmentStartZeit) / 1000;
-        spielstand.timer.verstricheneSekundenBisher += segmentSekunden;
-        spielstand.timer.istPausiert = true;
-        pauseButton.textContent = 'Weiter';
-        setSteuerungAktiv(false); 
-    } else {
-        // --- STARTEN / FORTSETZEN ---
-        spielstand.timer.segmentStartZeit = Date.now();
-        timerInterval = setInterval(updateTimer, 1000);
-        spielstand.timer.istPausiert = false;
-        spielstand.timer.gestartet = true; // Markieren, dass Timer läuft
-        pauseButton.textContent = 'Pause';
+function startTimer() {
+    spielstand.timer.segmentStartZeit = Date.now();
+    timerInterval = setInterval(updateTimer, 1000);
+    spielstand.timer.istPausiert = false;
+}
+
+function stoppTimer() {
+    if (spielstand.timer.istPausiert) return; // Schon gestoppt
+    clearInterval(timerInterval);
+    const segmentSekunden = (Date.now() - spielstand.timer.segmentStartZeit) / 1000;
+    spielstand.timer.verstricheneSekundenBisher += segmentSekunden;
+    spielstand.timer.istPausiert = true;
+}
+
+// Logik für den SPIELPHASEN-Knopf (Halbzeit etc.)
+function handleGamePhaseClick() {
+    const phase = spielstand.timer.gamePhase;
+    if (phase === 5) return; // Beendet
+
+    if (phase === 1) { // Klick auf "Spielstart"
+        spielstand.timer.gamePhase = 2;
+        gamePhaseButton.textContent = 'Halbzeit';
+        startTimer();
         setSteuerungAktiv(true);
+        pauseButton.classList.remove('versteckt');
+        pauseButton.disabled = false;
+    
+    } else if (phase === 2) { // Klick auf "Halbzeit"
+        spielstand.timer.gamePhase = 3;
+        gamePhaseButton.textContent = 'Weiter (2. HZ)';
+        stoppTimer();
+        setSteuerungAktiv(false);
+        pauseButton.classList.add('versteckt'); // Echte Pause verstecken
+        pauseButton.disabled = true;
+        logGlobalAktion('Halbzeit');
+
+    } else if (phase === 1.5) { // Klick auf "Weiter (1. HZ)" (nach Laden)
+        spielstand.timer.gamePhase = 2;
+        gamePhaseButton.textContent = 'Halbzeit';
+        startTimer();
+        setSteuerungAktiv(true);
+        pauseButton.classList.remove('versteckt');
+        pauseButton.disabled = false;
+    
+    } else if (phase === 3) { // Klick auf "Weiter (2. HZ)"
+        spielstand.timer.gamePhase = 4;
+        gamePhaseButton.textContent = 'Spiel Ende';
+        startTimer();
+        setSteuerungAktiv(true);
+        pauseButton.classList.remove('versteckt');
+        pauseButton.disabled = false;
+        logGlobalAktion('Start 2. Halbzeit');
+
+    } else if (phase === 3.5) { // Klick auf "Weiter (2. HZ)" (nach Laden)
+        spielstand.timer.gamePhase = 4;
+        gamePhaseButton.textContent = 'Spiel Ende';
+        startTimer();
+        setSteuerungAktiv(true);
+        pauseButton.classList.remove('versteckt');
+        pauseButton.disabled = false;
+
+    } else if (phase === 4) { // Klick auf "Spiel Ende"
+        spielstand.timer.gamePhase = 5;
+        gamePhaseButton.textContent = 'Beendet';
+        gamePhaseButton.disabled = true;
+        gamePhaseButton.classList.add('beendet');
+        stoppTimer();
+        setSteuerungAktiv(false);
+        pauseButton.classList.add('versteckt'); // Echte Pause verstecken
+        pauseButton.disabled = true;
+        logGlobalAktion('Spiel Ende');
     }
     speichereSpielstand();
 }
 
+// Logik für den echten PAUSE-Knopf
+function handleRealPauseClick() {
+    // Nur pausieren, wenn in HZ1 (2) oder HZ2 (4)
+    if (spielstand.timer.gamePhase !== 2 && spielstand.timer.gamePhase !== 4) return;
+
+    if (spielstand.timer.istPausiert === false) {
+        // --- ECHT PAUSIEREN ---
+        stoppTimer();
+        pauseButton.textContent = 'Weiter';
+        setSteuerungAktiv(false); // Deaktiviert alle Aktionsknöpfe
+        
+        // Wichtig: Phasen-Knopf (Halbzeit/Spiel Ende) bleibt aktiv!
+        gamePhaseButton.disabled = false;
+    } else {
+        // --- ECHT FORTSETZEN ---
+        startTimer();
+        pauseButton.textContent = 'Pause';
+        setSteuerungAktiv(true); // Aktiviert alle Aktionsknöpfe
+    }
+    speichereSpielstand();
+}
+
+
 function setSteuerungAktiv(aktiv) {
-    // Deaktiviert das Klicken auf Spieler, wenn pausiert
+    // Deaktiviert nur die *Aktions*-Knöpfe
     const spielerButtons = document.querySelectorAll('.spieler-button');
     spielerButtons.forEach(btn => btn.disabled = !aktiv);
     
-    // Auch globale Knöpfe deaktivieren
     gegnerTorButton.disabled = !aktiv;
-    gegner2minButton.disabled = !aktiv; // NEU
+    gegner2minButton.disabled = !aktiv; 
     
-    // Korrektur-Knöpfe deaktivieren
     heimScoreUp.disabled = !aktiv;
     heimScoreDown.disabled = !aktiv;
     gegnerScoreUp.disabled = !aktiv;
@@ -428,17 +522,19 @@ function schliesseAktionsMenue() {
     aktuelleAktionTyp = '';
 }
 
+// --- KORRIGIERTE logAktion Funktion ---
 function logAktion(aktion, kommentar = null) {
     const player = spielstand.roster[aktuellerSpielerIndex];
     const aktuelleZeit = timerAnzeige.textContent;
 
-    // Spielstand aktualisieren
+    // 1. Spielstand aktualisieren, FALLS NÖTIG
     if (aktion === "Tor") {
         spielstand.score.heim++;
     }
     const aktuellerSpielstand = `${spielstand.score.heim}:${spielstand.score.gegner}`;
     updateScoreDisplay(); // UI Anzeige aktualisieren
 
+    // 2. Log-Eintrag erstellen und HINZUFÜGEN
     spielstand.gameLog.unshift({
         time: aktuelleZeit,
         playerId: player.number,
@@ -448,12 +544,15 @@ function logAktion(aktion, kommentar = null) {
         spielstand: aktuellerSpielstand // Spielstand im Log speichern
     });
 
+    // 3. UI basierend auf dem NEUEN Log aktualisieren
     updateProtokollAnzeige();
+    updateTorTracker(); // <-- KORRIGIERTE POSITION
     speichereSpielstand();
     
-    // Modals schließen
+    // 4. Modals schließen
     schliesseAktionsMenue();
 }
+// --- ENDE KORREKTUR ---
 
 // --- 9. Protokoll, Export & Neues Spiel ---
 
@@ -467,6 +566,7 @@ function logGlobalAktion(aktion, kommentar = null) {
     }
     const aktuellerSpielstand = `${spielstand.score.heim}:${spielstand.score.gegner}`;
     updateScoreDisplay(); // UI Anzeige aktualisieren
+    // Tor-Tracker muss hier nicht aktualisiert werden, da es ein Gegner-Tor ist
 
     spielstand.gameLog.unshift({
         time: aktuelleZeit,
@@ -515,6 +615,7 @@ function logScoreKorrektur(team, change) {
 
     // 4. UI/Speicher aktualisieren
     updateProtokollAnzeige();
+    updateTorTracker(); // Tor-Tracker aktualisieren (falls ein Heim-Tor korrigiert wurde)
     speichereSpielstand();
 }
 
@@ -559,7 +660,6 @@ function loescheProtokollEintrag(index) {
     if (confirm("Möchtest du diesen Eintrag wirklich löschen?")) {
         
         const geloeschterEintrag = spielstand.gameLog[index];
-
         spielstand.gameLog.splice(index, 1); // Eintrag löschen
 
         // Spielstand anpassen, falls ein Tor oder eine Korrektur gelöscht wurde
@@ -587,6 +687,7 @@ function loescheProtokollEintrag(index) {
         // UI und Protokoll aktualisieren
         updateScoreDisplay(); // Score-Anzeige oben
         updateProtokollAnzeige(); // Protokoll-Liste
+        updateTorTracker(); // Tor-Tracker aktualisieren
         speichereSpielstand();
     }
 }
@@ -600,6 +701,16 @@ function exportiereAlsTxt() {
     let dateiInhalt = "Protokoll Handball Team-Tracker\n\n";
     dateiInhalt += `Team: ${spielstand.roster.map(p => `#${p.number} ${p.name}`).join(', ')}\n\n`;
     
+    // Tor-Tracker-Daten hinzufügen
+    dateiInhalt += "--- TOR-ÜBERSICHT ---\n";
+    const toreMap = berechneTore();
+    spielstand.roster.forEach(player => {
+        const tore = toreMap.get(player.number) || 0;
+        dateiInhalt += `#${player.number} ${player.name}: ${tore} Tore\n`;
+    });
+    dateiInhalt += "---------------------\n\n";
+
+
     [...spielstand.gameLog].reverse().forEach(e => {
         if (e.playerId) {
             dateiInhalt += `[${e.time}] #${e.playerId} (${e.playerName}): ${e.action}`;
@@ -629,14 +740,14 @@ function exportiereAlsTxt() {
 
 function starteNeuesSpiel() {
     if (confirm("Bist du sicher? Das löscht das gesamte Spielprotokoll, aber dein Team bleibt gespeichert.")) {
-        // Setzt nur das Protokoll und den Timer zurück, nicht das Roster
+        
         spielstand.gameLog = [];
         spielstand.score = { heim: 0, gegner: 0 }; // Spielstand zurücksetzen
         spielstand.timer = {
+            gamePhase: 1, // Zurück zu Phase 1
             istPausiert: true,
             segmentStartZeit: 0,
             verstricheneSekundenBisher: 0,
-            gestartet: false
         };
         
         speichereSpielstand();
@@ -644,8 +755,50 @@ function starteNeuesSpiel() {
     }
 }
 
+// --- 10. Tor-Tracker Funktionen ---
 
-// --- 10. Event Listener Zuweisung ---
+// Berechnet die Tore pro Spieler aus dem Log
+function berechneTore() {
+    const toreMap = new Map();
+    // Gehe durch das *aktuelle* Log
+    for (const eintrag of spielstand.gameLog) {
+        if (eintrag.action === "Tor" && eintrag.playerId) {
+            toreMap.set(eintrag.playerId, (toreMap.get(eintrag.playerId) || 0) + 1);
+        }
+    }
+    return toreMap;
+}
+
+// Aktualisiert die Tor-Tabelle in der UI
+function updateTorTracker() {
+    if (!torTabelleBody) return; // Sicherstellen, dass das Element existiert
+    
+    const toreMap = berechneTore();
+
+    // Erstelle Daten-Array aus Roster
+    const trackerData = spielstand.roster.map(player => ({
+        name: player.name,
+        number: player.number,
+        tore: toreMap.get(player.number) || 0
+    }));
+    
+    // Sortiere nach Toren (meiste oben)
+    trackerData.sort((a, b) => b.tore - a.tore);
+    
+    // Zeichne die Tabelle
+    torTabelleBody.innerHTML = '';
+    trackerData.forEach(data => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+            <td>#${data.number} ${data.name}</td>
+            <td>${data.tore}</td>
+        `;
+        torTabelleBody.appendChild(tr);
+    });
+}
+
+
+// --- 11. Event Listener Zuweisung ---
 
 // Bildschirm 1
 addPlayerForm.addEventListener('submit', addPlayer);
@@ -657,13 +810,14 @@ importFileInput.addEventListener('change', handleFileImport);
 
 // Bildschirm 2
 backToRosterButton.addEventListener('click', switchToRoster);
-pauseButton.addEventListener('click', handlePauseClick);
+gamePhaseButton.addEventListener('click', handleGamePhaseClick); // Phasen-Knopf
+pauseButton.addEventListener('click', handleRealPauseClick); // Echter Pause-Knopf
 zurueckButton.addEventListener('click', () => handleZeitSprung(-30));
 vorButton.addEventListener('click', () => handleZeitSprung(30));
 neuesSpielButton.addEventListener('click', starteNeuesSpiel);
 exportButton.addEventListener('click', exportiereAlsTxt);
 gegnerTorButton.addEventListener('click', () => logGlobalAktion('Gegner Tor'));
-gegner2minButton.addEventListener('click', () => logGlobalAktion('Gegner 2 min')); // NEU
+gegner2minButton.addEventListener('click', () => logGlobalAktion('Gegner 2 min')); 
 
 // Score-Anpassungs-Listener
 heimScoreUp.addEventListener('click', () => logScoreKorrektur('heim', 1));
@@ -718,6 +872,6 @@ function updateScoreDisplay() {
     }
 }
 
-// --- 11. Initialisierung ---
+// --- 12. Initialisierung ---
 // Wenn die Seite geladen wird, lade den letzten Stand
 ladeSpielstand();
