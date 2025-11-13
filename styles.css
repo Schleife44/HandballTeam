@@ -18,7 +18,7 @@ button {
     transition: background-color 0.3s;
 }
 button:hover {
-    background-color: #0056b3;
+    background-color: #dd0c0c;
 }
 button:disabled {
     background-color: #999;
@@ -429,4 +429,5 @@ input[type="text"], input[type="number"] {
         order: 1; /* Statistik-Block kommt als erstes */
     }
 }
+
 
