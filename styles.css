@@ -281,7 +281,7 @@ input[type="text"], input[type="number"] {
 .spieler-button {
     font-size: 1.2rem;
     padding: 15px 5px;
-    background-color: #17a2b8;
+    background-color: #dd0c0c;
     border: 3px solid transparent;
     display: flex;
     flex-direction: column;
@@ -429,3 +429,4 @@ input[type="text"], input[type="number"] {
         order: 1; /* Statistik-Block kommt als erstes */
     }
 }
+
