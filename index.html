@@ -4,8 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Team-Tracker</title>
-    <!-- Die Version ?v=1.4 hilft, Cache-Probleme zu vermeiden. -->
-    <link rel="stylesheet" href="styles.css?v=1.4">
+    <!-- Die Version ?v=1.6 hilft, Cache-Probleme zu vermeiden. -->
+    <link rel="stylesheet" href="styles.css?v=1.6">
 </head>
 <body>
 
@@ -44,63 +44,85 @@
     <!-- BILDSCHIRM 2: SPIEL-MODUS -->
     <!-- ######################################## -->
     <div id="spielBereich" class="versteckt">
+
+        <!-- NEUE Seitenleiste für Tor-Statistik -->
+        <aside id="torTracker" class="versteckt">
+            <h3>Tor-Tracker</h3>
+            <table id="torTabelle">
+                <thead>
+                    <tr>
+                        <th>Name</th>
+                        <th>Tore</th>
+                    </tr>
+                </thead>
+                <tbody id="torTabelleBody">
+                    <!-- Wird von JS gefüllt -->
+                </tbody>
+            </table>
+        </aside>
         
-        <!-- 1. Verwaltung (Zurück, Export, Neues Spiel) -->
-        <div id="verwaltung">
-            <button id="backToRosterButton">Team ändern</button>
-            <button id="exportButton">Export .txt</button>
-            <button id="neuesSpielButton">Neues Spiel</button>
-        </div>
-
-        <!-- 2. Timer-Steuerung -->
-        <div id="timerContainer">
-            <div id="timerAnzeige">00:00</div>
-
-            <!-- Spielstand-Anzeige mit Korrektur -->
-            <div id="scoreWrapper" class="versteckt">
-                <div class="score-team-control">
-                    <button id="heimScoreUp" class="score-korrektur" disabled>Heim +</button>
-                    <button id="heimScoreDown" class="score-korrektur" disabled>Heim -</button>
-                </div>
-                <div id="scoreAnzeige">0:0</div>
-                <div class="score-team-control">
-                    <button id="gegnerScoreUp" class="score-korrektur" disabled>Gegner +</button>
-                    <button id="gegnerScoreDown" class="score-korrektur" disabled>Gegner -</button>
-                </div>
+        <!-- Wrapper für den Hauptinhalt -->
+        <div id="mainGameContent">
+            <!-- 1. Verwaltung (Zurück, Export, Neues Spiel) -->
+            <div id="verwaltung">
+                <button id="backToRosterButton">Team ändern</button>
+                <button id="exportButton">Export .txt</button>
+                <button id="neuesSpielButton">Neues Spiel</button>
             </div>
-            
-            <div id="zeitSprung">
-                <button id="zurueckButton" class="zeitButton">-30s</button>
-                <button id="vorButton" class="zeitButton">+30s</button>
+
+            <!-- 2. Timer-Steuerung -->
+            <div id="timerContainer">
+                <div id="timerAnzeige">00:00</div>
+
+                <!-- Spielstand-Anzeige mit Korrektur -->
+                <div id="scoreWrapper" class="versteckt">
+                    <div class="score-team-control">
+                        <button id="heimScoreUp" class="score-korrektur" disabled>Heim +</button>
+                        <button id="heimScoreDown" class="score-korrektur" disabled>Heim -</button>
+                    </div>
+                    <div id="scoreAnzeige">0:0</div>
+                    <div class="score-team-control">
+                        <button id="gegnerScoreUp" class="score-korrektur" disabled>Gegner +</button>
+                        <button id="gegnerScoreDown" class="score-korrektur" disabled>Gegner -</button>
+                    </div>
+                </div>
+                
+                <div id="zeitSprung">
+                    <button id="zurueckButton" class="zeitButton">-30s</button>
+                    <!-- Der NEUE, separate Pause-Knopf -->
+                    <button id="pauseButton" class="zeitButton versteckt" disabled>Pause</button> 
+                    <button id="vorButton" class="zeitButton">+30s</button>
+                </div>
+                <!-- Der ALTE Pause-Knopf, jetzt für die Spielphasen -->
+                <button id="gamePhaseButton">Spielstart</button>
             </div>
-            <button id="pauseButton">Spielstart</button>
-        </div>
 
-        <!-- 3. Globale Aktionen (ANGEPASST) -->
-        <div id="globalAktionen" class="versteckt">
-            <button id="gegnerTorButton" disabled>Gegner Tor</button>
-            <button id="gegner2minButton" disabled>Gegner 2 min</button> <!-- NEUER KNOPF -->
-        </div>
+            <!-- 3. Globale Aktionen -->
+            <div id="globalAktionen" class="versteckt">
+                <button id="gegnerTorButton" disabled>Gegner Tor</button>
+                <button id="gegner2minButton" disabled>Gegner 2 min</button>
+            </div>
 
-        <!-- 4. Spieler-Raster -->
-        <h3>Spieler auswählen:</h3>
-        <div id="spielerRaster">
-            <!-- Spieler-Knöpfe werden hier von JS eingefügt -->
-        </div>
+            <!-- 4. Spieler-Raster -->
+            <h3>Spieler auswählen:</h3>
+            <div id="spielerRaster">
+                <!-- Spieler-Knöpfe werden hier von JS eingefügt -->
+            </div>
 
-        <!-- 5. Protokoll -->
-        <div id="protokoll">
-            <h3>Protokoll</h3>
-            <div id="protokollAusgabe"></div>
-        </div>
-    </div>
+            <!-- 5. Protokoll -->
+            <div id="protokoll">
+                <h3>Protokoll</h3>
+                <div id="protokollAusgabe"></div>
+            </div>
+        </div> <!-- Ende #mainGameContent -->
+    </div> <!-- Ende #spielBereich -->
 
 
     <!-- ######################################## -->
     <!-- MODALS (Pop-ups) -->
     <!-- ######################################## -->
 
-    <!-- Modal 1: Haupt-Aktionsmenü (erscheint nach Klick auf Spieler) -->
+    <!-- Modal 1: Haupt-Aktionsmenü -->
     <div id="aktionsMenue" class="modal-overlay versteckt">
         <div class="modal-content">
             <h3 id="aktionsMenueTitel">Aktion für...</h3>
@@ -141,6 +163,6 @@
     </div>
 
 
-    <script src="script.js?v=1.4"></script>
+    <script src="script.js?v=1.6"></script>
 </body>
 </html>
