@@ -4,28 +4,24 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Team-Tracker</title>
-    <!-- Die Version ?v=1.8 hilft, Cache-Probleme zu vermeiden. -->
-    <link rel="stylesheet" href="styles.css?v=1.8">
+    <link rel="stylesheet" href="styles.css?v=2.7">
 </head>
 <body>
 
-    <!-- ######################################## -->
-    <!-- BILDSCHIRM 1: TEAM-ERSTELLUNG (ROSTER) -->
-    <!-- ######################################## -->
+    <button id="settingsButton" title="Einstellungen">⚙️</button>
+
     <div id="rosterBereich">
         <h1>Team-Erstellung</h1>
         <p>Füge deine Spieler hinzu. Das Team wird auf diesem Gerät gespeichert.</p>
         
-        <!-- Formular zum Hinzufügen/Bearbeiten -->
         <form id="addPlayerForm">
-            <input type="hidden" id="editPlayerIndex"> <!-- Verstecktes Feld für Bearbeitung -->
+            <input type="hidden" id="editPlayerIndex">
             <input type="text" id="playerNameInput" placeholder="Name" required>
             <input type="number" id="playerNumberInput" placeholder="Nr." required>
             <button type="submit">Hinzufügen</button>
             <button type="button" id="cancelEditButton" class="versteckt">Abbrechen</button>
         </form>
 
-        <!-- Team Import/Export -->
         <div id="teamVerwaltung">
             <button id="exportTeamButton" class="team-manage-btn">Team exportieren (.json)</button>
             <button id="importTeamButton" class="team-manage-btn">Team importieren (.json)</button>
@@ -33,81 +29,89 @@
         </div>
 
         <h3>Aktuelles Team</h3>
-        <ul id="rosterListe">
-            <!-- Spieler werden hier von JS eingefügt -->
-        </ul>
+        <ul id="rosterListe"></ul>
         
         <button id="startGameButton" class="cta-button">Spiel starten</button>
     </div>
 
-    <!-- ######################################## -->
-    <!-- BILDSCHIRM 2: SPIEL-MODUS -->
-    <!-- ######################################## -->
     <div id="spielBereich" class="versteckt">
 
-        <!-- ANGEPASST: Seitenleiste für ALLE Statistiken -->
         <aside id="statistikSidebar" class="versteckt">
             
-            <!-- Teil 1: Tor-Tracker (Immer sichtbar) -->
-            <h3>Tor-Tracker</h3>
-            <table id="torTabelle">
-                <thead>
-                    <tr>
-                        <th>Name</th>
-                        <th>Tore</th>
-                    </tr>
-                </thead>
-                <tbody id="torTabelleBody">
-                    <!-- Wird von JS gefüllt -->
-                </tbody>
-            </table>
+            <div id="torTrackerHeimContainer">
+                <h3 id="labelTorTrackerHeim">Heim</h3>
+                <table id="torTabelle">
+                    <thead>
+                        <tr>
+                            <th>Name</th>
+                            <th>Tore</th>
+                        </tr>
+                    </thead>
+                    <tbody id="torTabelleBody"></tbody>
+                </table>
+            </div>
 
-            <!-- Teil 2: Spiel-Statistik (Nur am Ende sichtbar) -->
+            <div id="torTrackerGegnerContainer" class="versteckt">
+                <h3 class="trennlinie-oben" id="labelTorTrackerGegner">Gegner</h3>
+                <table id="torTabelleGegner">
+                    <thead>
+                        <tr>
+                            <th>Nr.</th>
+                            <th>Tore</th>
+                        </tr>
+                    </thead>
+                    <tbody id="torTabelleGegnerBody"></tbody>
+                </table>
+            </div>
+
             <div id="statistikWrapper" class="versteckt">
-                <h3>Spiel-Statistik</h3>
+                <h3 class="trennlinie-oben">Statistik</h3>
                 <div class="statistik-container">
                     <table id="statistikTabelle">
                         <thead>
                             <tr>
                                 <th>Spieler</th>
-                                <th>7m Raus</th>
+                                <th>7m</th>
                                 <th>Gut</th>
-                                <th>Fehlwurf</th>
-                                <th>T. Fehler</th>
-                                <th>Gelb</th>
-                                <th>2min</th>
-                                <th>Rot</th>
+                                <th>Fehl</th>
+                                <th>TF</th>
+                                <th>G</th>
+                                <th>2'</th>
+                                <th>R</th>
                             </tr>
                         </thead>
-                        <tbody id="statistikTabelleBody">
-                            <!-- Wird von JS gefüllt -->
-                        </tbody>
+                        <tbody id="statistikTabelleBody"></tbody>
                     </table>
                 </div>
             </div>
 
         </aside>
         
-        <!-- Wrapper für den Hauptinhalt -->
         <div id="mainGameContent">
-            <!-- 1. Verwaltung (Zurück, Export, Neues Spiel) -->
             <div id="verwaltung">
                 <button id="backToRosterButton">Team ändern</button>
                 <button id="exportButton">Export .txt</button>
+                <button id="exportCsvButton" style="background-color: #218838;">Export .csv</button>
+                <button id="showWurfbilderButton" style="background-color: #6f42c1;">Wurfbilder</button>
                 <button id="neuesSpielButton">Neues Spiel</button>
             </div>
 
-            <!-- 2. Timer-Steuerung -->
             <div id="timerContainer">
                 <div id="timerAnzeige">00:00</div>
 
-                <!-- Spielstand-Anzeige mit Korrektur -->
+                <div id="suspensionContainer">
+                    </div>
+
                 <div id="scoreWrapper" class="versteckt">
                     <div class="score-team-control">
                         <button id="heimScoreUp" class="score-korrektur" disabled>Heim +</button>
                         <button id="heimScoreDown" class="score-korrektur" disabled>Heim -</button>
                     </div>
-                    <div id="scoreAnzeige">0:0</div>
+                    <div class="score-display-block">
+                        <div id="teamNameHeimDisplay" class="team-name-small">HEIM</div>
+                        <div id="scoreAnzeige">0:0</div>
+                        <div id="teamNameGegnerDisplay" class="team-name-small">GAST</div>
+                    </div>
                     <div class="score-team-control">
                         <button id="gegnerScoreUp" class="score-korrektur" disabled>Gegner +</button>
                         <button id="gegnerScoreDown" class="score-korrektur" disabled>Gegner -</button>
@@ -116,40 +120,29 @@
                 
                 <div id="zeitSprung">
                     <button id="zurueckButton" class="zeitButton">-30s</button>
-                    <!-- Der NEUE, separate Pause-Knopf -->
                     <button id="pauseButton" class="zeitButton versteckt" disabled>Pause</button> 
                     <button id="vorButton" class="zeitButton">+30s</button>
                 </div>
-                <!-- Der ALTE Pause-Knopf, jetzt für die Spielphasen -->
                 <button id="gamePhaseButton">Spielstart</button>
             </div>
 
-            <!-- 3. Globale Aktionen -->
             <div id="globalAktionen" class="versteckt">
                 <button id="gegnerTorButton" disabled>Gegner Tor</button>
+                <button id="gegner7mButton" disabled>Gegner 7m</button>
                 <button id="gegner2minButton" class="strafe-zeit" disabled>Gegner 2 min</button>
             </div>
 
-            <!-- 4. Spieler-Raster -->
             <h3>Spieler auswählen:</h3>
-            <div id="spielerRaster">
-                <!-- Spieler-Knöpfe werden hier von JS eingefügt -->
-            </div>
+            <div id="spielerRaster"></div>
 
-            <!-- 5. Protokoll -->
             <div id="protokoll">
                 <h3>Protokoll</h3>
                 <div id="protokollAusgabe"></div>
             </div>
-        </div> <!-- Ende #mainGameContent -->
-    </div> <!-- Ende #spielBereich -->
+        </div> 
+    </div>
 
 
-    <!-- ######################################## -->
-    <!-- MODALS (Pop-ups) -->
-    <!-- ######################################## -->
-
-    <!-- Modal 1: Haupt-Aktionsmenü -->
     <div id="aktionsMenue" class="modal-overlay versteckt">
         <div class="modal-content">
             <h3 id="aktionsMenueTitel">Aktion für...</h3>
@@ -159,16 +152,13 @@
             <button class="aktion-button" id="guteAktionModalButton">Gute Aktion</button>
             <button class="aktion-button" data-aktion="Fehlpass">Fehlpass</button>
             <button class="aktion-button" data-aktion="Technischer Fehler">Technischer Fehler</button>
-            <!-- Strafen -->
             <button class="aktion-button strafe-gelb" data-aktion="Gelbe Karte">Gelbe Karte</button>
             <button class="aktion-button strafe-zeit" data-aktion="2 Minuten">2 Minuten</button>
             <button class="aktion-button strafe-rot" data-aktion="Rote Karte">Rote Karte</button>
-            
             <button class="modal-abbrechen" id="aktionAbbrechen">Abbrechen</button>
         </div>
     </div>
     
-    <!-- Modal 2: "Gute Aktion" Vorauswahl -->
     <div id="aktionVorauswahl" class="modal-overlay versteckt">
         <div class="modal-content">
             <h3>Gute Aktion:</h3>
@@ -180,7 +170,6 @@
         </div>
     </div>
 
-    <!-- Modal 3: Kommentarfeld -->
     <div id="kommentarBereich" class="modal-overlay versteckt">
         <div class="modal-content">
             <h3 id="kommentarTitel">Kommentar (optional)</h3>
@@ -188,9 +177,87 @@
             <button id="kommentarSpeichernButton">Speichern</button>
         </div>
     </div>
-    
-    <!-- Modal 4: Statistik-Zusammenfassung (ENTFERNT) -->
 
-    <script src="script.js?v=1.8"></script>
+    <div id="settingsModal" class="modal-overlay versteckt">
+        <div class="modal-content">
+            <h3>Einstellungen</h3>
+
+            <h4 style="margin-bottom:5px; margin-top:0;">Team Namen</h4>
+            <div style="display:flex; gap:10px; margin-bottom: 15px;">
+                <input type="text" id="inputTeamNameHeim" placeholder="Heim Team" style="width:50%;">
+                <input type="text" id="inputTeamNameGegner" placeholder="Gegner Team" style="width:50%;">
+            </div>
+            <hr>
+
+            <div class="setting-row">
+                <label for="toggleDarkMode">Dark Mode</label>
+                <input type="checkbox" id="toggleDarkMode">
+            </div>
+            <hr>
+            
+            <div class="setting-row">
+                <label for="toggleTorTracker">Tor-Tracker: Heim</label>
+                <input type="checkbox" id="toggleTorTracker">
+            </div>
+            
+            <div class="setting-row">
+                <label for="toggleTorTrackerGegner">Tor-Tracker: Gegner</label>
+                <input type="checkbox" id="toggleTorTrackerGegner">
+            </div>
+
+            <hr>
+            <div class="setting-row">
+                <label for="toggleWurfbildHeim">Wurfbild: Eigenes Team</label>
+                <input type="checkbox" id="toggleWurfbildHeim">
+            </div>
+            <div class="setting-row">
+                <label for="toggleWurfbildGegner">Wurfbild: Gegner Team</label>
+                <input type="checkbox" id="toggleWurfbildGegner">
+            </div>
+
+            <button class="modal-abbrechen" id="settingsSchliessen" style="margin-top:20px;">Schließen</button>
+        </div>
+    </div>
+
+    <div id="wurfbildModal" class="modal-overlay versteckt">
+        <div class="modal-content">
+            <h3 id="wurfbildTitel">Wo ging der Ball rein?</h3>
+            <div id="torRahmen">
+                <div id="torNetz"></div>
+            </div>
+            <button class="modal-abbrechen" id="wurfbildUeberspringen">Überspringen</button>
+        </div>
+    </div>
+
+    <div id="gegnerNummerModal" class="modal-overlay versteckt">
+        <div class="modal-content">
+            <h3 id="gegnerNummerTitel">Torschütze (Gegner)</h3>
+            <div id="bekannteGegnerListe"></div>
+            <div style="margin-top: 10px; border-top: 1px solid #ccc; padding-top: 10px;">
+                <input type="number" id="neueGegnerNummer" placeholder="Neue Nummer" style="width: 60px;">
+                <button id="gegnerNummerSpeichern">Weiter</button>
+            </div>
+            <button class="modal-abbrechen" id="gegnerNummerUeberspringen">Unbekannt / Weiter</button>
+        </div>
+    </div>
+
+    <div id="sevenMeterOutcomeModal" class="modal-overlay versteckt">
+        <div class="modal-content">
+            <h3>7m Ergebnis</h3>
+            <button class="aktion-button" style="background-color: #dc3545;" onclick="handle7mOutcome('Tor')">Tor</button>
+            <button class="aktion-button" style="background-color: #6c757d;" onclick="handle7mOutcome('Gehalten')">Gehalten</button>
+            <button class="aktion-button" style="background-color: #ffc107; color:black;" onclick="handle7mOutcome('Verworfen')">Verworfen (Pfosten/Aus)</button>
+        </div>
+    </div>
+
+    <div id="wurfbilderStatsModal" class="modal-overlay versteckt">
+        <div class="modal-content" style="max-width: 800px; width: 95%;">
+            <h3>Wurfbilder Übersicht</h3>
+            <div id="wurfbilderContainer" style="max-height: 60vh; overflow-y: auto;"></div>
+            <button class="modal-abbrechen" id="closeWurfbilderStats">Schließen</button>
+        </div>
+    </div>
+
+    <script src="script.js?v=2.7"></script>
 </body>
 </html>
