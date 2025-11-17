@@ -24,7 +24,7 @@ const exportButton = document.getElementById('exportButton');
 const exportCsvButton = document.getElementById('exportCsvButton'); 
 const neuesSpielButton = document.getElementById('neuesSpielButton');
 const timerAnzeige = document.getElementById('timerAnzeige');
-const suspensionContainer = document.getElementById('suspensionContainer'); // NEU
+const suspensionContainer = document.getElementById('suspensionContainer'); 
 const showWurfbilderButton = document.getElementById('showWurfbilderButton'); 
 
 // Spielstand & Korrektur
@@ -122,12 +122,12 @@ let spielstand = {
     score: { heim: 0, gegner: 0 }, 
     gameLog: [], 
     timer: {
-        gamePhase: 1, 
+        gamePhase: 1, // 1=Vor Spiel, 2=1. HZ, 3=Halbzeit, 4=2. HZ, 5=Beendet
         istPausiert: true,
         segmentStartZeit: 0,
         verstricheneSekundenBisher: 0,
     },
-    activeSuspensions: [], // NEU: [{id: 1, type: 'heim', number: 7, remaining: 120}]
+    activeSuspensions: [], 
     settings: {
         darkMode: false, 
         showTorTracker: true,
@@ -197,9 +197,13 @@ function ladeSpielstand() {
 
         timerAnzeige.textContent = formatiereZeit(spielstand.timer.verstricheneSekundenBisher);
         spielstand.timer.istPausiert = true; 
-        setSteuerungAktiv(false); 
-        
+
+        // --- NEU: Prüfen ob wir in einer aktiven Spielphase sind, um Buttons zu aktivieren ---
         const phase = spielstand.timer.gamePhase;
+        // Phasen: 2 (1.HZ), 4 (2.HZ), oder die Pause-Zwischenzustände 1.5/3.5
+        const sindImSpiel = (phase === 2 || phase === 4 || phase === 1.5 || phase === 3.5);
+        setSteuerungAktiv(sindImSpiel); 
+        
         if (phase === 1) {
             gamePhaseButton.textContent = 'Spielstart';
             statistikWrapper.classList.add('versteckt'); 
@@ -226,7 +230,7 @@ function ladeSpielstand() {
         pauseButton.disabled = true;
 
         updateScoreDisplay(); 
-        updateSuspensionDisplay(); // NEU: Strafen anzeigen
+        updateSuspensionDisplay(); 
         zeichneSpielerRaster();
         updateProtokollAnzeige();
         updateTorTracker(); 
@@ -486,7 +490,6 @@ function formatiereZeit(sekunden) {
 }
 
 function updateTimer() {
-    // Main Timer logic
     const aktuelleSegmentSekunden = (Date.now() - spielstand.timer.segmentStartZeit) / 1000;
     const totalSekunden = spielstand.timer.verstricheneSekundenBisher + aktuelleSegmentSekunden;
     
@@ -498,12 +501,6 @@ function updateTimer() {
         timerAnzeige.textContent = formatiereZeit(Math.floor(totalSekunden));
     }
 
-    // NEU: Suspensions Countdown
-    // Wir nutzen hier ein einfaches System: Jedes Mal wenn updateTimer aufgerufen wird (ca alle 1 Sek)
-    // ziehen wir 1 Sekunde von den Strafen ab. 
-    // Besser: Da updateTimer via setInterval(1000) läuft, ist das okay.
-    // Ein präziserer Weg wäre auch hier timestamps zu nutzen, aber für 2min Strafen reicht das Intervall meist.
-    
     if (!spielstand.timer.istPausiert) {
         let hasChanged = false;
         spielstand.activeSuspensions.forEach(s => {
@@ -512,7 +509,6 @@ function updateTimer() {
                 hasChanged = true;
             }
         });
-        // Entferne abgelaufene Strafen
         const oldCount = spielstand.activeSuspensions.length;
         spielstand.activeSuspensions = spielstand.activeSuspensions.filter(s => s.remaining > 0);
         
@@ -529,7 +525,6 @@ function updateSuspensionDisplay() {
     spielstand.activeSuspensions.forEach(s => {
         const div = document.createElement('div');
         div.className = `suspension-card ${s.type}`;
-        // Format MM:SS
         const min = Math.floor(s.remaining / 60);
         const sec = s.remaining % 60;
         const timeStr = `${min}:${sec < 10 ? '0'+sec : sec}`;
@@ -558,7 +553,7 @@ function stoppTimer() {
 
 function handleGamePhaseClick() {
     const phase = spielstand.timer.gamePhase;
-    if (phase === 5) return; // Beendet
+    if (phase === 5) return; 
 
     if (phase === 1) { 
         spielstand.timer.gamePhase = 2;
@@ -623,11 +618,13 @@ function handleRealPauseClick() {
     if (spielstand.timer.gamePhase !== 2 && spielstand.timer.gamePhase !== 4) return;
 
     if (spielstand.timer.istPausiert === false) {
+        // PAUSIEREN
         stoppTimer();
         pauseButton.textContent = 'Weiter';
-        setSteuerungAktiv(false); 
+        // --- ÄNDERUNG: Knöpfe bleiben aktiv ---
         gamePhaseButton.disabled = false;
     } else {
+        // FORTSETZEN
         startTimer();
         pauseButton.textContent = 'Pause';
         setSteuerungAktiv(true); 
@@ -692,12 +689,11 @@ function logAktion(aktion, kommentar = null) {
     const aktuellerSpielstand = `${spielstand.score.heim}:${spielstand.score.gegner}`;
     updateScoreDisplay(); 
 
-    // NEU: 2 Minuten Strafe für Heim
     if (aktion === "2 Minuten") {
         spielstand.activeSuspensions.push({
             type: 'heim',
             number: player.number,
-            remaining: 120 // 120 Sekunden = 2 Min
+            remaining: 120 
         });
         updateSuspensionDisplay();
     }
@@ -718,7 +714,6 @@ function logAktion(aktion, kommentar = null) {
     speichereSpielstand();
     schliesseAktionsMenue();
 
-    // Check Wurfbild Heim
     if (aktion === "Tor" && spielstand.settings.showWurfbildHeim) {
         oeffneWurfbildModal('standard');
     }
@@ -727,27 +722,24 @@ function logAktion(aktion, kommentar = null) {
 function logGlobalAktion(aktion, kommentar = null) {
     const aktuelleZeit = timerAnzeige.textContent;
 
-    // Spezialfall Gegner 7m
     if (aktion === "Gegner 7m") {
         if (spielstand.settings.showWurfbildGegner) {
-            oeffneGegnerNummerModal('7m'); 
+            oeffneGegnerNummerModal(true); 
             return; 
         } else {
              spielstand.score.gegner++;
              aktion = "Gegner 7m Tor";
         }
     }
-    // Spezialfall Gegner Tor
     else if (aktion === "Gegner Tor") {
         spielstand.score.gegner++;
         if (spielstand.settings.showWurfbildGegner) {
-            oeffneGegnerNummerModal('tor');
+            oeffneGegnerNummerModal(false); 
         }
     }
-    // NEU: Spezialfall Gegner 2 min
     else if (aktion === "Gegner 2 min") {
         oeffneGegnerNummerModal('2min');
-        return; // Hier brechen wir ab, weil wir erst die Nummer wollen bevor wir loggen
+        return; 
     }
 
     const aktuellerSpielstand = `${spielstand.score.heim}:${spielstand.score.gegner}`;
@@ -858,8 +850,6 @@ function loescheProtokollEintrag(index) {
                 spielstand.score.gegner++;
             }
         }
-        // HINWEIS: Zeitstrafen werden hier nicht aus dem laufenden Timer entfernt, das wäre zu komplex.
-        // Man kann die Strafe löschen, aber der Timer läuft weiter (muss man aussitzen :D).
         
         if(spielstand.score.heim < 0) spielstand.score.heim = 0;
         if(spielstand.score.gegner < 0) spielstand.score.gegner = 0;
@@ -877,13 +867,9 @@ function exportiereAlsTxt() {
         return;
     }
     
-    let dateiInhalt = "Protokoll Handball Team-Tracker\n\n";
-    // ... (Export Logik bleibt gleich wie vorher)
-    // Um Platz zu sparen, hier gekürzt. Wenn du den Export brauchst, kopiere ihn aus v2.6.
-    // Ich füge den Code der Vollständigkeit halber an, damit die Datei komplett funktioniert.
-    
     const heimName = spielstand.settings.teamNameHeim;
-    dateiInhalt = `Protokoll Handball Team-Tracker: ${heimName} vs ${spielstand.settings.teamNameGegner}\n\n`;
+    
+    let dateiInhalt = `Protokoll Handball Team-Tracker: ${heimName} vs ${spielstand.settings.teamNameGegner}\n\n`;
     dateiInhalt += `Team: ${spielstand.roster.map(p => `#${p.number} ${p.name}`).join(', ')}\n\n`;
     
     dateiInhalt += `--- TOR-ÜBERSICHT ${heimName.toUpperCase()} ---\n`;
@@ -893,17 +879,73 @@ function exportiereAlsTxt() {
         dateiInhalt += `#${player.number} ${player.name}: ${tore} Tore\n`;
     });
     dateiInhalt += "---------------------\n\n";
+
+    dateiInhalt += "--- SPIEL-STATISTIK ---\n";
+    const statsData = berechneStatistiken();
     
-    // Log
+    let maxNameLength = "Spieler".length;
+    statsData.forEach(stats => {
+        const nameLength = (`#${stats.number} ${stats.name}`).length;
+        if (nameLength > maxNameLength) maxNameLength = nameLength;
+    });
+    maxNameLength += 2; 
+
+    const col7m = "7m".length + 3;
+    const colGut = "Gut".length + 3;
+    const colFehlwurf = "Fehl".length + 3;
+    const colTechFehler = "TF".length + 3;
+    const colGelb = "Gelb".length + 3;
+    const col2min = "2'".length + 3;
+    const colRot = "Rot".length + 3;
+
+    let header = "Spieler".padEnd(maxNameLength);
+    header += "7m".padEnd(col7m);
+    header += "Gut".padEnd(colGut);
+    header += "Fehl".padEnd(colFehlwurf);
+    header += "TF".padEnd(colTechFehler);
+    header += "Gelb".padEnd(colGelb);
+    header += "2'".padEnd(col2min);
+    header += "Rot".padEnd(colRot);
+    dateiInhalt += header + "\n";
+
+    const totalLength = maxNameLength + col7m + colGut + colFehlwurf + colTechFehler + colGelb + col2min + colRot;
+    dateiInhalt += "-".repeat(totalLength).substring(0, totalLength - (colRot.length-3)) + "\n"; 
+    
+    statsData.forEach(stats => {
+        let row = (`#${stats.number} ${stats.name}`).padEnd(maxNameLength);
+        row += String(stats.siebenMeter).padEnd(col7m);
+        row += String(stats.guteAktion).padEnd(colGut);
+        row += String(stats.fehlwurf).padEnd(colFehlwurf);
+        row += String(stats.techFehler).padEnd(colTechFehler);
+        row += String(stats.gelb).padEnd(colGelb);
+        row += String(stats.zweiMinuten).padEnd(col2min);
+        row += String(stats.rot).padEnd(colRot);
+        dateiInhalt += row + "\n";
+    });
+    
+    dateiInhalt += "-".repeat(totalLength).substring(0, totalLength - (colRot.length-3)) + "\n\n";
+
+
     [...spielstand.gameLog].reverse().forEach(e => {
         if (e.playerId) {
             dateiInhalt += `[${e.time}] #${e.playerId} (${e.playerName}): ${e.action}`;
         } else {
             dateiInhalt += `[${e.time}] ${e.action.toUpperCase()}`;
         }
-        if (e.spielstand) dateiInhalt += ` (${e.spielstand})`;
-        if (e.kommentar) dateiInhalt += `: ${e.kommentar}`;
-        if (e.wurfbild) dateiInhalt += ` [Tor: X=${e.wurfbild.x}%, Y=${e.wurfbild.y}% ${e.wurfbild.color === 'gray' ? 'Gehalten' : ''}]`;
+        
+        if (e.spielstand) {
+            dateiInhalt += ` (${e.spielstand})`;
+        }
+
+        if (e.kommentar) {
+            dateiInhalt += `: ${e.kommentar}`;
+        }
+        
+        if (e.wurfbild) {
+            let farbe = e.wurfbild.color === 'gray' ? '(Gehalten)' : '';
+            dateiInhalt += ` [Tor: X=${e.wurfbild.x}%, Y=${e.wurfbild.y}% ${farbe}]`;
+        }
+        
         dateiInhalt += "\n";
     });
 
@@ -952,6 +994,7 @@ function exportiereAlsCsv() {
 
 function starteNeuesSpiel() {
     if (confirm("Bist du sicher? Das löscht das gesamte Spielprotokoll, aber dein Team bleibt gespeichert.")) {
+        
         spielstand.gameLog = [];
         spielstand.score = { heim: 0, gegner: 0 }; 
         spielstand.activeSuspensions = [];
@@ -961,6 +1004,7 @@ function starteNeuesSpiel() {
             segmentStartZeit: 0,
             verstricheneSekundenBisher: 0,
         };
+        
         speichereSpielstand();
         location.reload(); 
     }
@@ -986,7 +1030,9 @@ function updateTorTracker() {
             number: player.number,
             tore: toreMap.get(player.number) || 0
         }));
+        
         trackerData.sort((a, b) => b.tore - a.tore);
+        
         torTabelleBody.innerHTML = '';
         trackerData.forEach(data => {
             const tr = document.createElement('tr');
@@ -1003,12 +1049,15 @@ function updateTorTracker() {
                 gegnerToreMap.set(nr, (gegnerToreMap.get(nr) || 0) + 1);
             }
         });
+
         const gegnerData = Array.from(gegnerToreMap, ([nr, tore]) => ({ nr, tore }));
+        
         gegnerData.sort((a, b) => {
              if (a.nr === "Unbekannt") return 1;
              if (b.nr === "Unbekannt") return -1;
              return b.tore - a.tore;
         });
+
         torTabelleGegnerBody.innerHTML = '';
         if(gegnerData.length === 0) {
              torTabelleGegnerBody.innerHTML = '<tr><td colspan="2" style="text-align:center;color:#999;">Noch keine Tore</td></tr>';
@@ -1045,21 +1094,34 @@ function berechneStatistiken() {
         if (!eintrag.playerId || !statsMap.has(eintrag.playerId)) {
             continue; 
         }
+
         const stats = statsMap.get(eintrag.playerId);
-        if (eintrag.action.startsWith("Gute Aktion")) stats.guteAktion++;
-        else if (eintrag.action === "Fehlwurf") stats.fehlwurf++;
-        else if (eintrag.action === "Technischer Fehler") stats.techFehler++;
-        else if (eintrag.action === "7M Rausgeholt") stats.siebenMeter++;
-        else if (eintrag.action === "Gelbe Karte") stats.gelb++;
-        else if (eintrag.action === "2 Minuten") stats.zweiMinuten++;
-        else if (eintrag.action === "Rote Karte") stats.rot++;
+
+        if (eintrag.action.startsWith("Gute Aktion")) {
+            stats.guteAktion++;
+        } else if (eintrag.action === "Fehlwurf") {
+            stats.fehlwurf++;
+        } else if (eintrag.action === "Technischer Fehler") {
+            stats.techFehler++;
+        } else if (eintrag.action === "7M Rausgeholt") {
+            stats.siebenMeter++;
+        } else if (eintrag.action === "Gelbe Karte") {
+            stats.gelb++;
+        } else if (eintrag.action === "2 Minuten") {
+            stats.zweiMinuten++;
+        } else if (eintrag.action === "Rote Karte") {
+            stats.rot++;
+        }
     }
+    
     return Array.from(statsMap.values());
 }
 
 function zeichneStatistikTabelle(statsData) {
     if (!statistikTabelleBody) return;
+
     statistikTabelleBody.innerHTML = '';
+    
     statsData.forEach(stats => {
         const tr = document.createElement('tr');
         tr.innerHTML = `
@@ -1093,16 +1155,20 @@ function schliesseWurfbildModal() {
     aktuellerWurfbildModus = 'standard'; 
 }
 
+// Klick auf das Tor
 if (torRahmen) {
     torRahmen.addEventListener('click', (e) => {
         const rect = torRahmen.getBoundingClientRect();
         const x = ((e.clientX - rect.left) / rect.width) * 100;
         const y = ((e.clientY - rect.top) / rect.height) * 100;
+        
         const color = aktuellerWurfbildModus === 'gehalten' ? 'gray' : 'red';
+
         if (spielstand.gameLog.length > 0) {
             spielstand.gameLog[0].wurfbild = { x: x.toFixed(1), y: y.toFixed(1), color: color };
             speichereSpielstand();
         }
+
         schliesseWurfbildModal();
     });
 }
@@ -1132,6 +1198,7 @@ function oeffneGegnerNummerModal(type) {
 function renderGegnerButtons() {
     bekannteGegnerListe.innerHTML = '';
     const sortierteNummern = spielstand.knownOpponents.sort((a,b) => a - b);
+    
     sortierteNummern.forEach(nummer => {
         const btn = document.createElement('button');
         btn.textContent = nummer;
@@ -1145,7 +1212,6 @@ function speichereGegnerNummer(nummer) {
     nummer = parseInt(nummer);
     const aktuelleZeit = timerAnzeige.textContent;
 
-    // 1. Fall: 2 Minuten Strafe
     if (currentGegnerActionType === '2min') {
         spielstand.activeSuspensions.push({
             type: 'gegner',
@@ -1167,7 +1233,6 @@ function speichereGegnerNummer(nummer) {
         
         gegnerNummerModal.classList.add('versteckt');
     }
-    // 2. Fall: 7 Meter (Outcome abwarten)
     else if (currentGegnerActionType === '7m') {
         spielstand.gameLog.unshift({
             time: aktuelleZeit,
@@ -1182,18 +1247,8 @@ function speichereGegnerNummer(nummer) {
         gegnerNummerModal.classList.add('versteckt');
         sevenMeterOutcomeModal.classList.remove('versteckt');
     } 
-    // 3. Fall: Feldtor
     else {
-        // Hier existiert der Log Eintrag (Gegner Tor) schon (weil wir erst loggen, dann editieren, siehe logGlobalAktion)
-        // UPDATE: Wir haben die Logik in logGlobalAktion geändert, sodass das Log erst hier geschrieben werden sollte
-        // oder wir suchen den letzten Eintrag.
-        // Um es sauber zu halten, erstellen wir den Eintrag HIER, wenn er noch nicht existiert.
-        // Aber logGlobalAktion hat ihn schon erstellt, wenn type='tor' nicht auf Wurfbild warten muss.
-        // MOMENT: In logGlobalAktion für 'tor' haben wir `if (show) oeffne...`.
-        // Wir müssen sicherstellen, dass wir den Eintrag finden.
-        
-        // Vereinfachung: Bei 'tor' mit Wurfbild wurde der Eintrag noch NICHT erstellt in logGlobalAktion?
-        // Nein, in logGlobalAktion wird `unshift` gemacht. Also ist er da.
+        // Feldtor: Log schon existent oder neu erstellen
         if (spielstand.gameLog.length > 0) {
             spielstand.gameLog[0].kommentar = `(Nr. ${nummer}) ` + (spielstand.gameLog[0].kommentar || '');
             spielstand.gameLog[0].gegnerNummer = nummer;
@@ -1242,9 +1297,7 @@ if (gegnerNummerSpeichern) {
 }
 if (gegnerNummerUeberspringen) {
     gegnerNummerUeberspringen.addEventListener('click', () => {
-        // Wenn übersprungen
         if (currentGegnerActionType === '2min') {
-             // 2 min ohne Nummer? Geht auch.
              const aktuelleZeit = timerAnzeige.textContent;
              spielstand.activeSuspensions.push({ type: 'gegner', number: '?', remaining: 120 });
              updateSuspensionDisplay();
@@ -1276,7 +1329,7 @@ if (gegnerNummerUeberspringen) {
 }
 
 // --- 13. Wurfbilder Übersicht Logik ---
-// (Identisch zu v2.6, wird hier übernommen)
+
 function berechneWurfbilder() {
     const heimWuerfe = {};
     const gegnerWuerfe = {};
