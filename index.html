@@ -1,11 +1,14 @@
 <!DOCTYPE html>
 <html lang="de">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Team-Tracker</title>
-    <link rel="stylesheet" href="styles.css?v=2.7">
+    <link rel="stylesheet" href="Styles.css?v=2.8">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 </head>
+
 <body>
 
     <button id="settingsButton" title="Einstellungen">⚙️</button>
@@ -13,7 +16,7 @@
     <div id="rosterBereich">
         <h1>Team-Erstellung</h1>
         <p>Füge deine Spieler hinzu. Das Team wird auf diesem Gerät gespeichert.</p>
-        
+
         <form id="addPlayerForm">
             <input type="hidden" id="editPlayerIndex">
             <input type="text" id="playerNameInput" placeholder="Name" required>
@@ -30,14 +33,16 @@
 
         <h3>Aktuelles Team</h3>
         <ul id="rosterListe"></ul>
-        
+
         <button id="startGameButton" class="cta-button">Spiel starten</button>
+        <button id="historyButton" class="secondary-button"
+            style="margin-top: 10px; display:block; width:100%;">Vergangene Spiele</button>
     </div>
 
     <div id="spielBereich" class="versteckt">
 
         <aside id="statistikSidebar" class="versteckt">
-            
+
             <div id="torTrackerHeimContainer">
                 <h3 id="labelTorTrackerHeim">Heim</h3>
                 <table id="torTabelle">
@@ -86,13 +91,15 @@
             </div>
 
         </aside>
-        
+
         <div id="mainGameContent">
             <div id="verwaltung">
                 <button id="backToRosterButton">Team ändern</button>
                 <button id="exportButton">Export .txt</button>
                 <button id="exportCsvButton" style="background-color: #218838;">Export .csv</button>
+                <button id="exportPdfButton" style="background-color: #dc3545;">Export PDF</button>
                 <button id="showWurfbilderButton" style="background-color: #6f42c1;">Wurfbilder</button>
+                <button id="showHeatmapButton" style="background-color: #fd7e14;">Heatmap</button>
                 <button id="neuesSpielButton">Neues Spiel</button>
             </div>
 
@@ -100,7 +107,7 @@
                 <div id="timerAnzeige">00:00</div>
 
                 <div id="suspensionContainer">
-                    </div>
+                </div>
 
                 <div id="scoreWrapper" class="versteckt">
                     <div class="score-team-control">
@@ -117,29 +124,129 @@
                         <button id="gegnerScoreDown" class="score-korrektur" disabled>Gegner -</button>
                     </div>
                 </div>
-                
+
                 <div id="zeitSprung">
                     <button id="zurueckButton" class="zeitButton">-30s</button>
-                    <button id="pauseButton" class="zeitButton versteckt" disabled>Pause</button> 
+                    <button id="pauseButton" class="zeitButton versteckt" disabled>Pause</button>
                     <button id="vorButton" class="zeitButton">+30s</button>
                 </div>
                 <button id="gamePhaseButton">Spielstart</button>
             </div>
 
-            <div id="globalAktionen" class="versteckt">
-                <button id="gegnerTorButton" disabled>Gegner Tor</button>
-                <button id="gegner7mButton" disabled>Gegner 7m</button>
-                <button id="gegner2minButton" class="strafe-zeit" disabled>Gegner 2 min</button>
-            </div>
+
 
             <h3>Spieler auswählen:</h3>
-            <div id="spielerRaster"></div>
+            <div id="spielerAuswahlContainer">
+                <div class="spieler-spalte">
+                    <h4>Heim</h4>
+                    <div id="heimSpielerRaster"></div>
+                </div>
+                <div class="spieler-spalte">
+                    <h4>Gegner</h4>
+                    <div id="gegnerSpielerRaster"></div>
+                </div>
+            </div>
 
             <div id="protokoll">
                 <h3>Protokoll</h3>
                 <div id="protokollAusgabe"></div>
             </div>
-        </div> 
+
+            <button id="spielBeendenButton" class="cta-button"
+                style="background-color: #343a40; margin-top: 20px;">Spiel beenden & speichern</button>
+        </div>
+    </div>
+
+
+    <!-- HISTORY VIEW -->
+    <div id="historieBereich" class="versteckt">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+            <h1>Vergangene Spiele</h1>
+            <button id="backToStartFromHistory">Zurück</button>
+        </div>
+
+        <div id="historieListe" class="history-list">
+            <!-- List items will be injected here -->
+            <p>Keine gespeicherten Spiele.</p>
+        </div>
+
+        <div style="margin-top: 20px;">
+            <button id="exportHistorieButton">Alle Spiele exportieren (Backup)</button>
+        </div>
+    </div>
+
+    <!-- HISTORY DETAIL VIEW -->
+    <div id="historieDetailBereich" class="versteckt">
+        <button id="backToHistoryList">Zurück zur Liste</button>
+
+        <div id="historieHeader" style="text-align: center; margin: 20px 0;">
+            <h2 id="histDetailTeams">Heim vs Gegner</h2>
+            <h1 id="histDetailScore" style="font-size: 3em; color: #28a745;">10:8</h1>
+            <p id="histDetailDate">Datum: 01.01.2025</p>
+        </div>
+
+        <div class="heatmap-tabs">
+            <button class="heatmap-tab active" id="histTabStats">Statistik</button>
+            <button class="heatmap-tab" id="histTabHeatmap">Heatmap</button>
+        </div>
+
+        <!-- Detail: Stats -->
+        <div id="histContentStats">
+            <div class="statistik-container">
+                <table id="histStatsTable">
+                    <thead>
+                        <tr>
+                            <th>Spieler</th>
+                            <th>Tor</th>
+                            <th>7m</th>
+                            <th>Quote</th>
+                            <th>Gut</th>
+                            <th>Fehl</th>
+                            <th>TF</th>
+                            <th>G</th>
+                            <th>2'</th>
+                            <th>R</th>
+                        </tr>
+                    </thead>
+                    <tbody id="histStatsBody"></tbody>
+                </table>
+
+                <h3 style="margin-top: 20px;">Gegner</h3>
+                <table id="histStatsGegnerTable">
+                    <thead>
+                        <tr>
+                            <th>Name</th>
+                            <th>Tor</th>
+                            <th>7m</th>
+                            <th>Quote</th>
+                            <th>Gut</th>
+                            <th>Fehl</th>
+                            <th>TF</th>
+                            <th>G</th>
+                            <th>2'</th>
+                            <th>R</th>
+                        </tr>
+                    </thead>
+                    <tbody id="histStatsGegnerBody"></tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Detail: Heatmap -->
+        <div id="histContentHeatmap" class="versteckt" style="text-align: center;">
+            <div class="heatmap-tabs" style="margin-top: 10px;">
+                <button class="heatmap-tab active" id="histSubTabTor">Tor</button>
+                <button class="heatmap-tab" id="histSubTabFeld">Feld</button>
+                <button class="heatmap-tab" id="histSubTabKombi">Kombiniert</button>
+            </div>
+            <div class="heatmap-filter">
+                <label><input type="radio" name="histHeatTeam" value="heim" checked> Heim</label>
+                <label><input type="radio" name="histHeatTeam" value="gegner"> Gegner</label>
+            </div>
+            <div id="histHeatmapContainer" style="display: flex; justify-content: center; padding: 20px;">
+                <svg id="histHeatmapSvg" viewBox="0 0 300 200" width="600" height="400"></svg>
+            </div>
+        </div>
     </div>
 
 
@@ -148,7 +255,7 @@
             <h3 id="aktionsMenueTitel">Aktion für...</h3>
             <button class="aktion-button" data-aktion="Tor">Tor</button>
             <button class="aktion-button" data-aktion="Fehlwurf">Fehlwurf</button>
-            <button class="aktion-button" data-aktion="7M Rausgeholt">7M Rausgeholt</button>
+            <button class="aktion-button" data-aktion="7m">7m</button>
             <button class="aktion-button" id="guteAktionModalButton">Gute Aktion</button>
             <button class="aktion-button" data-aktion="Fehlpass">Fehlpass</button>
             <button class="aktion-button" data-aktion="Technischer Fehler">Technischer Fehler</button>
@@ -158,11 +265,12 @@
             <button class="modal-abbrechen" id="aktionAbbrechen">Abbrechen</button>
         </div>
     </div>
-    
+
     <div id="aktionVorauswahl" class="modal-overlay versteckt">
         <div class="modal-content">
             <h3>Gute Aktion:</h3>
             <button class="aktion-button" data-aktion="Abwehr">Abwehr</button>
+            <button class="aktion-button" data-aktion="7M Rausgeholt">7M Rausgeholt</button>
             <button class="aktion-button" data-aktion="TG Pass">TG Pass</button>
             <button class="aktion-button" data-aktion="Guter Pass">Guter Pass</button>
             <button class="aktion-button" data-aktion="Anderes">Anderes</button>
@@ -194,12 +302,12 @@
                 <input type="checkbox" id="toggleDarkMode">
             </div>
             <hr>
-            
+
             <div class="setting-row">
                 <label for="toggleTorTracker">Tor-Tracker: Heim</label>
                 <input type="checkbox" id="toggleTorTracker">
             </div>
-            
+
             <div class="setting-row">
                 <label for="toggleTorTrackerGegner">Tor-Tracker: Gegner</label>
                 <input type="checkbox" id="toggleTorTrackerGegner">
@@ -215,6 +323,16 @@
                 <input type="checkbox" id="toggleWurfbildGegner">
             </div>
 
+            <hr>
+            <div class="setting-row">
+                <label for="toggleWurfpositionHeim">Wurfposition: Eigenes Team</label>
+                <input type="checkbox" id="toggleWurfpositionHeim">
+            </div>
+            <div class="setting-row">
+                <label for="toggleWurfpositionGegner">Wurfposition: Gegner Team</label>
+                <input type="checkbox" id="toggleWurfpositionGegner">
+            </div>
+
             <button class="modal-abbrechen" id="settingsSchliessen" style="margin-top:20px;">Schließen</button>
         </div>
     </div>
@@ -222,10 +340,45 @@
     <div id="wurfbildModal" class="modal-overlay versteckt">
         <div class="modal-content">
             <h3 id="wurfbildTitel">Wo ging der Ball rein?</h3>
-            <div id="torRahmen">
-                <div id="torNetz"></div>
+            <div id="wurfbildUmgebung">
+                <div id="torRahmen">
+                    <div id="torNetz"></div>
+                </div>
             </div>
             <button class="modal-abbrechen" id="wurfbildUeberspringen">Überspringen</button>
+        </div>
+    </div>
+
+    <div id="wurfpositionModal" class="modal-overlay versteckt">
+        <div class="modal-content" style="max-width: 450px;">
+            <h3>Von wo wurde geworfen?</h3>
+            <div id="wurfpositionFeld">
+                <svg viewBox="0 0 400 300" width="100%">
+                    <!-- Spielfeld Hälfte -->
+                    <rect x="0" y="0" width="400" height="300" fill="#f5f5f5" stroke="#333" stroke-width="2" />
+
+                    <!-- Tor oben (Mitte) -->
+                    <rect x="175" y="0" width="50" height="10" fill="#333" stroke="#333" stroke-width="2" />
+
+                    <!-- 6m Linie (Torraum - durchgezogen) -->
+                    <path d="M 100 10 Q 100 120 200 120 Q 300 120 300 10" fill="none" stroke="#333" stroke-width="2" />
+
+                    <!-- 9m Linie (Freiwurflinie - gestrichelt) -->
+                    <path d="M 50 10 Q 50 180 200 180 Q 350 180 350 10" fill="none" stroke="#333" stroke-width="2"
+                        stroke-dasharray="8,4" />
+
+                    <!-- Mittellinie unten -->
+                    <line x1="0" y1="295" x2="400" y2="295" stroke="#333" stroke-width="2" />
+
+                    <!-- 7m Punkt -->
+                    <circle cx="200" cy="80" r="3" fill="#333" />
+
+                    <!-- Seitenlinien -->
+                    <line x1="2" y1="0" x2="2" y2="300" stroke="#333" stroke-width="2" />
+                    <line x1="398" y1="0" x2="398" y2="300" stroke="#333" stroke-width="2" />
+                </svg>
+            </div>
+            <button class="modal-abbrechen" id="wurfpositionUeberspringen">Überspringen</button>
         </div>
     </div>
 
@@ -241,12 +394,24 @@
         </div>
     </div>
 
+    <div id="addGegnerModal" class="modal-overlay versteckt">
+        <div class="modal-content">
+            <h3>Gegner hinzufügen</h3>
+            <p>Gib die Nummer des neuen Gegners ein:</p>
+            <input type="number" id="addGegnerNummerInput" placeholder="Nummer"
+                style="width: 100%; box-sizing: border-box; margin: 10px 0;">
+            <button id="addGegnerSpeichern">Hinzufügen</button>
+            <button class="modal-abbrechen" id="addGegnerAbbrechen">Abbrechen</button>
+        </div>
+    </div>
+
     <div id="sevenMeterOutcomeModal" class="modal-overlay versteckt">
         <div class="modal-content">
             <h3>7m Ergebnis</h3>
-            <button class="aktion-button" style="background-color: #dc3545;" onclick="handle7mOutcome('Tor')">Tor</button>
-            <button class="aktion-button" style="background-color: #6c757d;" onclick="handle7mOutcome('Gehalten')">Gehalten</button>
-            <button class="aktion-button" style="background-color: #ffc107; color:black;" onclick="handle7mOutcome('Verworfen')">Verworfen (Pfosten/Aus)</button>
+            <button class="aktion-button" style="background-color: #dc3545;" data-outcome="Tor">Tor</button>
+            <button class="aktion-button" style="background-color: #6c757d;" data-outcome="Gehalten">Gehalten</button>
+            <button class="aktion-button" style="background-color: #ffc107; color:black;"
+                data-outcome="Verworfen">Verworfen (Pfosten/Aus)</button>
         </div>
     </div>
 
@@ -258,6 +423,29 @@
         </div>
     </div>
 
-    <script src="script.js?v=2.7"></script>
+    <div id="heatmapModal" class="modal-overlay versteckt">
+        <div class="modal-content" style="max-width: 900px; width: 95%;">
+            <h3>Heatmap Analyse</h3>
+            <div class="heatmap-tabs">
+                <button class="heatmap-tab active" data-tab="tor">Tor-Heatmap</button>
+                <button class="heatmap-tab" data-tab="feld">Wurfposition-Heatmap</button>
+                <button class="heatmap-tab" data-tab="kombiniert">Kombiniert</button>
+            </div>
+            <div class="heatmap-filter">
+                <label><input type="radio" name="heatmapTeam" id="heatmapHeimFilter" value="heim" checked> Heim</label>
+                <label><input type="radio" name="heatmapTeam" id="heatmapGegnerFilter" value="gegner"> Gegner</label>
+                <span style="margin: 0 10px;">|</span>
+                <label><input type="checkbox" id="heatmapToreFilter" checked> Tore</label>
+                <label><input type="checkbox" id="heatmapMissedFilter" checked> Fehlwürfe</label>
+            </div>
+            <div id="heatmapContainer" style="display: flex; justify-content: center; padding: 20px;">
+                <svg id="heatmapSvg" viewBox="0 0 300 200" width="600" height="400"></svg>
+            </div>
+            <button class="modal-abbrechen" id="closeHeatmapModal">Schließen</button>
+        </div>
+    </div>
+
+    <script type="module" src="main.js"></script>
 </body>
+
 </html>
