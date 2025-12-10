@@ -754,19 +754,25 @@ body.dark-mode .combined-shot-visual svg line:not([stroke-opacity]) {
 /* Heatmap Modal */
 .heatmap-tabs {
     display: flex;
-    gap: 10px;
+    gap: 8px;
     margin-bottom: 15px;
     justify-content: center;
+    flex-wrap: wrap;
 }
 
 .heatmap-tab {
-    padding: 10px 20px;
+    padding: 8px 12px;
     border: none;
     background: #e9ecef;
     cursor: pointer;
     border-radius: 5px;
     font-weight: bold;
     transition: all 0.2s;
+    font-size: 0.85rem;
+    white-space: nowrap;
+    flex: 1 1 auto;
+    max-width: 150px;
+    text-align: center;
 }
 
 .heatmap-tab.active {
@@ -1087,5 +1093,21 @@ body.dark-mode #histHeatmapContainer {
     #wurfpositionFeld,
     #wurfbildUmgebung {
         max-height: 60vh;
+    }
+
+    /* Heatmap tabs smaller on mobile */
+    .heatmap-tab {
+        font-size: 0.7rem;
+        padding: 6px 8px;
+        max-width: 100px;
+    }
+
+    .heatmap-filter {
+        gap: 10px;
+        font-size: 0.85rem;
+    }
+
+    .heatmap-filter label {
+        gap: 3px;
     }
 }
