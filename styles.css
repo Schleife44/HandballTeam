@@ -905,3 +905,176 @@ body.dark-mode #histHeatmapContainer {
 #histStatsGegnerTable th {
     background-color: var(--table-header-bg);
 }
+
+/* =====================================================
+   MOBILE OPTIMIZATION
+   ===================================================== */
+
+/* --- Touch Device Overrides (hover: none) --- */
+@media (hover: none) {
+    /* Remove hover effects on touch devices */
+    button:hover {
+        filter: none;
+    }
+    
+    /* Add active (tap) effects instead */
+    button:active {
+        filter: brightness(85%);
+        transform: scale(0.98);
+    }
+    
+    .spieler-button:hover {
+        transform: none;
+        box-shadow: none;
+    }
+    
+    .spieler-button:active {
+        transform: scale(0.95);
+        filter: brightness(90%);
+    }
+    
+    .aktion-button:hover {
+        transform: none;
+    }
+    
+    .aktion-button:active {
+        transform: scale(0.95);
+        filter: brightness(90%);
+    }
+    
+    /* Larger touch targets */
+    button {
+        min-height: 44px;
+        min-width: 44px;
+    }
+    
+    .spieler-button {
+        min-height: 60px;
+        min-width: 60px;
+    }
+}
+
+/* --- Responsive Layout (Small Screens) --- */
+@media screen and (max-width: 768px) {
+    body {
+        padding: 10px;
+    }
+    
+    #gameScreen {
+        flex-direction: column;
+    }
+    
+    #sidebarLinks,
+    #sidebarRechts {
+        width: 100%;
+        max-width: none;
+        flex-direction: row;
+        flex-wrap: wrap;
+        justify-content: center;
+        padding: 10px;
+    }
+    
+    #mainGameContent {
+        order: -1; /* Move main content to top on mobile */
+    }
+    
+    #verwaltung {
+        flex-wrap: wrap;
+        justify-content: center;
+    }
+    
+    #verwaltung button {
+        flex: 1 1 auto;
+        min-width: 100px;
+        font-size: 0.85rem;
+        padding: 8px 12px;
+    }
+    
+    #scoreContainer {
+        flex-direction: row;
+        flex-wrap: wrap;
+        gap: 10px;
+    }
+    
+    .score-box {
+        flex: 1 1 45%;
+        min-width: 120px;
+    }
+    
+    #timerAnzeige {
+        font-size: 2rem;
+    }
+    
+    #spielerBereich {
+        flex-direction: column;
+    }
+    
+    .spieler-seite {
+        width: 100%;
+    }
+    
+    .spieler-raster {
+        grid-template-columns: repeat(auto-fill, minmax(60px, 1fr));
+        gap: 8px;
+    }
+    
+    .spieler-button {
+        font-size: 0.9rem;
+        padding: 8px;
+    }
+    
+    /* Modals full-width on mobile */
+    .modal-content {
+        width: 95%;
+        max-width: none;
+        margin: 10px;
+        padding: 15px;
+    }
+    
+    /* Stats tables scroll horizontally */
+    #protokollAusgabe,
+    .stats-table-container {
+        overflow-x: auto;
+    }
+    
+    table {
+        font-size: 0.85rem;
+    }
+    
+    th, td {
+        padding: 6px 4px;
+    }
+}
+
+/* --- Extra Small Screens (Phones) --- */
+@media screen and (max-width: 480px) {
+    #verwaltung button {
+        font-size: 0.75rem;
+        padding: 6px 8px;
+    }
+    
+    .spieler-raster {
+        grid-template-columns: repeat(auto-fill, minmax(50px, 1fr));
+        gap: 5px;
+    }
+    
+    .spieler-button {
+        font-size: 0.8rem;
+        padding: 6px;
+    }
+    
+    #timerAnzeige {
+        font-size: 1.5rem;
+    }
+    
+    .aktion-button {
+        font-size: 0.9rem;
+        padding: 10px;
+    }
+    
+    /* Wurfposition and Wurfbild modals need space */
+    #wurfpositionFeld,
+    #wurfbildUmgebung {
+        max-height: 60vh;
+    }
+}

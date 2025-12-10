@@ -2,8 +2,7 @@ import { ladeSpielstandDaten, spielstand, speichereSpielstand } from './modules/
 import {
     addPlayerForm, startGameButton, cancelEditButton, exportTeamButton,
     importTeamButton, importFileInput, backToRosterButton, gamePhaseButton,
-    pauseButton, zurueckButton, vorButton, neuesSpielButton, exportButton,
-    exportCsvButton,
+    pauseButton, zurueckButton, vorButton, neuesSpielButton,
     heimScoreUp, heimScoreDown, gegnerScoreUp, gegnerScoreDown,
     aktionAbbrechen, guteAktionModalButton, aktionVorauswahlAbbrechen,
     kommentarSpeichernButton, settingsButton, settingsSchliessen,
@@ -656,15 +655,11 @@ function renderHeatmap(svgElement, logSource, isHistory = false, filterOverride 
         // xOffset = (300 - 105) / 2 = 97.5
         const xOffsetGoal = (300 - (300 * scaleGoal)) / 2;
 
-        // Move Goal DOWN onto the field area visually
-        // Field starts at y=0 effectively in this stacked view? 
-        // Let's draw Field at y=0, and overlay Goal at the top (near actual goal position).
-        // Let's place Goal View at y=10.
-        // And Field View at y=50 (overlapping?).
-        // User wants it to look "on the playing field".
-        // Let's try placing Field at y=80, and Goal at y=0.
-
-        const yOffsetGoal = 0;
+        // Position goal so its bottom (goal line) aligns with the field's top line
+        // Goal rect bottom in drawGoalHeatmap is at y=190. After scale: 190*0.35 = 66.5
+        // Field starts at yOffsetField=80, goal line is at y=80+10=90
+        // To align: yOffsetGoal + 66.5 = 90 → yOffsetGoal = 23.5
+        const yOffsetGoal = 24;
         const yOffsetField = 80;
 
         let linesContent = '<g>';
@@ -807,8 +802,6 @@ pauseButton.addEventListener('click', handleRealPauseClick);
 zurueckButton.addEventListener('click', () => handleZeitSprung(-30));
 vorButton.addEventListener('click', () => handleZeitSprung(30));
 neuesSpielButton.addEventListener('click', starteNeuesSpiel);
-exportButton.addEventListener('click', exportiereAlsTxt);
-if (exportCsvButton) exportCsvButton.addEventListener('click', exportiereAlsCsv);
 
 
 
@@ -951,9 +944,22 @@ if (wurfpositionFeld) {
         const svg = wurfpositionFeld.querySelector('svg');
         const rect = svg.getBoundingClientRect();
 
-        // Calculate relative coordinates (0-100%)
-        const x = ((e.clientX - rect.left) / rect.width) * 100;
-        const y = ((e.clientY - rect.top) / rect.height) * 100;
+        // Get the viewBox dimensions for accurate coordinate mapping
+        const viewBox = svg.viewBox.baseVal;
+        const viewBoxWidth = viewBox.width || 300; // Updated for new SVG
+        const viewBoxHeight = viewBox.height || 400;
+
+        // Calculate click position relative to rendered SVG
+        const clickXOffset = e.clientX - rect.left;
+        const clickYOffset = e.clientY - rect.top;
+
+        // Calculate scaling factors (rendered size / viewBox size)
+        const scaleX = rect.width / viewBoxWidth;
+        const scaleY = rect.height / viewBoxHeight;
+
+        // Convert to viewBox coordinates, then to percentage (0-100%)
+        const x = (clickXOffset / scaleX) / viewBoxWidth * 100;
+        const y = (clickYOffset / scaleY) / viewBoxHeight * 100;
 
         // Store position in last log entry
         if (spielstand.gameLog.length > 0) {
@@ -1207,14 +1213,6 @@ document.querySelectorAll('.heatmap-tab:not([id^="hist"])').forEach(tab => {
 // PDF Export
 if (exportPdfButton) {
     exportPdfButton.addEventListener('click', exportiereAlsPdf);
-}
-
-// Ensure other export buttons have listeners (safeguard)
-if (exportButton) {
-    exportButton.onclick = exportiereAlsTxt; // using onclick to prevent double binding if addEventListener exists elsewhere
-}
-if (exportCsvButton) {
-    exportCsvButton.onclick = exportiereAlsCsv;
 }
 
 initApp();
