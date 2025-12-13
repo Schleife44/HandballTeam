@@ -31,6 +31,8 @@ export const exportCsvButton = document.getElementById('exportCsvButton');
 export const exportPdfButton = document.getElementById('exportPdfButton');
 export const heimSpielerRaster = document.getElementById('heimSpielerRaster');
 export const gegnerSpielerRaster = document.getElementById('gegnerSpielerRaster');
+export const labelSpielerHeimRaster = document.getElementById('labelSpielerHeimRaster');
+export const labelSpielerGegnerRaster = document.getElementById('labelSpielerGegnerRaster');
 export const protokollAusgabe = document.getElementById('protokollAusgabe');
 export const aktionsMenue = document.getElementById('aktionsMenue');
 export const aktionsMenueTitel = document.getElementById('aktionsMenueTitel');
@@ -52,6 +54,7 @@ export const toggleWurfbildHeim = document.getElementById('toggleWurfbildHeim');
 export const toggleWurfbildGegner = document.getElementById('toggleWurfbildGegner');
 export const inputTeamNameHeim = document.getElementById('inputTeamNameHeim');
 export const inputTeamNameGegner = document.getElementById('inputTeamNameGegner');
+export const toggleAuswaertsspiel = document.getElementById('toggleAuswaertsspiel');
 export const torTrackerHeimContainer = document.getElementById('torTrackerHeimContainer');
 export const torTrackerGegnerContainer = document.getElementById('torTrackerGegnerContainer');
 export const labelTorTrackerHeim = document.getElementById('labelTorTrackerHeim');
@@ -96,6 +99,8 @@ export const heatmapSvg = document.getElementById('heatmapSvg');
 export const closeHeatmapModal = document.getElementById('closeHeatmapModal');
 export const heatmapHeimFilter = document.getElementById('heatmapHeimFilter');
 export const heatmapGegnerFilter = document.getElementById('heatmapGegnerFilter');
+export const heatmapHeimLabel = document.getElementById('heatmapHeimLabel');
+export const heatmapGegnerLabel = document.getElementById('heatmapGegnerLabel');
 export const heatmapToreFilter = document.getElementById('heatmapToreFilter');
 export const heatmapMissedFilter = document.getElementById('heatmapMissedFilter');
 
@@ -106,6 +111,8 @@ export const historieListe = document.getElementById('historieListe');
 export const backToStartFromHistory = document.getElementById('backToStartFromHistory');
 export const historyButton = document.getElementById('historyButton');
 export const exportHistorieButton = document.getElementById('exportHistorieButton');
+export const importSpielButton = document.getElementById('importSpielButton');
+export const importSpielInput = document.getElementById('importSpielInput');
 
 // History Detail UI
 export const historieDetailBereich = document.getElementById('historieDetailBereich');
@@ -128,3 +135,15 @@ export const histSubTabTor = document.getElementById('histSubTabTor');
 export const histSubTabFeld = document.getElementById('histSubTabFeld');
 export const histSubTabKombi = document.getElementById('histSubTabKombi');
 export const histHeatmapSvg = document.getElementById('histHeatmapSvg');
+
+// Custom Confirm/Alert Modal
+export const customConfirmModal = document.getElementById('customConfirmModal');
+export const customConfirmTitle = document.getElementById('customConfirmTitle');
+export const customConfirmMessage = document.getElementById('customConfirmMessage');
+export const customConfirmYes = document.getElementById('customConfirmYes');
+export const customConfirmNo = document.getElementById('customConfirmNo');
+export const customAlertModal = document.getElementById('customAlertModal');
+export const customAlertTitle = document.getElementById('customAlertTitle');
+export const customAlertMessage = document.getElementById('customAlertMessage');
+export const customAlertOk = document.getElementById('customAlertOk');
+

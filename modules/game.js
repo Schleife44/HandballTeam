@@ -15,6 +15,7 @@ import {
 import { startTimer, stoppTimer, updateTimer } from './timer.js';
 import { formatiereZeit } from './utils.js';
 import { berechneStatistiken } from './stats.js';
+import { customConfirm } from './customDialog.js';
 
 let aktuellerSpielerIndex = null;
 export let aktuelleAktionTyp = '';
@@ -533,8 +534,9 @@ export function handle7mOutcome(outcome) {
     }
 }
 
-export function loescheProtokollEintrag(index) {
-    if (confirm("Möchtest du diesen Eintrag wirklich löschen?")) {
+export async function loescheProtokollEintrag(index) {
+    const confirmed = await customConfirm("Möchtest du diesen Eintrag wirklich löschen?", "Eintrag löschen?");
+    if (confirmed) {
 
         const geloeschterEintrag = spielstand.gameLog[index];
         spielstand.gameLog.splice(index, 1);
@@ -567,12 +569,14 @@ export function loescheProtokollEintrag(index) {
 }
 
 
-export function starteNeuesSpiel() {
-    if (confirm("Bist du sicher? Das löscht das gesamte Spielprotokoll, aber dein Team bleibt gespeichert.")) {
+export async function starteNeuesSpiel() {
+    const confirmed = await customConfirm("Bist du sicher? Das löscht das gesamte Spielprotokoll, aber dein Team bleibt gespeichert.", "Neues Spiel?");
+    if (confirmed) {
 
         spielstand.gameLog = [];
         spielstand.score = { heim: 0, gegner: 0 };
         spielstand.activeSuspensions = [];
+        spielstand.knownOpponents = [];
         spielstand.timer = {
             gamePhase: 1,
             istPausiert: true,

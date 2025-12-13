@@ -23,7 +23,8 @@ export let spielstand = {
         showWurfpositionHeim: false,
         showWurfpositionGegner: false,
         teamNameHeim: 'Heim',
-        teamNameGegner: 'Gegner'
+        teamNameGegner: 'Gegner',
+        isAuswaertsspiel: false
     },
     knownOpponents: []
 };
@@ -57,6 +58,7 @@ export function ladeSpielstandDaten() {
         if (typeof spielstand.settings.showWurfpositionGegner === 'undefined') spielstand.settings.showWurfpositionGegner = false;
         if (!spielstand.settings.teamNameHeim) spielstand.settings.teamNameHeim = 'Heim';
         if (!spielstand.settings.teamNameGegner) spielstand.settings.teamNameGegner = 'Gegner';
+        if (typeof spielstand.settings.isAuswaertsspiel === 'undefined') spielstand.settings.isAuswaertsspiel = false;
 
         if (!spielstand.knownOpponents) spielstand.knownOpponents = [];
 

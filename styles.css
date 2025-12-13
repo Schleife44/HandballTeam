@@ -549,6 +549,11 @@ input[type="number"] {
     box-sizing: border-box;
 }
 
+/* Settings Modal hat höchste Priorität */
+#settingsModal {
+    z-index: 9999;
+}
+
 .modal-content {
     background: var(--bg-container);
     color: var(--text-main);

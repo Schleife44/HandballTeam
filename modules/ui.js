@@ -3,6 +3,7 @@ import { spielstand } from './state.js';
 import {
     torTrackerHeimContainer, torTrackerGegnerContainer, statistikSidebar, scoreAnzeige,
     teamNameHeimDisplay, teamNameGegnerDisplay, labelTorTrackerHeim, labelTorTrackerGegner,
+    labelSpielerHeimRaster, labelSpielerGegnerRaster, heatmapHeimLabel, heatmapGegnerLabel,
     suspensionContainer, heimSpielerRaster, gegnerSpielerRaster, protokollAusgabe, torTabelleBody, torTabelleGegnerBody,
     statistikTabelleBody, rosterListe, wurfbildModal, wurfbilderContainer, wurfbilderStatsModal,
     gegnerNummerTitel, gegnerNummerModal, neueGegnerNummer, bekannteGegnerListe,
@@ -56,13 +57,37 @@ export function applyViewSettings() {
 }
 
 export function updateScoreDisplay() {
+    const isAway = spielstand.settings.isAuswaertsspiel;
+
     if (scoreAnzeige) {
-        scoreAnzeige.textContent = `${spielstand.score.heim}:${spielstand.score.gegner}`;
+        // Bei Auswärtspielen: Gegner-Score zuerst (weil wir Gast sind)
+        if (isAway) {
+            scoreAnzeige.textContent = `${spielstand.score.gegner}:${spielstand.score.heim}`;
+        } else {
+            scoreAnzeige.textContent = `${spielstand.score.heim}:${spielstand.score.gegner}`;
+        }
     }
-    if (teamNameHeimDisplay) teamNameHeimDisplay.textContent = spielstand.settings.teamNameHeim.toUpperCase();
-    if (teamNameGegnerDisplay) teamNameGegnerDisplay.textContent = spielstand.settings.teamNameGegner.toUpperCase();
+
+    // Bei Auswärtspielen: Team-Namen-Anzeige beim Score tauschen
+    if (isAway) {
+        if (teamNameHeimDisplay) teamNameHeimDisplay.textContent = spielstand.settings.teamNameGegner.toUpperCase();
+        if (teamNameGegnerDisplay) teamNameGegnerDisplay.textContent = spielstand.settings.teamNameHeim.toUpperCase();
+    } else {
+        if (teamNameHeimDisplay) teamNameHeimDisplay.textContent = spielstand.settings.teamNameHeim.toUpperCase();
+        if (teamNameGegnerDisplay) teamNameGegnerDisplay.textContent = spielstand.settings.teamNameGegner.toUpperCase();
+    }
+
+    // Spieler-Raster Labels bleiben IMMER beim echten Team (kein Tausch bei Auswärts)
+    if (labelSpielerHeimRaster) labelSpielerHeimRaster.textContent = spielstand.settings.teamNameHeim;
+    if (labelSpielerGegnerRaster) labelSpielerGegnerRaster.textContent = spielstand.settings.teamNameGegner;
+
+    // Tor-Tracker Labels auch immer beim echten Team
     if (labelTorTrackerHeim) labelTorTrackerHeim.textContent = spielstand.settings.teamNameHeim;
     if (labelTorTrackerGegner) labelTorTrackerGegner.textContent = spielstand.settings.teamNameGegner;
+
+    // Heatmap Filter Labels
+    if (heatmapHeimLabel) heatmapHeimLabel.textContent = spielstand.settings.teamNameHeim;
+    if (heatmapGegnerLabel) heatmapGegnerLabel.textContent = spielstand.settings.teamNameGegner;
 }
 
 export function updateSuspensionDisplay() {
