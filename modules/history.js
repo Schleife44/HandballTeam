@@ -1,29 +1,29 @@
 const HISTORY_KEY = 'handball_history';
 
 /**
- * Saves a game to local storage.
- * @param {Object} gameData All relevant game data (score, log, teams, etc).
+ * Speichert ein Spiel im Local Storage.
+ * @param {Object} gameData Alle relevanten Spieldaten (Spielstand, Log, Teams, etc.).
  */
 export function speichereSpielInHistorie(gameData) {
     const history = getHistorie();
     const newEntry = {
-        id: Date.now(), // Timestamp as unique ID
+        id: Date.now(), // Zeitstempel als eindeutige ID
         date: new Date().toISOString(),
         ...gameData
     };
 
-    // Add to beginning of array
+    // Am Anfang des Arrays hinzufügen
     history.unshift(newEntry);
 
-    // Save back
+    // Zurückspeichern
     localStorage.setItem(HISTORY_KEY, JSON.stringify(history));
     console.log("Spiel gespeichert:", newEntry);
     return newEntry;
 }
 
 /**
- * Retrieves the full game history.
- * @returns {Array} List of games.
+ * Ruft die vollständige Spielhistorie ab.
+ * @returns {Array} Liste der Spiele.
  */
 export function getHistorie() {
     try {
@@ -37,7 +37,7 @@ export function getHistorie() {
 }
 
 /**
- * Gets a specific game by ID.
+ * Ruft ein bestimmtes Spiel mittels ID ab.
  * @param {number} id 
  * @returns {Object|null}
  */
@@ -47,7 +47,7 @@ export function getSpielAusHistorie(id) {
 }
 
 /**
- * Deletes a game by ID.
+ * Löscht ein Spiel mittels ID.
  * @param {number} id 
  */
 export function loescheSpielAusHistorie(id) {
@@ -57,7 +57,7 @@ export function loescheSpielAusHistorie(id) {
 }
 
 /**
- * Exports history as JSON file (Backup)
+ * Exportiert Historie als JSON-Datei (Backup)
  */
 export function exportHistorie() {
     const history = getHistorie();
@@ -75,8 +75,8 @@ export function exportHistorie() {
 }
 
 /**
- * Imports a single game or multiple games from JSON file
- * @param {File} file - The JSON file to import
+ * Importiert ein einzelnes Spiel oder mehrere Spiele aus einer JSON-Datei
+ * @param {File} file - Die zu importierende JSON-Datei
  * @returns {Promise<{success: boolean, count: number, message: string}>}
  */
 export function importiereSpiel(file) {
@@ -89,16 +89,16 @@ export function importiereSpiel(file) {
                 const history = getHistorie();
                 let importedCount = 0;
 
-                // Check if it's an array (multiple games) or single game
+                // Prüfe, ob es ein Array (mehrere Spiele) oder ein einzelnes Spiel ist
                 const games = Array.isArray(data) ? data : [data];
 
                 games.forEach(game => {
-                    // Validate that it looks like a game object
+                    // Validiere, dass es wie ein Spiel-Objekt aussieht
                     if (game.teams && game.score && game.gameLog) {
-                        // Generate new ID to avoid conflicts
+                        // Generiere neue ID, um Konflikte zu vermeiden
                         const newGame = {
                             ...game,
-                            id: Date.now() + importedCount, // Unique ID
+                            id: Date.now() + importedCount, // Eindeutige ID
                             date: game.date || new Date().toISOString()
                         };
                         history.unshift(newGame);

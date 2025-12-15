@@ -12,6 +12,7 @@ import { berechneStatistiken, berechneGegnerStatistiken, berechneTore } from './
 import { speichereSpielInHistorie, getHistorie, loescheSpielAusHistorie } from './history.js';
 import { renderHeatmap, setCurrentHeatmapContext, setCurrentHeatmapTab, currentHeatmapTab } from './heatmap.js';
 import { customConfirm, customAlert } from './customDialog.js';
+import { exportiereHistorieAlsPdf } from './export.js';
 
 // --- Export einzelnes Spiel ---
 export function exportiereEinzelnesSpiel(game) {
@@ -82,7 +83,8 @@ export function renderHistoryList() {
             </div>
             <div style="text-align: right; display: flex; gap: 8px; align-items: center;">
                 <span style="font-size: 1.5em; font-weight: bold; margin-right: 10px;">${game.score.heim}:${game.score.gegner}</span>
-                <button class="export-history-btn" data-id="${game.id}" style="background: #17a2b8; color: white; border: none; padding: 5px 10px; border-radius: 4px; cursor: pointer;" title="Exportieren">📥</button>
+                <button class="export-pdf-btn" data-id="${game.id}" style="background: #28a745; color: white; border: none; padding: 5px 10px; border-radius: 4px; cursor: pointer;" title="Als PDF exportieren">📄</button>
+                <button class="export-history-btn" data-id="${game.id}" style="background: #17a2b8; color: white; border: none; padding: 5px 10px; border-radius: 4px; cursor: pointer;" title="Als JSON exportieren">📥</button>
                 <button class="delete-history-btn" data-id="${game.id}" style="background: #dc3545; color: white; border: none; padding: 5px 10px; border-radius: 4px; cursor: pointer;" title="Löschen">🗑️</button>
             </div>
         `;
@@ -90,10 +92,17 @@ export function renderHistoryList() {
         div.addEventListener('click', (e) => {
             if (e.target.classList.contains('delete-history-btn')) return;
             if (e.target.classList.contains('export-history-btn')) return;
+            if (e.target.classList.contains('export-pdf-btn')) return;
             openHistoryDetail(game);
         });
 
-        // Export Button
+        // Export PDF Button
+        div.querySelector('.export-pdf-btn').addEventListener('click', (e) => {
+            e.stopPropagation();
+            exportiereHistorieAlsPdf(game);
+        });
+
+        // Export JSON Button
         div.querySelector('.export-history-btn').addEventListener('click', (e) => {
             e.stopPropagation();
             exportiereEinzelnesSpiel(game);

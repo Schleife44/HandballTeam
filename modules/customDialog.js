@@ -1,5 +1,5 @@
 // modules/customDialog.js
-// Custom Confirm and Alert dialogs to replace browser dialogs
+// Custom Confirm- und Alert-Dialoge, um Browser-Dialoge zu ersetzen
 
 import {
     customConfirmModal, customConfirmTitle, customConfirmMessage,
@@ -7,14 +7,14 @@ import {
     customAlertModal, customAlertTitle, customAlertMessage, customAlertOk
 } from './dom.js';
 
-// Store resolve function for confirm dialog
+// Speichere Resolve-Funktion für Confirm-Dialog
 let confirmResolve = null;
 
 /**
- * Shows a custom confirm dialog
- * @param {string} message - Message to display
- * @param {string} title - Title (optional, default: "Bestätigung")
- * @returns {Promise<boolean>} - Resolves true if yes, false if no
+ * Zeigt einen benutzerdefinierten Bestätigungs-Dialog
+ * @param {string} message - Anzuzeigende Nachricht
+ * @param {string} title - Titel (optional, Standard: "Bestätigung")
+ * @returns {Promise<boolean>} - Gibt true zurück bei Ja, false bei Nein
  */
 export function customConfirm(message, title = "Bestätigung") {
     return new Promise((resolve) => {
@@ -26,10 +26,10 @@ export function customConfirm(message, title = "Bestätigung") {
 }
 
 /**
- * Shows a custom alert dialog
- * @param {string} message - Message to display  
- * @param {string} title - Title (optional, default: "Hinweis")
- * @returns {Promise<void>} - Resolves when OK is clicked
+ * Zeigt einen benutzerdefinierten Hinweis-Dialog
+ * @param {string} message - Anzuzeigende Nachricht  
+ * @param {string} title - Titel (optional, Standard: "Hinweis")
+ * @returns {Promise<void>} - Wird aufgelöst, wenn OK geklickt wird
  */
 export function customAlert(message, title = "Hinweis") {
     return new Promise((resolve) => {
@@ -46,7 +46,7 @@ export function customAlert(message, title = "Hinweis") {
     });
 }
 
-// Initialize event listeners
+// Initialisiere Event-Listener
 export function initCustomDialogs() {
     if (customConfirmYes) {
         customConfirmYes.addEventListener('click', () => {

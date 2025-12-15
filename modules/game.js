@@ -21,7 +21,7 @@ let aktuellerSpielerIndex = null;
 export let aktuelleAktionTyp = '';
 let currentGegnerActionType = 'tor'; // 'tor', '7m', '2min'
 
-// Track if current action is for opponent
+// Verfolge, ob die aktuelle Aktion für den Gegner ist
 let istGegnerAktion = false;
 let aktuelleGegnernummer = null;
 
@@ -78,7 +78,7 @@ export function switchToRoster() {
     scoreWrapper.classList.add('versteckt');
     statistikSidebar.classList.add('versteckt');
 
-    stoppTimer(); // Ensure timer stops
+    stoppTimer(); // Stelle sicher, dass Timer stoppt
     zeichneRosterListe();
 }
 
@@ -174,7 +174,7 @@ export function oeffneGegnerAktionsMenue(gegnernummer) {
     istGegnerAktion = true;
     aktuelleGegnernummer = gegnernummer;
     aktuellerSpielerIndex = null;
-    // Open UI with opponent number display
+    // Öffne UI mit Anzeige der Gegnernummer
     const player = { number: gegnernummer, name: `Gegner #${gegnernummer}` };
     oeffneAktionsMenueUI(null, player);
 }
@@ -192,13 +192,13 @@ export function setAktuelleAktionTyp(typ) {
 }
 
 export function logAktion(aktion, kommentar = null) {
-    // Check if this is an opponent action
+    // Prüfe, ob dies eine Gegner-Aktion ist
     if (istGegnerAktion && aktuelleGegnernummer) {
         handleGegnerAktion(aktion, kommentar);
         return;
     }
 
-    // Handle 7m action - show outcome modal first
+    // Behandle 7m-Aktion - zeige zuerst Ergebnis-Modal
     if (aktion === "7m") {
         const player = spielstand.roster[aktuellerSpielerIndex];
         spielstand.temp7mPlayer = {
@@ -230,7 +230,7 @@ export function logAktion(aktion, kommentar = null) {
         updateSuspensionDisplay();
     }
 
-    // Log Eintrag
+    // Log-Eintrag
     spielstand.gameLog.unshift({
         time: aktuelleZeit,
         playerId: player.number,
@@ -246,7 +246,7 @@ export function logAktion(aktion, kommentar = null) {
     speichereSpielstand();
     schliesseAktionsMenue();
 
-    // Show modals based on settings (Wurfposition first, then Wurfbild)
+    // Zeige Modals basierend auf Einstellungen (Wurfposition zuerst, dann Wurfbild)
     if (aktion === "Tor" || aktion === "Fehlwurf") {
         if (spielstand.settings.showWurfpositionHeim) {
             wurfpositionModal.classList.remove('versteckt');
@@ -263,18 +263,18 @@ function handleGegnerAktion(aktion, kommentar) {
     let mappedAction = '';
     let shouldOpenWurfbild = false;
 
-    // Map home actions to opponent actions
+    // Mappe Heim-Aktionen auf Gegner-Aktionen
     if (aktion === "Tor") {
         mappedAction = "Gegner Tor";
         shouldOpenWurfbild = spielstand.settings.showWurfbildGegner;
         spielstand.score.gegner++;
     } else if (aktion === "7m") {
-        // Show 7m outcome modal for opponent
+        // Zeige 7m-Ergebnis-Modal für Gegner
         spielstand.tempGegnerNummer = gegnernummer;
         spielstand.temp7mPlayer = { isOpponent: true };
         schliesseAktionsMenue();
         sevenMeterOutcomeModal.classList.remove('versteckt');
-        return; // Exit early - handle7mOutcome will take over
+        return; // Früher Abbruch - handle7mOutcome übernimmt
     } else if (aktion === "Fehlwurf") {
         mappedAction = "Gegner Wurf Vorbei";
         shouldOpenWurfbild = spielstand.settings.showWurfbildGegner;
@@ -297,7 +297,7 @@ function handleGegnerAktion(aktion, kommentar) {
         });
         updateSuspensionDisplay();
     } else {
-        // For other actions, just prefix with "Gegner"
+        // Für andere Aktionen, präfixiere einfach mit "Gegner"
         mappedAction = `Gegner ${aktion}`;
     }
 
@@ -320,8 +320,8 @@ function handleGegnerAktion(aktion, kommentar) {
     speichereSpielstand();
     schliesseAktionsMenue();
 
-    // Show modals based on settings (Wurfposition first, then Wurfbild)
-    // Only for Tor and Fehlwurf (mapped to Gegner Tor and Gegner Wurf Vorbei)
+    // Zeige Modals basierend auf Einstellungen (Wurfposition zuerst, dann Wurfbild)
+    // Nur für Tor und Fehlwurf (gemappt auf Gegner Tor und Gegner Wurf Vorbei)
     const isTorOrFehlwurf = mappedAction === "Gegner Tor" || mappedAction === "Gegner Wurf Vorbei";
     if (isTorOrFehlwurf && (shouldOpenWurfbild || spielstand.settings.showWurfpositionGegner)) {
         spielstand.tempGegnerNummer = gegnernummer;
@@ -357,7 +357,7 @@ export function logGlobalAktion(aktion, kommentar = null, gegnerNummer = null) {
         // Increment score for opponent goals
         spielstand.score.gegner++;
     }
-    // Note: "Gegner Wurf Vorbei" doesn't change the score
+    // Hinweis: "Gegner Wurf Vorbei" ändert den Spielstand nicht
 
     const aktuellerSpielstand = `${spielstand.score.heim}:${spielstand.score.gegner}`;
     updateScoreDisplay();
@@ -465,7 +465,7 @@ export function handle7mOutcome(outcome) {
     sevenMeterOutcomeModal.classList.add('versteckt');
     const aktuelleZeit = timerAnzeige.textContent;
 
-    // Check if this is a home or opponent 7m
+    // Prüfe, ob dies ein Heim- oder Gegner-7m ist
     const temp7mPlayer = spielstand.temp7mPlayer;
     const isOpponent = istGegnerAktion || (temp7mPlayer && temp7mPlayer.isOpponent) || (!temp7mPlayer);
 
@@ -476,7 +476,7 @@ export function handle7mOutcome(outcome) {
     let nummer = null;
 
     if (isOpponent) {
-        // Opponent 7m
+        // Gegner-7m
         nummer = spielstand.tempGegnerNummer || aktuelleGegnernummer;
         kommentar = nummer ? `(Nr. ${nummer})` : null;
 
@@ -489,7 +489,7 @@ export function handle7mOutcome(outcome) {
             aktion = "Gegner 7m Verworfen";
         }
     } else {
-        // Home player 7m
+        // Heimspieler-7m
         playerId = temp7mPlayer.number;
         playerName = temp7mPlayer.name;
 
@@ -521,13 +521,13 @@ export function handle7mOutcome(outcome) {
     updateTorTracker();
     speichereSpielstand();
 
-    // Show Wurfbild modal if enabled
+    // Zeige Wurfbild-Modal, falls aktiviert
     const showWurfbild = isOpponent ? spielstand.settings.showWurfbildGegner : spielstand.settings.showWurfbildHeim;
     if (showWurfbild) {
         spielstand.temp7mOutcome = outcome;
         oeffneWurfbildModal(isOpponent ? 'gegner7m' : 'standard');
     } else {
-        // Clean up
+        // Aufräumen
         spielstand.tempGegnerNummer = null;
         spielstand.temp7mPlayer = null;
         spielstand.temp7mOutcome = null;
@@ -541,7 +541,7 @@ export async function loescheProtokollEintrag(index) {
         const geloeschterEintrag = spielstand.gameLog[index];
         spielstand.gameLog.splice(index, 1);
 
-        // Score zurückrechnen
+        // Rechne Score zurück
         if (geloeschterEintrag.action === "Tor") {
             spielstand.score.heim--;
         } else if (geloeschterEintrag.action === "Gegner Tor" || geloeschterEintrag.action === "Gegner 7m Tor") {
