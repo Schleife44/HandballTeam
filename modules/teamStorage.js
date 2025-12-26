@@ -1,6 +1,7 @@
 import { spielstand, speichereSpielstand } from './state.js';
 import { zeichneRosterListe } from './ui.js';
 import { customAlert, customConfirm } from './customDialog.js';
+import { getHistorie } from './history.js';
 
 const SAVED_TEAMS_KEY = 'handball_saved_teams';
 
@@ -179,6 +180,48 @@ export async function deleteSavedTeam(teamKey, index) {
     showLoadTeamModal();
 }
 
+// Load opponent team from game history
+export async function loadHistoryTeam(index) {
+    const historyTeams = getOpponentTeamsFromHistory();
+    const team = historyTeams[index];
+
+    if (!team) return;
+
+    const confirmed = await customConfirm(
+        `Möchtest du das Team "${team.name}" aus der Spielhistorie ins Gegner-Team laden? Das aktuelle Gegner-Team wird überschrieben.`,
+        "Team laden?"
+    );
+
+    if (!confirmed) return;
+
+    // Load into opponent roster - zeichneRosterListe uses knownOpponents!
+    const playersToLoad = team.players.map(p => ({
+        number: p.number,
+        name: p.name || ''
+    }));
+
+    spielstand.knownOpponents = playersToLoad;
+
+    // Update team name
+    spielstand.settings.teamNameGegner = team.name;
+
+    // Switch to opponent view
+    spielstand.activeTeam = 'gegner';
+
+    // Update toggle switch UI
+    const teamToggle = document.getElementById('teamToggle');
+    if (teamToggle) teamToggle.checked = true;
+
+    speichereSpielstand();
+    zeichneRosterListe(true);
+
+    // Close modal
+    const loadTeamModal = document.getElementById('loadTeamModal');
+    if (loadTeamModal) loadTeamModal.classList.add('versteckt');
+
+    await customAlert(`Team "${team.name}" wurde als Gegner geladen! (${playersToLoad.length} Spieler)`, "Team geladen");
+}
+
 // Show load team modal
 export function showLoadTeamModal() {
     const savedTeams = getSavedTeams();
@@ -222,7 +265,109 @@ export function showLoadTeamModal() {
         }
     }
 
+    // Extract opponent teams from game history (not saved)
+    const historyTeams = getOpponentTeamsFromHistory();
+    if (historyTeams.length > 0) {
+        const historyHeader = document.createElement('h4');
+        historyHeader.textContent = '📜 Teams aus vergangenen Spielen';
+        historyHeader.style.cssText = 'margin: 20px 0 10px 0; color: var(--text-main);';
+        savedTeamsList.appendChild(historyHeader);
+
+        historyTeams.forEach((team, index) => {
+            savedTeamsList.appendChild(createHistoryTeamCard(team, index));
+        });
+    }
+
+    // Update empty message if we have history teams but no saved teams
+    if (totalTeams === 0 && historyTeams.length > 0) {
+        savedTeamsList.innerHTML = '';
+        const historyHeader = document.createElement('h4');
+        historyHeader.textContent = '📜 Teams aus vergangenen Spielen';
+        historyHeader.style.cssText = 'margin: 20px 0 10px 0; color: var(--text-main);';
+        savedTeamsList.appendChild(historyHeader);
+
+        historyTeams.forEach((team, index) => {
+            savedTeamsList.appendChild(createHistoryTeamCard(team, index));
+        });
+    }
+
     loadTeamModal.classList.remove('versteckt');
+}
+
+// Extract opponent teams from game history
+function getOpponentTeamsFromHistory() {
+    const history = getHistorie() || [];
+    const teamsMap = new Map(); // Key: team name, Value: { name, players, gameDate }
+
+    history.forEach(game => {
+        const opponentName = game.teams?.gegner || 'Gegner';
+
+        // Get opponent players from gameLog
+        const opponentPlayers = new Map(); // Use Map to dedupe by number
+        if (game.gameLog) {
+            game.gameLog.forEach(entry => {
+                // Check for opponent entries - either has gegnerNummer or is a Gegner action
+                if (entry.gegnerNummer !== undefined && entry.gegnerNummer !== null) {
+                    const num = entry.gegnerNummer;
+                    if (!opponentPlayers.has(num)) {
+                        opponentPlayers.set(num, {
+                            number: num,
+                            name: '' // Names aren't stored for opponents in gameLog
+                        });
+                    }
+                }
+            });
+        }
+
+        if (opponentPlayers.size > 0) {
+            const players = Array.from(opponentPlayers.values());
+
+            // Use team name as key - merge players if same team played multiple times
+            if (teamsMap.has(opponentName)) {
+                const existing = teamsMap.get(opponentName);
+                // Merge players (avoid duplicates by number)
+                const existingNumbers = new Set(existing.players.map(p => p.number));
+                players.forEach(p => {
+                    if (!existingNumbers.has(p.number)) {
+                        existing.players.push(p);
+                    }
+                });
+            } else {
+                teamsMap.set(opponentName, {
+                    name: opponentName,
+                    players: players,
+                    gameDate: game.date || game.savedAt
+                });
+            }
+        }
+    });
+
+    return Array.from(teamsMap.values());
+}
+
+// Create team card for history teams (simpler, no delete button)
+function createHistoryTeamCard(team, index) {
+    const teamCard = document.createElement('div');
+    teamCard.style.cssText = 'border: 1px solid #ddd; border-radius: 5px; padding: 10px; margin-bottom: 10px; background-color: var(--bg-main);';
+
+    const gameDate = team.gameDate ? new Date(team.gameDate).toLocaleDateString('de-DE') : 'Unbekannt';
+
+    teamCard.innerHTML = `
+        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
+            <div style="flex: 1; min-width: 150px;">
+                <strong>📜 ${team.name}</strong><br>
+                <small style="color: #666;">${team.players.length} Spieler · Spiel vom ${gameDate}</small>
+            </div>
+            <div style="display: flex; gap: 5px; flex-wrap: wrap;">
+                <button class="load-history-team-btn" data-index="${index}" 
+                    style="background-color: #28a745; color: white; border: none; padding: 8px 12px; border-radius: 5px; cursor: pointer; font-size: 0.9rem;">
+                    Laden
+                </button>
+            </div>
+        </div>
+    `;
+
+    return teamCard;
 }
 
 // Create team card for list
