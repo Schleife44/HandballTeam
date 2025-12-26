@@ -1,6 +1,7 @@
 import { spielstand, speichereSpielstand } from './state.js';
 import { zeichneRosterListe } from './ui.js';
 import { berechneTore, berechneStatistiken, berechneGegnerStatistiken } from './stats.js';
+import { customAlert, customConfirm } from './customDialog.js';
 
 export function exportTeam() {
     const teamToggle = document.getElementById('teamToggle');
@@ -10,7 +11,7 @@ export function exportTeam() {
     const teamName = isOpponentMode ? 'Gegner' : 'Heim';
 
     if (teamToExport.length === 0) {
-        alert(`Es ist kein ${teamName}-Team zum Exportieren vorhanden.`);
+        customAlert(`Es ist kein ${teamName}-Team zum Exportieren vorhanden.`);
         return;
     }
 
@@ -29,7 +30,7 @@ export function handleFileImport(event) {
     if (!file) { return; }
 
     const reader = new FileReader();
-    reader.onload = function (e) {
+    reader.onload = async function (e) {
         try {
             const importiertesRoster = JSON.parse(e.target.result);
 
@@ -38,7 +39,7 @@ export function handleFileImport(event) {
                 const isOpponentMode = teamToggle && teamToggle.checked;
                 const teamName = isOpponentMode ? 'Gegner-Team' : 'Team';
 
-                if (confirm(`Möchtest du das bestehende ${teamName} wirklich überschreiben?`)) {
+                if (await customConfirm(`Möchtest du das bestehende ${teamName} wirklich überschreiben?`, "Team importieren?")) {
                     if (isOpponentMode) {
                         // Import as opponents - ensure correct format
                         const opponents = importiertesRoster.map(item => {
@@ -59,21 +60,21 @@ export function handleFileImport(event) {
                             }));
                             spielstand.roster.sort((a, b) => a.number - b.number);
                         } else {
-                            alert("Die Datei hat ein ungültiges Format.");
+                            customAlert("Die Datei hat ein ungültiges Format.");
                             return;
                         }
                     }
 
                     speichereSpielstand();
                     zeichneRosterListe(isOpponentMode);
-                    alert(`${teamName} erfolgreich importiert!`);
+                    customAlert(`${teamName} erfolgreich importiert!`);
                 }
             } else {
-                alert("Die Datei hat ein ungültiges Format.");
+                customAlert("Die Datei hat ein ungültiges Format.");
             }
         } catch (error) {
             console.error("Fehler beim Importieren der Datei:", error);
-            alert("Die Datei konnte nicht gelesen werden. Ist es eine gültige JSON-Datei?");
+            customAlert("Die Datei konnte nicht gelesen werden. Ist es eine gültige JSON-Datei?");
         }
     };
     reader.readAsText(file);
@@ -82,7 +83,7 @@ export function handleFileImport(event) {
 
 export function exportiereAlsTxt() {
     if (spielstand.gameLog.length === 0) {
-        alert("Das Protokoll ist leer. Es gibt nichts zu exportieren.");
+        customAlert("Das Protokoll ist leer. Es gibt nichts zu exportieren.");
         return;
     }
 
@@ -179,7 +180,7 @@ export function exportiereAlsTxt() {
 
 export function exportiereAlsCsv() {
     if (spielstand.gameLog.length === 0) {
-        alert("Keine Daten zum Exportieren.");
+        customAlert("Keine Daten zum Exportieren.");
         return;
     }
     let csvContent = "\uFEFF";
@@ -374,7 +375,7 @@ function drawFieldHeatmapToPdf(doc, x, y, width, height, logEntries, teamFilter)
 // Exportiert ein historisches Spiel als PDF
 export function exportiereHistorieAlsPdf(game) {
     if (!game || !game.gameLog || game.gameLog.length === 0) {
-        alert("Keine Daten zum Exportieren.");
+        customAlert("Keine Daten zum Exportieren.");
         return;
     }
 
@@ -603,7 +604,7 @@ export function exportiereHistorieAlsPdf(game) {
 
 export function exportiereAlsPdf() {
     if (spielstand.gameLog.length === 0) {
-        alert("Keine Daten zum Exportieren.");
+        customAlert("Keine Daten zum Exportieren.");
         return;
     }
 

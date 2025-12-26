@@ -56,6 +56,7 @@ import { handleSpielBeenden, renderHistoryList } from './historyView.js';
 import { renderHeatmap, setCurrentHeatmapTab, setCurrentHeatmapContext } from './heatmap.js';
 import { saveCurrentTeam, showLoadTeamModal, loadSavedTeam, deleteSavedTeam, viewTeam, updateTeam, deletePlayerFromSavedTeam, loadHistoryTeam } from './teamStorage.js';
 import { openSeasonOverview, closeSeasonOverview, showPlayerHeatmap, showTeamHeatmap } from './seasonView.js';
+import { customAlert } from './customDialog.js';
 
 // --- Register All Event Listeners ---
 export function registerEventListeners() {
@@ -226,7 +227,7 @@ export function registerEventListeners() {
                     renderHistoryList();
                 }
                 // Use alert for now (could be customAlert later)
-                alert(result.message);
+                customAlert(result.message);
                 importSpielInput.value = ''; // Reset input
             }
         });
@@ -568,13 +569,13 @@ export function registerEventListeners() {
             const name = quickPlayerName.value.trim();
 
             if (isNaN(number)) {
-                alert("Bitte gib eine gültige Nummer ein.");
+                customAlert("Bitte gib eine gültige Nummer ein.");
                 return;
             }
 
             const existingPlayer = spielstand.roster.find(p => p.number === number);
             if (existingPlayer) {
-                alert("Diese Nummer ist bereits vergeben.");
+                customAlert("Diese Nummer ist bereits vergeben.");
                 return;
             }
 
@@ -653,7 +654,7 @@ export function registerEventListeners() {
                     zeichneSpielerRaster();
                     addGegnerModal.classList.add('versteckt');
                 } else {
-                    alert('Dieser Gegner ist bereits in der Liste.');
+                    customAlert('Dieser Gegner ist bereits in der Liste.');
                 }
             }
         });

@@ -15,7 +15,7 @@ import {
 import { startTimer, stoppTimer, updateTimer } from './timer.js';
 import { formatiereZeit } from './utils.js';
 import { berechneStatistiken } from './stats.js';
-import { customConfirm } from './customDialog.js';
+import { customConfirm, customAlert } from './customDialog.js';
 
 let aktuellerSpielerIndex = null;
 export let aktuelleAktionTyp = '';
@@ -37,7 +37,7 @@ export function setSteuerungAktiv(aktiv) {
 
 export function switchToGame() {
     if (spielstand.roster.length === 0) {
-        alert("Bitte füge zuerst Spieler hinzu.");
+        customAlert("Bitte füge zuerst Spieler hinzu.");
         return;
     }
     spielstand.uiState = 'game';

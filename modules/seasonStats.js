@@ -163,9 +163,12 @@ export function aggregatePlayerStats() {
         // Add 7m goals to total goals (berechneTore only counts field goals "Tor")
         player.tore = player.tore + (player.siebenMeterTore || 0);
 
-        const totalSchuesse = player.tore + player.fehlwurf;
-        player.wurfQuote = totalSchuesse > 0
-            ? Math.round((player.tore / totalSchuesse) * 100) + '%'
+        // Calculate Field Quote Only (Exclude 7m)
+        const fieldGoals = player.tore - (player.siebenMeterTore || 0);
+        const fieldAttempts = fieldGoals + player.fehlwurf;
+
+        player.wurfQuote = fieldAttempts > 0
+            ? Math.round((fieldGoals / fieldAttempts) * 100) + '%'
             : '-';
         return player;
     });

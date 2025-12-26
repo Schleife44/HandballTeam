@@ -129,12 +129,14 @@ export function renderHomeStatsInHistory(tbody, statsData, gameLog) {
     const toreMap = berechneTore(gameLog);
 
     statsData.forEach(stats => {
-        const goals = toreMap.get(stats.number) || 0;
+        const fieldGoals = toreMap.get(stats.number) || 0;
         const sevenMGoals = stats.siebenMeterTore || 0;
-        const feldtore = goals - sevenMGoals;
+        const goals = fieldGoals + sevenMGoals; // Total Goals
+        const feldtore = fieldGoals;
 
-        const totalAttempts = goals + stats.fehlwurf;
-        const quote = totalAttempts > 0 ? Math.round((goals / totalAttempts) * 100) + '%' : '-';
+        // Quote = Field Goals / Field Attempts (Field Goals + Field Misses)
+        const fieldAttempts = fieldGoals + stats.fehlwurf;
+        const quote = fieldAttempts > 0 ? Math.round((fieldGoals / fieldAttempts) * 100) + '%' : '-';
         const sevenMDisplay = (stats.siebenMeterVersuche > 0) ? `${stats.siebenMeterTore}/${stats.siebenMeterVersuche}` : "0/0";
 
         // Check for heatmap data
@@ -153,9 +155,9 @@ export function renderHomeStatsInHistory(tbody, statsData, gameLog) {
             <td>${goals}</td>
             <td>${feldtore}</td>
             <td>${sevenMDisplay}</td>
+            <td>${stats.fehlwurf}</td>
             <td>${quote}</td>
             <td>${stats.guteAktion}</td>
-            <td>${stats.fehlwurf}</td>
             <td>${stats.techFehler}</td>
             <td>${stats.gelb}</td>
             <td>${stats.zweiMinuten}</td>
@@ -184,8 +186,8 @@ export function renderOpponentStatsInHistory(tbody, statsData, gameLog) {
         const sevenMGoals = stats.siebenMeterTore || 0;
         const feldtore = goals - sevenMGoals;
 
-        const totalAttempts = goals + stats.fehlwurf;
-        const quote = totalAttempts > 0 ? Math.round((goals / totalAttempts) * 100) + '%' : '-';
+        const fieldAttempts = feldtore + stats.fehlwurf;
+        const quote = fieldAttempts > 0 ? Math.round((feldtore / fieldAttempts) * 100) + '%' : '-';
         const sevenMDisplay = (stats.siebenMeterVersuche > 0) ? `${stats.siebenMeterTore}/${stats.siebenMeterVersuche}` : "0/0";
 
         // Filter log for this opponent
@@ -222,11 +224,11 @@ export function renderOpponentStatsInHistory(tbody, statsData, gameLog) {
             <td>${goals}</td>
             <td>${feldtore}</td>
             <td>${sevenMDisplay}</td>
+            <td>${stats.fehlwurf}</td>
             <td>${quote}</td>
             <td>${stats.guteAktion}</td>
-            <td>${stats.fehlwurf}</td>
             <td>${stats.techFehler}</td>
-            <td>${stats.techFehler}</td>
+            <td>${stats.gelb}</td>
             <td>${stats.zweiMinuten}</td>
             <td>${stats.rot}</td>
             <td>${buttonsHtml}</td>

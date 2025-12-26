@@ -129,7 +129,7 @@ export function berechneGegnerStatistiken(overrideGameLog) {
             stats.techFehler++;
         } else if (eintrag.action === "Gegner Gelb") {
             stats.gelb++;
-        } else if (eintrag.action === "Gegner 2min") {
+        } else if (eintrag.action === "Gegner 2 min") {
             stats.zweiMinuten++;
         } else if (eintrag.action === "Gegner Rot") {
             stats.rot++;

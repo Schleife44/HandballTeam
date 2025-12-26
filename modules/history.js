@@ -1,3 +1,5 @@
+import { customAlert } from './customDialog.js';
+
 const HISTORY_KEY = 'handball_history';
 
 /**
@@ -62,7 +64,7 @@ export function loescheSpielAusHistorie(id) {
 export function exportHistorie() {
     const history = getHistorie();
     if (history.length === 0) {
-        alert("Keine Historie vorhanden.");
+        customAlert("Keine Historie vorhanden.");
         return;
     }
     const blob = new Blob([JSON.stringify(history, null, 2)], { type: 'application/json' });
