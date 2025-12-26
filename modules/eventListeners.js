@@ -5,6 +5,9 @@ import { spielstand, speichereSpielstand } from './state.js';
 import {
     addPlayerForm, startGameButton, cancelEditButton, exportTeamButton,
     importTeamButton, importFileInput, backToRosterButton, gamePhaseButton,
+    deleteTeamButton, teamToggle, teamHeaderTitle,
+    rosterTeamNameHeim, rosterTeamNameGegner,
+    seasonOverviewButton, seasonOverviewModal, seasonSummary, seasonStatsContainer, seasonOverviewClose,
     pauseButton, zurueckButton, vorButton, neuesSpielButton,
     heimScoreUp, heimScoreDown, gegnerScoreUp, gegnerScoreDown,
     aktionAbbrechen, guteAktionModalButton, aktionVorauswahlAbbrechen,
@@ -18,7 +21,10 @@ import {
     wurfbilderStatsModal, neueGegnerNummer, sevenMeterOutcomeModal,
     rosterBereich, spielBereich, globalAktionen, scoreWrapper, timerAnzeige,
     statistikWrapper, rosterListe, heimSpielerRaster, gegnerSpielerRaster, protokollAusgabe, bekannteGegnerListe,
-    wurfbildUmgebung, addGegnerModal, addGegnerNummerInput, addGegnerSpeichern, addGegnerAbbrechen,
+    wurfbildUmgebung, addGegnerModal, addGegnerNummerInput, addGegnerNameInput, addGegnerSpeichern, addGegnerAbbrechen, neueGegnerName,
+    quickAddPlayerModal, quickPlayerNumber, quickPlayerName, quickAddPlayerSave, quickAddPlayerCancel,
+    saveTeamButton, loadTeamButton, loadTeamModal, savedTeamsList, loadTeamCancel,
+    viewTeamModal, viewTeamTitle, editTeamNameInput, viewTeamPlayersList, saveTeamChanges, viewTeamClose,
     toggleWurfpositionHeim, toggleWurfpositionGegner, wurfpositionModal, wurfpositionFeld, wurfpositionUeberspringen,
     showHeatmapButton, heatmapModal, heatmapSvg, closeHeatmapModal,
     heatmapHeimFilter, heatmapGegnerFilter, heatmapToreFilter, heatmapMissedFilter,
@@ -30,7 +36,7 @@ import {
     histContentStats, histContentHeatmap, exportHistorieButton,
     importSpielButton, importSpielInput
 } from './dom.js';
-import { addPlayer, schliesseEditModus, oeffneEditModus, deletePlayer } from './roster.js';
+import { addPlayer, schliesseEditModus, oeffneEditModus, deletePlayer, deleteEntireTeam, deleteOpponent, oeffneOpponentEditModus } from './roster.js';
 import {
     switchToGame, switchToRoster, handleGamePhaseClick, handleRealPauseClick,
     logGlobalAktion, logScoreKorrektur, schliesseAktionsMenue, logAktion,
@@ -42,11 +48,14 @@ import { handleZeitSprung } from './timer.js';
 import { exportTeam, handleFileImport, exportiereAlsPdf } from './export.js';
 import {
     applyTheme, applyViewSettings, updateScoreDisplay, updateTorTracker,
-    schliesseWurfbildModal, zeigeWurfstatistik, zeichneSpielerRaster, oeffneWurfbildModal
+    schliesseWurfbildModal, zeigeWurfstatistik, zeichneSpielerRaster, oeffneWurfbildModal,
+    zeichneRosterListe
 } from './ui.js';
 import { exportHistorie, importiereSpiel } from './history.js';
 import { handleSpielBeenden, renderHistoryList } from './historyView.js';
 import { renderHeatmap, setCurrentHeatmapTab, setCurrentHeatmapContext } from './heatmap.js';
+import { saveCurrentTeam, showLoadTeamModal, loadSavedTeam, deleteSavedTeam, viewTeam, updateTeam, deletePlayerFromSavedTeam } from './teamStorage.js';
+import { openSeasonOverview, closeSeasonOverview, showPlayerHeatmap } from './seasonView.js';
 
 // --- Register All Event Listeners ---
 export function registerEventListeners() {
@@ -58,18 +67,142 @@ export function registerEventListeners() {
     importTeamButton.addEventListener('click', () => importFileInput.click());
     importFileInput.addEventListener('change', handleFileImport);
 
+    deleteTeamButton.addEventListener('click', deleteEntireTeam);
+
+    // Team Namen in Roster
+    if (rosterTeamNameHeim) {
+        rosterTeamNameHeim.addEventListener('input', (e) => {
+            if (!spielstand.settings) spielstand.settings = {};
+            spielstand.settings.teamNameHeim = e.target.value || 'Heim';
+            speichereSpielstand();
+        });
+    }
+
+    if (rosterTeamNameGegner) {
+        rosterTeamNameGegner.addEventListener('input', (e) => {
+            if (!spielstand.settings) spielstand.settings = {};
+            spielstand.settings.teamNameGegner = e.target.value || 'Gegner';
+            speichereSpielstand();
+        });
+    }
+
+    // Save/Load Team buttons
+    if (saveTeamButton) {
+        saveTeamButton.addEventListener('click', saveCurrentTeam);
+    }
+
+    if (loadTeamButton) {
+        loadTeamButton.addEventListener('click', showLoadTeamModal);
+    }
+
+    if (loadTeamCancel) {
+        loadTeamCancel.addEventListener('click', () => {
+            loadTeamModal.classList.add('versteckt');
+        });
+    }
+
+    // Event delegation for dynamically created load/delete buttons
+    if (savedTeamsList) {
+        savedTeamsList.addEventListener('click', (e) => {
+            if (e.target.classList.contains('load-team-btn')) {
+                const teamKey = e.target.dataset.key;
+                const index = parseInt(e.target.dataset.index);
+                loadSavedTeam(teamKey, index);
+            } else if (e.target.classList.contains('delete-saved-team-btn')) {
+                const teamKey = e.target.dataset.key;
+                const index = parseInt(e.target.dataset.index);
+                deleteSavedTeam(teamKey, index);
+            } else if (e.target.classList.contains('view-team-btn')) {
+                const teamKey = e.target.dataset.key;
+                const index = parseInt(e.target.dataset.index);
+                viewTeam(teamKey, index);
+            }
+        });
+    }
+
+    // View Team Modal
+    if (saveTeamChanges) {
+        saveTeamChanges.addEventListener('click', updateTeam);
+    }
+
+    if (viewTeamClose) {
+        viewTeamClose.addEventListener('click', () => {
+            viewTeamModal.classList.add('versteckt');
+            showLoadTeamModal(); // Return to team list
+        });
+    }
+
+    if (viewTeamPlayersList) {
+        viewTeamPlayersList.addEventListener('click', (e) => {
+            if (e.target.classList.contains('delete-team-player-btn')) {
+                const playerIndex = parseInt(e.target.dataset.playerIndex);
+                deletePlayerFromSavedTeam(playerIndex);
+            }
+        });
+    }
+
+    if (viewTeamPlayersList) {
+        viewTeamPlayersList.addEventListener('click', (e) => {
+            if (e.target.classList.contains('show-heatmap-btn')) {
+                const playerIndex = parseInt(e.target.dataset.playerIndex);
+                const mode = e.target.dataset.mode || 'field';
+                showPlayerHeatmap(playerIndex, mode);
+            }
+        });
+    }
+
+    // Team Toggle Switch
+    if (teamToggle) {
+        teamToggle.addEventListener('change', (e) => {
+            const showOpponents = e.target.checked;
+            teamHeaderTitle.textContent = showOpponents ? 'Gegner Team' : 'Heim Team';
+            zeichneRosterListe(showOpponents);
+        });
+    }
+
     // === History Buttons ===
     if (historyButton) {
         historyButton.addEventListener('click', () => {
+            // Schließe alle anderen Bereiche und Modals
             rosterBereich.classList.add('versteckt');
+            spielBereich.classList.add('versteckt');
+            settingsModal.classList.add('versteckt');
+            // Zeige Historie
             historieBereich.classList.remove('versteckt');
             renderHistoryList();
+        });
+    }
+
+    // === Season Overview ===
+    if (seasonOverviewButton) {
+        seasonOverviewButton.addEventListener('click', openSeasonOverview);
+    }
+
+    if (seasonOverviewClose) {
+        seasonOverviewClose.addEventListener('click', closeSeasonOverview);
+    }
+
+    // Event delegation for heatmap buttons in season view
+    if (seasonStatsContainer) {
+        seasonStatsContainer.addEventListener('click', (e) => {
+            if (e.target.classList.contains('show-heatmap-btn')) {
+                const playerIndex = parseInt(e.target.dataset.playerIndex);
+                const mode = e.target.dataset.mode || 'field';
+                showPlayerHeatmap(playerIndex, mode);
+            }
         });
     }
     if (backToStartFromHistory) {
         backToStartFromHistory.addEventListener('click', () => {
             historieBereich.classList.add('versteckt');
-            rosterBereich.classList.remove('versteckt');
+            // Prüfe ob ein Spiel aktiv ist
+            if (spielstand.uiState === 'game') {
+                // Zurück zur Spielansicht
+                spielBereich.classList.remove('versteckt');
+            } else {
+                // Zurück zur Roster-Ansicht
+                rosterBereich.classList.remove('versteckt');
+            }
         });
     }
     if (exportHistorieButton) {
@@ -365,7 +498,8 @@ export function registerEventListeners() {
     if (gegnerNummerSpeichern) {
         gegnerNummerSpeichern.addEventListener('click', () => {
             const val = neueGegnerNummer.value;
-            if (val) speichereGegnerNummer(val);
+            const name = neueGegnerName.value.trim();
+            if (val) speichereGegnerNummer(val, name);
         });
     }
     if (gegnerNummerUeberspringen) {
@@ -384,10 +518,22 @@ export function registerEventListeners() {
     rosterListe.addEventListener('click', (e) => {
         if (e.target.classList.contains('edit-player')) {
             const index = e.target.dataset.index;
-            oeffneEditModus(index);
+            const opponentIndex = e.target.dataset.opponentIndex;
+
+            if (opponentIndex !== undefined) {
+                oeffneOpponentEditModus(opponentIndex);
+            } else if (index !== undefined) {
+                oeffneEditModus(index);
+            }
         } else if (e.target.classList.contains('delete-player')) {
             const index = e.target.dataset.index;
-            deletePlayer(index);
+            const opponentIndex = e.target.dataset.opponentIndex;
+
+            if (opponentIndex !== undefined) {
+                deleteOpponent(opponentIndex);
+            } else if (index !== undefined) {
+                deletePlayer(index);
+            }
         }
     });
 
@@ -395,7 +541,11 @@ export function registerEventListeners() {
         const btn = e.target.closest('.spieler-button');
         if (btn) {
             if (btn.id === 'addHeimSpielerButton') {
-                switchToRoster();
+                // Open quick add modal instead of switching to roster
+                quickPlayerNumber.value = '';
+                quickPlayerName.value = '';
+                quickAddPlayerModal.classList.remove('versteckt');
+                quickPlayerNumber.focus();
             } else {
                 const index = btn.dataset.index;
                 if (index !== undefined) {
@@ -404,6 +554,53 @@ export function registerEventListeners() {
             }
         }
     });
+
+    // Quick Add Player Modal handlers
+    if (quickAddPlayerSave) {
+        quickAddPlayerSave.addEventListener('click', async () => {
+            const number = parseInt(quickPlayerNumber.value, 10);
+            const name = quickPlayerName.value.trim();
+
+            if (isNaN(number)) {
+                alert("Bitte gib eine gültige Nummer ein.");
+                return;
+            }
+
+            const existingPlayer = spielstand.roster.find(p => p.number === number);
+            if (existingPlayer) {
+                alert("Diese Nummer ist bereits vergeben.");
+                return;
+            }
+
+            spielstand.roster.push({ number, name: name || '' });
+            spielstand.roster.sort((a, b) => a.number - b.number);
+            speichereSpielstand();
+            zeichneSpielerRaster();
+            quickAddPlayerModal.classList.add('versteckt');
+        });
+    }
+
+    if (quickAddPlayerCancel) {
+        quickAddPlayerCancel.addEventListener('click', () => {
+            quickAddPlayerModal.classList.add('versteckt');
+        });
+    }
+
+    if (quickPlayerNumber) {
+        quickPlayerNumber.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                quickPlayerName.focus();
+            }
+        });
+    }
+
+    if (quickPlayerName) {
+        quickPlayerName.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                quickAddPlayerSave.click();
+            }
+        });
+    }
 
     gegnerSpielerRaster.addEventListener('click', (e) => {
         const btn = e.target.closest('.spieler-button');
@@ -439,11 +636,13 @@ export function registerEventListeners() {
     if (addGegnerSpeichern) {
         addGegnerSpeichern.addEventListener('click', () => {
             const nummer = addGegnerNummerInput.value;
+            const name = addGegnerNameInput.value.trim();
             if (nummer && !isNaN(nummer)) {
                 const nummerInt = parseInt(nummer);
-                if (!spielstand.knownOpponents.includes(nummerInt)) {
-                    spielstand.knownOpponents.push(nummerInt);
-                    spielstand.knownOpponents.sort((a, b) => a - b);
+                // Prüfe, ob Gegner bereits existiert
+                if (!spielstand.knownOpponents.find(opp => opp.number === nummerInt)) {
+                    spielstand.knownOpponents.push({ number: nummerInt, name: name || '' });
+                    spielstand.knownOpponents.sort((a, b) => a.number - b.number);
                     speichereSpielstand();
                     zeichneSpielerRaster();
                     addGegnerModal.classList.add('versteckt');

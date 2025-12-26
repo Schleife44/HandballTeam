@@ -117,10 +117,13 @@ export function zeichneSpielerRaster() {
     // Populate home players
     spielstand.roster.forEach((player, index) => {
         const btn = document.createElement('button');
-        btn.innerHTML = `
+        const displayName = player.name ? `
             <span class="spieler-nummer">#${player.number}</span>
             <span class="spieler-name">${player.name}</span>
+        ` : `
+            <span class="spieler-nummer">#${player.number}</span>
         `;
+        btn.innerHTML = displayName;
         btn.className = 'spieler-button';
         btn.dataset.index = index; // For event delegation
         heimSpielerRaster.appendChild(btn);
@@ -128,13 +131,17 @@ export function zeichneSpielerRaster() {
 
     // Populate opponent players
     if (spielstand.knownOpponents && spielstand.knownOpponents.length > 0) {
-        spielstand.knownOpponents.forEach((opponentNumber) => {
+        spielstand.knownOpponents.forEach((opponent) => {
             const btn = document.createElement('button');
-            btn.innerHTML = `
-                <span class="spieler-nummer">#${opponentNumber}</span>
+            const displayName = opponent.name ? `
+                <span class="spieler-nummer">#${opponent.number}</span>
+                <span class="spieler-name">${opponent.name}</span>
+            ` : `
+                <span class="spieler-nummer">#${opponent.number}</span>
             `;
+            btn.innerHTML = displayName;
             btn.className = 'spieler-button gegner-button';
-            btn.dataset.gegnerNummer = opponentNumber;
+            btn.dataset.gegnerNummer = opponent.number;
             gegnerSpielerRaster.appendChild(btn);
         });
     }
@@ -205,7 +212,8 @@ export function updateTorTracker() {
         torTabelleBody.innerHTML = '';
         trackerData.forEach(data => {
             const tr = document.createElement('tr');
-            tr.innerHTML = `<td>#${data.number} ${data.name}</td><td>${data.tore}</td>`;
+            const displayName = data.name ? `#${data.number} ${data.name}` : `#${data.number}`;
+            tr.innerHTML = `<td>${displayName}</td><td>${data.tore}</td>`;
             torTabelleBody.appendChild(tr);
         });
     }
@@ -247,8 +255,9 @@ export function zeichneStatistikTabelle(statsData) {
 
     statsData.forEach(stats => {
         const tr = document.createElement('tr');
+        const displayName = stats.name ? `#${stats.number} ${stats.name}` : `#${stats.number}`;
         tr.innerHTML = `
-            <td>#${stats.number} ${stats.name}</td>
+            <td>${displayName}</td>
             <td>${stats.siebenMeter}</td>
             <td>${stats.guteAktion}</td>
             <td>${stats.fehlwurf}</td>
@@ -261,36 +270,74 @@ export function zeichneStatistikTabelle(statsData) {
     });
 }
 
-export function zeichneRosterListe() {
+export function zeichneRosterListe(showOpponents = false) {
     rosterListe.innerHTML = '';
-    if (spielstand.roster.length === 0) {
-        rosterListe.innerHTML = '<li>Noch keine Spieler hinzugefügt.</li>';
-        return;
+
+    if (showOpponents) {
+        // Zeige Gegner-Team
+        if (spielstand.knownOpponents.length === 0) {
+            rosterListe.innerHTML = '<li>Noch keine Gegner hinzugefügt.</li>';
+            return;
+        }
+
+        spielstand.knownOpponents.forEach((opponent, index) => {
+            const li = document.createElement('li');
+            const text = document.createElement('span');
+            const displayText = opponent.name ? `#${opponent.number} - ${opponent.name}` : `#${opponent.number}`;
+            text.textContent = displayText;
+            li.appendChild(text);
+
+            const buttonWrapper = document.createElement('div');
+            buttonWrapper.className = 'roster-button-wrapper';
+
+            const editBtn = document.createElement('button');
+            editBtn.textContent = 'Bearbeiten';
+            editBtn.className = 'edit-player';
+            editBtn.dataset.opponentIndex = index;
+            buttonWrapper.appendChild(editBtn);
+
+            const deleteBtn = document.createElement('button');
+            deleteBtn.textContent = 'Löschen';
+            deleteBtn.className = 'delete-player';
+            deleteBtn.dataset.opponentIndex = index;
+            buttonWrapper.appendChild(deleteBtn);
+
+            li.appendChild(buttonWrapper);
+            rosterListe.appendChild(li);
+        });
+    } else {
+        // Zeige Heim-Team
+        if (spielstand.roster.length === 0) {
+            rosterListe.innerHTML = '<li>Noch keine Spieler hinzugefügt.</li>';
+            return;
+        }
+
+        spielstand.roster.forEach((player, index) => {
+            const li = document.createElement('li');
+            const text = document.createElement('span');
+            const displayText = player.name ? `#${player.number} - ${player.name}` : `#${player.number}`;
+            text.textContent = displayText;
+            li.appendChild(text);
+
+            const buttonWrapper = document.createElement('div');
+            buttonWrapper.className = 'roster-button-wrapper';
+
+            const editBtn = document.createElement('button');
+            editBtn.textContent = 'Bearbeiten';
+            editBtn.className = 'edit-player';
+            editBtn.dataset.index = index;
+            buttonWrapper.appendChild(editBtn);
+
+            const deleteBtn = document.createElement('button');
+            deleteBtn.textContent = 'Löschen';
+            deleteBtn.className = 'delete-player';
+            deleteBtn.dataset.index = index;
+            buttonWrapper.appendChild(deleteBtn);
+
+            li.appendChild(buttonWrapper);
+            rosterListe.appendChild(li);
+        });
     }
-
-    spielstand.roster.forEach((player, index) => {
-        const li = document.createElement('li');
-        const text = document.createElement('span');
-        text.textContent = `#${player.number} - ${player.name}`;
-        li.appendChild(text);
-
-        const buttonWrapper = document.createElement('div');
-
-        const editBtn = document.createElement('button');
-        editBtn.textContent = 'Bearbeiten';
-        editBtn.className = 'edit-player';
-        editBtn.dataset.index = index; // For event delegation
-        buttonWrapper.appendChild(editBtn);
-
-        const deleteBtn = document.createElement('button');
-        deleteBtn.textContent = 'Löschen';
-        deleteBtn.className = 'delete-player';
-        deleteBtn.dataset.index = index; // For event delegation
-        buttonWrapper.appendChild(deleteBtn);
-
-        li.appendChild(buttonWrapper);
-        rosterListe.appendChild(li);
-    });
 }
 
 export function oeffneWurfbildModal(modus) {
@@ -499,20 +546,22 @@ export function oeffneGegnerNummerModal(type, currentGegnerActionTypeSetter) {
 
 export function renderGegnerButtons() {
     bekannteGegnerListe.innerHTML = '';
-    const sortierteNummern = spielstand.knownOpponents.sort((a, b) => a - b);
+    const sortierteGegner = spielstand.knownOpponents.sort((a, b) => a.number - b.number);
 
-    sortierteNummern.forEach(nummer => {
+    sortierteGegner.forEach(opponent => {
         const btn = document.createElement('button');
-        btn.textContent = nummer;
+        const displayText = opponent.name ? `#${opponent.number} - ${opponent.name}` : `#${opponent.number}`;
+        btn.textContent = displayText;
         btn.className = 'gegner-num-btn';
-        btn.dataset.nummer = nummer; // For event delegation
+        btn.dataset.nummer = opponent.number; // For event delegation
         bekannteGegnerListe.appendChild(btn);
     });
 }
 
 export function oeffneAktionsMenueUI(index, playerOverride = null) {
     const player = playerOverride || spielstand.roster[index];
-    aktionsMenueTitel.textContent = `Aktion für #${player.number} (${player.name})`;
+    const displayName = player.name ? `#${player.number} (${player.name})` : `#${player.number}`;
+    aktionsMenueTitel.textContent = `Aktion für ${displayName}`;
     aktionsMenue.classList.remove('versteckt');
 }
 

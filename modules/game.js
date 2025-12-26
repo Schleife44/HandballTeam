@@ -79,7 +79,28 @@ export function switchToRoster() {
     statistikSidebar.classList.add('versteckt');
 
     stoppTimer(); // Stelle sicher, dass Timer stoppt
-    zeichneRosterListe();
+
+    // Sync toggle state with display
+    const teamToggle = document.getElementById('teamToggle');
+    const teamHeaderTitle = document.getElementById('teamHeaderTitle');
+    const isOpponentMode = teamToggle && teamToggle.checked;
+
+    if (teamHeaderTitle) {
+        teamHeaderTitle.textContent = isOpponentMode ? 'Gegner Team' : 'Heim Team';
+    }
+
+    // Populate team name fields
+    const rosterTeamNameHeim = document.getElementById('rosterTeamNameHeim');
+    const rosterTeamNameGegner = document.getElementById('rosterTeamNameGegner');
+
+    if (rosterTeamNameHeim) {
+        rosterTeamNameHeim.value = spielstand.settings?.teamNameHeim || 'Heim';
+    }
+    if (rosterTeamNameGegner) {
+        rosterTeamNameGegner.value = spielstand.settings?.teamNameGegner || 'Gegner';
+    }
+
+    zeichneRosterListe(isOpponentMode);
 }
 
 export function handleGamePhaseClick() {
@@ -415,7 +436,7 @@ export function oeffneGegnerNummerModal(type) {
     uiOeffneGegnerNummerModal(type);
 }
 
-export function speichereGegnerNummer(nummer) {
+export function speichereGegnerNummer(nummer, name = '') {
     nummer = parseInt(nummer);
     const aktuelleZeit = timerAnzeige.textContent;
 
@@ -454,11 +475,14 @@ export function speichereGegnerNummer(nummer) {
         gegnerNummerModal.classList.add('versteckt');
     }
 
-    if (nummer && !spielstand.knownOpponents.includes(nummer)) {
-        spielstand.knownOpponents.push(nummer);
+    // Füge Gegner als Objekt hinzu, falls noch nicht vorhanden
+    if (nummer && !spielstand.knownOpponents.find(opp => opp.number === nummer)) {
+        spielstand.knownOpponents.push({ number: nummer, name: name || '' });
+        spielstand.knownOpponents.sort((a, b) => a.number - b.number);
     }
     speichereSpielstand();
     updateProtokollAnzeige();
+    zeichneSpielerRaster(); // Aktualisiere das Raster, damit neuer Gegner erscheint
 }
 
 export function handle7mOutcome(outcome) {

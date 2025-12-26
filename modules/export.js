@@ -3,16 +3,22 @@ import { zeichneRosterListe } from './ui.js';
 import { berechneTore, berechneStatistiken, berechneGegnerStatistiken } from './stats.js';
 
 export function exportTeam() {
-    if (spielstand.roster.length === 0) {
-        alert("Es ist kein Team zum Exportieren vorhanden.");
+    const teamToggle = document.getElementById('teamToggle');
+    const isOpponentMode = teamToggle && teamToggle.checked;
+
+    const teamToExport = isOpponentMode ? spielstand.knownOpponents : spielstand.roster;
+    const teamName = isOpponentMode ? 'Gegner' : 'Heim';
+
+    if (teamToExport.length === 0) {
+        alert(`Es ist kein ${teamName}-Team zum Exportieren vorhanden.`);
         return;
     }
 
-    const teamDaten = JSON.stringify(spielstand.roster, null, 2);
+    const teamDaten = JSON.stringify(teamToExport, null, 2);
     const blob = new Blob([teamDaten], { type: 'application/json' });
     const a = document.createElement('a');
     a.href = URL.createObjectURL(blob);
-    a.download = 'handball_team.json';
+    a.download = isOpponentMode ? 'handball_gegner_team.json' : 'handball_team.json';
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
@@ -27,13 +33,40 @@ export function handleFileImport(event) {
         try {
             const importiertesRoster = JSON.parse(e.target.result);
 
-            if (Array.isArray(importiertesRoster) && importiertesRoster.every(p => p.hasOwnProperty('name') && p.hasOwnProperty('number'))) {
-                if (confirm("Möchtest du das bestehende Team wirklich überschreiben?")) {
-                    spielstand.roster = importiertesRoster;
-                    spielstand.roster.sort((a, b) => a.number - b.number);
+            if (Array.isArray(importiertesRoster)) {
+                const teamToggle = document.getElementById('teamToggle');
+                const isOpponentMode = teamToggle && teamToggle.checked;
+                const teamName = isOpponentMode ? 'Gegner-Team' : 'Team';
+
+                if (confirm(`Möchtest du das bestehende ${teamName} wirklich überschreiben?`)) {
+                    if (isOpponentMode) {
+                        // Import as opponents - ensure correct format
+                        const opponents = importiertesRoster.map(item => {
+                            if (item.hasOwnProperty('number')) {
+                                return { number: item.number, name: item.name || '' };
+                            }
+                            return null;
+                        }).filter(Boolean);
+
+                        spielstand.knownOpponents = opponents;
+                        spielstand.knownOpponents.sort((a, b) => a.number - b.number);
+                    } else {
+                        // Import as home team
+                        if (importiertesRoster.every(p => p.hasOwnProperty('number'))) {
+                            spielstand.roster = importiertesRoster.map(p => ({
+                                name: p.name || '',
+                                number: p.number
+                            }));
+                            spielstand.roster.sort((a, b) => a.number - b.number);
+                        } else {
+                            alert("Die Datei hat ein ungültiges Format.");
+                            return;
+                        }
+                    }
+
                     speichereSpielstand();
-                    zeichneRosterListe();
-                    alert("Team erfolgreich importiert!");
+                    zeichneRosterListe(isOpponentMode);
+                    alert(`${teamName} erfolgreich importiert!`);
                 }
             } else {
                 alert("Die Datei hat ein ungültiges Format.");

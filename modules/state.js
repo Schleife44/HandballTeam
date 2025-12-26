@@ -4,7 +4,7 @@ export const SPEICHER_KEY = 'handballTeamState';
 
 export let spielstand = {
     uiState: 'setup', // 'setup' oder 'game'
-    roster: [], // { name: 'Anna', number: 7 }
+    roster: [], // { name: 'Anna', number: 7 } - Name ist optional
     score: { heim: 0, gegner: 0 },
     gameLog: [],
     timer: {
@@ -26,7 +26,7 @@ export let spielstand = {
         teamNameGegner: 'Gegner',
         isAuswaertsspiel: false
     },
-    knownOpponents: []
+    knownOpponents: [] // { number: 7, name: 'Max' } - Name ist optional
 };
 
 export function speichereSpielstand() {
@@ -61,6 +61,14 @@ export function ladeSpielstandDaten() {
         if (typeof spielstand.settings.isAuswaertsspiel === 'undefined') spielstand.settings.isAuswaertsspiel = false;
 
         if (!spielstand.knownOpponents) spielstand.knownOpponents = [];
+
+        // Migration: Konvertiere alte Gegner-Nummern zu Objekt-Format
+        if (spielstand.knownOpponents.length > 0 && typeof spielstand.knownOpponents[0] === 'number') {
+            spielstand.knownOpponents = spielstand.knownOpponents.map(num => ({
+                number: num,
+                name: ''
+            }));
+        }
 
         return true; // Erfolgreich geladen
     } catch (e) {
