@@ -1,0 +1,1174 @@
+/* --- CSS VARIABLEN (THEME) --- */
+:root {
+    --bg-body: #f4f4f4;
+    --text-main: #333333;
+    --bg-container: #ffffff;
+    --border-color: #eeeeee;
+    --border-darker: #cccccc;
+    --input-bg: #ffffff;
+
+    /* Spezifische Bereiche */
+    --table-header-bg: #f9f9f9;
+    --btn-disabled-bg: #c9c8c8;
+    --mini-tor-bg: #f9f9f9;
+    --mini-tor-border: #333333;
+    --modal-overlay: rgba(0, 0, 0, 0.7);
+
+    /* Button Farben */
+    --btn-primary: #007bff;
+    --btn-success: #28a745;
+    --btn-danger: #dc3545;
+    --btn-warning: #ffc107;
+    --btn-info: #17a2b8;
+    --btn-purple: #6f42c1;
+    --btn-grey: #6c757d;
+    --btn-orange: #fd7e14;
+    --btn-indigo: #6610f2;
+}
+
+/* --- DARK MODE OVERRIDES --- */
+body.dark-mode {
+    --bg-body: #121212;
+    --text-main: #e0e0e0;
+    --bg-container: #1e1e1e;
+    --border-color: #333333;
+    --border-darker: #555555;
+    --input-bg: #2c2c2c;
+
+    --table-header-bg: #2c2c2c;
+    --btn-disabled-bg: #444444;
+    --mini-tor-bg: #2c2c2c;
+    --mini-tor-border: #888888;
+    --modal-overlay: rgba(0, 0, 0, 0.85);
+}
+
+/* Basis-Stile */
+body {
+    font-family: Arial, sans-serif;
+    text-align: center;
+    background-color: var(--bg-body);
+    color: var(--text-main);
+    padding: 20px;
+    margin: 0;
+    transition: background-color 0.3s, color 0.3s;
+}
+
+button {
+    font-size: 1rem;
+    padding: 10px 20px;
+    margin: 5px;
+    cursor: pointer;
+    border: none;
+    border-radius: 8px;
+    color: white;
+    transition: filter 0.3s;
+    background-color: #007bff;
+    /* Prevent text overflow */
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    max-width: 100%;
+    box-sizing: border-box;
+}
+
+button:hover {
+    filter: brightness(85%);
+}
+
+button:disabled {
+    background-color: var(--btn-disabled-bg) !important;
+    cursor: not-allowed;
+    opacity: 0.7;
+    color: #888;
+}
+
+.versteckt {
+    display: none !important;
+}
+
+input[type="text"],
+input[type="number"] {
+    font-size: 1rem;
+    padding: 10px;
+    margin: 5px;
+    border: 1px solid var(--border-darker);
+    border-radius: 5px;
+    background-color: var(--input-bg);
+    color: var(--text-main);
+}
+
+.cta-button {
+    background-color: var(--btn-success);
+    font-size: 1.2rem;
+    padding: 15px 30px;
+    margin-top: 20px;
+}
+
+/* 1. Roster-Bereich */
+#rosterBereich {
+    max-width: 600px;
+    margin: auto;
+    background: var(--bg-container);
+    padding: 20px;
+    border-radius: 8px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+}
+
+#addPlayerForm {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 20px;
+}
+
+#cancelEditButton {
+    background-color: var(--btn-grey);
+}
+
+#teamVerwaltung {
+    margin: 20px 0;
+    padding: 10px;
+    border-top: 1px solid var(--border-color);
+    border-bottom: 1px solid var(--border-color);
+}
+
+.team-manage-btn {
+    font-size: 0.9rem;
+    padding: 8px 15px;
+}
+
+#exportTeamButton {
+    background-color: var(--btn-info);
+}
+
+#importTeamButton {
+    background-color: var(--btn-purple);
+}
+
+#rosterListe {
+    list-style: none;
+    padding: 0;
+    text-align: left;
+}
+
+#rosterListe li {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px;
+    border-bottom: 1px solid var(--border-color);
+    font-size: 1.1rem;
+}
+
+.roster-button-wrapper {
+    display: flex;
+    gap: 5px;
+    flex-shrink: 0;
+}
+
+.edit-player {
+    background-color: var(--btn-warning);
+    color: #333;
+    font-size: 0.8rem;
+    padding: 5px 10px;
+}
+
+.delete-player {
+    background-color: var(--btn-danger);
+    font-size: 0.8rem;
+    padding: 5px 10px;
+}
+
+/* Team Toggle Switch */
+.team-toggle-switch {
+    position: relative;
+    display: inline-block;
+    width: 50px;
+    height: 24px;
+}
+
+.team-toggle-switch input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+
+.team-toggle-slider {
+    position: absolute;
+    cursor: pointer;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: var(--btn-success);
+    transition: 0.4s;
+    border-radius: 24px;
+}
+
+.team-toggle-slider:before {
+    position: absolute;
+    content: "";
+    height: 18px;
+    width: 18px;
+    left: 3px;
+    bottom: 3px;
+    background-color: white;
+    transition: 0.4s;
+    border-radius: 50%;
+}
+
+.team-toggle-switch input:checked+.team-toggle-slider {
+    background-color: var(--btn-info);
+}
+
+.team-toggle-switch input:checked+.team-toggle-slider:before {
+    transform: translateX(26px);
+}
+
+/* 2. Spiel-Bereich */
+#spielBereich {
+    display: flex;
+    flex-direction: row;
+    justify-content: center;
+    align-items: flex-start;
+    gap: 20px;
+}
+
+#mainGameContent {
+    flex-grow: 1;
+    flex-basis: 600px;
+    max-width: 800px;
+}
+
+/* Statistik-Seitenleiste */
+#statistikSidebar {
+    flex-basis: 300px;
+    flex-shrink: 0;
+    position: sticky;
+    top: 20px;
+    background: var(--bg-container);
+    border-radius: 8px;
+    padding: 15px;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+}
+
+#statistikSidebar h3 {
+    text-align: center;
+    margin-top: 0;
+    border-bottom: 1px solid var(--border-color);
+    padding-bottom: 10px;
+}
+
+.trennlinie-oben {
+    border-top: 1px solid var(--border-color);
+    padding-top: 10px;
+    margin-top: 20px !important;
+}
+
+#torTabelle,
+#torTabelleGegner {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+#torTabelle th,
+#torTabelle td,
+#torTabelleGegner th,
+#torTabelleGegner td {
+    padding: 8px;
+    text-align: left;
+    border-bottom: 1px solid var(--border-color);
+}
+
+#torTabelle th,
+#torTabelleGegner th {
+    background-color: var(--table-header-bg);
+    font-size: 0.9rem;
+}
+
+#torTabelle td:first-child {
+    font-size: 0.9rem;
+    word-break: break-word;
+}
+
+#torTabelle td:last-child,
+#torTabelleGegner td:last-child {
+    text-align: center;
+    font-weight: bold;
+    font-size: 1.2rem;
+}
+
+
+#verwaltung {
+    margin-bottom: 15px;
+    display: flex;
+    justify-content: center;
+    flex-wrap: wrap;
+}
+
+#verwaltung button {
+    font-size: 0.9rem;
+    padding: 8px 15px;
+}
+
+#backToRosterButton {
+    background-color: var(--btn-grey);
+}
+
+#exportButton {
+    background-color: var(--btn-success);
+}
+
+#neuesSpielButton {
+    background-color: var(--btn-danger);
+}
+
+/* Timer-Container */
+#timerContainer {
+    background: var(--bg-container);
+    padding: 15px;
+    border-radius: 8px;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+    max-width: 500px;
+    margin: 20px auto;
+}
+
+#timerAnzeige {
+    font-size: 3rem;
+    font-weight: bold;
+    color: var(--text-main);
+}
+
+/* NEU: Suspension Display */
+#suspensionContainer {
+    display: flex;
+    justify-content: center;
+    gap: 10px;
+    margin-top: 10px;
+    margin-bottom: 10px;
+    flex-wrap: wrap;
+}
+
+.suspension-card {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    width: 60px;
+    height: 60px;
+    border-radius: 5px;
+    color: white;
+    font-weight: bold;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+    font-size: 0.9rem;
+}
+
+.suspension-card.heim {
+    background-color: var(--btn-danger);
+    /* Rot für Heim */
+}
+
+.suspension-card.gegner {
+    background-color: var(--btn-primary);
+    /* Blau für Gegner */
+}
+
+.suspension-time {
+    font-size: 1.1rem;
+    margin-top: 2px;
+}
+
+
+/* Spielstand */
+#scoreWrapper {
+    display: flex;
+    justify-content: space-around;
+    align-items: center;
+    margin-top: 10px;
+}
+
+.score-display-block {
+    flex-grow: 1;
+    text-align: center;
+}
+
+#scoreAnzeige {
+    font-size: 2.5rem;
+    font-weight: bold;
+    color: var(--text-main);
+    line-height: 1;
+}
+
+.team-name-small {
+    font-size: 0.8rem;
+    color: var(--text-main);
+    opacity: 0.7;
+    text-transform: uppercase;
+    margin: 0 5px;
+    display: inline-block;
+}
+
+.score-team-control {
+    display: flex;
+    flex-direction: column;
+}
+
+.score-korrektur {
+    font-size: 1rem;
+    padding: 5px 10px;
+    margin: 2px 5px;
+    background-color: var(--btn-grey);
+}
+
+#zeitSprung {
+    margin: 10px 0;
+}
+
+.zeitButton {
+    font-size: 0.9rem;
+    padding: 8px 12px;
+    background-color: var(--btn-grey);
+}
+
+#pauseButton {
+    background-color: var(--btn-warning);
+    color: #333;
+}
+
+#gamePhaseButton {
+    background-color: var(--btn-warning);
+    color: #333;
+    font-size: 1.2rem;
+    width: 80%;
+}
+
+#gamePhaseButton.beendet {
+    background-color: var(--btn-danger);
+    color: white;
+    opacity: 0.8;
+}
+
+/* Globale Aktionen */
+#globalAktionen {
+    margin: -10px auto 20px auto;
+    display: flex;
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
+#gegnerTorButton {
+    background-color: var(--btn-danger);
+    font-size: 1.1rem;
+}
+
+#gegner2minButton {
+    background-color: var(--btn-orange);
+    font-size: 1.1rem;
+}
+
+#gegner7mButton {
+    background-color: var(--btn-indigo);
+    font-size: 1.1rem;
+}
+
+/* Spieler-Auswahl Bereich */
+#spielerAuswahlContainer {
+    display: flex;
+    gap: 20px;
+    max-width: 800px;
+    margin: 20px auto;
+}
+
+.spieler-spalte {
+    flex: 1;
+    min-width: 0;
+}
+
+.spieler-spalte h4 {
+    text-align: center;
+    margin: 0 0 10px 0;
+    padding: 5px;
+    background-color: var(--bg-container);
+    border-radius: 5px;
+    font-size: 1rem;
+}
+
+#heimSpielerRaster,
+#gegnerSpielerRaster {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(60px, 1fr));
+    gap: 8px;
+}
+
+.spieler-button {
+    font-size: 1.1rem;
+    padding: 12px 5px;
+    background-color: #dd0c0c;
+    border: 3px solid transparent;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    line-height: 1.3;
+    min-height: 65px;
+    color: white;
+}
+
+.gegner-button {
+    background-color: #0d6efd;
+}
+
+.add-player-button {
+    background-color: #28a745;
+    opacity: 0.7;
+    font-size: 2rem;
+}
+
+.add-player-button:hover {
+    opacity: 1;
+}
+
+.spieler-nummer {
+    font-size: 1.3rem;
+    font-weight: bold;
+}
+
+.spieler-name {
+    font-size: 0.75rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: clip;
+    text-align: left;
+    width: 100%;
+}
+
+/* Responsive: Stack columns on smaller screens */
+@media (max-width: 600px) {
+    #spielerAuswahlContainer {
+        flex-direction: column;
+    }
+}
+
+/* Protokoll */
+#protokoll {
+    margin-top: 30px;
+    text-align: left;
+    max-width: 600px;
+    margin-left: auto;
+    margin-right: auto;
+    background-color: var(--bg-container);
+    padding: 15px;
+    border-radius: 8px;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+}
+
+#protokoll h3 {
+    text-align: center;
+}
+
+#protokoll p {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid var(--border-color);
+    padding: 5px 0;
+    word-break: break-word;
+}
+
+.loeschButton {
+    font-size: 0.9rem;
+    padding: 3px 10px;
+    background-color: var(--btn-danger);
+    flex-shrink: 0;
+}
+
+/* 3. Modal-Stile */
+.modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: var(--modal-overlay);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 3000;
+    padding: 20px;
+    box-sizing: border-box;
+}
+
+/* Settings Modal hat höchste Priorität */
+#settingsModal {
+    z-index: 9999;
+}
+
+.modal-content {
+    background: var(--bg-container);
+    color: var(--text-main);
+    padding: 20px;
+    border-radius: 8px;
+    width: 100%;
+    max-width: 400px;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+}
+
+.modal-content h3 {
+    margin-top: 0;
+}
+
+.modal-content .aktion-button,
+.modal-content #kommentarSpeichernButton {
+    display: block;
+    width: 100%;
+    margin: 10px 0;
+    font-size: 1.1rem;
+    padding: 15px;
+}
+
+.modal-abbrechen {
+    background-color: var(--btn-grey);
+}
+
+#kommentarInput {
+    width: 100%;
+    box-sizing: border-box;
+}
+
+.strafe-gelb {
+    background-color: var(--btn-warning);
+    color: #333;
+}
+
+.strafe-zeit {
+    background-color: var(--btn-orange);
+}
+
+.strafe-rot {
+    background-color: var(--btn-danger);
+}
+
+/* 4. Statistik */
+#statistikWrapper {
+    margin-top: 20px;
+    padding-top: 15px;
+    border-top: 2px solid var(--btn-primary);
+}
+
+.statistik-container {
+    width: 100%;
+    overflow-x: auto;
+}
+
+#statistikTabelle {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 15px;
+}
+
+#statistikTabelle th,
+#statistikTabelle td {
+    border: 1px solid var(--border-darker);
+    padding: 8px;
+    text-align: center;
+    min-width: 30px;
+    font-size: 0.8rem;
+}
+
+#statistikTabelle th {
+    background-color: var(--table-header-bg);
+}
+
+#statistikTabelle td:first-child {
+    text-align: left;
+    font-weight: bold;
+    min-width: 80px;
+}
+
+
+/* 5. Einstellungs-Button & Styles */
+#settingsButton {
+    position: fixed;
+    top: 10px;
+    right: 10px;
+    background-color: var(--bg-container);
+    color: var(--text-main);
+    border: 2px solid var(--border-darker);
+    border-radius: 50%;
+    width: 44px;
+    height: 44px;
+    font-size: 1.5rem;
+    padding: 0;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 9999;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+    cursor: pointer;
+}
+
+/* 6. Wurfbild Eingabe (Das Tor) */
+#wurfbildUmgebung {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 40px;
+    background-color: rgba(0, 0, 0, 0.05);
+    border-radius: 8px;
+    cursor: crosshair;
+}
+
+#torRahmen {
+    position: relative;
+    width: 300px;
+    height: 200px;
+    border-top: 10px solid #cc0000;
+    border-left: 10px solid #cc0000;
+    border-right: 10px solid #cc0000;
+    background-color: rgba(255, 255, 255, 0.8);
+    background-image:
+        linear-gradient(0deg, transparent 24%, #ccc 25%, #ccc 26%, transparent 27%, transparent 74%, #ccc 75%, #ccc 76%, transparent 77%, transparent),
+        linear-gradient(90deg, transparent 24%, #ccc 25%, #ccc 26%, transparent 27%, transparent 74%, #ccc 75%, #ccc 76%, transparent 77%, transparent);
+    background-size: 20px 20px;
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+    cursor: crosshair;
+}
+
+#torNetz {
+    width: 100%;
+    height: 100%;
+}
+
+/* Wurfposition Half-Court Field */
+#wurfpositionFeld {
+    width: 100%;
+    max-width: 400px;
+    margin: 0 auto;
+    cursor: crosshair;
+}
+
+#wurfpositionFeld svg {
+    display: block;
+    width: 100%;
+    height: auto;
+}
+
+body.dark-mode #wurfpositionFeld svg rect:first-child {
+    fill: #2c2c2c;
+}
+
+body.dark-mode #wurfpositionFeld svg path,
+body.dark-mode #wurfpositionFeld svg line,
+body.dark-mode #wurfpositionFeld svg circle {
+    stroke: #888;
+}
+
+body.dark-mode #wurfpositionFeld svg rect:nth-child(2) {
+    fill: #888;
+}
+
+/* 7. Wurfbilder Übersicht (Die Mini-Tore) */
+.mini-tor-wrapper {
+    position: relative;
+    width: 150px;
+    height: 100px;
+    border-top: 5px solid var(--mini-tor-border);
+    border-left: 5px solid var(--mini-tor-border);
+    border-right: 5px solid var(--mini-tor-border);
+    background-color: var(--mini-tor-bg);
+    background-image: radial-gradient(#ddd 1px, transparent 1px);
+    background-size: 10px 10px;
+    z-index: 1;
+}
+
+.mini-shot-dot {
+    position: absolute;
+    width: 12px;
+    height: 12px;
+    border: 2px solid white;
+    border-radius: 50%;
+    transform: translate(-50%, -50%);
+    z-index: 10;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+.combined-shot-visual {
+    margin-top: 10px;
+}
+
+.combined-shot-visual svg {
+    display: block;
+}
+
+body.dark-mode .combined-shot-visual svg rect {
+    fill: var(--mini-tor-bg);
+}
+
+body.dark-mode .combined-shot-visual svg path,
+body.dark-mode .combined-shot-visual svg line:not([stroke-opacity]) {
+    stroke: #666;
+}
+
+/* Heatmap Modal */
+.heatmap-tabs {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 15px;
+    justify-content: center;
+    flex-wrap: wrap;
+}
+
+.heatmap-tab {
+    padding: 8px 12px;
+    border: none;
+    background: #e9ecef;
+    cursor: pointer;
+    border-radius: 5px;
+    font-weight: bold;
+    transition: all 0.2s;
+    font-size: 0.85rem;
+    white-space: nowrap;
+    flex: 1 1 auto;
+    max-width: 150px;
+    text-align: center;
+}
+
+.heatmap-tab.active {
+    background: #6f42c1;
+    color: white;
+}
+
+.heatmap-tab:hover:not(.active) {
+    background: #dee2e6;
+}
+
+.heatmap-filter {
+    display: flex;
+    gap: 20px;
+    justify-content: center;
+    margin-bottom: 15px;
+    flex-wrap: wrap;
+}
+
+.heatmap-filter label {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    cursor: pointer;
+}
+
+#heatmapSvg {
+    background: var(--mini-tor-bg, #f5f5f5);
+    border: 2px solid #333;
+    border-radius: 5px;
+}
+
+body.dark-mode .heatmap-tab {
+    background: #444;
+    color: #ccc;
+}
+
+body.dark-mode .heatmap-tab.active {
+    background: #6f42c1;
+    color: white;
+}
+
+body.dark-mode #heatmapSvg {
+    background: #2c2c2c;
+}
+
+/* Responsivität */
+@media (max-width: 900px) {
+    #spielBereich {
+        flex-direction: column;
+    }
+
+    #mainGameContent {
+        flex-basis: auto;
+        max-width: 100%;
+        order: 1;
+    }
+
+    #statistikSidebar {
+        position: static;
+        flex-basis: auto;
+        width: 100%;
+        max-width: 600px;
+        margin: 0 auto;
+        order: 2;
+    }
+}
+
+@media (max-width: 500px) {
+    .player-shot-card {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+    .mini-tor-wrapper {
+        margin-top: 10px;
+        margin-left: 0;
+        width: 100%;
+        max-width: 200px;
+    }
+}
+
+/* --- History Feature Styles --- */
+#historieBereich,
+#historieDetailBereich {
+    max-width: 800px;
+    margin: 0 auto;
+    background: var(--bg-container);
+    padding: 20px;
+    border-radius: 8px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+}
+
+.history-card {
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.history-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+}
+
+.secondary-button {
+    background-color: var(--btn-grey);
+    font-size: 1rem;
+    padding: 10px 20px;
+    margin: 5px;
+    cursor: pointer;
+    border: none;
+    border-radius: 8px;
+    color: white;
+}
+
+#histHeatmapContainer {
+    background: #f0f0f0;
+    border-radius: 8px;
+}
+
+body.dark-mode #histHeatmapContainer {
+    background: #222;
+}
+
+/* Reuse existing table styles for history detail */
+#histStatsTable,
+#histStatsGegnerTable {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 10px;
+}
+
+#histStatsTable th,
+#histStatsGegnerTable th,
+#histStatsTable td,
+#histStatsGegnerTable td {
+    padding: 8px;
+    border: 1px solid var(--border-darker);
+    text-align: center;
+}
+
+#histStatsTable th,
+#histStatsGegnerTable th {
+    background-color: var(--table-header-bg);
+}
+
+/* =====================================================
+   MOBILE OPTIMIZATION
+   ===================================================== */
+
+/* --- Touch Device Overrides (hover: none) --- */
+@media (hover: none) {
+
+    /* Remove hover effects on touch devices */
+    button:hover {
+        filter: none;
+    }
+
+    /* Add active (tap) effects instead */
+    button:active {
+        filter: brightness(85%);
+        transform: scale(0.98);
+    }
+
+    .spieler-button:hover {
+        transform: none;
+        box-shadow: none;
+    }
+
+    .spieler-button:active {
+        transform: scale(0.95);
+        filter: brightness(90%);
+    }
+
+    .aktion-button:hover {
+        transform: none;
+    }
+
+    .aktion-button:active {
+        transform: scale(0.95);
+        filter: brightness(90%);
+    }
+
+    /* Larger touch targets */
+    button {
+        min-height: 44px;
+        min-width: 44px;
+    }
+
+    .spieler-button {
+        min-height: 60px;
+        min-width: 60px;
+    }
+}
+
+/* --- Responsive Layout (Small Screens) --- */
+@media screen and (max-width: 768px) {
+    body {
+        padding: 10px;
+    }
+
+    #gameScreen {
+        flex-direction: column;
+    }
+
+    #sidebarLinks,
+    #sidebarRechts {
+        width: 100%;
+        max-width: none;
+        flex-direction: row;
+        flex-wrap: wrap;
+        justify-content: center;
+        padding: 10px;
+    }
+
+    #mainGameContent {
+        order: -1;
+        /* Move main content to top on mobile */
+    }
+
+    #verwaltung {
+        flex-wrap: wrap;
+        justify-content: center;
+    }
+
+    #verwaltung button {
+        flex: 1 1 auto;
+        min-width: 80px;
+        font-size: clamp(0.65rem, 2.5vw, 0.85rem);
+        padding: 8px 10px;
+        white-space: normal;
+        word-break: break-word;
+        line-height: 1.2;
+    }
+
+    #scoreContainer {
+        flex-direction: row;
+        flex-wrap: wrap;
+        gap: 10px;
+    }
+
+    .score-box {
+        flex: 1 1 45%;
+        min-width: 120px;
+    }
+
+    #timerAnzeige {
+        font-size: 2rem;
+    }
+
+    #spielerBereich {
+        flex-direction: column;
+    }
+
+    .spieler-seite {
+        width: 100%;
+    }
+
+    .spieler-raster {
+        grid-template-columns: repeat(auto-fill, minmax(60px, 1fr));
+        gap: 8px;
+    }
+
+    .spieler-button {
+        font-size: 0.9rem;
+        padding: 8px;
+    }
+
+    /* Modals full-width on mobile */
+    .modal-content {
+        width: 95%;
+        max-width: none;
+        margin: 10px;
+        padding: 15px;
+    }
+
+    /* Stats tables scroll horizontally */
+    #protokollAusgabe,
+    .stats-table-container {
+        overflow-x: auto;
+    }
+
+    table {
+        font-size: 0.85rem;
+    }
+
+    th,
+    td {
+        padding: 6px 4px;
+    }
+}
+
+/* --- Extra Small Screens (Phones) --- */
+@media screen and (max-width: 480px) {
+    #verwaltung button {
+        font-size: 0.75rem;
+        padding: 6px 8px;
+    }
+
+    .spieler-raster {
+        grid-template-columns: repeat(auto-fill, minmax(50px, 1fr));
+        gap: 5px;
+    }
+
+    .spieler-button {
+        font-size: 0.8rem;
+        padding: 6px;
+    }
+
+    #timerAnzeige {
+        font-size: 1.5rem;
+    }
+
+    .aktion-button {
+        font-size: 0.9rem;
+        padding: 10px;
+    }
+
+    /* Wurfposition and Wurfbild modals need space */
+    #wurfpositionFeld,
+    #wurfbildUmgebung {
+        max-height: 60vh;
+    }
+
+    /* Heatmap tabs smaller on mobile */
+    .heatmap-tab {
+        font-size: 0.7rem;
+        padding: 6px 8px;
+        max-width: 100px;
+    }
+
+    .heatmap-filter {
+        gap: 10px;
+        font-size: 0.85rem;
+    }
+
+    .heatmap-filter label {
+        gap: 3px;
+    }
+}

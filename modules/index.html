@@ -1,0 +1,595 @@
+<!DOCTYPE html>
+<html lang="de">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Team-Tracker</title>
+    <link rel="stylesheet" href="styles.css?v=2.8">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+</head>
+
+<body>
+
+    <button id="settingsButton" title="Einstellungen">⚙️</button>
+
+    <div id="rosterBereich">
+        <h2>Team-Übersicht</h2>
+
+        <!-- Team Namen Eingabe -->
+        <div style="display: flex; gap: 10px; margin-bottom: 20px;">
+            <div style="flex: 1;">
+                <label for="rosterTeamNameHeim" style="display: block; margin-bottom: 5px; font-weight: bold;">Heim Team
+                    Name:</label>
+                <input type="text" id="rosterTeamNameHeim" placeholder="Heim Team"
+                    style="width: 100%; box-sizing: border-box;">
+            </div>
+            <div style="flex: 1;">
+                <label for="rosterTeamNameGegner" style="display: block; margin-bottom: 5px; font-weight: bold;">Gegner
+                    Team Name:</label>
+                <input type="text" id="rosterTeamNameGegner" placeholder="Gegner Team"
+                    style="width: 100%; box-sizing: border-box;">
+            </div>
+        </div>
+
+        <h3>Spieler hinzufügen</h3>
+        <p>Füge deine Spieler hinzu. Das Team wird auf diesem Gerät gespeichert.</p>
+
+        <form id="addPlayerForm">
+            <input type="hidden" id="editPlayerIndex">
+            <input type="text" id="playerNameInput" placeholder="Name (optional)">
+            <input type="number" id="playerNumberInput" placeholder="Nr." required>
+            <button type="submit">Hinzufügen</button>
+            <button type="button" id="cancelEditButton" class="versteckt">Abbrechen</button>
+        </form>
+
+        <div id="teamVerwaltung">
+            <button id="exportTeamButton" class="team-manage-btn">Team exportieren (.json)</button>
+            <button id="importTeamButton" class="team-manage-btn">Team importieren (.json)</button>
+            <input type="file" id="importFileInput" class="versteckt" accept=".json">
+            <button id="saveTeamButton" class="team-manage-btn" style="background-color: #28a745;">💾 Team
+                speichern</button>
+            <button id="loadTeamButton" class="team-manage-btn" style="background-color: #17a2b8;">📂 Team
+                laden</button>
+        </div>
+
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+            <h3 id="teamHeaderTitle" style="margin: 0;">Heim Team</h3>
+            <div style="display: flex; align-items: center; gap: 10px;">
+                <span style="font-size: 0.9rem; color: var(--text-main);">Heim</span>
+                <label class="team-toggle-switch">
+                    <input type="checkbox" id="teamToggle">
+                    <span class="team-toggle-slider"></span>
+                </label>
+                <span style="font-size: 0.9rem; color: var(--text-main);">Gegner</span>
+            </div>
+        </div>
+        <ul id="rosterListe"></ul>
+
+        <div style="margin-top: 20px;">
+            <button id="deleteTeamButton" style="width: 100%; background-color: #dc3545;">Aktuelles Team
+                löschen</button>
+        </div>
+
+        <button id="startGameButton" class="cta-button">Spiel starten</button>
+    </div>
+
+    <div id="spielBereich" class="versteckt">
+
+        <aside id="statistikSidebar" class="versteckt">
+
+            <div id="torTrackerHeimContainer">
+                <h3 id="labelTorTrackerHeim">Heim</h3>
+                <table id="torTabelle">
+                    <thead>
+                        <tr>
+                            <th>Name</th>
+                            <th>Tore</th>
+                        </tr>
+                    </thead>
+                    <tbody id="torTabelleBody"></tbody>
+                </table>
+            </div>
+
+            <div id="torTrackerGegnerContainer" class="versteckt">
+                <h3 class="trennlinie-oben" id="labelTorTrackerGegner">Gegner</h3>
+                <table id="torTabelleGegner">
+                    <thead>
+                        <tr>
+                            <th>Nr.</th>
+                            <th>Tore</th>
+                        </tr>
+                    </thead>
+                    <tbody id="torTabelleGegnerBody"></tbody>
+                </table>
+            </div>
+
+            <div id="statistikWrapper" class="versteckt">
+                <h3 class="trennlinie-oben">Statistik</h3>
+                <div class="statistik-container">
+                    <table id="statistikTabelle">
+                        <thead>
+                            <tr>
+                                <th>Spieler</th>
+                                <th>7m</th>
+                                <th>Gut</th>
+                                <th>Fehl</th>
+                                <th>TF</th>
+                                <th>G</th>
+                                <th>2'</th>
+                                <th>R</th>
+                            </tr>
+                        </thead>
+                        <tbody id="statistikTabelleBody"></tbody>
+                    </table>
+                </div>
+            </div>
+
+        </aside>
+
+        <div id="mainGameContent">
+            <div id="verwaltung">
+                <button id="backToRosterButton">Team ändern</button>
+                <button id="exportPdfButton" style="background-color: #dc3545;">Export PDF</button>
+                <button id="showWurfbilderButton" style="background-color: #6f42c1;">Wurfbilder</button>
+                <button id="showHeatmapButton" style="background-color: #fd7e14;">Heatmap</button>
+                <button id="neuesSpielButton">Neues Spiel</button>
+            </div>
+
+            <div id="timerContainer">
+                <div id="timerAnzeige">00:00</div>
+
+                <div id="suspensionContainer">
+                </div>
+
+                <div id="scoreWrapper" class="versteckt">
+                    <div class="score-team-control">
+                        <button id="heimScoreUp" class="score-korrektur" disabled>Heim +</button>
+                        <button id="heimScoreDown" class="score-korrektur" disabled>Heim -</button>
+                    </div>
+                    <div class="score-display-block">
+                        <div id="teamNameHeimDisplay" class="team-name-small">HEIM</div>
+                        <div id="scoreAnzeige">0:0</div>
+                        <div id="teamNameGegnerDisplay" class="team-name-small">GAST</div>
+                    </div>
+                    <div class="score-team-control">
+                        <button id="gegnerScoreUp" class="score-korrektur" disabled>Gegner +</button>
+                        <button id="gegnerScoreDown" class="score-korrektur" disabled>Gegner -</button>
+                    </div>
+                </div>
+
+                <div id="zeitSprung">
+                    <button id="zurueckButton" class="zeitButton">-30s</button>
+                    <button id="pauseButton" class="zeitButton versteckt" disabled>Pause</button>
+                    <button id="vorButton" class="zeitButton">+30s</button>
+                </div>
+                <button id="gamePhaseButton">Spielstart</button>
+            </div>
+
+
+
+            <h3>Spieler auswählen:</h3>
+            <div id="spielerAuswahlContainer">
+                <div class="spieler-spalte">
+                    <h4 id="labelSpielerHeimRaster">Heim</h4>
+                    <div id="heimSpielerRaster"></div>
+                </div>
+                <div class="spieler-spalte">
+                    <h4 id="labelSpielerGegnerRaster">Gegner</h4>
+                    <div id="gegnerSpielerRaster"></div>
+                </div>
+            </div>
+
+            <div id="protokoll">
+                <h3>Protokoll</h3>
+                <div id="protokollAusgabe"></div>
+            </div>
+
+            <button id="spielBeendenButton" class="cta-button"
+                style="background-color: #343a40; margin-top: 20px;">Spiel beenden & speichern</button>
+        </div>
+    </div>
+
+
+    <!-- Vergangene Spiele -->
+    <div id="historieBereich" class="versteckt">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+            <h1>Vergangene Spiele</h1>
+            <button id="backToStartFromHistory">Zurück</button>
+        </div>
+
+        <div id="historieListe" class="history-list">
+            <p>Keine gespeicherten Spiele.</p>
+        </div>
+
+        <div style="margin-top: 20px; display: flex; gap: 10px; flex-wrap: wrap;">
+            <button id="importSpielButton" style="background-color: #6f42c1;">📥 Spiel importieren</button>
+            <input type="file" id="importSpielInput" class="versteckt" accept=".json">
+            <button id="exportHistorieButton">Alle Spiele exportieren (Backup)</button>
+        </div>
+    </div>
+
+    <!-- Vergangene Spiele Deitail -->
+    <div id="historieDetailBereich" class="versteckt">
+        <button id="backToHistoryList">Zurück zur Liste</button>
+
+        <div id="historieHeader" style="text-align: center; margin: 20px 0;">
+            <h2 id="histDetailTeams">Heim vs Gegner</h2>
+            <h1 id="histDetailScore" style="font-size: 3em; color: #28a745;">10:8</h1>
+            <p id="histDetailDate">Datum: 01.01.2025</p>
+        </div>
+
+        <div class="heatmap-tabs">
+            <button class="heatmap-tab active" id="histTabStats">Statistik</button>
+            <button class="heatmap-tab" id="histTabHeatmap">Heatmap</button>
+        </div>
+
+        <!-- Detail: Stats -->
+        <div id="histContentStats">
+            <div class="statistik-container">
+                <table id="histStatsTable">
+                    <thead>
+                        <tr>
+                            <th>Spieler</th>
+                            <th>Tor</th>
+                            <th>Feldtore</th>
+                            <th>7m</th>
+                            <th>Quote</th>
+                            <th>Gut</th>
+                            <th>Fehl</th>
+                            <th>TF</th>
+                            <th>G</th>
+                            <th>2'</th>
+                            <th>R</th>
+                        </tr>
+                    </thead>
+                    <tbody id="histStatsBody"></tbody>
+                </table>
+
+                <h3 style="margin-top: 20px;">Gegner</h3>
+                <table id="histStatsGegnerTable">
+                    <thead>
+                        <tr>
+                            <th>Name</th>
+                            <th>Tor</th>
+                            <th>Feldtore</th>
+                            <th>7m</th>
+                            <th>Quote</th>
+                            <th>Gut</th>
+                            <th>Fehl</th>
+                            <th>TF</th>
+                            <th>G</th>
+                            <th>2'</th>
+                            <th>R</th>
+                        </tr>
+                    </thead>
+                    <tbody id="histStatsGegnerBody"></tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Detail: Heatmap -->
+        <div id="histContentHeatmap" class="versteckt" style="text-align: center;">
+            <div class="heatmap-tabs" style="margin-top: 10px;">
+                <button class="heatmap-tab active" id="histSubTabTor">Tor</button>
+                <button class="heatmap-tab" id="histSubTabFeld">Feld</button>
+                <button class="heatmap-tab" id="histSubTabKombi">Kombiniert</button>
+            </div>
+            <div class="heatmap-filter">
+                <label><input type="radio" name="histHeatTeam" value="heim" checked> Heim</label>
+                <label><input type="radio" name="histHeatTeam" value="gegner"> Gegner</label>
+                <span style="margin: 0 10px;">|</span>
+                <label><input type="checkbox" id="histHeatmapToreFilter" checked> Tore</label>
+                <label><input type="checkbox" id="histHeatmapMissedFilter" checked> Fehlwürfe</label>
+            </div>
+            <div id="histHeatmapContainer" style="display: flex; justify-content: center; padding: 20px;">
+                <svg id="histHeatmapSvg" viewBox="0 0 300 200" width="600" height="400"></svg>
+            </div>
+        </div>
+    </div>
+
+
+    <div id="aktionsMenue" class="modal-overlay versteckt">
+        <div class="modal-content">
+            <h3 id="aktionsMenueTitel">Aktion für...</h3>
+            <button class="aktion-button" data-aktion="Tor">Tor</button>
+            <button class="aktion-button" data-aktion="Fehlwurf">Fehlwurf</button>
+            <button class="aktion-button" data-aktion="7m">7m</button>
+            <button class="aktion-button" id="guteAktionModalButton">Gute Aktion</button>
+            <button class="aktion-button" data-aktion="Fehlpass">Fehlpass</button>
+            <button class="aktion-button" data-aktion="Technischer Fehler">Technischer Fehler</button>
+            <button class="aktion-button strafe-gelb" data-aktion="Gelbe Karte">Gelbe Karte</button>
+            <button class="aktion-button strafe-zeit" data-aktion="2 Minuten">2 Minuten</button>
+            <button class="aktion-button strafe-rot" data-aktion="Rote Karte">Rote Karte</button>
+            <button class="modal-abbrechen" id="aktionAbbrechen">Abbrechen</button>
+        </div>
+    </div>
+
+    <div id="aktionVorauswahl" class="modal-overlay versteckt">
+        <div class="modal-content">
+            <h3>Gute Aktion:</h3>
+            <button class="aktion-button" data-aktion="Abwehr">Abwehr</button>
+            <button class="aktion-button" data-aktion="7M Rausgeholt">7M Rausgeholt</button>
+            <button class="aktion-button" data-aktion="TG Pass">TG Pass</button>
+            <button class="aktion-button" data-aktion="Guter Pass">Guter Pass</button>
+            <button class="aktion-button" data-aktion="Anderes">Anderes</button>
+            <button class="modal-abbrechen" id="aktionVorauswahlAbbrechen">Zurück</button>
+        </div>
+    </div>
+
+    <div id="kommentarBereich" class="modal-overlay versteckt">
+        <div class="modal-content">
+            <h3 id="kommentarTitel">Kommentar (optional)</h3>
+            <input type="text" id="kommentarInput" placeholder="Beschreibe die Aktion...">
+            <button id="kommentarSpeichernButton">Speichern</button>
+        </div>
+    </div>
+
+    <div id="settingsModal" class="modal-overlay versteckt">
+        <div class="modal-content">
+            <h3>Einstellungen</h3>
+
+            <h4 style="margin-bottom:5px; margin-top:0;">Team Namen</h4>
+            <div style="display:flex; gap:10px; margin-bottom: 15px;">
+                <input type="text" id="inputTeamNameHeim" placeholder="Heim Team" style="width:50%;">
+                <input type="text" id="inputTeamNameGegner" placeholder="Gegner Team" style="width:50%;">
+            </div>
+            <hr>
+
+            <div class="setting-row">
+                <label for="toggleDarkMode">Dark Mode</label>
+                <input type="checkbox" id="toggleDarkMode">
+            </div>
+            <div class="setting-row">
+                <label for="toggleAuswaertsspiel">Seiten tauschen</label>
+                <input type="checkbox" id="toggleAuswaertsspiel">
+            </div>
+            <hr>
+
+            <div class="setting-row">
+                <label for="toggleTorTracker">Tor-Tracker: Heim</label>
+                <input type="checkbox" id="toggleTorTracker">
+            </div>
+
+            <div class="setting-row">
+                <label for="toggleTorTrackerGegner">Tor-Tracker: Gegner</label>
+                <input type="checkbox" id="toggleTorTrackerGegner">
+            </div>
+
+            <hr>
+            <div class="setting-row">
+                <label for="toggleWurfbildHeim">Wurfbild: Eigenes Team</label>
+                <input type="checkbox" id="toggleWurfbildHeim">
+            </div>
+            <div class="setting-row">
+                <label for="toggleWurfbildGegner">Wurfbild: Gegner Team</label>
+                <input type="checkbox" id="toggleWurfbildGegner">
+            </div>
+
+            <hr>
+            <div class="setting-row">
+                <label for="toggleWurfpositionHeim">Wurfposition: Eigenes Team</label>
+                <input type="checkbox" id="toggleWurfpositionHeim">
+            </div>
+            <div class="setting-row">
+                <label for="toggleWurfpositionGegner">Wurfposition: Gegner Team</label>
+                <input type="checkbox" id="toggleWurfpositionGegner">
+            </div>
+
+
+            <hr>
+            <button id="historyButton" style="width: 100%; margin-top: 10px; background-color: #6f42c1;">Vergangene
+                Spiele</button>
+            <button id="seasonOverviewButton"
+                style="width: 100%; margin-top: 10px; background-color: #6f42c1;">Saison-Übersicht</button>
+            <button class="modal-abbrechen" id="settingsSchliessen" style="margin-top:20px;">Schließen</button>
+        </div>
+    </div>
+
+    <div id="wurfbildModal" class="modal-overlay versteckt">
+        <div class="modal-content">
+            <h3 id="wurfbildTitel">Wo ging der Ball rein?</h3>
+            <div id="wurfbildUmgebung">
+                <div id="torRahmen">
+                    <div id="torNetz"></div>
+                </div>
+            </div>
+            <button class="modal-abbrechen" id="wurfbildUeberspringen">Überspringen</button>
+        </div>
+    </div>
+
+    <div id="wurfpositionModal" class="modal-overlay versteckt">
+        <div class="modal-content" style="max-width: 450px;">
+            <h3>Von wo wurde geworfen?</h3>
+            <div id="wurfpositionFeld">
+                <svg viewBox="0 0 300 400" width="100%">
+                    <!-- Spielfeld Hälfte (Matching Heatmap Output) -->
+                    <rect x="10" y="10" width="280" height="380" fill="#f5f5f5" stroke="#333" stroke-width="2" />
+
+                    <!-- Tor oben (Mitte) -->
+                    <rect x="112" y="10" width="76" height="8" fill="#333" />
+
+                    <!-- 6m Linie (Torraum - durchgezogen) -->
+                    <path d="M 75 18 Q 75 90 150 90 Q 225 90 225 18" fill="none" stroke="#333" stroke-width="2" />
+
+                    <!-- 9m Linie (Freiwurflinie - gestrichelt) -->
+                    <path d="M 37 18 Q 37 150 150 150 Q 263 150 263 18" fill="none" stroke="#333" stroke-width="1"
+                        stroke-dasharray="6,3" />
+
+                    <!-- 7m Punkt -->
+                    <circle cx="150" cy="65" r="4" fill="#333" />
+
+                    <!-- Mittellinie -->
+                    <line x1="10" y1="388" x2="290" y2="388" stroke="#333" stroke-width="2" />
+                </svg>
+            </div>
+            <button class="modal-abbrechen" id="wurfpositionUeberspringen">Überspringen</button>
+        </div>
+    </div>
+
+    <div id="gegnerNummerModal" class="modal-overlay versteckt">
+        <div class="modal-content">
+            <h3 id="gegnerNummerTitel">Torschütze (Gegner)</h3>
+            <div id="bekannteGegnerListe"></div>
+            <div style="margin-top: 10px; border-top: 1px solid #ccc; padding-top: 10px;">
+                <input type="number" id="neueGegnerNummer" placeholder="Neue Nummer"
+                    style="width: 100%; box-sizing: border-box; margin-bottom: 5px;">
+                <input type="text" id="neueGegnerName" placeholder="Name (optional)"
+                    style="width: 100%; box-sizing: border-box; margin-bottom: 5px;">
+                <button id="gegnerNummerSpeichern">Weiter</button>
+            </div>
+            <button class="modal-abbrechen" id="gegnerNummerUeberspringen">Unbekannt / Weiter</button>
+        </div>
+    </div>
+
+    <!-- Quick Add Home Player Modal (during game) -->
+    <div id="quickAddPlayerModal" class="modal-overlay versteckt">
+        <div class="modal-content">
+            <h3>Spieler hinzufügen</h3>
+            <p>Nummer und optional Name eingeben:</p>
+            <input type="number" id="quickPlayerNumber" placeholder="Nummer"
+                style="width: 100%; box-sizing: border-box; margin-bottom: 5px;">
+            <input type="text" id="quickPlayerName" placeholder="Name (optional)"
+                style="width: 100%; box-sizing: border-box; margin-bottom: 5px;">
+            <button id="quickAddPlayerSave">Hinzufügen</button>
+            <button class="modal-abbrechen" id="quickAddPlayerCancel">Abbrechen</button>
+        </div>
+    </div>
+
+    <!-- Save Team Name Modal -->
+    <div id="saveTeamNameModal" class="modal-overlay versteckt">
+        <div class="modal-content">
+            <h3>Team speichern</h3>
+            <p>Gib einen Namen für das Team ein:</p>
+            <input type="text" id="saveTeamNameInput" placeholder="Team Name"
+                style="width: 100%; box-sizing: border-box; margin: 10px 0;">
+            <button id="saveTeamNameConfirm">Speichern</button>
+            <button class="modal-abbrechen" id="saveTeamNameCancel">Abbrechen</button>
+        </div>
+    </div>
+
+    <!-- View/Edit Team Modal -->
+    <div id="viewTeamModal" class="modal-overlay versteckt">
+        <div class="modal-content" style="max-width: 600px;">
+            <h3 id="viewTeamTitle">Team anschauen</h3>
+            <div style="margin-bottom: 15px;">
+                <label style="display: block; margin-bottom: 5px; font-weight: bold;">Team Name:</label>
+                <input type="text" id="editTeamNameInput" placeholder="Team Name"
+                    style="width: 100%; box-sizing: border-box;">
+            </div>
+            <div id="viewTeamPlayersList" style="max-height: 300px; overflow-y: auto; margin: 15px 0;">
+                <!-- Players will be listed here -->
+            </div>
+            <div style="display: flex; gap: 10px; margin-top: 15px;">
+                <button id="saveTeamChanges" style="flex: 1; background-color: #28a745;">Änderungen speichern</button>
+                <button class="modal-abbrechen" id="viewTeamClose" style="flex: 1;">Schließen</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Season Overview Modal -->
+    <div id="seasonOverviewModal" class="modal-overlay versteckt">
+        <div class="modal-content" style="max-width: 900px; max-height: 90vh; overflow-y: auto;">
+            <h2>Saison-Übersicht</h2>
+            <div id="seasonSummary"
+                style="margin: 15px 0; padding: 10px; background-color: var(--bg-secondary); border-radius: 5px;">
+                <!-- Summary stats -->
+            </div>
+            <div id="seasonStatsContainer" style="margin-top: 20px;">
+                <!-- Player cards will be rendered here -->
+            </div>
+            <button class="modal-abbrechen" id="seasonOverviewClose" style="margin-top: 20px;">Schließen</button>
+        </div>
+    </div>
+
+    <!-- Load Team Modal -->
+    <div id="loadTeamModal" class="modal-overlay versteckt">
+        <div class="modal-content">
+            <h3>Gespeicherte Teams</h3>
+            <div id="savedTeamsList" style="max-height: 300px; overflow-y: auto; margin: 15px 0;">
+                <!-- Teams will be listed here -->
+            </div>
+            <button class="modal-abbrechen" id="loadTeamCancel">Abbrechen</button>
+        </div>
+    </div>
+
+    <div id="addGegnerModal" class="modal-overlay versteckt">
+        <div class="modal-content">
+            <h3>Gegner hinzufügen</h3>
+            <p>Gib die Nummer und optional den Namen ein:</p>
+            <input type="number" id="addGegnerNummerInput" placeholder="Nummer"
+                style="width: 100%; box-sizing: border-box; margin: 10px 0;">
+            <input type="text" id="addGegnerNameInput" placeholder="Name (optional)"
+                style="width: 100%; box-sizing: border-box; margin: 10px 0;">
+            <button id="addGegnerSpeichern">Hinzufügen</button>
+            <button class="modal-abbrechen" id="addGegnerAbbrechen">Abbrechen</button>
+        </div>
+    </div>
+
+    <div id="sevenMeterOutcomeModal" class="modal-overlay versteckt">
+        <div class="modal-content">
+            <h3>7m Ergebnis</h3>
+            <button class="aktion-button" style="background-color: #dc3545;" data-outcome="Tor">Tor</button>
+            <button class="aktion-button" style="background-color: #6c757d;" data-outcome="Gehalten">Gehalten</button>
+            <button class="aktion-button" style="background-color: #ffc107; color:black;"
+                data-outcome="Verworfen">Verworfen (Pfosten/Aus)</button>
+        </div>
+    </div>
+
+    <div id="wurfbilderStatsModal" class="modal-overlay versteckt">
+        <div class="modal-content" style="max-width: 800px; width: 95%;">
+            <h3>Wurfbilder Übersicht</h3>
+            <div id="wurfbilderContainer" style="max-height: 60vh; overflow-y: auto;"></div>
+            <button class="modal-abbrechen" id="closeWurfbilderStats">Schließen</button>
+        </div>
+    </div>
+
+    <div id="heatmapModal" class="modal-overlay versteckt">
+        <div class="modal-content" style="max-width: 900px; width: 95%;">
+            <h3>Heatmap Analyse</h3>
+            <div class="heatmap-tabs">
+                <button class="heatmap-tab active" data-tab="tor">Tor-Heatmap</button>
+                <button class="heatmap-tab" data-tab="feld">Wurfposition-Heatmap</button>
+                <button class="heatmap-tab" data-tab="kombiniert">Kombiniert</button>
+            </div>
+            <div class="heatmap-filter">
+                <label><input type="radio" name="heatmapTeam" id="heatmapHeimFilter" value="heim" checked> <span
+                        id="heatmapHeimLabel">Heim</span></label>
+                <label><input type="radio" name="heatmapTeam" id="heatmapGegnerFilter" value="gegner"> <span
+                        id="heatmapGegnerLabel">Gegner</span></label>
+                <span style="margin: 0 10px;">|</span>
+                <label><input type="checkbox" id="heatmapToreFilter" checked> Tore</label>
+                <label><input type="checkbox" id="heatmapMissedFilter" checked> Fehlwürfe</label>
+            </div>
+            <div id="heatmapContainer" style="display: flex; justify-content: center; padding: 20px;">
+                <svg id="heatmapSvg" viewBox="0 0 300 200" width="600" height="400"></svg>
+            </div>
+            <button class="modal-abbrechen" id="closeHeatmapModal">Schließen</button>
+        </div>
+    </div>
+
+    <!-- Custom Confirm/Alert Modal -->
+    <div id="customConfirmModal" class="modal-overlay versteckt">
+        <div class="modal-content" style="max-width: 400px; text-align: center;">
+            <h3 id="customConfirmTitle">Bestätigung</h3>
+            <p id="customConfirmMessage" style="margin: 20px 0; font-size: 1rem;"></p>
+            <div style="display: flex; gap: 10px; justify-content: center;">
+                <button id="customConfirmYes" style="background-color: #28a745; flex: 1;">Ja</button>
+                <button id="customConfirmNo" class="modal-abbrechen" style="flex: 1;">Abbrechen</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Custom Alert Modal (nur OK Button) -->
+    <div id="customAlertModal" class="modal-overlay versteckt">
+        <div class="modal-content" style="max-width: 350px; text-align: center;">
+            <h3 id="customAlertTitle">Hinweis</h3>
+            <p id="customAlertMessage" style="margin: 20px 0; font-size: 1rem;"></p>
+            <button id="customAlertOk" style="background-color: #28a745; width: 100%;">OK</button>
+        </div>
+    </div>
+
+    <script type="module" src="main.js"></script>
+</body>
+
+</html>
