@@ -4,7 +4,8 @@
 import { spielstand, speichereSpielstand } from './state.js';
 import {
     heatmapSvg, heatmapModal, heatmapHeimFilter, heatmapGegnerFilter,
-    heatmapToreFilter, heatmapMissedFilter, histContentHeatmap
+    heatmapToreFilter, heatmapMissedFilter, histContentHeatmap,
+    histHeatmapToreFilter, histHeatmapMissedFilter
 } from './dom.js';
 
 // --- Heatmap State ---
@@ -42,12 +43,26 @@ export function renderHeatmap(svgElement, logSource, isHistory = false, filterOv
 
         const modal = svgElement.closest('.modal-content') || svgElement.closest('.modal-overlay');
         if (modal) {
+            // Hide ONLY Team Toggles, keep Goal/Miss filters
+            const heimFilter = modal.querySelector('#heatmapHeimFilter');
+            const gegnerFilter = modal.querySelector('#heatmapGegnerFilter');
+            const separator = modal.querySelector('.heatmap-filter span:not([id])'); // The | separator
+
+            if (domIsVisible(heimFilter)) hideElement(heimFilter.closest('label'));
+            if (domIsVisible(gegnerFilter)) hideElement(gegnerFilter.closest('label'));
+            if (separator) separator.style.display = 'none';
+
             const filterContainer = modal.querySelector('.heatmap-filter');
-            if (filterContainer) filterContainer.classList.add('versteckt');
+            if (filterContainer) filterContainer.classList.remove('versteckt');
         } else {
+            // Fallback if not inside modal (rare)
             const filterContainer = document.querySelector('#heatmapModal .heatmap-filter');
-            if (filterContainer) filterContainer.classList.add('versteckt');
+            if (filterContainer) filterContainer.classList.remove('versteckt');
         }
+
+        // Helper to check visibility and hide
+        function hideElement(el) { if (el) el.style.display = 'none'; }
+        function domIsVisible(el) { return el && el.offsetParent !== null; }
 
     } else {
         if (filterOverride) {
@@ -75,8 +90,14 @@ export function renderHeatmap(svgElement, logSource, isHistory = false, filterOv
         }
     }
 
-    const showTore = heatmapToreFilter?.checked ?? true;
-    const showMissed = heatmapMissedFilter?.checked ?? true;
+    let showTore, showMissed;
+    if (isHistory) {
+        showTore = histHeatmapToreFilter?.checked ?? true;
+        showMissed = histHeatmapMissedFilter?.checked ?? true;
+    } else {
+        showTore = heatmapToreFilter?.checked ?? true;
+        showMissed = heatmapMissedFilter?.checked ?? true;
+    }
 
     // Collect data points
     const pointsTor = [];

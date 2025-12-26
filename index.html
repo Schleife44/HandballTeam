@@ -232,6 +232,7 @@
                         <tr>
                             <th>Spieler</th>
                             <th>Tor</th>
+                            <th>Feldtore</th>
                             <th>7m</th>
                             <th>Quote</th>
                             <th>Gut</th>
@@ -251,6 +252,7 @@
                         <tr>
                             <th>Name</th>
                             <th>Tor</th>
+                            <th>Feldtore</th>
                             <th>7m</th>
                             <th>Quote</th>
                             <th>Gut</th>
@@ -276,6 +278,9 @@
             <div class="heatmap-filter">
                 <label><input type="radio" name="histHeatTeam" value="heim" checked> Heim</label>
                 <label><input type="radio" name="histHeatTeam" value="gegner"> Gegner</label>
+                <span style="margin: 0 10px;">|</span>
+                <label><input type="checkbox" id="histHeatmapToreFilter" checked> Tore</label>
+                <label><input type="checkbox" id="histHeatmapMissedFilter" checked> Fehlwürfe</label>
             </div>
             <div id="histHeatmapContainer" style="display: flex; justify-content: center; padding: 20px;">
                 <svg id="histHeatmapSvg" viewBox="0 0 300 200" width="600" height="400"></svg>

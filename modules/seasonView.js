@@ -107,8 +107,20 @@ function renderSeasonStats() {
                     : currentTeam;
 
                 const headerDiv = document.createElement('div');
-                headerDiv.style.cssText = 'padding: 10px; background-color: #333; color: white; margin-bottom: 10px; margin-top: 5px; border-radius: 5px; font-weight: bold; text-align: center; text-transform: uppercase; letter-spacing: 1px; border-left: 5px solid #61dafb;';
-                headerDiv.textContent = headerText;
+                headerDiv.style.cssText = 'padding: 10px; background-color: #333; color: white; margin-bottom: 10px; margin-top: 5px; border-radius: 5px; font-weight: bold; display: flex; justify-content: space-between; align-items: center; text-transform: uppercase; letter-spacing: 1px; border-left: 5px solid #61dafb;';
+
+                const headerTextSpan = document.createElement('span');
+                headerTextSpan.textContent = headerText;
+                headerDiv.appendChild(headerTextSpan);
+
+                // Team Statistics Button
+                const teamStatsBtn = document.createElement('button');
+                teamStatsBtn.textContent = 'Team Grafik';
+                teamStatsBtn.className = 'show-team-heatmap-btn';
+                teamStatsBtn.dataset.team = currentTeam;
+                teamStatsBtn.style.cssText = 'padding: 5px 12px; background-color: #61dafb; color: #333; border: none; border-radius: 5px; cursor: pointer; font-size: 0.8rem; font-weight: bold; text-transform: none;';
+                headerDiv.appendChild(teamStatsBtn);
+
                 seasonStatsContainer.appendChild(headerDiv);
             }
 
@@ -301,7 +313,16 @@ export function showPlayerHeatmap(playerIndex, mode = 'field') {
 
             // Restore filter visibility
             const filterContainer = heatmapModal.querySelector('.heatmap-filter');
-            if (filterContainer) filterContainer.style.display = '';
+            if (filterContainer) {
+                filterContainer.style.display = '';
+                filterContainer.classList.remove('versteckt');
+
+                // Restore headers/labels
+                const labels = filterContainer.querySelectorAll('label');
+                labels.forEach(l => l.style.display = '');
+                const separator = filterContainer.querySelector('span:not([id])');
+                if (separator) separator.style.display = '';
+            }
         };
 
         const closeButton = document.getElementById('closeHeatmapModal');
@@ -341,6 +362,105 @@ export function showPlayerHeatmap(playerIndex, mode = 'field') {
             });
 
             renderHeatmap(heatmapSvg, logEntries, false, filterOverride);
+        }
+    }
+}
+
+// Zeigt kombinierte Heatmap für alle Spieler eines Teams
+export function showTeamHeatmap(teamName) {
+    const summary = getSeasonSummary();
+
+    // Finde alle Spieler des Teams
+    const teamPlayers = summary.players.filter(p => p.team === teamName);
+
+    if (teamPlayers.length === 0) return;
+
+    // Aggregiere alle seasonLog Einträge (nur Feldwürfe, keine 7m)
+    const allLogEntries = [];
+    teamPlayers.forEach(player => {
+        if (player.seasonLog) {
+            const fieldThrows = player.seasonLog.filter(e => !e.is7m);
+            allLogEntries.push(...fieldThrows);
+        }
+    });
+
+    if (allLogEntries.length === 0) return;
+
+    // Default to 'tor' (Wurfbild)
+    setCurrentHeatmapTab('tor');
+
+    const displayName = teamName === 'Heim'
+        ? (spielstand.settings.teamNameHeim || 'Unser Team')
+        : teamName;
+
+    // Öffne Heatmap Modal
+    const heatmapModal = document.getElementById('heatmapModal');
+    if (heatmapModal) {
+        heatmapModal.classList.remove('versteckt');
+
+        // Remove existing title if any
+        const existingTitle = heatmapModal.querySelector('h3');
+        if (existingTitle && existingTitle.id !== 'wurfbildTitel') existingTitle.remove();
+
+        // Hide default title
+        const defaultTitle = document.getElementById('wurfbildTitel');
+        if (defaultTitle) defaultTitle.style.display = 'none';
+
+        // Set Custom Title
+        const customTitle = document.createElement('h3');
+        customTitle.textContent = `Team Grafik - ${displayName} (${teamPlayers.length} Spieler)`;
+        customTitle.style.cssText = 'text-align: center; margin-bottom: 10px; color: var(--text-main);';
+        customTitle.className = 'season-heatmap-title';
+
+        // Insert custom title
+        const content = heatmapModal.querySelector('.modal-content');
+        if (content) content.insertBefore(customTitle, content.firstChild);
+
+        // Add close handler to restore default title
+        const cleanup = () => {
+            if (defaultTitle) defaultTitle.style.display = 'block';
+            const ct = heatmapModal.querySelector('.season-heatmap-title');
+            if (ct) ct.remove();
+
+            // Restore tabs visibility
+            const tabsContainer = heatmapModal.querySelector('.heatmap-tabs');
+            if (tabsContainer) tabsContainer.style.display = '';
+
+            // Restore filter visibility
+            const filterContainer = heatmapModal.querySelector('.heatmap-filter');
+            if (filterContainer) {
+                filterContainer.style.display = '';
+                filterContainer.classList.remove('versteckt');
+
+                // Restore headers/labels
+                const labels = filterContainer.querySelectorAll('label');
+                labels.forEach(l => l.style.display = '');
+                const separator = filterContainer.querySelector('span:not([id])');
+                if (separator) separator.style.display = '';
+            }
+        };
+
+        const closeButton = document.getElementById('closeHeatmapModal');
+        if (closeButton) {
+            closeButton.addEventListener('click', cleanup, { once: true });
+        }
+
+        // Determine filter logic (team-wide, no specific player)
+        const isOpponentTeam = teamName !== 'Heim';
+
+        const filterOverride = {
+            team: isOpponentTeam ? 'gegner' : 'heim',
+            player: null // No specific player filter
+        };
+
+        if (heatmapSvg) {
+            // Set context for tab switching
+            setCurrentHeatmapContext({
+                log: allLogEntries,
+                filter: filterOverride
+            });
+
+            renderHeatmap(heatmapSvg, allLogEntries, false, filterOverride);
         }
     }
 }

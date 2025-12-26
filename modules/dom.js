@@ -169,6 +169,8 @@ export const histSubTabTor = document.getElementById('histSubTabTor');
 export const histSubTabFeld = document.getElementById('histSubTabFeld');
 export const histSubTabKombi = document.getElementById('histSubTabKombi');
 export const histHeatmapSvg = document.getElementById('histHeatmapSvg');
+export const histHeatmapToreFilter = document.getElementById('histHeatmapToreFilter');
+export const histHeatmapMissedFilter = document.getElementById('histHeatmapMissedFilter');
 
 // Custom Confirm/Alert Modal
 export const customConfirmModal = document.getElementById('customConfirmModal');

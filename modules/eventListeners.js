@@ -55,7 +55,7 @@ import { exportHistorie, importiereSpiel } from './history.js';
 import { handleSpielBeenden, renderHistoryList } from './historyView.js';
 import { renderHeatmap, setCurrentHeatmapTab, setCurrentHeatmapContext } from './heatmap.js';
 import { saveCurrentTeam, showLoadTeamModal, loadSavedTeam, deleteSavedTeam, viewTeam, updateTeam, deletePlayerFromSavedTeam, loadHistoryTeam } from './teamStorage.js';
-import { openSeasonOverview, closeSeasonOverview, showPlayerHeatmap } from './seasonView.js';
+import { openSeasonOverview, closeSeasonOverview, showPlayerHeatmap, showTeamHeatmap } from './seasonView.js';
 
 // --- Register All Event Listeners ---
 export function registerEventListeners() {
@@ -192,6 +192,9 @@ export function registerEventListeners() {
                 const playerIndex = parseInt(e.target.dataset.playerIndex);
                 const mode = e.target.dataset.mode || 'field';
                 showPlayerHeatmap(playerIndex, mode);
+            } else if (e.target.classList.contains('show-team-heatmap-btn')) {
+                const teamName = e.target.dataset.team;
+                showTeamHeatmap(teamName);
             }
         });
     }
