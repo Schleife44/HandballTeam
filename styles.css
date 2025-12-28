@@ -1,742 +1,805 @@
-/* --- CSS VARIABLEN (THEME) --- */
+/* 
+  SHADCN/UI THEME REFACTOR 
+  Based on Zinc color palette
+*/
+
 :root {
-    --bg-body: #f4f4f4;
-    --text-main: #333333;
-    --bg-container: #ffffff;
-    --border-color: #eeeeee;
-    --border-darker: #cccccc;
-    --input-bg: #ffffff;
+    /* BASE COLORS (Zinc) */
+    --background: 0 0% 100%;
+    --foreground: 240 10% 3.9%;
 
-    /* Spezifische Bereiche */
-    --table-header-bg: #f9f9f9;
-    --btn-disabled-bg: #c9c8c8;
-    --mini-tor-bg: #f9f9f9;
-    --mini-tor-border: #333333;
-    --modal-overlay: rgba(0, 0, 0, 0.7);
+    --card: 0 0% 100%;
+    --card-foreground: 240 10% 3.9%;
 
-    /* Button Farben */
-    --btn-primary: #007bff;
-    --btn-success: #28a745;
-    --btn-danger: #dc3545;
-    --btn-warning: #ffc107;
-    --btn-info: #17a2b8;
-    --btn-purple: #6f42c1;
-    --btn-grey: #6c757d;
-    --btn-orange: #fd7e14;
-    --btn-indigo: #6610f2;
+    --popover: 0 0% 100%;
+    --popover-foreground: 240 10% 3.9%;
+
+    --primary: 240 5.9% 10%;
+    --primary-foreground: 0 0% 98%;
+
+    --secondary: 240 4.8% 95.9%;
+    --secondary-foreground: 240 5.9% 10%;
+
+    --muted: 240 4.8% 95.9%;
+    --muted-foreground: 240 3.8% 46.1%;
+
+    --accent: 240 4.8% 95.9%;
+    --accent-foreground: 240 5.9% 10%;
+
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 0 0% 98%;
+
+    --border: 240 5.9% 90%;
+    --input: 240 5.9% 90%;
+    --ring: 240 5.9% 10%;
+
+    --radius: 0.5rem;
+
+    /* LEGACY/CUSTOM MAPPINGS TO SUPPORT OLD JS LOGIC IF NEEDED */
+    --btn-primary: hsl(var(--primary));
+    --btn-success: #16a34a;
+    /* Green-600 */
+    --btn-danger: hsl(var(--destructive));
+    --btn-warning: #ca8a04;
+    /* Yellow-600 */
+    --btn-info: #0284c7;
+    /* Sky-600 */
+    --btn-purple: #7c3aed;
+    /* Violet-600 */
+    --btn-grey: #64748b;
+    /* Slate-500 */
+    --btn-orange: #ea580c;
+    /* Orange-600 */
+    --btn-indigo: #4f46e5;
+    /* Indigo-600 */
+
+    /* Chart Colors */
+    --chart-1: 12 76% 61%;
+    --chart-2: 173 58% 39%;
+    --chart-3: 197 37% 24%;
+    --chart-4: 43 74% 66%;
+    --chart-5: 27 87% 67%;
+
+    /* Specific Areas */
+    --bg-body: hsl(var(--background));
+    --text-main: hsl(var(--foreground));
+    --bg-container: hsl(var(--card));
+    --border-color: hsl(var(--border));
+    --border-darker: hsl(var(--input));
+    --input-bg: transparent;
+    --table-header-bg: hsl(var(--muted));
+    --modal-overlay: rgba(0, 0, 0, 0.8);
+    --mini-tor-bg: #e4e4e7;
+    /* zinc-200 */
+    --mini-tor-border: #3f3f46;
+    /* zinc-700 */
 }
 
-/* --- DARK MODE OVERRIDES --- */
+/* DARK MODE */
 body.dark-mode {
-    --bg-body: #121212;
-    --text-main: #e0e0e0;
-    --bg-container: #1e1e1e;
-    --border-color: #333333;
-    --border-darker: #555555;
-    --input-bg: #2c2c2c;
+    --background: 240 10% 3.9%;
+    --foreground: 0 0% 98%;
 
-    --table-header-bg: #2c2c2c;
-    --btn-disabled-bg: #444444;
-    --mini-tor-bg: #2c2c2c;
-    --mini-tor-border: #888888;
-    --modal-overlay: rgba(0, 0, 0, 0.85);
+    --card: 240 10% 3.9%;
+    --card-foreground: 0 0% 98%;
+
+    --popover: 240 10% 3.9%;
+    --popover-foreground: 0 0% 98%;
+
+    --primary: 0 0% 98%;
+    --primary-foreground: 240 5.9% 10%;
+
+    --secondary: 240 3.7% 15.9%;
+    --secondary-foreground: 0 0% 98%;
+
+    --muted: 240 3.7% 15.9%;
+    --muted-foreground: 240 5% 64.9%;
+
+    --accent: 240 3.7% 15.9%;
+    --accent-foreground: 0 0% 98%;
+
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 0 0% 98%;
+
+    --border: 240 3.7% 15.9%;
+    --input: 240 3.7% 15.9%;
+    --ring: 240 4.9% 83.9%;
+
+    /* Mappings */
+    --btn-primary: hsl(var(--primary));
+    --bg-body: hsl(var(--background));
+    --text-main: hsl(var(--foreground));
+    --bg-container: hsl(var(--card));
+    --border-color: hsl(var(--border));
+    --border-darker: hsl(var(--input));
+    --input-bg: transparent;
+    --table-header-bg: hsl(var(--muted));
+
+    --mini-tor-bg: #27272a;
+    /* zinc-800 */
+    --mini-tor-border: #a1a1aa;
+    /* zinc-400 */
 }
 
-/* Basis-Stile */
+
+/* --- BASICS & RESET --- */
+* {
+    border-color: hsl(var(--border));
+    box-sizing: border-box;
+}
+
 body {
-    font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-    text-align: center;
-    background-color: var(--bg-body);
-    color: var(--text-main);
-    padding: 20px;
+    font-family: "Inter", system-ui, -apple-system, sans-serif;
+    background-color: hsl(var(--background));
+    color: hsl(var(--foreground));
     margin: 0;
-    transition: background-color 0.3s, color 0.3s;
+    padding: 0;
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
 }
 
+/* HEADINGS */
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+    scroll-margin: 20px;
+    letter-spacing: -0.025em;
+    font-weight: 600;
+}
+
+/* --- COMPONENTS --- */
+
+/* BUTTONS (Shadcn Variants) */
 button {
-    font-size: 1rem;
-    padding: 10px 20px;
-    margin: 5px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    white-space: nowrap;
+    border-radius: var(--radius);
+    padding: 0 1rem;
+    height: 2.5rem;
+    /* h-10 */
+    font-size: 0.875rem;
+    font-weight: 500;
+    transition: colors 0.2s;
     cursor: pointer;
     border: none;
-    border-radius: 8px;
-    color: white;
-    transition: filter 0.3s;
-    background-color: var(--btn-primary);
-    /* Prevent text overflow */
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-    max-width: 100%;
-    box-sizing: border-box;
+    outline: none;
+    background-color: hsl(var(--primary));
+    color: hsl(var(--primary-foreground));
+    margin: 4px;
 }
 
 button:hover {
-    filter: brightness(90%);
-    transform: translateY(-1px);
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    opacity: 0.9;
+    transform: none;
+    /* Reset classic hover */
+    box-shadow: none;
 }
 
 button:disabled {
-    background-color: var(--btn-disabled-bg) !important;
-    cursor: not-allowed;
-    opacity: 0.7;
-    color: #888;
+    pointer-events: none;
+    opacity: 0.5;
 }
 
-.versteckt {
-    display: none !important;
+/* Shadcn-specific classes used in index.html */
+/* We use higher specificity (button.) to override the too-broad button selector */
+button.shadcn-btn-primary {
+    background-color: hsl(var(--primary));
+    color: hsl(var(--primary-foreground));
+    border: none;
 }
 
+button.shadcn-btn-primary:hover {
+    background-color: hsl(var(--primary) / 0.9);
+}
+
+button.shadcn-btn-secondary {
+    background-color: hsl(var(--secondary));
+    color: hsl(var(--secondary-foreground));
+    border: none;
+}
+
+button.shadcn-btn-secondary:hover {
+    background-color: hsl(var(--secondary) / 0.8);
+}
+
+button.shadcn-btn-outline {
+    background-color: transparent;
+    border: 1px solid hsl(var(--border));
+    color: hsl(var(--foreground));
+}
+
+button.shadcn-btn-outline:hover {
+    background-color: hsl(var(--accent));
+    color: hsl(var(--accent-foreground));
+}
+
+button.shadcn-btn-ghost {
+    background-color: transparent;
+    color: hsl(var(--foreground));
+    border: none;
+}
+
+button.shadcn-btn-ghost:hover {
+    background-color: hsl(var(--accent));
+    color: hsl(var(--accent-foreground));
+}
+
+button.shadcn-btn-sm {
+    height: 2rem;
+    padding: 0 0.75rem;
+    font-size: 0.75rem;
+}
+
+
+/* Legacy Variants using old IDs for backwards compatibility */
+.btn-secondary {
+    background-color: hsl(var(--secondary));
+    color: hsl(var(--secondary-foreground));
+}
+
+.btn-destructive,
+#neuesSpielButton,
+.delete-player,
+.loeschButton {
+    background-color: hsl(var(--destructive));
+    color: hsl(var(--destructive-foreground));
+}
+
+.btn-ghost {
+    background-color: transparent;
+    color: hsl(var(--foreground));
+}
+
+.btn-outline {
+    background-color: transparent;
+    border: 1px solid hsl(var(--input));
+    color: hsl(var(--foreground));
+}
+
+
+/* INPUTS */
 input[type="text"],
-input[type="number"] {
-    font-size: 1rem;
-    padding: 10px;
-    margin: 5px;
-    border: 1px solid var(--border-darker);
-    border-radius: 5px;
-    background-color: var(--input-bg);
-    color: var(--text-main);
-}
-
-.cta-button {
-    background-color: var(--btn-success);
-    font-size: 1.2rem;
-    padding: 15px 30px;
-    margin-top: 20px;
-}
-
-/* 1. Roster-Bereich */
-#rosterBereich {
-    max-width: 600px;
-    margin: auto;
-    background: var(--bg-container);
-    padding: 20px;
-    border-radius: 8px;
-    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
-}
-
-#addPlayerForm {
+input[type="number"],
+select,
+textarea {
     display: flex;
-    flex-wrap: wrap;
-    justify-content: center;
-    align-items: center;
-    gap: 10px;
+    height: 2.5rem;
+    /* h-10 */
+    width: 100%;
+    border-radius: var(--radius);
+    border: 1px solid hsl(var(--input));
+    background-color: transparent;
+    /* or var(--background) */
+    padding: 0.5rem 0.75rem;
+    font-size: 0.875rem;
+    color: hsl(var(--foreground));
+    transition: box-shadow 0.1s;
+    outline: none;
+}
+
+input:focus,
+select:focus,
+textarea:focus {
+    box-shadow: 0 0 0 2px hsl(var(--ring) / 0.3);
+    border-color: hsl(var(--ring));
+}
+
+/* CARDS / PANELS */
+.season-panel,
+.content-section,
+.history-card,
+#rosterBereich,
+#protokoll,
+.stats-card,
+#mainGameContent>div
+
+/* Assuming cards in game content */
+    {
+    border-radius: var(--radius);
+    border: 1px solid hsl(var(--border));
+    background-color: hsl(var(--card));
+    color: hsl(var(--card-foreground));
+    box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+    /* shadow-sm */
+    padding: 1.5rem;
     margin-bottom: 20px;
 }
 
-#cancelEditButton {
-    background-color: var(--btn-grey);
+/* No more crazy shadows or gradients for standard cards */
+.dashboard-header h1 {
+    font-size: 1.875rem;
+    font-weight: 700;
+    letter-spacing: -0.05em;
+    background: none !important;
+    -webkit-text-fill-color: hsl(var(--foreground)) !important;
 }
 
-#teamVerwaltung {
-    margin: 20px 0;
-    padding: 10px;
-    border-top: 1px solid var(--border-color);
-    border-bottom: 1px solid var(--border-color);
-}
-
-.team-manage-btn {
-    font-size: 0.9rem;
-    padding: 8px 15px;
-}
-
-#exportTeamButton {
-    background-color: var(--btn-info);
-}
-
-#importTeamButton {
-    background-color: var(--btn-purple);
-}
-
-#rosterListe {
-    list-style: none;
-    padding: 0;
-    text-align: left;
-}
-
-#rosterListe li {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 10px;
-    border-bottom: 1px solid var(--border-color);
-    font-size: 1.1rem;
-}
-
-.roster-button-wrapper {
-    display: flex;
-    gap: 5px;
-    flex-shrink: 0;
-}
-
-.edit-player {
-    background-color: var(--btn-warning);
-    color: #333;
-    font-size: 0.8rem;
-    padding: 5px 10px;
-}
-
-.delete-player {
-    background-color: var(--btn-danger);
-    font-size: 0.8rem;
-    padding: 5px 10px;
-}
-
-/* Team Toggle Switch */
-.team-toggle-switch {
-    position: relative;
-    display: inline-block;
-    width: 50px;
-    height: 24px;
-}
-
-.team-toggle-switch input {
-    opacity: 0;
-    width: 0;
-    height: 0;
-}
-
-.team-toggle-slider {
-    position: absolute;
-    cursor: pointer;
-    top: 0;
+/* --- SIDEBAR --- */
+#sidebar {
+    position: fixed;
     left: 0;
-    right: 0;
-    bottom: 0;
-    background-color: var(--btn-success);
-    transition: 0.4s;
-    border-radius: 24px;
-}
-
-.team-toggle-slider:before {
-    position: absolute;
-    content: "";
-    height: 18px;
-    width: 18px;
-    left: 3px;
-    bottom: 3px;
-    background-color: white;
-    transition: 0.4s;
-    border-radius: 50%;
-}
-
-.team-toggle-switch input:checked+.team-toggle-slider {
-    background-color: var(--btn-info);
-}
-
-.team-toggle-switch input:checked+.team-toggle-slider:before {
-    transform: translateX(26px);
-}
-
-/* 2. Spiel-Bereich */
-#spielBereich {
-    display: flex;
-    flex-direction: row;
-    justify-content: center;
-    align-items: flex-start;
-    gap: 20px;
-}
-
-#mainGameContent {
-    flex-grow: 1;
-    flex-basis: 600px;
-    max-width: 800px;
-}
-
-/* Statistik-Seitenleiste */
-#statistikSidebar {
-    flex-basis: 300px;
-    flex-shrink: 0;
-    position: sticky;
-    top: 20px;
-    background: var(--bg-container);
-    border-radius: 8px;
-    padding: 15px;
-    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
-}
-
-#statistikSidebar h3 {
-    text-align: center;
-    margin-top: 0;
-    border-bottom: 1px solid var(--border-color);
-    padding-bottom: 10px;
-}
-
-.trennlinie-oben {
-    border-top: 1px solid var(--border-color);
-    padding-top: 10px;
-    margin-top: 20px !important;
-}
-
-#torTabelle,
-#torTabelleGegner {
-    width: 100%;
-    border-collapse: collapse;
-}
-
-#torTabelle th,
-#torTabelle td,
-#torTabelleGegner th,
-#torTabelleGegner td {
-    padding: 8px;
-    text-align: left;
-    border-bottom: 1px solid var(--border-color);
-}
-
-#torTabelle th,
-#torTabelleGegner th {
-    background-color: var(--table-header-bg);
-    font-size: 0.9rem;
-}
-
-#torTabelle td:first-child {
-    font-size: 0.9rem;
-    word-break: break-word;
-}
-
-#torTabelle td:last-child,
-#torTabelleGegner td:last-child {
-    text-align: center;
-    font-weight: bold;
-    font-size: 1.2rem;
-}
-
-
-#verwaltung {
-    margin-bottom: 15px;
-    display: flex;
-    justify-content: center;
-    flex-wrap: wrap;
-}
-
-#verwaltung button {
-    font-size: 0.9rem;
-    padding: 8px 15px;
-}
-
-#backToRosterButton {
-    background-color: var(--btn-grey);
-}
-
-#exportButton {
-    background-color: var(--btn-success);
-}
-
-#neuesSpielButton {
-    background-color: var(--btn-danger);
-}
-
-/* Timer-Container */
-#timerContainer {
-    background: var(--bg-container);
-    padding: 15px;
-    border-radius: 8px;
-    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
-    max-width: 500px;
-    margin: 20px auto;
-}
-
-#timerAnzeige {
-    font-size: 3rem;
-    font-weight: bold;
-    color: var(--text-main);
-}
-
-/* NEU: Suspension Display */
-#suspensionContainer {
-    display: flex;
-    justify-content: center;
-    gap: 10px;
-    margin-top: 10px;
-    margin-bottom: 10px;
-    flex-wrap: wrap;
-}
-
-.suspension-card {
+    top: 0;
+    width: 200px;
+    height: 100vh;
+    /* Dark Zinc Sidebar usually preferred for contrast, or Card color */
+    background-color: #09090b;
+    /* Zinc 950 */
+    color: #fafafa;
+    /* Zinc 50 */
+    border-right: 1px solid #27272a;
+    /* Zinc 800 */
+    z-index: 1000;
     display: flex;
     flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    width: 60px;
-    height: 60px;
-    border-radius: 5px;
-    color: white;
-    font-weight: bold;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
-    font-size: 0.9rem;
+    overflow-y: auto;
 }
 
-.suspension-card.heim {
-    background-color: var(--btn-danger);
-    /* Rot für Heim */
+#sidebar.active {
+    left: 0;
 }
 
-.suspension-card.gegner {
-    background-color: var(--btn-primary);
-    /* Blau für Gegner */
+.sidebar-header {
+    padding: 1.5rem 1rem;
+    border-bottom: 1px solid #27272a;
 }
 
-.suspension-time {
-    font-size: 1.1rem;
-    margin-top: 2px;
-}
-
-
-/* Spielstand */
-#scoreWrapper {
-    display: flex;
-    justify-content: space-around;
-    align-items: center;
-    margin-top: 10px;
-}
-
-.score-display-block {
-    flex-grow: 1;
-    text-align: center;
-}
-
-#scoreAnzeige {
-    font-size: 2.5rem;
-    font-weight: bold;
-    color: var(--text-main);
-    line-height: 1;
-}
-
-.team-name-small {
-    font-size: 0.8rem;
-    color: var(--text-main);
-    opacity: 0.7;
-    text-transform: uppercase;
-    margin: 0 5px;
-    display: inline-block;
-}
-
-.score-team-control {
-    display: flex;
-    flex-direction: column;
-}
-
-.score-korrektur {
+.sidebar-header h2 {
     font-size: 1rem;
-    padding: 5px 10px;
-    margin: 2px 5px;
-    background-color: var(--btn-grey);
+    margin: 0;
+    color: #fff;
+    text-shadow: none;
+}
+
+.sidebar-nav {
+    padding: 1rem 0;
+    flex: 1;
+}
+
+.nav-item {
+    display: flex;
+    align-items: center;
+    padding: 0.5rem 1rem;
+    margin: 0.25rem 0.75rem;
+    border-radius: 0.375rem;
+    cursor: pointer;
+    transition: background-color 0.2s, color 0.2s;
+    color: #a1a1aa;
+    /* Zinc 400 */
+    font-size: 0.875rem;
+    font-weight: 500;
+    border-left: none;
+    /* remove legacy border */
+}
+
+.nav-item:hover {
+    background-color: #27272a;
+    /* Zinc 800 */
+    color: #fff;
+}
+
+.nav-item.active {
+    background-color: #27272a;
+    /* Zinc 800 */
+    color: #fff;
+}
+
+.nav-icon {
+    margin-right: 0.75rem;
+    width: 1.25rem;
+    height: 1.25rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.nav-icon svg {
+    width: 100%;
+    height: 100%;
+    stroke-width: 2px;
+}
+
+.nav-group-label {
+    padding: 1.5rem 1rem 0.5rem;
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    color: #71717a;
+    /* Zinc 500 */
+    letter-spacing: 0.05em;
+}
+
+.sidebar-timer {
+    margin-left: auto;
+    /* Push to right end of flex container */
+    padding: 2px 6px;
+    background-color: #ef4444;
+    /* Red to indicate live/active */
+    border-radius: 4px;
+    text-align: center;
+    font-family: monospace;
+    font-weight: 700;
+    font-size: 0.75rem;
+    color: #fff;
+    border: none;
+    line-height: normal;
+    min-width: 45px;
+    /* Prevent jitter when digits change */
+}
+
+/* MAIN CONTENT */
+#main-content {
+    margin-left: 200px;
+    min-height: 100vh;
+    padding: 2rem;
+    transition: margin-left 0.3s;
+}
+
+/* --- GAME UI MODERNIZATION (Specifics) --- */
+
+/* Scoreboard Card Override */
+/* Scoreboard Card Override */
+.game-scoreboard {
+    background: hsl(var(--card));
+    /* Reset to card */
+    color: hsl(var(--card-foreground));
+    border: 1px solid hsl(var(--border));
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+    /* shadow-md */
+    padding: 2rem;
+    margin-bottom: 2rem;
+    display: flex;
+    /* NEW */
+    flex-direction: column;
+    /* NEW */
+    align-items: center;
+    /* NEW */
+    gap: 1rem;
+    /* NEW */
+}
+
+/* NEW LAYOUT CLASSES */
+.game-layout {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    width: 100%;
+}
+
+.scoreboard-main {
+    display: grid;
+    grid-template-columns: 1fr auto 1fr;
+    /* Fixed center, flexible sides */
+    align-items: center;
+    gap: 2rem;
+    width: 100%;
+    max-width: 800px;
+    /* Constrain max width for better look */
+}
+
+/* Ensure Team Names don't push center - Align them towards center or let them flex */
+.scoreboard-team {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+}
+
+.scoreboard-team.home {
+    align-items: flex-end;
+    /* Align Home to right (towards center) */
+    text-align: right;
+}
+
+.scoreboard-team.away {
+    align-items: flex-start;
+    /* Align Away to left (towards center) */
+    text-align: left;
+}
+
+/* Center Display is the Score itself */
+.scoreboard-divider {
+    font-size: 2rem;
+    font-weight: 300;
+    padding: 0 10px;
+}
+
+/* Ensure controls container is centered */
+.scoreboard-controls {
+    display: flex;
+    flex-direction: column;
+    /* Stack rows */
+    justify-content: center;
+    align-items: center;
+    gap: 0.5rem;
+    /* Tight gap between rows */
+    width: 100%;
+    margin-top: 10px;
 }
 
 #zeitSprung {
-    margin: 10px 0;
-}
-
-.zeitButton {
-    font-size: 0.9rem;
-    padding: 8px 12px;
-    background-color: var(--btn-grey);
-}
-
-#pauseButton {
-    background-color: var(--btn-warning);
-    color: #333;
-}
-
-#gamePhaseButton {
-    background-color: var(--btn-warning);
-    color: #333;
-    font-size: 1.2rem;
-    width: 80%;
-}
-
-#gamePhaseButton.beendet {
-    background-color: var(--btn-danger);
-    color: white;
-    opacity: 0.8;
-}
-
-/* Globale Aktionen */
-#globalAktionen {
-    margin: -10px auto 20px auto;
     display: flex;
-    justify-content: center;
-    flex-wrap: wrap;
     gap: 10px;
-}
-
-#gegnerTorButton {
-    background-color: var(--btn-danger);
-    font-size: 1.1rem;
-}
-
-#gegner2minButton {
-    background-color: var(--btn-orange);
-    font-size: 1.1rem;
-}
-
-#gegner7mButton {
-    background-color: var(--btn-indigo);
-    font-size: 1.1rem;
-}
-
-/* Spieler-Auswahl Bereich */
-#spielerAuswahlContainer {
-    display: flex;
-    gap: 20px;
-    max-width: 800px;
-    margin: 20px auto;
-}
-
-.spieler-spalte {
-    flex: 1;
-    min-width: 0;
-}
-
-.spieler-spalte h4 {
-    text-align: center;
-    margin: 0 0 10px 0;
-    padding: 5px;
-    background-color: var(--bg-container);
-    border-radius: 5px;
-    font-size: 1rem;
-}
-
-#heimSpielerRaster,
-#gegnerSpielerRaster {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(60px, 1fr));
-    gap: 8px;
-}
-
-.spieler-button {
-    font-size: 1.1rem;
-    padding: 12px 5px;
-    background-color: #dd0c0c;
-    border: 3px solid transparent;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
     justify-content: center;
-    line-height: 1.3;
-    min-height: 65px;
-    color: white;
 }
 
-.gegner-button {
-    background-color: #0d6efd;
-}
-
-.add-player-button {
-    background-color: #28a745;
-    opacity: 0.7;
-    font-size: 2rem;
-}
-
-.add-player-button:hover {
-    opacity: 1;
-}
-
-.spieler-nummer {
-    font-size: 1.3rem;
-    font-weight: bold;
-}
-
-.spieler-name {
-    font-size: 0.75rem;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: clip;
-    text-align: left;
+/* Raster Grid Update */
+/* Raster Grid Update */
+/* Raster Grid Update */
+/* Raster Grid Update */
+/* Raster Grid Update */
+.spieler-raster {
+    display: grid;
+    /* Back to 4 Columns */
+    grid-template-columns: repeat(4, 1fr);
+    gap: 8px;
     width: 100%;
 }
 
-/* Responsive: Stack columns on smaller screens */
-@media (max-width: 600px) {
-    #spielerAuswahlContainer {
-        flex-direction: column;
+.player-grid-container {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+    /* Reduced gap between Heim/Gegner blocks */
+    width: 100%;
+    max-width: 900px;
+    /* Reduced from 1200px to constrain width */
+    margin-bottom: 3rem;
+    /* Added extra space bottom */
+}
+
+/* Responsive Grid */
+@media (max-width: 768px) {
+    .player-grid-container {
+        grid-template-columns: 1fr;
     }
 }
 
-/* Protokoll */
-#protokoll {
-    margin-top: 30px;
-    text-align: left;
-    max-width: 600px;
-    margin-left: auto;
-    margin-right: auto;
-    background-color: var(--bg-container);
-    padding: 15px;
+.scoreboard-timer {
+    color: hsl(var(--primary));
+    text-shadow: none;
+    font-family: monospace;
+    letter-spacing: -0.05em;
+    font-size: 5rem;
+    /* Make Timer Larger */
+    line-height: 1;
+    font-weight: 700;
+}
+
+.scoreboard-score {
+    color: hsl(var(--foreground));
+    font-variant-numeric: tabular-nums;
+}
+
+.scoreboard-divider {
+    color: hsl(var(--muted-foreground));
+}
+
+.scoreboard-team-name {
+    color: hsl(var(--muted-foreground));
+    letter-spacing: 0.05em;
+}
+
+/* Timer Buttons */
+.timer-btn {
+    border: 1px solid hsl(var(--input));
+    background: transparent;
+    color: hsl(var(--foreground));
+}
+
+.timer-btn:hover {
+    background: hsl(var(--accent));
+}
+
+.timer-btn.primary {
+    background: hsl(var(--primary));
+    color: hsl(var(--primary-foreground));
+    border: none;
+}
+
+.timer-btn.primary:hover {
+    background: hsl(var(--primary) / 0.9);
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+}
+
+
+/* GAME ACTIONS (Buttons below court) */
+.aktion-button {
+    height: auto;
+    padding: 1rem;
+    font-size: 1rem;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+/* ROSTER / PLAYER CARDS */
+/* ROSTER / PLAYER CARDS */
+/* ROSTER / PLAYER CARDS */
+.spieler-button {
+    /* Fixed Size & Circle-like or Square Aspect */
+    width: 100%;
+    /* Fill grid cell */
+    margin: 0;
+
+    min-height: 60px;
+    height: 75px;
+    /* Slightly taller */
+
+    /* Layout */
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    gap: 2px;
+
+    /* Decoration */
     border-radius: 8px;
-    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+    /* Distinct radius */
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+    transition: transform 0.1s, box-shadow 0.1s;
+    border: none;
+    /* Clean look */
+    padding: 2px;
+    overflow: hidden;
+
+    /* Default Colors (Home/Red) */
+    background-color: #d81b1b;
+    color: white;
 }
 
-#protokoll h3 {
-    text-align: center;
+.spieler-button.gegner-button {
+    background-color: #2563eb;
+    /* Blue for Opponent */
+    color: white;
 }
 
-#protokoll p {
+/* Specific override for Add Button */
+.add-player-button {
+    background-color: #198754 !important;
+    /* Green */
+}
+
+.spieler-button:active {
+    transform: scale(0.98);
+}
+
+.spieler-nummer-display {
+    font-size: 1.4rem;
+    /* Reduced from 1.8rem */
+    font-weight: 800;
+    line-height: 1;
+}
+
+.spieler-name-display {
+    font-size: 0.7rem;
+    /* Reduced from 0.75rem */
+    font-weight: 500;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 100%;
+    opacity: 0.9;
+}
+
+/* Keep distinct colors for Team/Opponent buttons as they are functional context */
+.spieler-button:not(.gegner-button):not(.add-player-button) {
+    background-color: hsl(var(--destructive));
+    /* Usually Home is Red in this app */
+    color: #fff;
+}
+
+.gegner-button {
+    background-color: #2563eb;
+    /* Blue-600 */
+    color: #fff;
+}
+
+/* TABLES */
+table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.875rem;
+}
+
+th {
+    text-align: left;
+    padding: 0.75rem;
+    color: hsl(var(--muted-foreground));
+    font-weight: 500;
+    border-bottom: 1px solid hsl(var(--border));
+    background-color: transparent;
+}
+
+td {
+    padding: 0.75rem;
+    border-bottom: 1px solid hsl(var(--border));
+}
+
+tr:hover td {
+    background-color: hsl(var(--muted) / 0.5);
+}
+
+/* DASHBOARD GRID */
+.season-grid-panels {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 1.5rem;
+    margin-bottom: 2rem;
+}
+
+.season-panel-title {
+    font-size: 1rem;
+    font-weight: 600;
+    margin-bottom: 1rem;
+    color: hsl(var(--foreground));
+}
+
+/* LAST RESULTS LIST */
+.last-result-item {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    border-bottom: 1px solid var(--border-color);
-    padding: 5px 0;
-    word-break: break-word;
+    padding: 0.75rem 0;
+    border-bottom: 1px solid hsl(var(--border));
 }
 
-.loeschButton {
-    font-size: 0.9rem;
-    padding: 3px 10px;
-    background-color: var(--btn-danger);
-    flex-shrink: 0;
+.last-result-item:last-child {
+    border-bottom: none;
 }
 
-/* 3. Modal-Stile */
-.modal-overlay {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background: var(--modal-overlay);
+.result-badge-square {
+    width: 2rem;
+    height: 2rem;
     display: flex;
-    justify-content: center;
     align-items: center;
-    z-index: 3000;
-    padding: 20px;
-    box-sizing: border-box;
-}
-
-/* Settings Modal hat höchste Priorität */
-#settingsModal {
-    z-index: 9999;
-}
-
-.modal-content {
-    background: var(--bg-container);
-    color: var(--text-main);
-    padding: 20px;
-    border-radius: 8px;
-    width: 100%;
-    max-width: 400px;
-    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
-}
-
-.modal-content h3 {
-    margin-top: 0;
-}
-
-.modal-content .aktion-button,
-.modal-content #kommentarSpeichernButton {
-    display: block;
-    width: 100%;
-    margin: 10px 0;
-    font-size: 1.1rem;
-    padding: 15px;
-}
-
-.modal-abbrechen {
-    background-color: var(--btn-grey);
-}
-
-#kommentarInput {
-    width: 100%;
-    box-sizing: border-box;
-}
-
-.strafe-gelb {
-    background-color: var(--btn-warning);
-    color: #333;
-}
-
-.strafe-zeit {
-    background-color: var(--btn-orange);
-}
-
-.strafe-rot {
-    background-color: var(--btn-danger);
-}
-
-/* 4. Statistik */
-#statistikWrapper {
-    margin-top: 20px;
-    padding-top: 15px;
-    border-top: 2px solid var(--btn-primary);
-}
-
-.statistik-container {
-    width: 100%;
-    overflow-x: auto;
-}
-
-#statistikTabelle {
-    width: 100%;
-    border-collapse: collapse;
-    margin-top: 15px;
-}
-
-#statistikTabelle th,
-#statistikTabelle td {
-    border: 1px solid var(--border-darker);
-    padding: 8px;
-    text-align: center;
-    min-width: 30px;
-    font-size: 0.8rem;
-}
-
-#statistikTabelle th {
-    background-color: var(--table-header-bg);
-}
-
-#statistikTabelle td:first-child {
-    text-align: left;
-    font-weight: bold;
-    min-width: 80px;
-}
-
-
-/* 5. Einstellungs-Button & Styles */
-#settingsButton {
-    position: fixed;
-    top: 10px;
-    right: 10px;
-    background-color: var(--bg-container);
-    color: var(--text-main);
-    border: 2px solid var(--border-darker);
-    border-radius: 50%;
-    width: 44px;
-    height: 44px;
-    font-size: 1.5rem;
-    padding: 0;
-    display: flex;
     justify-content: center;
-    align-items: center;
-    z-index: 9999;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
-    cursor: pointer;
+    border-radius: 6px;
+    font-weight: 700;
+    font-size: 0.875rem;
+    margin-right: 1rem;
+    color: #fff;
 }
 
-/* 6. Wurfbild Eingabe (Das Tor) */
+.result-badge-square.win {
+    background-color: #16a34a;
+}
+
+.result-badge-square.loss {
+    background-color: #dc2626;
+}
+
+.result-badge-square.draw {
+    background-color: #64748b;
+}
+
+/* --- VISUALIZATIONS (Court, Goal) - Preserved & Theme-Aware --- */
+
+/* 1. Goal (Wurfbild) */
 #wurfbildUmgebung {
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    padding: 40px;
-    background-color: rgba(0, 0, 0, 0.05);
-    border-radius: 8px;
-    cursor: crosshair;
+    background-color: hsl(var(--muted));
+    border-radius: var(--radius);
+    padding: 2rem;
 }
 
 #torRahmen {
     position: relative;
     width: 300px;
     height: 200px;
-    border-top: 10px solid #cc0000;
-    border-left: 10px solid #cc0000;
-    border-right: 10px solid #cc0000;
-    background-color: rgba(255, 255, 255, 0.8);
+    border-top: 8px solid #ef4444;
+    /* Clean red */
+    border-left: 8px solid #ef4444;
+    border-right: 8px solid #ef4444;
+    background-color: rgba(255, 255, 255, 0.9);
+    margin: 0 auto;
+    /* Net Pattern */
     background-image:
-        linear-gradient(0deg, transparent 24%, #ccc 25%, #ccc 26%, transparent 27%, transparent 74%, #ccc 75%, #ccc 76%, transparent 77%, transparent),
-        linear-gradient(90deg, transparent 24%, #ccc 25%, #ccc 26%, transparent 27%, transparent 74%, #ccc 75%, #ccc 76%, transparent 77%, transparent);
+        linear-gradient(0deg, transparent 24%, #e5e7eb 25%, #e5e7eb 26%, transparent 27%, transparent 74%, #e5e7eb 75%, #e5e7eb 76%, transparent 77%, transparent),
+        linear-gradient(90deg, transparent 24%, #e5e7eb 25%, #e5e7eb 26%, transparent 27%, transparent 74%, #e5e7eb 75%, #e5e7eb 76%, transparent 77%, transparent);
     background-size: 20px 20px;
-    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
-    cursor: crosshair;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
 }
 
 #torNetz {
@@ -744,433 +807,1224 @@ input[type="number"] {
     height: 100%;
 }
 
-/* Wurfposition Half-Court Field */
+/* 2. Field (Wurfposition) */
 #wurfpositionFeld {
-    width: 100%;
-    max-width: 400px;
-    margin: 0 auto;
-    cursor: crosshair;
+    margin: 1rem auto;
+    max-width: 500px;
 }
 
 #wurfpositionFeld svg {
     display: block;
     width: 100%;
     height: auto;
+    border-radius: 4px;
+    /* Soft edges */
 }
 
+/* Dark Mode fixes for SVG */
 body.dark-mode #wurfpositionFeld svg rect:first-child {
-    fill: #2c2c2c;
+    fill: #27272a;
+    stroke: #52525b;
 }
 
 body.dark-mode #wurfpositionFeld svg path,
 body.dark-mode #wurfpositionFeld svg line,
 body.dark-mode #wurfpositionFeld svg circle {
-    stroke: #888;
+    stroke: #a1a1aa;
 }
 
-body.dark-mode #wurfpositionFeld svg rect:nth-child(2) {
-    fill: #888;
-}
-
-/* 7. Wurfbilder Übersicht (Die Mini-Tore) */
+/* 3. Heatmap Mini Goals */
 .mini-tor-wrapper {
-    position: relative;
-    width: 150px;
-    height: 100px;
-    border-top: 5px solid var(--mini-tor-border);
-    border-left: 5px solid var(--mini-tor-border);
-    border-right: 5px solid var(--mini-tor-border);
-    background-color: var(--mini-tor-bg);
-    background-image: radial-gradient(#ddd 1px, transparent 1px);
-    background-size: 10px 10px;
-    z-index: 1;
+    background-color: hsl(var(--muted));
+    border-color: hsl(var(--border));
+    margin: 10px auto;
 }
 
-.mini-shot-dot {
-    position: absolute;
-    width: 12px;
-    height: 12px;
-    border: 2px solid white;
-    border-radius: 50%;
-    transform: translate(-50%, -50%);
-    z-index: 10;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+/* --- UTILS --- */
+.versteckt {
+    display: none !important;
+}
+
+/* MODALS */
+.modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.8);
+    backdrop-filter: blur(4px);
+    z-index: 2000;
+    /* High z-index */
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.modal-content {
+    border: 1px solid hsl(var(--border));
+    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+}
+
+/* Added closing brace */
+
+/* Specific Modal Layouts for Actions */
+#aktionsMenue .modal-content,
+#aktionVorauswahl .modal-content,
+#sevenMeterOutcomeModal .modal-content {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    /* Space between buttons */
+}
+
+/* Ensure buttons in these modals are full width or consistent */
+#aktionsMenue .aktion-button,
+#aktionVorauswahl .aktion-button,
+#sevenMeterOutcomeModal .aktion-button {
+    width: 100%;
+    margin: 0;
+    /* Override default margin */
+    justify-content: center;
+    /* Center text */
+    text-align: center;
+}
+
+/* Toggle Switch (Shadcn style) */
+/* Toggle Switch (Shadcn style) */
+.shadcn-switch {
+    width: 44px;
+    height: 24px;
+    background-color: hsl(var(--primary) / 0.2);
+    /* Dim primary color for unchecked */
+    border-radius: 9999px;
+    position: relative;
+    border: none;
+    cursor: pointer;
+    transition: background-color 0.2s;
+    padding: 2px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: flex-start;
+    /* Ensure thumb starts at left */
+    box-sizing: border-box;
+    flex-shrink: 0;
+    vertical-align: middle;
+}
+
+.shadcn-switch[data-state="checked"] {
+    background-color: hsl(var(--primary));
+}
+
+.shadcn-switch-thumb {
+    display: block;
+    width: 20px;
+    height: 20px;
+    background-color: white;
+    /* Force white for visibility */
+    border-radius: 9999px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+    transform: translateX(0);
+    transition: transform 0.2s;
+    pointer-events: none;
+}
+
+.shadcn-switch[data-state="checked"] .shadcn-switch-thumb {
+    transform: translateX(20px);
+}
+
+/* Helper Class for Grid Cells */
+.chart-container {
+    position: relative;
+    width: 100%;
+    height: 200px;
+}
+
+/* --- RESPONSIVE --- */
+@media (max-width: 768px) {
+    #sidebar {
+        left: -200px;
+        transition: transform 0.3s;
+    }
+
+    #sidebar.active {
+        transform: translateX(200px);
+        left: 0;
+    }
+
+    #main-content {
+        margin-left: 0;
+        padding: 1rem;
+    }
+
+    .mobile-menu-btn {
+        display: block;
+        position: fixed;
+        top: 1rem;
+        left: 1rem;
+        z-index: 1100;
+        background: hsl(var(--card));
+        border: 1px solid hsl(var(--border));
+        border-radius: 8px;
+        padding: 8px;
+    }
+}
+
+/* SHADCN MODAL STYLES */
+.shadcn-modal-content {
+    background-color: hsl(var(--background));
+    border: 1px solid hsl(var(--border));
+    border-radius: var(--radius);
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+    padding: 1.5rem;
+    width: 100%;
+    max-width: 512px;
+    position: relative;
+    animation: modal-in 0.2s ease-out;
+}
+
+@keyframes modal-in {
+    from {
+        opacity: 0;
+        transform: scale(0.95);
+    }
+
+    to {
+        opacity: 1;
+        transform: scale(1);
+    }
+}
+
+.shadcn-modal-header {
+    display: flex;
+    flex-direction: column;
+    gap: 0.375rem;
+    text-align: left;
+}
+
+.shadcn-modal-header h3 {
+    font-size: 1.125rem;
+    font-weight: 600;
+    margin: 0;
+    color: hsl(var(--foreground));
+}
+
+.shadcn-modal-header p {
+    font-size: 0.875rem;
+    color: hsl(var(--muted-foreground));
+    margin: 0;
+    line-height: 1.5;
+}
+
+.shadcn-modal-footer {
+    display: flex;
+    flex-direction: row;
+    justify-content: flex-end;
+    gap: 0.5rem;
+    margin-top: 1.5rem;
+}
+
+.shadcn-btn-primary {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: var(--radius);
+    font-size: 0.875rem;
+    font-weight: 500;
+    height: 40px;
+    padding: 0 1rem;
+    background-color: hsl(var(--primary));
+    color: hsl(var(--primary-foreground));
+    border: none;
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+.shadcn-btn-primary:hover {
+    background-color: hsl(var(--primary) / 0.9);
+}
+
+.shadcn-btn-outline {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: var(--radius);
+    font-size: 0.875rem;
+    font-weight: 500;
+    height: 40px;
+    padding: 0 1rem;
+    background-color: transparent;
+    border: 1px solid hsl(var(--input));
+    color: hsl(var(--foreground));
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+.shadcn-btn-outline:hover {
+    background-color: hsl(var(--accent));
+    color: hsl(var(--accent-foreground));
+}
+
+@media (max-width: 640px) {
+    .shadcn-modal-footer {
+        flex-direction: column-reverse;
+    }
+
+    .shadcn-btn-primary,
+    .shadcn-btn-outline {
+        width: 100%;
+    }
+}
+
+.shadcn-btn-sm {
+    height: 32px;
+    padding: 0 0.75rem;
+    font-size: 0.8rem;
+}
+
+.shadcn-btn-xs {
+    height: 24px;
+    padding: 0 0.5rem;
+    font-size: 0.75rem;
+}
+
+
+/* Side Swap Logic for Player Grid */
+.player-grid-container.side-swapped .player-card:first-child {
+    order: 2;
+}
+
+.player-grid-container.side-swapped .player-card:last-child {
+    order: 1;
+}
+
+
+/* --- ROSTER GRID --- */
+.roster-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 1rem;
+    padding: 1rem 0;
+}
+
+/* Roster Input Constraints & Alignment */
+.roster-form-card {
+    max-width: 800px;
+    /* Limit total width */
+    margin-left: 0 !important;
+    /* Align left */
+    margin-right: auto;
+}
+
+#rosterBereich .shadcn-input,
+#rosterBereich input[type="text"],
+#rosterBereich input[type="number"] {
+    width: 100%;
+    /* Fill container */
+    max-width: 100%;
+    /* rely on grid/flex container */
+}
+
+/* Compact headers */
+.roster-form-header h2 {
+    font-size: 1.25rem !important;
+}
+
+@media (min-width: 768px) {
+    .roster-form-grid {
+        display: grid;
+        grid-template-columns: 300px 300px;
+        /* Fixed narrower columns */
+        gap: 20px;
+        align-items: start;
+    }
+
+    #addPlayerForm {
+        justify-content: flex-start;
+        display: flex;
+        gap: 10px;
+        align-items: flex-end;
+        max-width: 600px;
+        /* Constrain the add player row */
+    }
+}
+
+.roster-player-card {
+    background-color: hsl(var(--card));
+    border: 1px solid hsl(var(--border));
+    border-radius: var(--radius);
+    padding: 1rem;
+    box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    transition: box-shadow 0.2s;
+}
+
+.roster-player-card:hover {
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+}
+
+.roster-player-info {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+.roster-player-number {
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: hsl(var(--foreground));
+    background-color: hsl(var(--secondary));
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 9999px;
+    /* Circle */
+}
+
+.roster-player-name {
+    font-size: 1rem;
+    font-weight: 500;
+    color: hsl(var(--foreground));
+    flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.roster-player-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.5rem;
+    border-top: 1px solid hsl(var(--border));
+    padding-top: 0.75rem;
+}
+
+/* Inline Edit Grid */
+.roster-inline-edit-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.edit-row-controls {
+    display: flex;
+    gap: 0.5rem;
+}
+
+.inline-edit-actions {
+    display: flex;
+    gap: 0.25rem;
+}
+
+
+.shadcn-input {
+    display: flex;
+    height: 36px;
+    width: 100%;
+    border-radius: var(--radius);
+    border: 1px solid hsl(var(--border) / 1);
+    background-color: transparent;
+    padding: 0 1rem;
+    font-size: 0.875rem;
+    color: hsl(var(--foreground));
+}
+
+.shadcn-input:focus {
+    outline: 2px solid hsl(var(--ring));
+    outline-offset: 2px;
+}
+
+/* --- Shadcn Select --- */
+.shadcn-select {
+    position: relative;
+    width: 100%;
+}
+
+.shadcn-select-trigger {
+    display: flex;
+    height: 36px;
+    width: 100%;
+    align-items: center;
+    justify-content: space-between;
+    border-radius: var(--radius);
+    border: 1px solid hsl(var(--border));
+    background-color: transparent;
+    padding: 0 1rem;
+    font-size: 0.875rem;
+    color: hsl(var(--foreground));
+    cursor: pointer;
+    transition: border-color 0.2s;
+}
+
+.shadcn-select-trigger:focus {
+    outline: 2px solid hsl(var(--ring));
+    outline-offset: 2px;
+}
+
+.shadcn-select-trigger::after {
+    content: "▼";
+    font-size: 0.6rem;
+    opacity: 0.5;
+    margin-left: 8px;
+}
+
+/* Native select enhancement to look like Shadcn */
+select.shadcn-select-native {
+    appearance: none;
+    background-color: hsl(var(--background));
+    color: hsl(var(--foreground));
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%23a1a1aa'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 0.75rem center;
+    background-size: 1rem;
+    padding-right: 2.5rem;
+}
+
+select.shadcn-select-native option {
+    background-color: hsl(var(--background));
+    color: hsl(var(--foreground));
+}
+
+
+
+/* --- Live Overview --- */
+.live-overview-container {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+    padding: 0 1.1rem 1.1rem 1.1rem;
+    /* Removed top padding */
+    max-width: 1200px;
+    margin: 0 auto;
+}
+
+.stats-card {
+    background: hsl(var(--card));
+    border: 1px solid hsl(var(--border) / 0.8);
+    border-radius: var(--radius);
+    padding: 1.5rem;
+    box-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1);
+}
+
+.card-title {
+    font-size: 1.25rem;
+    font-weight: 600;
+    margin-bottom: 1rem;
+    color: hsl(var(--foreground));
+}
+
+.score-card {
+    text-align: center;
+    background: hsl(var(--muted) / 0.3);
+}
+
+.score-display {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 3rem;
+    padding: 1rem 0;
+}
+
+.score-team {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.5rem;
+    flex: 1;
+}
+
+.score-team .team-name {
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: hsl(var(--muted-foreground));
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.score-team .team-score {
+    font-size: 3.5rem;
+    font-weight: 800;
+    color: hsl(var(--foreground));
+    line-height: 1;
+}
+
+.score-separator {
+    font-size: 2.5rem;
+    font-weight: 800;
+    color: hsl(var(--muted-foreground));
+    opacity: 0.5;
+}
+
+.table-container {
+    overflow-x: auto;
+    width: 100%;
+}
+
+.modern-stats-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.875rem;
+}
+
+.modern-stats-table th {
+    text-align: left;
+    padding: 0.75rem;
+    border-bottom: 1px solid hsl(var(--border));
+    color: hsl(var(--muted-foreground));
+    font-weight: 500;
+    background: hsl(var(--muted) / 0.5);
+}
+
+.modern-stats-table td {
+    padding: 0.75rem;
+    border-bottom: 1px solid hsl(var(--border) / 0.5);
+    color: hsl(var(--foreground));
+}
+
+.modern-stats-table tr:last-child td {
+    border-bottom: none;
+}
+
+.modern-stats-table tr:hover td {
+    background: hsl(var(--muted) / 0.3);
+}
+
+/* Standardized Shot Cards */
+.player-shot-card {
+    background: #262626;
+    /* Dark base for shot cards as requested previously */
+    color: white;
+    padding: 15px;
+    margin: 10px;
+    border-radius: var(--radius);
+    display: inline-flex;
+    flex-direction: column;
+    vertical-align: top;
+    width: 235px;
+    border: 1px solid #404040;
+    box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.player-shot-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.2);
+}
+
+.player-shot-info {
+    min-height: 70px;
+    margin-bottom: 12px;
+    border-bottom: 1px solid #404040;
+    padding-bottom: 10px;
+    font-size: 0.9rem;
+}
+
+.player-shot-info strong {
+    display: block;
+    font-size: 1rem;
+    margin-bottom: 4px;
+    color: #f8fafc;
 }
 
 .combined-shot-visual {
-    margin-top: 10px;
-}
-
-.combined-shot-visual svg {
-    display: block;
-}
-
-body.dark-mode .combined-shot-visual svg rect {
-    fill: var(--mini-tor-bg);
-}
-
-body.dark-mode .combined-shot-visual svg path,
-body.dark-mode .combined-shot-visual svg line:not([stroke-opacity]) {
-    stroke: #666;
-}
-
-/* Heatmap Modal */
-.heatmap-tabs {
+    background: #1a1a1a;
+    border-radius: 6px;
+    padding: 10px;
     display: flex;
-    gap: 8px;
-    margin-bottom: 15px;
     justify-content: center;
-    flex-wrap: wrap;
+    align-items: center;
+    overflow: hidden;
+    margin-top: auto;
 }
 
-.heatmap-tab {
-    padding: 8px 12px;
-    border: none;
-    background: #e9ecef;
+/* History Card Modern */
+.history-card-modern {
+    background: var(--bg-container);
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
     cursor: pointer;
-    border-radius: 5px;
-    font-weight: bold;
-    transition: all 0.2s;
-    font-size: 0.85rem;
-    white-space: nowrap;
-    flex: 1 1 auto;
-    max-width: 150px;
+    user-select: none;
+    outline: none;
+}
+
+.history-card-modern:hover {
+    border-color: hsl(var(--primary) / 0.5);
+    background: hsl(var(--muted) / 0.3);
+    transform: translateY(-2px);
+    box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1);
+}
+
+.history-card-modern:active {
+    transform: translateY(0) scale(0.98);
+}
+
+.history-card-modern:focus-visible {
+    box-shadow: 0 0 0 2px hsl(var(--ring));
+}
+
+/* Season View Refinements */
+.season-summary-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 16px;
+    margin-bottom: 24px;
+}
+
+.season-summary-card {
+    background: hsl(var(--card));
+    border: 1px solid hsl(var(--border));
+    border-radius: 12px;
+    padding: 20px;
     text-align: center;
+    transition: all 0.2s ease;
 }
 
-.heatmap-tab.active {
-    background: #6f42c1;
-    color: white;
+.season-summary-card:hover {
+    border-color: hsl(var(--primary) / 0.3);
+    background: hsl(var(--muted) / 0.2);
 }
 
-.heatmap-tab:hover:not(.active) {
-    background: #dee2e6;
+.season-summary-card strong {
+    display: block;
+    font-size: 2rem;
+    font-weight: 800;
+    color: hsl(var(--primary));
+    line-height: 1;
+    margin-bottom: 8px;
 }
 
-.heatmap-filter {
-    display: flex;
-    gap: 20px;
-    justify-content: center;
-    margin-bottom: 15px;
-    flex-wrap: wrap;
+.season-summary-card small {
+    font-size: 0.85rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: hsl(var(--muted-foreground));
 }
 
-.heatmap-filter label {
+.season-sort-container {
     display: flex;
     align-items: center;
-    gap: 5px;
+    justify-content: center;
+    gap: 12px;
+    margin-bottom: 24px;
+    padding: 12px;
+    background: hsl(var(--muted) / 0.2);
+    border-radius: 12px;
+}
+
+.season-team-header-modern {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 20px;
+    background: hsl(var(--muted) / 0.3);
+    border: 1px solid hsl(var(--border));
+    border-left: 4px solid hsl(var(--primary));
+    border-radius: 8px;
+    margin: 24px 0 12px 0;
     cursor: pointer;
+    transition: all 0.2s ease;
 }
 
-#heatmapSvg {
-    background: var(--mini-tor-bg, #f5f5f5);
-    border: 2px solid #333;
-    border-radius: 5px;
+.season-team-header-modern:hover {
+    background: hsl(var(--muted) / 0.5);
 }
 
-body.dark-mode .heatmap-tab {
-    background: #444;
-    color: #ccc;
+.season-team-header-modern span {
+    font-weight: 700;
+    letter-spacing: 0.025em;
+    text-transform: uppercase;
+    font-size: 0.9rem;
 }
 
-body.dark-mode .heatmap-tab.active {
-    background: #6f42c1;
-    color: white;
+.season-player-card-modern {
+    background: hsl(var(--card));
+    border: 1px solid hsl(var(--border));
+    border-radius: 12px;
+    margin-bottom: 12px;
+    overflow: hidden;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-body.dark-mode #heatmapSvg {
-    background: #2c2c2c;
+.season-player-card-modern:hover {
+    border-color: hsl(var(--primary) / 0.4);
+    box-shadow: 0 4px 12px -2px rgb(0 0 0 / 0.1);
 }
 
-/* Responsivität */
-@media (max-width: 900px) {
-    #spielBereich {
-        flex-direction: column;
-    }
-
-    #mainGameContent {
-        flex-basis: auto;
-        max-width: 100%;
-        order: 1;
-    }
-
-    #statistikSidebar {
-        position: static;
-        flex-basis: auto;
-        width: 100%;
-        max-width: 600px;
-        margin: 0 auto;
-        order: 2;
-    }
-}
-
-@media (max-width: 500px) {
-    .player-shot-card {
-        flex-direction: column;
-        align-items: flex-start;
-    }
-
-    .mini-tor-wrapper {
-        margin-top: 10px;
-        margin-left: 0;
-        width: 100%;
-        max-width: 200px;
-    }
-}
-
-/* --- History Feature Styles --- */
-#historieBereich,
-#historieDetailBereich {
-    max-width: 800px;
-    margin: 0 auto;
-    background: var(--bg-container);
-    padding: 20px;
-    border-radius: 8px;
-    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
-}
-
-.history-card {
-    transition: transform 0.2s, box-shadow 0.2s;
-}
-
-.history-card:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
-}
-
-.secondary-button {
-    background-color: var(--btn-grey);
-    font-size: 1rem;
-    padding: 10px 20px;
-    margin: 5px;
+.season-player-header {
+    padding: 16px 20px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
     cursor: pointer;
-    border: none;
-    border-radius: 8px;
-    color: white;
+    user-select: none;
 }
 
-#histHeatmapContainer {
-    background: #f0f0f0;
-    border-radius: 8px;
+.season-player-header:hover {
+    background: hsl(var(--muted) / 0.2);
 }
 
-body.dark-mode #histHeatmapContainer {
-    background: #222;
+.season-player-header .info-main {
+    font-size: 1.1rem;
+    font-weight: 700;
 }
 
-/* Reuse existing table styles for history detail */
-#histStatsTable,
-#histStatsGegnerTable {
+.season-player-header .info-sub {
+    font-size: 0.85rem;
+    color: hsl(var(--muted-foreground));
+    margin-top: 2px;
+}
+
+.season-player-details {
+    padding: 0 20px 20px 20px;
+    border-top: 1px solid hsl(var(--border));
+    background: hsl(var(--muted) / 0.1);
+    animation: slideDownFade 0.3s ease-out;
+}
+
+@keyframes slideDownFade {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.season-table {
     width: 100%;
     border-collapse: collapse;
-    margin-top: 10px;
+    margin: 16px 0;
+    font-size: 0.9rem;
 }
 
-#histStatsTable th,
-#histStatsGegnerTable th,
-#histStatsTable td,
-#histStatsGegnerTable td {
+.season-table th {
+    text-align: left;
     padding: 8px;
-    border: 1px solid var(--border-darker);
-    text-align: center;
+    font-weight: 600;
+    color: hsl(var(--muted-foreground));
+    border-bottom: 2px solid hsl(var(--border));
+    font-size: 0.75rem;
+    text-transform: uppercase;
 }
 
-#histStatsTable th,
-#histStatsGegnerTable th {
-    background-color: var(--table-header-bg);
+.season-table td {
+    padding: 10px 8px;
+    border-bottom: 1px solid hsl(var(--border));
 }
 
-/* =====================================================
-   MOBILE OPTIMIZATION
-   ===================================================== */
+.team-players-container {
+    transition: all 0.3s ease-in-out;
+    overflow: hidden;
+}
 
-/* --- Touch Device Overrides (hover: none) --- */
-@media (hover: none) {
+.season-btn-group {
+    display: flex;
+    gap: 8px;
+    margin-top: 16px;
+}
 
-    /* Remove hover effects on touch devices */
-    button:hover {
-        filter: none;
-    }
+/* Unified Heatmap Refinements */
+.heatmap-view-container {
+    max-width: 900px;
+    margin: 0 auto;
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+}
 
-    /* Add active (tap) effects instead */
-    button:active {
-        filter: brightness(85%);
-        transform: scale(0.98);
-    }
+.heatmap-view-header {
+    margin-bottom: 8px;
+}
 
-    .spieler-button:hover {
-        transform: none;
-        box-shadow: none;
-    }
+.heatmap-view-header h1 {
+    margin-top: 0;
+    font-size: 1.5rem;
+    /* Match other headers approximately */
+}
 
-    .spieler-button:active {
-        transform: scale(0.95);
-        filter: brightness(90%);
-    }
+.heatmap-controls-card {
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+    background: hsl(var(--card));
+    border: 1px solid hsl(var(--border));
+    border-radius: 12px;
+    padding: 24px;
+    box-shadow: 0 4px 12px -1px rgb(0 0 0 / 0.1);
+}
 
-    .aktion-button:hover {
-        transform: none;
-    }
+.heatmap-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+    align-items: flex-end;
+}
 
-    .aktion-button:active {
-        transform: scale(0.95);
-        filter: brightness(90%);
-    }
-
-    /* Larger touch targets */
-    button {
-        min-height: 44px;
-        min-width: 44px;
-    }
-
-    .spieler-button {
-        min-height: 60px;
-        min-width: 60px;
+@media (max-width: 600px) {
+    .heatmap-row {
+        grid-template-columns: 1fr;
     }
 }
 
-/* --- Responsive Layout (Small Screens) --- */
-@media screen and (max-width: 768px) {
-    body {
-        padding: 10px;
+.heatmap-tabs-row {
+    display: flex;
+    justify-content: flex-start;
+    gap: 12px;
+    padding: 8px 0;
+}
+
+.heatmap-tab.white-style {
+    background-color: #ffffff;
+    color: #1a1a1a;
+    font-weight: 700;
+    border: 1px solid #e2e8f0;
+    transition: all 0.2s ease;
+    flex: 1;
+    max-width: 200px;
+}
+
+.heatmap-tab.white-style:hover {
+    background-color: #f8fafc;
+    transform: translateY(-1px);
+}
+
+.heatmap-tab.white-style.active {
+    background-color: hsl(var(--primary));
+    color: hsl(var(--primary-foreground));
+    box-shadow: 0 0 0 2px hsl(var(--ring) / 0.2);
+    border-color: hsl(var(--ring));
+}
+
+body.dark-mode .heatmap-tab.white-style.active {
+    background-color: #ffffff;
+    color: #000000;
+}
+
+body.dark-mode .heatmap-tab.white-style:not(.active) {
+    background-color: transparent;
+    color: #ffffff;
+    border: 1px solid #404040;
+}
+
+.heatmap-filters-row {
+    display: flex;
+    align-items: center;
+    gap: 30px;
+    flex-wrap: wrap;
+    padding-top: 16px;
+    border-top: 1px solid hsl(var(--border));
+}
+
+.heatmap-visual-container {
+    background: hsl(var(--card));
+    border: 1px solid hsl(var(--border));
+    border-radius: 12px;
+    padding: 30px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    box-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1);
+}
+
+.heatmap-visual-container svg {
+    border-radius: 8px;
+    background-color: #1a1a1a;
+    /* Field background remains dark */
+    border: 1px solid #333;
+    max-width: 100%;
+    height: auto;
+}
+
+.heatmap-filter-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.9rem;
+    font-weight: 500;
+    cursor: pointer;
+    user-select: none;
+}
+
+.heatmap-filter-item input[type="checkbox"],
+.heatmap-filter-item input[type="radio"] {
+    width: 16px;
+    height: 16px;
+    border-radius: 4px;
+    border: 1px solid hsl(var(--border));
+}
+
+/* --- MOBILE OPTIMIZATION --- */
+#mobileMenuBtn {
+    display: none;
+}
+
+@media (max-width: 768px) {
+
+    /* 1. Sidebar & Valid Overlay */
+    #sidebar {
+        transform: translateX(-100%);
+        transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        z-index: 1001;
+        /* Above overlay */
+        box-shadow: 2px 0 8px rgba(0, 0, 0, 0.5);
     }
 
-    #gameScreen {
-        flex-direction: column;
+    #sidebar.active {
+        transform: translateX(0);
     }
 
-    #sidebarLinks,
-    #sidebarRechts {
-        width: 100%;
-        max-width: none;
-        flex-direction: row;
-        flex-wrap: wrap;
+    /* Dimmed Overlay when sidebar is open */
+    .sidebar-overlay {
+        display: block;
+        /* It was hidden by default */
+        position: fixed;
+        inset: 0;
+        background: rgba(0, 0, 0, 0.6);
+        z-index: 1000;
+        opacity: 0;
+        pointer-events: none;
+        transition: opacity 0.3s;
+    }
+
+    #sidebar.active+.sidebar-overlay,
+    .sidebar-overlay.active {
+        opacity: 1;
+        pointer-events: auto;
+    }
+
+    /* Hamburger Menu Button */
+    #mobileMenuBtn {
+        display: flex !important;
+        align-items: center;
         justify-content: center;
-        padding: 10px;
-    }
-
-    #mainGameContent {
-        order: -1;
-        /* Move main content to top on mobile */
-    }
-
-    #verwaltung {
-        flex-wrap: wrap;
-        justify-content: center;
-    }
-
-    #verwaltung button {
-        flex: 1 1 auto;
-        min-width: 80px;
-        font-size: clamp(0.65rem, 2.5vw, 0.85rem);
-        padding: 8px 10px;
-        white-space: normal;
-        word-break: break-word;
-        line-height: 1.2;
-    }
-
-    #scoreContainer {
-        flex-direction: row;
-        flex-wrap: wrap;
-        gap: 10px;
-    }
-
-    .score-box {
-        flex: 1 1 45%;
-        min-width: 120px;
-    }
-
-    #timerAnzeige {
-        font-size: 2rem;
-    }
-
-    #spielerBereich {
-        flex-direction: column;
-    }
-
-    .spieler-seite {
-        width: 100%;
-    }
-
-    .spieler-raster {
-        grid-template-columns: repeat(auto-fill, minmax(60px, 1fr));
-        gap: 8px;
-    }
-
-    .spieler-button {
-        font-size: 0.9rem;
-        padding: 8px;
-    }
-
-    /* Modals full-width on mobile */
-    .modal-content {
-        width: 95%;
-        max-width: none;
-        margin: 10px;
-        padding: 15px;
-    }
-
-    /* Stats tables scroll horizontally */
-    #protokollAusgabe,
-    .stats-table-container {
-        overflow-x: auto;
-    }
-
-    table {
-        font-size: 0.85rem;
-    }
-
-    th,
-    td {
-        padding: 6px 4px;
-    }
-}
-
-/* --- Extra Small Screens (Phones) --- */
-@media screen and (max-width: 480px) {
-    #verwaltung button {
-        font-size: 0.75rem;
-        padding: 6px 8px;
-    }
-
-    .spieler-raster {
-        grid-template-columns: repeat(auto-fill, minmax(50px, 1fr));
-        gap: 5px;
-    }
-
-    .spieler-button {
-        font-size: 0.8rem;
-        padding: 6px;
-    }
-
-    #timerAnzeige {
+        position: fixed;
+        top: 15px;
+        left: 15px;
+        z-index: 1002;
+        width: 44px;
+        height: 44px;
+        background: hsl(var(--card));
+        color: hsl(var(--foreground));
+        border: 1px solid hsl(var(--border));
+        border-radius: 8px;
+        box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+        cursor: pointer;
         font-size: 1.5rem;
     }
 
-    .aktion-button {
-        font-size: 0.9rem;
-        padding: 10px;
+    /* Adjust Main Content */
+    #main-content {
+        margin-left: 0;
+        padding: 5rem 1rem 2rem 1rem;
+        /* Top padding for menu btn */
+        width: 100%;
+        overflow-x: hidden;
     }
 
-    /* Wurfposition and Wurfbild modals need space */
-    #wurfpositionFeld,
-    #wurfbildUmgebung {
-        max-height: 60vh;
+    /* 2. Dashboard Grid Optimization */
+    .season-grid-panels {
+        display: flex;
+        flex-direction: column;
+        gap: 20px;
     }
 
-    /* Heatmap tabs smaller on mobile */
-    .heatmap-tab {
-        font-size: 0.7rem;
-        padding: 6px 8px;
-        max-width: 100px;
+    /* Force Cards to full width */
+    .season-panel,
+    .stats-card {
+        grid-column: span 1 !important;
+        /* Override inline styles */
+        width: 100% !important;
+        margin-bottom: 0;
     }
 
-    .heatmap-filter {
-        gap: 10px;
-        font-size: 0.85rem;
+    /* Live Overview Columns */
+    .live-overview-container {
+        display: flex;
+        flex-direction: column;
+        gap: 15px;
     }
 
-    .heatmap-filter label {
-        gap: 3px;
+    .dashboard-grid {
+        grid-template-columns: 1fr !important;
     }
+
+    /* Adjust Roster Grid */
+    .roster-grid {
+        grid-template-columns: 1fr;
+    }
+
+    /* Adjust Game Board */
+    .game-layout {
+        padding: 0;
+    }
+
+    .scoreboard-main {
+        grid-template-columns: 1fr;
+        gap: 1rem;
+        text-align: center;
+    }
+
+    .scoreboard-team.home,
+    .scoreboard-team.away {
+        align-items: center;
+        text-align: center;
+    }
+
+    .scoreboard-divider {
+        display: none;
+        /* Hide colon on mobile vertical stack */
+    }
+
+    /* Player Selection Grid in Game */
+    .spieler-raster {
+        grid-template-columns: repeat(3, 1fr);
+        /* 3 cols on mobile */
+    }
+
+    /* Chart Containers */
+    .chart-container {
+        height: 250px !important;
+    }
+}
+
+/* --- COMPACT GAME VIEW (TABLET & DESKTOP) --- */
+@media (min-width: 769px) {
+
+    /* Main Content Padding reduction for game view */
+    #spielBereich {
+        padding: 0 !important;
+    }
+
+    /* Compact Scoreboard */
+    .game-scoreboard {
+        padding: 0.5rem 1rem !important;
+        margin-bottom: 1rem !important;
+        gap: 0.5rem !important;
+    }
+
+    .scoreboard-main {
+        gap: 1rem !important;
+        max-width: 700px;
+    }
+
+    .scoreboard-timer {
+        font-size: 3.5rem !important;
+    }
+
+    .scoreboard-score {
+        font-size: 1.5rem;
+    }
+
+    .scoreboard-divider {
+        font-size: 1.5rem;
+    }
+
+    .scoreboard-controls {
+        flex-direction: column !important;
+        /* Stacked again per user request */
+        gap: 0.5rem !important;
+        margin-top: 5px;
+    }
+
+    /* Hide some spacing in grid container */
+    .player-grid-container {
+        margin-bottom: 1rem !important;
+        gap: 0.5rem !important;
+        max-width: 1000px !important;
+    }
+
+    /* Compact Player Buttons - Reverted to Column but smaller */
+    .spieler-button {
+        height: 65px !important;
+        /* Slightly taller for text stack */
+        min-height: 65px !important;
+        flex-direction: column !important;
+        /* Back to vertical stack */
+        justify-content: center !important;
+        padding: 2px !important;
+        gap: 0 !important;
+    }
+
+    .spieler-nummer-display {
+        font-size: 1.2rem !important;
+        width: 100%;
+        text-align: center;
+    }
+
+    .spieler-name-display {
+        font-size: 0.75rem !important;
+        text-align: center;
+        width: 100%;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    /* Make raster grid tighter and buttons narrower */
+    .spieler-raster {
+        gap: 6px !important;
+        grid-template-columns: repeat(4, 1fr) !important;
+    }
+
+    /* Adjust game actions area if needed */
+    #globalAktionen {
+        margin-top: 1rem !important;
+    }
+}
+
+.log-delete {
+    cursor: pointer;
+    color: hsl(var(--muted-foreground));
+    transition: color 0.2s;
+    display: flex;
+    align-items: center;
+}
+
+.log-delete:hover {
+    color: hsl(var(--destructive));
+}
+
+#protokollAusgabe {
+    display: flex;
+    flex-direction: column;
+    width: fit-content;
+    margin: 0 auto;
+    max-width: 100%;
+}
+
+.log-entry {
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+    gap: 16px;
+    align-items: center;
+    border-bottom: 1px solid hsl(var(--border) / 0.5);
+    padding: 8px 12px;
+    width: 100%;
+    text-align: left;
+}
+
+.log-time {
+    font-family: monospace;
+    color: hsl(var(--muted-foreground));
+    font-size: 0.9em;
+}
+
+.log-text {
+    text-align: left;
+    white-space: normal;
+    word-break: break-word;
 }
