@@ -1,21 +1,26 @@
 import { getSeasonSummary } from './seasonStats.js';
 import { renderHeatmap, setCurrentHeatmapTab, setCurrentHeatmapContext } from './heatmap.js';
-import { heatmapSvg } from './dom.js';
+import { heatmapSvg, heatmap7mFilter, heatmapToreFilter, heatmapMissedFilter } from './dom.js';
 import { spielstand } from './state.js';
 import { getHistorie } from './history.js';
 import { berechneStatistiken, berechneGegnerStatistiken, berechneTore } from './stats.js';
 import { openPlayerHistoryHeatmap } from './historyView.js';
 
+// Persistent state for team collapse
+const collapsedTeams = {};
+
+export { getSeasonSummary };
+
 // Öffnet Saison-Übersicht
 export function openSeasonOverview() {
     const seasonOverviewModal = document.getElementById('seasonOverviewModal');
-    const settingsModal = document.getElementById('settingsModal');
+    const settingsBereich = document.getElementById('settingsBereich');
 
     if (!seasonOverviewModal) return;
 
-    // Schließe Settings Modal
-    if (settingsModal) {
-        settingsModal.classList.add('versteckt');
+    // Schließe Settings Bereich
+    if (settingsBereich) {
+        settingsBereich.classList.add('versteckt');
     }
 
     // Rendere Saison-Daten
@@ -34,39 +39,38 @@ export function closeSeasonOverview() {
 }
 
 // Rendert Saison-Statistiken
-function renderSeasonStats() {
+export function renderSeasonStats() {
     const summary = getSeasonSummary();
     const seasonSummary = document.getElementById('seasonSummary');
     const seasonStatsContainer = document.getElementById('seasonStatsContainer');
 
     if (!seasonSummary || !seasonStatsContainer) return;
 
-    // Render Summary with Sort Controls
     seasonSummary.innerHTML = `
-        <div style="display: flex; justify-content: space-around; text-align: center; margin-bottom: 15px;">
-            <div>
-                <strong style="font-size: 1.5rem;">${summary.totalGames}</strong><br>
+        <div class="season-summary-grid">
+            <div class="season-summary-card">
+                <strong>${summary.totalGames}</strong>
                 <small>Spiele</small>
             </div>
-            <div>
-                <strong style="font-size: 1.5rem;">${summary.totalPlayers}</strong><br>
+            <div class="season-summary-card">
+                <strong>${summary.totalPlayers}</strong>
                 <small>Spieler</small>
             </div>
-            <div>
-                <strong style="font-size: 1.5rem;">${summary.totalTore}</strong><br>
+            <div class="season-summary-card">
+                <strong>${summary.totalTore}</strong>
                 <small>Tore gesamt</small>
             </div>
         </div>
-        <div style="display: flex; gap: 10px; justify-content: center; padding-top: 10px; border-top: 1px solid #444;">
-             <span style="align-self: center; font-size: 0.9rem; color: #ccc;">Sortieren nach:</span>
-             <button id="sortByNumber" class="sort-btn active" style="padding: 5px 10px; background: #666; color: white; border: none; border-radius: 3px; cursor: pointer; font-size: 0.8rem;">Nummer</button>
-             <button id="sortByGoals" class="sort-btn" style="padding: 5px 10px; background: #444; color: white; border: none; border-radius: 3px; cursor: pointer; font-size: 0.8rem;">Tore</button>
+        <div class="season-sort-container">
+             <span style="font-size: 0.85rem; font-weight: 600; color: hsl(var(--muted-foreground));">Sortieren nach:</span>
+             <button id="sortByNumber" class="shadcn-btn-primary" style="height: 32px; font-size: 0.8rem; padding: 0 12px;">Nummer</button>
+             <button id="sortByGoals" class="shadcn-btn-outline" style="height: 32px; font-size: 0.8rem; padding: 0 12px;">Tore</button>
         </div>
     `;
 
     // Render Player Cards with Headers
     const renderList = (sortMode) => {
-        seasonStatsContainer.innerHTML = '';
+        seasonStatsContainer.innerHTML = ''; // Revert to original container
 
         // Clone array to sort
         let players = [...summary.players];
@@ -98,10 +102,11 @@ function renderSeasonStats() {
             return;
         }
 
-        // Scatter Plot moved to Team Heatmap Modal
+
 
 
         let currentTeam = null;
+        let teamContainer = null;
 
         players.forEach((player) => {
             // Insert Team Header if team changes
@@ -113,28 +118,89 @@ function renderSeasonStats() {
                     : currentTeam;
 
                 const headerDiv = document.createElement('div');
-                headerDiv.style.cssText = 'padding: 10px; background-color: #333; color: white; margin-bottom: 10px; margin-top: 5px; border-radius: 5px; font-weight: bold; display: flex; justify-content: space-between; align-items: center; text-transform: uppercase; letter-spacing: 1px; border-left: 5px solid #61dafb;';
+                headerDiv.className = 'season-team-header-modern';
+
+                const leftSection = document.createElement('div');
+                leftSection.style.display = 'flex';
+                leftSection.style.alignItems = 'center';
+                leftSection.style.gap = '10px';
+
+                const toggleIcon = document.createElement('span');
+                toggleIcon.className = 'team-toggle-icon';
+                toggleIcon.textContent = '▼';
+                toggleIcon.style.transition = 'transform 0.3s ease';
 
                 const headerTextSpan = document.createElement('span');
                 headerTextSpan.textContent = headerText;
-                headerDiv.appendChild(headerTextSpan);
+
+                leftSection.appendChild(toggleIcon);
+                leftSection.appendChild(headerTextSpan);
+                headerDiv.appendChild(leftSection);
 
                 // Team Statistics Button
                 const teamStatsBtn = document.createElement('button');
                 teamStatsBtn.textContent = 'Team Grafik';
-                teamStatsBtn.className = 'show-team-heatmap-btn';
+                teamStatsBtn.className = 'shadcn-btn-primary';
+                teamStatsBtn.style.height = '28px';
+                teamStatsBtn.style.fontSize = '0.75rem';
+                teamStatsBtn.style.padding = '0 10px';
                 teamStatsBtn.dataset.team = currentTeam;
-                teamStatsBtn.style.cssText = 'padding: 5px 12px; background-color: #61dafb; color: #333; border: none; border-radius: 5px; cursor: pointer; font-size: 0.8rem; font-weight: bold; text-transform: none;';
+                teamStatsBtn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    showTeamHeatmap(currentTeam);
+                });
                 headerDiv.appendChild(teamStatsBtn);
 
+                // Create container for team players
+                const currentTeamContainer = document.createElement('div');
+                currentTeamContainer.className = 'team-players-container';
+                currentTeamContainer.dataset.team = currentTeam;
+
+                // Restore collapsed state if it exists
+                const isCurrentlyCollapsed = collapsedTeams[currentTeam] === true;
+                currentTeamContainer.dataset.collapsed = isCurrentlyCollapsed ? 'true' : 'false';
+
+                if (isCurrentlyCollapsed) {
+                    currentTeamContainer.style.maxHeight = '0';
+                    currentTeamContainer.style.opacity = '0';
+                    toggleIcon.style.transform = 'rotate(-90deg)';
+                } else {
+                    currentTeamContainer.style.maxHeight = 'none';
+                    currentTeamContainer.style.opacity = '1';
+                    toggleIcon.style.transform = 'rotate(0deg)';
+                }
+
                 seasonStatsContainer.appendChild(headerDiv);
+                seasonStatsContainer.appendChild(currentTeamContainer);
+
+                // Add toggle functionality
+                const teamNameForListener = currentTeam; // Capture in local const for closure
+                const currentToggleIcon = toggleIcon;
+                headerDiv.addEventListener('click', () => {
+                    const isCollapsedNow = currentTeamContainer.dataset.collapsed === 'true';
+                    const newState = !isCollapsedNow;
+                    currentTeamContainer.dataset.collapsed = newState ? 'true' : 'false';
+                    collapsedTeams[teamNameForListener] = newState; // Remember state globally in module
+
+                    if (!newState) { // Opening
+                        currentTeamContainer.style.maxHeight = currentTeamContainer.scrollHeight + 'px';
+                        currentTeamContainer.style.opacity = '1';
+                        currentToggleIcon.style.transform = 'rotate(0deg)';
+                    } else { // Closing
+                        currentTeamContainer.style.maxHeight = '0';
+                        currentTeamContainer.style.opacity = '0';
+                        currentToggleIcon.style.transform = 'rotate(-90deg)';
+                    }
+                });
+
+                teamContainer = currentTeamContainer;
             }
 
             // Find original index (needed for heatmap data access in showPlayerHeatmap)
             // Use precise matching including team to avoid collisions
             const originalIndex = summary.players.findIndex(p => p.number === player.number && p.name === player.name && (p.team || 'Heim') === (player.team || 'Heim'));
             const playerCard = createPlayerCard(player, originalIndex);
-            seasonStatsContainer.appendChild(playerCard);
+            teamContainer.appendChild(playerCard);
         });
     };
 
@@ -147,14 +213,14 @@ function renderSeasonStats() {
 
     if (btnNumber && btnGoals) {
         btnNumber.addEventListener('click', () => {
-            btnNumber.style.background = '#666';
-            btnGoals.style.background = '#444';
+            btnNumber.className = 'shadcn-btn-primary';
+            btnGoals.className = 'shadcn-btn-outline';
             renderList('number');
         });
 
         btnGoals.addEventListener('click', () => {
-            btnNumber.style.background = '#444';
-            btnGoals.style.background = '#666';
+            btnNumber.className = 'shadcn-btn-outline';
+            btnGoals.className = 'shadcn-btn-primary';
             renderList('goals');
         });
     }
@@ -169,15 +235,15 @@ function renderGameHistoryList(player) {
     container.innerHTML = '<h4 style="margin-bottom: 10px; border-bottom: 1px solid #555; padding-bottom: 5px;">Spiele-Historie</h4>';
 
     const table = document.createElement('table');
-    table.style.cssText = 'width: 100%; border-collapse: collapse; font-size: 0.9rem;';
+    table.className = 'season-table';
     table.innerHTML = `
         <thead>
-            <tr style="background-color: #444;">
-                <th style="padding: 5px; text-align: left;">Datum</th>
-                <th style="padding: 5px; text-align: left;">Gegner/Spiel</th>
-                <th style="padding: 5px; text-align: center;">Tore</th>
-                <th style="padding: 5px; text-align: center;">Quote</th>
-                <th style="padding: 5px; text-align: center;">Grafik</th>
+            <tr>
+                <th>Datum</th>
+                <th>Gegner/Spiel</th>
+                <th style="text-align: center;">Tore</th>
+                <th style="text-align: center;">Quote</th>
+                <th style="text-align: center;">Grafik</th>
             </tr>
         </thead>
         <tbody></tbody>
@@ -241,15 +307,16 @@ function renderGameHistoryList(player) {
             const has7m = playerLog.some(e => e.action.includes('7m'));
 
             let btnHtml = '';
-            if (hasField) btnHtml += `<button class="game-heatmap-btn" data-mode="field" style="cursor:pointer; background:none; border:none; font-size:1.2rem;" title="Wurfbild">🎯</button>`;
-            if (has7m) btnHtml += `<button class="game-heatmap-btn" data-mode="7m" style="cursor:pointer; background:none; border:none; font-size:0.8rem; margin-left:5px;" title="7m Statistik">7m</button>`;
+            // Change outline to secondary for "Dark in Dark Mode" look
+            if (hasField) btnHtml += `<button class="game-heatmap-btn shadcn-btn-secondary" data-mode="field" style="width: 32px; height: 32px; padding: 0; display:inline-flex; align-items:center; justify-content:center; vertical-align:middle;" title="Wurfbild"><i data-lucide="crosshair" style="width: 16px; height: 16px;"></i></button>`;
+            if (has7m) btnHtml += `<button class="game-heatmap-btn shadcn-btn-outline" data-mode="7m" style="height: 32px; padding: 0 8px; font-size: 0.75rem; margin-left: 5px; border-color: #f59e0b; color: #f59e0b; display:inline-flex; align-items:center; vertical-align:middle;" title="7m Statistik">7m</button>`;
 
             tr.innerHTML = `
-                <td style="padding: 5px;">${dateStr}</td>
-                <td style="padding: 5px;">${matchTitle}</td>
-                <td style="padding: 5px; text-align: center;">${goals}</td>
-                <td style="padding: 5px; text-align: center;">${quote}</td>
-                <td style="padding: 5px; text-align: center;">${btnHtml}</td>
+                <td>${dateStr}</td>
+                <td>${matchTitle}</td>
+                <td style="text-align: center;"><strong>${goals}</strong></td>
+                <td style="text-align: center;">${quote}</td>
+                <td style="text-align: center; display: flex; justify-content: center; gap: 4px;">${btnHtml}</td>
             `;
 
             // Attach listeners
@@ -275,65 +342,65 @@ function renderGameHistoryList(player) {
 // Erstellt Spieler-Karte
 function createPlayerCard(player, index) {
     const card = document.createElement('div');
-    card.className = 'season-player-card';
-    card.style.cssText = 'border: 1px solid #ddd; border-radius: 5px; margin-bottom: 10px; overflow: hidden; background-color: var(--bg-main);';
+    card.className = 'season-player-card-modern';
 
     const displayName = player.name ? `#${player.number} - ${player.name}` : `#${player.number}`;
 
     // Header
     const header = document.createElement('div');
-    header.style.cssText = 'padding: 15px; background-color: var(--bg-secondary); cursor: pointer; display: flex; justify-content: space-between; align-items: center;';
+    header.className = 'season-player-header';
 
     // Calculate Feldtore for header display
     const headerFeldtore = player.tore - (player.siebenMeterTore || 0);
 
     header.innerHTML = `
         <div>
-            <strong style="font-size: 1.1rem;">${displayName}</strong><br>
-            <small>${player.totalGames} Spiele · Tore: ${player.tore}, Feldtore: ${headerFeldtore}, 7m: ${player.siebenMeterTore || 0}/${player.siebenMeterVersuche || 0} · Quote: ${player.wurfQuote}</small>
+            <div class="info-main">${displayName}</div>
+            <div class="info-sub">${player.totalGames} Spiele · Tore: ${player.tore} (Feld: ${headerFeldtore}, 7m: ${player.siebenMeterTore || 0}/${player.siebenMeterVersuche || 0}) · Quote: ${player.wurfQuote}</div>
         </div>
-        <span class="expand-icon" style="font-size: 1.5rem;">▼</span>
+        <span class="expand-icon" style="font-size: 1.2rem; transition: transform 0.2s ease;">▼</span>
     `;
 
     // Details (initially hidden)
     const details = document.createElement('div');
-    details.className = 'player-details versteckt';
-    details.style.cssText = 'padding: 15px;';
+    details.className = 'season-player-details versteckt';
 
     // Stats Table - Calculate Feldtore (field goals = tore - 7m goals)
     const feldtore = player.tore - (player.siebenMeterTore || 0);
 
     const statsTable = `
-        <table style="width: 100%; border-collapse: collapse; margin-bottom: 15px;">
-            <thead>
-                <tr style="border-bottom: 2px solid #ddd;">
-                    <th style="padding: 8px; text-align: left;">Tore</th>
-                    <th style="padding: 8px; text-align: left;">Feldtore</th>
-                    <th style="padding: 8px; text-align: left;">7m</th>
-                    <th style="padding: 8px; text-align: left;">Fehlwurf</th>
-                    <th style="padding: 8px; text-align: left;">Quote</th>
-                    <th style="padding: 8px; text-align: left;">Gut</th>
-                    <th style="padding: 8px; text-align: left;">TF</th>
-                    <th style="padding: 8px; text-align: left;">Gelb</th>
-                    <th style="padding: 8px; text-align: left;">2'</th>
-                    <th style="padding: 8px; text-align: left;">Rot</th>
-                </tr>
-            </thead>
-            <tbody>
-                <tr>
-                    <td style="padding: 8px;">${player.tore}</td>
-                    <td style="padding: 8px;">${feldtore}</td>
-                    <td style="padding: 8px;">${player.siebenMeterTore}/${player.siebenMeterVersuche}</td>
-                    <td style="padding: 8px;">${player.fehlwurf}</td>
-                    <td style="padding: 8px;">${player.wurfQuote}</td>
-                    <td style="padding: 8px;">${player.guteAktion}</td>
-                    <td style="padding: 8px;">${player.techFehler}</td>
-                    <td style="padding: 8px;">${player.gelb}</td>
-                    <td style="padding: 8px;">${player.zweiMinuten}</td>
-                    <td style="padding: 8px;">${player.rot}</td>
-                </tr>
-            </tbody>
-        </table>
+        <div class="table-container">
+            <table class="season-table">
+                <thead>
+                    <tr>
+                        <th>Tore</th>
+                        <th>Feld</th>
+                        <th>7m</th>
+                        <th>Fehl</th>
+                        <th>%</th>
+                        <th>Gut</th>
+                        <th>TF</th>
+                        <th>G</th>
+                        <th>2'</th>
+                        <th>R</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><strong>${player.tore}</strong></td>
+                        <td>${feldtore}</td>
+                        <td>${player.siebenMeterTore}/${player.siebenMeterVersuche}</td>
+                        <td>${player.fehlwurf}</td>
+                        <td>${player.wurfQuote}</td>
+                        <td>${player.guteAktion}</td>
+                        <td>${player.techFehler}</td>
+                        <td>${player.gelb}</td>
+                        <td>${player.zweiMinuten}</td>
+                        <td>${player.rot}</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
     `;
 
     // Heatmap Buttons - Check for field throws and 7m throws separately
@@ -343,23 +410,26 @@ function createPlayerCard(player, index) {
     const hasFieldData = fieldThrows.length > 0;
     const has7mData = sevenMThrows.length > 0;
 
-    let heatmapButtonsHtml = '<div style="display: flex; gap: 10px; margin-top: 10px;">';
+    let heatmapButtonsHtml = '<div class="season-btn-group">';
 
     if (hasFieldData) {
-        heatmapButtonsHtml += `<button class="show-heatmap-btn" data-player-index="${index}" data-mode="field" style="flex: 1; padding: 10px; background-color: #007bff; color: white; border: none; border-radius: 5px; cursor: pointer;">Grafik</button>`;
+        heatmapButtonsHtml += `<button class="show-heatmap-btn shadcn-btn-secondary" data-player-index="${index}" data-mode="field" style="flex: 1; height: 36px; font-size: 0.85rem;">Grafik</button>`;
     }
 
     if (has7mData) {
-        heatmapButtonsHtml += `<button class="show-heatmap-btn" data-player-index="${index}" data-mode="7m" style="flex: 1; padding: 10px; background-color: #ff9800; color: white; border: none; border-radius: 5px; cursor: pointer;">7m Grafik</button>`;
+        heatmapButtonsHtml += `<button class="show-heatmap-btn shadcn-btn-outline" data-player-index="${index}" data-mode="7m" style="flex: 1; height: 36px; font-size: 0.85rem; border-color: #f59e0b; color: #f59e0b;">7m Grafik</button>`;
     }
 
     if (!hasFieldData && !has7mData) {
-        heatmapButtonsHtml += '<small style="color:#999; width:100%; text-align:center;">Keine Grafik-Daten</small>';
+        heatmapButtonsHtml += '<small style="color:hsl(var(--muted-foreground)); width:100%; text-align:center;">Keine Grafik-Daten</small>';
     }
 
     heatmapButtonsHtml += '</div>';
 
     details.innerHTML = statsTable + heatmapButtonsHtml;
+
+    // Render icons
+    if (typeof lucide !== 'undefined') lucide.createIcons({ root: details });
 
     // Add Game History List
     const historyList = renderGameHistoryList(player);
@@ -371,7 +441,8 @@ function createPlayerCard(player, index) {
     header.addEventListener('click', () => {
         details.classList.toggle('versteckt');
         const icon = header.querySelector('.expand-icon');
-        icon.textContent = details.classList.contains('versteckt') ? '▼' : '▲';
+        const isHidden = details.classList.contains('versteckt');
+        icon.style.transform = isHidden ? 'rotate(0deg)' : 'rotate(180deg)';
     });
 
     card.appendChild(header);
@@ -391,106 +462,32 @@ export function showPlayerHeatmap(playerIndex, mode = 'field') {
     setCurrentHeatmapTab('tor');
 
     const displayName = player.name ? `#${player.number} - ${player.name}` : `#${player.number}`;
-
-    // Filter log entries based on mode
-    let logEntries = player.seasonLog || [];
-    if (mode === '7m') {
-        logEntries = logEntries.filter(e => e.is7m);
-    } else {
-        logEntries = logEntries.filter(e => !e.is7m);
-    }
-
     const modeLabel = mode === '7m' ? '7m Grafik' : 'Grafik';
 
-    // Öffne Heatmap Modal
-    const heatmapModal = document.getElementById('heatmapModal');
-    if (heatmapModal) {
-        heatmapModal.classList.remove('versteckt');
+    // Use all log entries
+    let logEntries = (player.seasonLog || []).map(e => ({
+        ...e,
+        number: e.playerId || player.number
+    }));
 
-        // Remove existing title if any
-        const existingTitle = heatmapModal.querySelector('h3');
-        if (existingTitle && existingTitle.id !== 'wurfbildTitel') existingTitle.remove();
+    const isOpponentPlayer = logEntries.length > 0 && logEntries[0].isOpponent;
 
-        // Hide default title
-        const defaultTitle = document.getElementById('wurfbildTitel');
-        if (defaultTitle) defaultTitle.style.display = 'none';
-
-        // Set Custom Title
-        const customTitle = document.createElement('h3');
-        customTitle.textContent = `${modeLabel} - ${displayName} (Saison)`;
-        customTitle.style.cssText = 'text-align: center; margin-bottom: 10px; color: var(--text-main);';
-        customTitle.className = 'season-heatmap-title';
-
-        // Insert custom title
-        const content = heatmapModal.querySelector('.modal-content');
-        if (content) content.insertBefore(customTitle, content.firstChild);
-
-        // Add close handler to restore default title and tabs
-        const cleanup = () => {
-            if (defaultTitle) defaultTitle.style.display = 'block';
-            const ct = heatmapModal.querySelector('.season-heatmap-title');
-            if (ct) ct.remove();
-
-            // Restore tabs visibility
-            const tabsContainer = heatmapModal.querySelector('.heatmap-tabs');
-            if (tabsContainer) tabsContainer.style.display = '';
-
-            // Restore filter visibility
-            const filterContainer = heatmapModal.querySelector('.heatmap-filter');
-            if (filterContainer) {
-                filterContainer.style.display = '';
-                filterContainer.classList.remove('versteckt');
-
-                // Restore headers/labels
-                const labels = filterContainer.querySelectorAll('label');
-                labels.forEach(l => l.style.display = '');
-                const separator = filterContainer.querySelector('span:not([id])');
-                if (separator) separator.style.display = '';
-            }
-        };
-
-        const closeButton = document.getElementById('closeHeatmapModal');
-        if (closeButton) {
-            closeButton.addEventListener('click', cleanup, { once: true });
-        }
-
-        // Hide Wurfposition and Kombiniert tabs for 7m mode
-        if (mode === '7m') {
-            // Hide entire heatmap-tabs container for 7m mode (only show goal heatmap)
-            const tabsContainer = heatmapModal.querySelector('.heatmap-tabs');
-            if (tabsContainer) tabsContainer.style.display = 'none';
-
-            // Also hide filter controls (not needed for 7m)
-            const filterContainer = heatmapModal.querySelector('.heatmap-filter');
-            if (filterContainer) filterContainer.style.display = 'none';
-        }
-
-        // Determine filter logic
-        const isOpponentPlayer = logEntries.length > 0 && logEntries[0].isOpponent;
-
-        const filterOverride = {
+    // Set Context
+    setCurrentHeatmapContext({
+        log: logEntries,
+        title: `${modeLabel} - ${displayName} (Saison)`,
+        filter: {
             team: isOpponentPlayer ? 'gegner' : 'heim',
             player: player.number
-        };
+        },
+        type: 'season-specific'
+    });
 
-        // Ensure opponent entries have gegnerNummer set just in case heatmap.js needs it
-        if (isOpponentPlayer) {
-            logEntries.forEach(e => e.gegnerNummer = player.number);
-        }
-
-        if (heatmapSvg) {
-            // Set context for tab switching
-            setCurrentHeatmapContext({
-                log: logEntries,
-                filter: filterOverride
-            });
-
-            renderHeatmap(heatmapSvg, logEntries, false, filterOverride);
-        }
-    }
+    // Simulate navigation
+    const navItem = document.querySelector('.nav-item[data-view="seasonheatmap"]');
+    if (navItem) navItem.click();
 }
 
-// Zeigt kombinierte Heatmap für alle Spieler eines Teams
 // Zeigt kombinierte Heatmap für alle Spieler eines Teams
 export function showTeamHeatmap(teamName) {
     const summary = getSeasonSummary();
@@ -500,12 +497,14 @@ export function showTeamHeatmap(teamName) {
 
     if (teamPlayers.length === 0) return;
 
-    // Aggregiere alle seasonLog Einträge (nur Feldwürfe, keine 7m)
+    // Aggregiere alle seasonLog Einträge
     const allLogEntries = [];
     teamPlayers.forEach(player => {
         if (player.seasonLog) {
-            const fieldThrows = player.seasonLog.filter(e => !e.is7m);
-            allLogEntries.push(...fieldThrows);
+            allLogEntries.push(...player.seasonLog.map(e => ({
+                ...e,
+                number: e.playerId || player.number
+            })));
         }
     });
 
@@ -516,138 +515,24 @@ export function showTeamHeatmap(teamName) {
         ? (spielstand.settings.teamNameHeim || 'Unser Team')
         : teamName;
 
-    // Öffne Heatmap Modal
-    const heatmapModal = document.getElementById('heatmapModal');
-    if (heatmapModal) {
-        heatmapModal.classList.remove('versteckt');
+    // Set Context
+    setCurrentHeatmapContext({
+        log: allLogEntries,
+        title: `Team Grafik - ${displayName} (${teamPlayers.length} Spieler)`,
+        filter: {
+            team: teamName === 'Heim' ? 'heim' : 'gegner',
+            player: null // Team-wide
+        },
+        type: 'season-specific'
+    });
 
-        // Remove existing title if any
-        const existingTitle = heatmapModal.querySelector('h3');
-        if (existingTitle && existingTitle.id !== 'wurfbildTitel') existingTitle.remove();
-
-        // Hide default title
-        const defaultTitle = document.getElementById('wurfbildTitel');
-        if (defaultTitle) defaultTitle.style.display = 'none';
-
-        // Set Custom Title
-        const customTitle = document.createElement('h3');
-        customTitle.textContent = `Team Grafik - ${displayName} (${teamPlayers.length} Spieler)`;
-        customTitle.style.cssText = 'text-align: center; margin-bottom: 10px; color: var(--text-main);';
-        customTitle.className = 'season-heatmap-title';
-
-        // Insert custom title
-        const content = heatmapModal.querySelector('.modal-content');
-        if (content) content.insertBefore(customTitle, content.firstChild);
-
-        // --- NEW: Add Diagram Tab ---
-        const tabsContainer = heatmapModal.querySelector('.heatmap-tabs');
-        let diagramTab = heatmapModal.querySelector('.heatmap-tab[data-tab="diagram"]');
-        if (!diagramTab && tabsContainer) {
-            diagramTab = document.createElement('button');
-            diagramTab.className = 'heatmap-tab';
-            diagramTab.dataset.tab = 'diagram';
-            diagramTab.textContent = 'Diagramm';
-            tabsContainer.appendChild(diagramTab);
-        }
-
-        // Render Scatter Plot inside Modal (Initially Hidden)
-        const scatterPlot = renderTeamScatterPlot(teamPlayers);
-        if (scatterPlot) {
-            scatterPlot.classList.add('modal-scatter-plot');
-            scatterPlot.classList.add('versteckt'); // Start hidden
-            content.appendChild(scatterPlot);
-        }
-
-        // Tab Switching Logic (UI Toggling)
-        // Note: Diagram button must be included, so we query after appending
-        const allTabs = heatmapModal.querySelectorAll('.heatmap-tab');
-
-        // Reset Tabs to Tor initially
-        allTabs.forEach(t => t.classList.remove('active'));
-        const torTab = heatmapModal.querySelector('[data-tab="tor"]');
-        if (torTab) torTab.classList.add('active');
-
-        allTabs.forEach(t => {
-            t.onclick = () => {
-                const mode = t.dataset.tab;
-                const scatter = heatmapModal.querySelector('.modal-scatter-plot');
-                const heatContainer = heatmapModal.querySelector('#heatmapContainer');
-                const filterContainer = heatmapModal.querySelector('.heatmap-filter');
-
-                if (mode === 'diagram') {
-                    // Show Diagram, Hide Heatmap
-                    if (heatContainer) heatContainer.classList.add('versteckt');
-                    if (filterContainer) filterContainer.classList.add('versteckt');
-                    if (scatter) scatter.classList.remove('versteckt');
-
-                    // Manual active state for Diagram
-                    allTabs.forEach(b => b.classList.remove('active'));
-                    t.classList.add('active');
-                } else {
-                    // Show Heatmap, Hide Diagram
-                    if (heatContainer) heatContainer.classList.remove('versteckt');
-                    if (filterContainer) filterContainer.classList.remove('versteckt');
-                    if (scatter) scatter.classList.add('versteckt');
-                    // Standard listener (in eventListeners.js) handles 'tor'/'feld' logic & active state
-                }
-            };
-        });
-
-        // Add close handler to restore default state
-        const cleanup = () => {
-            if (defaultTitle) defaultTitle.style.display = 'block';
-            const ct = heatmapModal.querySelector('.season-heatmap-title');
-            if (ct) ct.remove();
-
-            // Remove Scatter Plot & Tab
-            if (scatterPlot) scatterPlot.remove();
-            if (diagramTab) diagramTab.remove();
-
-            // Restore visibility
-            const heatContainer = heatmapModal.querySelector('#heatmapContainer');
-            if (heatContainer) heatContainer.classList.remove('versteckt');
-
-            const filterContainer = heatmapModal.querySelector('.heatmap-filter');
-            if (filterContainer) {
-                filterContainer.classList.remove('versteckt');
-                filterContainer.style.display = '';
-                // Restore headers/labels
-                const labels = filterContainer.querySelectorAll('label');
-                labels.forEach(l => l.style.display = '');
-                const separator = filterContainer.querySelector('span:not([id])');
-                if (separator) separator.style.display = '';
-            }
-
-            // Reset onclicks
-            allTabs.forEach(t => t.onclick = null);
-        };
-
-        const closeButton = document.getElementById('closeHeatmapModal');
-        if (closeButton) {
-            closeButton.addEventListener('click', cleanup, { once: true });
-        }
-
-        // Determine filter logic (team-wide, no specific player)
-        const isOpponentTeam = teamName !== 'Heim';
-        const filterOverride = {
-            team: isOpponentTeam ? 'gegner' : 'heim',
-            player: null // No specific player filter
-        };
-
-        if (heatmapSvg) {
-            // Set context for tab switching (Standard Logic)
-            setCurrentHeatmapContext({
-                log: allLogEntries,
-                filter: filterOverride
-            });
-
-            renderHeatmap(heatmapSvg, allLogEntries, false, filterOverride);
-        }
-    }
+    // Simulate navigation
+    const navItem = document.querySelector('.nav-item[data-view="seasonheatmap"]');
+    if (navItem) navItem.click();
 }
 
 // Generiert SVG Scatter Plot für Team-Performance
-function renderTeamScatterPlot(players) {
+export function renderTeamScatterPlot(players) {
     // Filter active players (scored or threw)
     const activePlayers = players.filter(p => p.tore > 0 || p.fehlwurf > 0);
 
@@ -704,33 +589,67 @@ function renderTeamScatterPlot(players) {
         totalGames: { label: 'Spiele', getValue: p => p.totalGames || 0 }
     };
 
-    // Create Wrapper
+    // Create Wrapper with Modern Card Style
     const wrapper = document.createElement('div');
-    wrapper.style.cssText = 'position: relative; margin-bottom: 20px; padding: 15px; background: var(--bg-secondary); border-radius: 8px; border: 1px solid #444; margin-top: 20px;';
+    wrapper.style.cssText = `
+        position: relative; 
+        margin: 2rem auto; 
+        max-width: 900px;
+        padding: 1.5rem; 
+        background: linear-gradient(145deg, #2a2a2a, #202020); 
+        border-radius: 12px; 
+        border: 1px solid #333; 
+        box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+        color: var(--text-main);
+    `;
 
     const title = document.createElement('h4');
     title.textContent = "Team-Vergleich (Scatter Plot)";
-    title.style.cssText = "margin: 0 0 15px 0; text-align: center; color: var(--text-main); border-bottom: 1px solid #555; padding-bottom: 5px;";
+    title.style.cssText = `
+        margin: 0 0 1.5rem 0; 
+        text-align: center; 
+        color: var(--text-main); 
+        border-bottom: 2px solid #61dafb; 
+        display: inline-block;
+        padding-bottom: 0.5rem;
+        left: 50%;
+        position: relative;
+        transform: translateX(-50%);
+    `;
     wrapper.appendChild(title);
 
-    // Controls
+    // Controls Container
     const controlsDiv = document.createElement('div');
-    controlsDiv.style.cssText = 'display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; flex-wrap: wrap; gap: 10px;';
+    controlsDiv.style.cssText = 'display: flex; justify-content: center; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 20px;';
 
     const createSelect = (label, id, defaultVal) => {
         const container = document.createElement('div');
         container.style.display = 'flex';
-        container.style.alignItems = 'center';
+        container.style.flexDirection = 'column';
         container.style.gap = '5px';
 
         const lbl = document.createElement('label');
         lbl.textContent = label;
-        lbl.style.fontSize = '0.9rem';
-        lbl.style.color = '#ccc';
+        lbl.style.fontSize = '0.85rem';
+        lbl.style.color = '#fff';
+        lbl.style.fontWeight = 'bold';
 
         const select = document.createElement('select');
         select.id = id;
-        select.style.cssText = 'background: #333; color: white; border: 1px solid #555; padding: 3px; border-radius: 4px;';
+        select.style.cssText = `
+            background: #333; 
+            color: white; 
+            border: 1px solid #555; 
+            padding: 8px 12px; 
+            border-radius: 6px; 
+            font-size: 0.9rem;
+            outline: none;
+            cursor: pointer;
+            transition: border-color 0.2s;
+            min-width: 140px;
+        `;
+        select.addEventListener('focus', () => select.style.borderColor = '#61dafb');
+        select.addEventListener('blur', () => select.style.borderColor = '#555');
 
         Object.keys(metrics).forEach(key => {
             const opt = document.createElement('option');
@@ -748,6 +667,75 @@ function renderTeamScatterPlot(players) {
     const xControl = createSelect('X-Achse:', 'axis-x-select', 'tore');
     const yControl = createSelect('Y-Achse:', 'axis-y-select', 'feldtorQuote');
 
+    // Filter Control (Team)
+    const filterContainer = document.createElement('div');
+    filterContainer.style.display = 'flex';
+    filterContainer.style.flexDirection = 'column';
+    filterContainer.style.gap = '5px';
+
+    const filterLbl = document.createElement('label');
+    filterLbl.textContent = 'Team Filter:';
+    filterLbl.style.fontSize = '0.85rem';
+    filterLbl.style.color = '#fff';
+    filterLbl.style.fontWeight = 'bold';
+
+    const filterSelect = document.createElement('select');
+    filterSelect.id = 'scatter-filter-team';
+    filterSelect.style.cssText = `
+        background: #333; 
+        color: white; 
+        border: 1px solid #555; 
+        padding: 8px 12px; 
+        border-radius: 6px; 
+        font-size: 0.9rem;
+        outline: none;
+        cursor: pointer;
+        transition: border-color 0.2s;
+        min-width: 120px;
+    `;
+    filterSelect.addEventListener('focus', () => filterSelect.style.borderColor = '#61dafb');
+    filterSelect.addEventListener('blur', () => filterSelect.style.borderColor = '#555');
+
+    // Generate Options
+    const optAll = document.createElement('option');
+    optAll.value = 'all';
+    optAll.textContent = 'Alle Teams';
+    filterSelect.appendChild(optAll);
+
+    // Heim Team
+    const homeName = spielstand.settings.teamNameHeim || 'Heim';
+    const optHome = document.createElement('option');
+    optHome.value = 'Heim';
+    optHome.textContent = homeName;
+    filterSelect.appendChild(optHome);
+
+    // Alle Gegner
+    const optAllOpp = document.createElement('option');
+    optAllOpp.value = 'all_opponents';
+    optAllOpp.textContent = 'Alle Gegner';
+    filterSelect.appendChild(optAllOpp);
+
+    // Specific Opponent Teams
+    const oppTeams = new Set();
+    activePlayers.forEach(p => {
+        if (p.team && p.team !== 'Heim') {
+            oppTeams.add(p.team);
+        }
+    });
+
+    Array.from(oppTeams).sort().forEach(teamName => {
+        const opt = document.createElement('option');
+        opt.value = teamName;
+        opt.textContent = teamName;
+        filterSelect.appendChild(opt);
+    });
+    filterContainer.appendChild(filterLbl);
+    filterContainer.appendChild(filterSelect);
+
+    controlsDiv.appendChild(xControl.container);
+    controlsDiv.appendChild(yControl.container);
+    controlsDiv.appendChild(filterContainer);
+
     // Toggle Button
 
 
@@ -758,12 +746,27 @@ function renderTeamScatterPlot(players) {
 
     const svgContainer = document.createElement('div');
     svgContainer.className = 'svg-container';
+    svgContainer.style.cssText = "background: rgba(0,0,0,0.2); border-radius: 8px; padding: 10px;";
     wrapper.appendChild(svgContainer);
 
-    // Custom Tooltip
+    // Custom Tooltip (Glassmorphism)
     const tooltip = document.createElement('div');
     tooltip.className = 'scatter-tooltip';
-    tooltip.style.cssText = 'position: absolute; display: none; background: rgba(0, 0, 0, 0.9); color: #fff; padding: 8px 12px; border-radius: 4px; pointer-events: none; font-size: 0.85rem; z-index: 100; border: 1px solid #666; white-space: nowrap; box-shadow: 0 4px 6px rgba(0,0,0,0.3);';
+    tooltip.style.cssText = `
+        position: absolute; 
+        display: none; 
+        background: rgba(40, 40, 40, 0.95); 
+        backdrop-filter: blur(5px);
+        color: #fff; 
+        padding: 10px 14px; 
+        border-radius: 8px; 
+        pointer-events: none; 
+        font-size: 0.9rem; 
+        z-index: 100; 
+        border: 1px solid rgba(255,255,255,0.1); 
+        white-space: nowrap; 
+        box-shadow: 0 8px 16px rgba(0,0,0,0.4);
+    `;
     wrapper.appendChild(tooltip);
 
     // Toggle Logic
@@ -778,13 +781,27 @@ function renderTeamScatterPlot(players) {
         const xData = metrics[xKey];
         const yData = metrics[yKey];
 
-        const width = 600;
-        const height = 300;
-        const padding = { top: 20, right: 30, bottom: 40, left: 50 };
+        const width = 650;
+        const height = 400; // Increased height
+        const padding = { top: 30, right: 40, bottom: 50, left: 60 };
+
+        // Filter Data based on Team Selection
+        const selectedTeamFilter = filterSelect.value;
+        const filteredPlayers = activePlayers.filter(p => {
+            if (selectedTeamFilter === 'all') return true;
+            if (selectedTeamFilter === 'Heim') return p.team === 'Heim';
+            if (selectedTeamFilter === 'all_opponents') return p.team !== 'Heim';
+            return p.team === selectedTeamFilter;
+        });
+
+        if (filteredPlayers.length === 0) {
+            svgContainer.innerHTML = '<p style="text-align:center; padding: 40px; color: #999;">Keine Daten für die aktuelle Auswahl.</p>';
+            return;
+        }
 
         // Determine Max Values
-        const xValues = activePlayers.map(p => xData.getValue(p));
-        const yValues = activePlayers.map(p => yData.getValue(p));
+        const xValues = filteredPlayers.map(p => xData.getValue(p));
+        const yValues = filteredPlayers.map(p => yData.getValue(p));
 
         // Calculate Range (Min/Max) to support negative values
         let xMin = Math.min(0, ...xValues);
@@ -807,10 +824,9 @@ function renderTeamScatterPlot(players) {
         svg.style.width = "100%";
         svg.style.height = "auto";
         svg.style.overflow = "visible";
-        svg.style.fontFamily = "sans-serif";
+        svg.style.fontFamily = "'Segoe UI', Roboto, Helvetica, Arial, sans-serif";
 
         // Scales
-        // Scales (Mapped to Range)
         const xScale = (val) => padding.left + ((val - xMin) / (xMax - xMin)) * (width - padding.left - padding.right);
         const yScale = (val) => height - padding.bottom - ((val - yMin) / (yMax - yMin)) * (height - padding.top - padding.bottom);
 
@@ -820,7 +836,7 @@ function renderTeamScatterPlot(players) {
             const line = document.createElementNS(svgNs, "line");
             line.setAttribute("x1", zeroX); line.setAttribute("y1", padding.top);
             line.setAttribute("x2", zeroX); line.setAttribute("y2", height - padding.bottom);
-            line.setAttribute("stroke", "#666");
+            line.setAttribute("stroke", "#555");
             line.setAttribute("stroke-width", "1");
             svg.appendChild(line);
         }
@@ -830,7 +846,7 @@ function renderTeamScatterPlot(players) {
             const line = document.createElementNS(svgNs, "line");
             line.setAttribute("x1", padding.left); line.setAttribute("y1", zeroY);
             line.setAttribute("x2", width - padding.right); line.setAttribute("y2", zeroY);
-            line.setAttribute("stroke", "#666");
+            line.setAttribute("stroke", "#555");
             line.setAttribute("stroke-width", "1");
             svg.appendChild(line);
         }
@@ -839,32 +855,36 @@ function renderTeamScatterPlot(players) {
         const xAxisLine = document.createElementNS(svgNs, "line");
         xAxisLine.setAttribute("x1", padding.left); xAxisLine.setAttribute("y1", height - padding.bottom);
         xAxisLine.setAttribute("x2", width - padding.right); xAxisLine.setAttribute("y2", height - padding.bottom);
-        xAxisLine.setAttribute("stroke", "#888");
+        xAxisLine.setAttribute("stroke", "#777");
         xAxisLine.setAttribute("stroke-width", "2");
+        xAxisLine.setAttribute("stroke-linecap", "round");
         svg.appendChild(xAxisLine);
 
         const yAxisLine = document.createElementNS(svgNs, "line");
         yAxisLine.setAttribute("x1", padding.left); yAxisLine.setAttribute("y1", padding.top);
         yAxisLine.setAttribute("x2", padding.left); yAxisLine.setAttribute("y2", height - padding.bottom);
-        yAxisLine.setAttribute("stroke", "#888");
+        yAxisLine.setAttribute("stroke", "#777");
         yAxisLine.setAttribute("stroke-width", "2");
+        yAxisLine.setAttribute("stroke-linecap", "round");
         svg.appendChild(yAxisLine);
 
         // Labels
         const xLabel = document.createElementNS(svgNs, "text");
-        xLabel.setAttribute("x", width / 2); xLabel.setAttribute("y", height - 5);
+        xLabel.setAttribute("x", width / 2); xLabel.setAttribute("y", height - 10);
         xLabel.setAttribute("text-anchor", "middle");
-        xLabel.setAttribute("fill", "#ccc");
-        xLabel.setAttribute("font-size", "14"); // Increased size
+        xLabel.setAttribute("fill", "#ddd");
+        xLabel.setAttribute("font-size", "14");
+        xLabel.setAttribute("font-weight", "500");
         xLabel.textContent = xData.label;
         svg.appendChild(xLabel);
 
         const yLabel = document.createElementNS(svgNs, "text");
-        yLabel.setAttribute("x", 15); yLabel.setAttribute("y", height / 2);
+        yLabel.setAttribute("x", 20); yLabel.setAttribute("y", height / 2);
         yLabel.setAttribute("text-anchor", "middle");
-        yLabel.setAttribute("fill", "#ccc");
-        yLabel.setAttribute("font-size", "14"); // Increased size
-        yLabel.setAttribute("transform", `rotate(-90, 15, ${height / 2})`);
+        yLabel.setAttribute("fill", "#ddd");
+        yLabel.setAttribute("font-size", "14");
+        yLabel.setAttribute("font-weight", "500");
+        yLabel.setAttribute("transform", `rotate(-90, 20, ${height / 2})`);
         yLabel.textContent = yData.label;
         svg.appendChild(yLabel);
 
@@ -885,10 +905,8 @@ function renderTeamScatterPlot(players) {
             avgLineX.setAttribute("stroke", "#ffc107"); // Yellowish for Average
             avgLineX.setAttribute("stroke-width", "1");
             avgLineX.setAttribute("stroke-dasharray", "5,5");
-            avgLineX.setAttribute("opacity", "0.6");
+            avgLineX.setAttribute("opacity", "0.5");
             svg.appendChild(avgLineX);
-
-
         }
 
         // Draw Average Y (Horizontal)
@@ -899,21 +917,22 @@ function renderTeamScatterPlot(players) {
             avgLineY.setAttribute("stroke", "#ffc107");
             avgLineY.setAttribute("stroke-width", "1");
             avgLineY.setAttribute("stroke-dasharray", "5,5");
-            avgLineY.setAttribute("opacity", "0.6");
+            avgLineY.setAttribute("opacity", "0.5");
             svg.appendChild(avgLineY);
         }
 
-        // Grid & Markers (Simple 5 steps)
-        for (let i = 0; i <= 5; i++) {
+        // Grid & Markers
+        const steps = 5;
+        for (let i = 0; i <= steps; i++) {
             // Y-Axis
-            const yVal = Math.round((yMax / 5) * i);
+            const yVal = Math.round((yMax / steps) * i);
             const yPos = yScale(yVal);
 
             const yText = document.createElementNS(svgNs, "text");
             yText.setAttribute("x", padding.left - 10); yText.setAttribute("y", yPos + 4);
             yText.setAttribute("text-anchor", "end");
-            yText.setAttribute("fill", "#666");
-            yText.setAttribute("font-size", "10");
+            yText.setAttribute("fill", "#999");
+            yText.setAttribute("font-size", "11");
             yText.textContent = yVal;
             svg.appendChild(yText);
 
@@ -921,21 +940,23 @@ function renderTeamScatterPlot(players) {
                 const line = document.createElementNS(svgNs, "line");
                 line.setAttribute("x1", padding.left); line.setAttribute("y1", yPos);
                 line.setAttribute("x2", width - padding.right); line.setAttribute("y2", yPos);
-                line.setAttribute("stroke", "#333");
+                line.setAttribute("stroke", "#444");
+                line.setAttribute("stroke-width", "1");
                 line.setAttribute("stroke-dasharray", "4");
+                line.setAttribute("opacity", "0.3");
                 svg.insertBefore(line, xAxisLine);
             }
 
             // X-Axis
-            const xVal = Math.round((xMax / 5) * i);
+            const xVal = Math.round((xMax / steps) * i);
             const xPos = xScale(xVal);
 
             if (i > 0 || xMax > 0) {
                 const xText = document.createElementNS(svgNs, "text");
-                xText.setAttribute("x", xPos); xText.setAttribute("y", height - padding.bottom + 15);
+                xText.setAttribute("x", xPos); xText.setAttribute("y", height - padding.bottom + 18);
                 xText.setAttribute("text-anchor", "middle");
-                xText.setAttribute("fill", "#666");
-                xText.setAttribute("font-size", "10");
+                xText.setAttribute("fill", "#999");
+                xText.setAttribute("font-size", "11");
                 xText.textContent = xVal;
                 svg.appendChild(xText);
 
@@ -943,16 +964,17 @@ function renderTeamScatterPlot(players) {
                     const line = document.createElementNS(svgNs, "line");
                     line.setAttribute("x1", xPos); line.setAttribute("y1", padding.top);
                     line.setAttribute("x2", xPos); line.setAttribute("y2", height - padding.bottom);
-                    line.setAttribute("stroke", "#333");
+                    line.setAttribute("stroke", "#444");
+                    line.setAttribute("stroke-width", "1");
                     line.setAttribute("stroke-dasharray", "4");
-                    line.setAttribute("opacity", "0.5");
+                    line.setAttribute("opacity", "0.3");
                     svg.insertBefore(line, xAxisLine);
                 }
             }
         }
 
         // Points
-        activePlayers.forEach(p => {
+        filteredPlayers.forEach(p => {
             const xVal = xData.getValue(p);
             const yVal = yData.getValue(p);
 
@@ -962,24 +984,40 @@ function renderTeamScatterPlot(players) {
             // Group for larger hit area and text
             const g = document.createElementNS(svgNs, "g");
             g.style.cursor = "pointer";
+            g.style.transition = "opacity 0.2s";
 
             // Circle
             const circle = document.createElementNS(svgNs, "circle");
             circle.setAttribute("cx", cx);
             circle.setAttribute("cy", cy);
-            circle.setAttribute("r", "6");
+            circle.setAttribute("r", "7");
 
-            // Uniform color for all points
-            const color = "#61dafb"; // Theme cyan
+            // Color Coding
+            const isHome = p.team === 'Heim';
+            const color = isHome ? "#00E5FF" : "#FF4081"; // Bright Cyan, Pink/Red
+
             circle.setAttribute("fill", color);
             circle.setAttribute("stroke", "#fff");
-            circle.setAttribute("stroke-width", "1");
+            circle.setAttribute("stroke-width", "1.5");
+            circle.setAttribute("opacity", "0.9");
+
+            // Entry Animation
+            const animate = document.createElementNS(svgNs, "animate");
+            animate.setAttribute("attributeName", "r");
+            animate.setAttribute("from", "0");
+            animate.setAttribute("to", "7");
+            animate.setAttribute("dur", "0.5s");
+            animate.setAttribute("fill", "freeze");
+            animate.setAttribute("calcMode", "spline");
+            animate.setAttribute("keySplines", "0.25 0.1 0.25 1"); // Ease Out
+            circle.appendChild(animate);
 
             // Pulse animation for high performers (Top right quadrant)
+            // Or just give everyone a subtle pulse? No, just high performers otherwise too busy.
             if (xVal > xMax * 0.7 && yVal > yMax * 0.7) {
                 const anim = document.createElementNS(svgNs, "animate");
                 anim.setAttribute("attributeName", "r");
-                anim.setAttribute("values", "6;9;6");
+                anim.setAttribute("values", "7;10;7");
                 anim.setAttribute("dur", "2s");
                 anim.setAttribute("repeatCount", "indefinite");
                 circle.appendChild(anim);
@@ -988,11 +1026,13 @@ function renderTeamScatterPlot(players) {
             // Text Label
             const text = document.createElementNS(svgNs, "text");
             text.setAttribute("x", cx);
-            text.setAttribute("y", cy - 10);
+            text.setAttribute("y", cy - 12);
             text.setAttribute("text-anchor", "middle");
             text.setAttribute("fill", "#fff");
-            text.setAttribute("font-size", "10");
+            text.setAttribute("font-size", "11");
+            text.setAttribute("font-weight", "bold");
             text.style.pointerEvents = "none";
+            text.style.textShadow = "0px 1px 3px rgba(0,0,0,0.8)";
             text.textContent = `#${p.number}`;
 
             g.appendChild(circle);
@@ -1006,43 +1046,47 @@ function renderTeamScatterPlot(players) {
                 const relY = e.clientY - rect.top;
 
                 tooltip.innerHTML = `
-                    <div style="font-weight: bold; margin-bottom: 2px;">${p.name} (#${p.number})</div>
-                    <div style="color: #ccc;">${xData.label}: <span style="color: #fff;">${xVal}</span></div>
-                    <div style="color: #ccc;">${yData.label}: <span style="color: #fff;">${yVal}</span></div>
+                    <div style="font-weight: bold; margin-bottom: 4px; border-bottom: 1px solid rgba(255,255,255,0.2); padding-bottom: 2px;">${p.name} (#${p.number})</div>
+                    <div style="font-size: 0.8rem; color: ${color}; margin-bottom: 6px; font-weight: 600;">${p.team === 'Heim' ? (spielstand.settings.teamNameHeim || 'Heim') : p.team}</div>
+                    <div style="color: #ccc; font-size: 0.85rem;">${xData.label}: <span style="color: #fff; font-weight: bold;">${xVal}</span></div>
+                    <div style="color: #ccc; font-size: 0.85rem;">${yData.label}: <span style="color: #fff; font-weight: bold;">${yVal}</span></div>
                 `;
 
                 // Position tooltip
-                tooltip.style.left = `${relX + 10}px`;
+                tooltip.style.left = `${relX + 15}px`;
                 tooltip.style.top = `${relY - 10}px`;
                 tooltip.style.display = 'block';
 
                 // Highlight circle
-                circle.setAttribute("r", "8");
-                circle.setAttribute("fill", "#fff");
-                circle.setAttribute("stroke", color);
-                circle.setAttribute("stroke-width", "2");
+                circle.setAttribute("r", "10");
+                circle.setAttribute("stroke-width", "2.5");
+                circle.style.filter = "drop-shadow(0 0 5px " + color + ")";
+
+                // Dim others
+                svg.querySelectorAll('g').forEach(otherG => {
+                    if (otherG !== g) otherG.style.opacity = "0.3";
+                });
             };
 
             const hideTooltip = () => {
                 tooltip.style.display = 'none';
 
                 // Reset circle
-                circle.setAttribute("r", "6");
-                circle.setAttribute("fill", color);
-                circle.setAttribute("stroke", "#fff");
-                circle.setAttribute("stroke-width", "1");
+                circle.setAttribute("r", "7");
+                circle.setAttribute("stroke-width", "1.5");
+                circle.style.filter = "none";
 
-                // Re-add pulse if needed (re-rendering handles it, but simpler to just let animation continue? 
-                // Setting 'r' attribute manually overrides SMIL animation? 
-                // If animate tag is present, it might conflict. 
-                // But for interaction feedback, it's fine.
+                // Reset opacity
+                svg.querySelectorAll('g').forEach(otherG => {
+                    otherG.style.opacity = "1";
+                });
             };
 
             g.addEventListener('mouseenter', showTooltip);
             g.addEventListener('mouseleave', hideTooltip);
             g.addEventListener('click', (e) => {
                 e.stopPropagation();
-                showTooltip(e); // Ensure it shows on click (Touch support)
+                showTooltip(e);
             });
 
             svg.appendChild(g);
@@ -1054,6 +1098,7 @@ function renderTeamScatterPlot(players) {
     // Event Listeners
     xControl.select.addEventListener('change', renderChart);
     yControl.select.addEventListener('change', renderChart);
+    filterSelect.addEventListener('change', renderChart);
 
     // Initial Render
     renderChart();

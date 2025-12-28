@@ -1,6 +1,6 @@
 import { spielstand, speichereSpielstand } from './state.js';
 import { playerNameInput, playerNumberInput, editPlayerIndex, addGegnerModal, addGegnerNummerInput, addGegnerNameInput } from './dom.js';
-import { zeichneRosterListe, oeffneEditModusUI, schliesseEditModusUI } from './ui.js';
+import { zeichneRosterListe, zeichneSpielerRaster, oeffneEditModusUI, schliesseEditModusUI } from './ui.js';
 import { customAlert, customConfirm } from './customDialog.js';
 
 export async function addPlayer(e) {
@@ -23,7 +23,7 @@ export async function addPlayer(e) {
 
     // Check if toggle is set to opponent mode
     const teamToggle = document.getElementById('teamToggle');
-    const isOpponentMode = teamToggle && teamToggle.checked;
+    const isOpponentMode = teamToggle && teamToggle.getAttribute('aria-checked') === 'true';
 
     if (isOpponentMode) {
         // Add to opponent team
@@ -37,6 +37,7 @@ export async function addPlayer(e) {
         spielstand.knownOpponents.sort((a, b) => a.number - b.number);
         speichereSpielstand();
         zeichneRosterListe(true);
+        zeichneSpielerRaster();
     } else {
         // Add to home team
         const existierenderSpieler = spielstand.roster.find((p, i) => p.number === number && i != editIndex);
@@ -57,6 +58,7 @@ export async function addPlayer(e) {
         spielstand.roster.sort((a, b) => a.number - b.number);
         speichereSpielstand();
         zeichneRosterListe(false);
+        zeichneSpielerRaster();
     }
 
     if (!editIndex) {
@@ -72,6 +74,7 @@ export async function deletePlayer(index) {
         spielstand.roster.splice(index, 1);
         speichereSpielstand();
         zeichneRosterListe();
+        zeichneSpielerRaster();
     }
 }
 
@@ -84,7 +87,7 @@ export function schliesseEditModus() {
 }
 
 export async function deleteEntireTeam() {
-    const isOpponentMode = document.getElementById('teamToggle').checked;
+    const isOpponentMode = document.getElementById('teamToggle').getAttribute('aria-checked') === 'true';
     const teamToDelete = isOpponentMode ? spielstand.knownOpponents : spielstand.roster;
     const teamName = isOpponentMode ? "Gegner" : "Spieler";
 
@@ -106,6 +109,7 @@ export async function deleteEntireTeam() {
         }
         speichereSpielstand();
         zeichneRosterListe(isOpponentMode);
+        zeichneSpielerRaster();
         await customAlert(`Alle ${teamName} wurden gelöscht.`, "Team gelöscht");
     }
 }
@@ -118,6 +122,7 @@ export async function deleteOpponent(index) {
         spielstand.knownOpponents.splice(index, 1);
         speichereSpielstand();
         zeichneRosterListe(true);
+        zeichneSpielerRaster();
     }
 }
 
@@ -150,6 +155,7 @@ export async function saveOpponent(index) {
     spielstand.knownOpponents.sort((a, b) => a.number - b.number);
     speichereSpielstand();
     zeichneRosterListe(true);
+    zeichneSpielerRaster();
     schliesseEditModus();
 }
 

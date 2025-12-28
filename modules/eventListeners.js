@@ -3,21 +3,19 @@
 
 import { spielstand, speichereSpielstand } from './state.js';
 import {
-    addPlayerForm, startGameButton, cancelEditButton, exportTeamButton,
+    addPlayerForm, cancelEditButton, exportTeamButton,
     importTeamButton, importFileInput, backToRosterButton, gamePhaseButton,
     deleteTeamButton, teamToggle, teamHeaderTitle,
     rosterTeamNameHeim, rosterTeamNameGegner,
     seasonOverviewButton, seasonOverviewModal, seasonSummary, seasonStatsContainer, seasonOverviewClose,
-    pauseButton, zurueckButton, vorButton, neuesSpielButton,
+    pauseButton, zurueckButton, vorButton, neuesSpielButton, gameSwapSidesBtn,
     heimScoreUp, heimScoreDown, gegnerScoreUp, gegnerScoreDown,
     aktionAbbrechen, guteAktionModalButton, aktionVorauswahlAbbrechen,
-    kommentarSpeichernButton, settingsButton, settingsSchliessen,
-    toggleDarkMode, toggleTorTracker, toggleTorTrackerGegner,
-    toggleWurfbildHeim, toggleWurfbildGegner, inputTeamNameHeim,
-    inputTeamNameGegner, toggleAuswaertsspiel, torRahmen, wurfbildUeberspringen,
-    showWurfbilderButton, closeWurfbilderStats, gegnerNummerSpeichern,
+    inputTeamNameGegner, toggleAuswaertsspiel, inputGoalSvg, wurfbildUeberspringen,
+    settingsBereich,
+    closeWurfbilderStats, gegnerNummerSpeichern,
     gegnerNummerUeberspringen, aktionsMenue, aktionVorauswahl,
-    kommentarBereich, kommentarTitel, kommentarInput, settingsModal,
+    kommentarBereich, kommentarTitel, kommentarInput,
     wurfbilderStatsModal, neueGegnerNummer, sevenMeterOutcomeModal,
     rosterBereich, spielBereich, globalAktionen, scoreWrapper, timerAnzeige,
     statistikWrapper, rosterListe, heimSpielerRaster, gegnerSpielerRaster, protokollAusgabe, bekannteGegnerListe,
@@ -26,15 +24,18 @@ import {
     saveTeamButton, loadTeamButton, loadTeamModal, savedTeamsList, loadTeamCancel,
     viewTeamModal, viewTeamTitle, editTeamNameInput, viewTeamPlayersList, saveTeamChanges, viewTeamClose,
     toggleWurfpositionHeim, toggleWurfpositionGegner, wurfpositionModal, wurfpositionFeld, wurfpositionUeberspringen,
-    showHeatmapButton, heatmapModal, heatmapSvg, closeHeatmapModal,
-    heatmapHeimFilter, heatmapGegnerFilter, heatmapToreFilter, heatmapMissedFilter,
-    exportPdfButton,
+    heatmapSvg,
+    heatmapHeimFilter, heatmapGegnerFilter, heatmapToreFilter, heatmapMissedFilter, heatmap7mFilter,
     spielBeendenButton, historieBereich, historieListe, backToStartFromHistory, historyButton,
     historieDetailBereich, backToHistoryList, histDetailTeams, histDetailScore, histDetailDate,
     histStatsTable, histStatsBody, histStatsGegnerTable, histStatsGegnerBody,
     histHeatmapSvg, histTabStats, histTabHeatmap, histSubTabTor, histSubTabFeld,
     histContentStats, histContentHeatmap, exportHistorieButton,
-    importSpielButton, importSpielInput
+    importSpielButton, importSpielInput,
+    histHeatmapToreFilter, histHeatmapMissedFilter,
+    liveOverviewHeatmapToreFilter, liveOverviewHeatmapMissedFilter, liveOverviewHeatmap7mFilter,
+    liveOverviewHeatmapSvg,
+    mobileMenuBtn, sidebarOverlay, sidebar, navItems
 } from './dom.js';
 import { addPlayer, schliesseEditModus, oeffneEditModus, deletePlayer, deleteEntireTeam, deleteOpponent, oeffneOpponentEditModus } from './roster.js';
 import {
@@ -47,13 +48,13 @@ import {
 import { handleZeitSprung } from './timer.js';
 import { exportTeam, handleFileImport, exportiereAlsPdf } from './export.js';
 import {
-    applyTheme, applyViewSettings, updateScoreDisplay, updateTorTracker,
+    applyTheme, applyViewSettings, updateScoreDisplay,
     schliesseWurfbildModal, zeigeWurfstatistik, zeichneSpielerRaster, oeffneWurfbildModal,
-    zeichneRosterListe
+    zeichneRosterListe, showLiveGameOverview
 } from './ui.js';
 import { exportHistorie, importiereSpiel } from './history.js';
 import { handleSpielBeenden, renderHistoryList } from './historyView.js';
-import { renderHeatmap, setCurrentHeatmapTab, setCurrentHeatmapContext } from './heatmap.js';
+import { renderHeatmap, setCurrentHeatmapTab, setCurrentHeatmapContext, currentHeatmapContext } from './heatmap.js';
 import { saveCurrentTeam, showLoadTeamModal, loadSavedTeam, deleteSavedTeam, viewTeam, updateTeam, deletePlayerFromSavedTeam, loadHistoryTeam } from './teamStorage.js';
 import { openSeasonOverview, closeSeasonOverview, showPlayerHeatmap, showTeamHeatmap } from './seasonView.js';
 import { customAlert } from './customDialog.js';
@@ -62,7 +63,6 @@ import { customAlert } from './customDialog.js';
 export function registerEventListeners() {
     // === Bildschirm 1: Roster ===
     addPlayerForm.addEventListener('submit', addPlayer);
-    startGameButton.addEventListener('click', switchToGame);
     cancelEditButton.addEventListener('click', schliesseEditModus);
     exportTeamButton.addEventListener('click', exportTeam);
     importTeamButton.addEventListener('click', () => importFileInput.click());
@@ -157,10 +157,18 @@ export function registerEventListeners() {
 
     // Team Toggle Switch
     if (teamToggle) {
-        teamToggle.addEventListener('change', (e) => {
-            const showOpponents = e.target.checked;
-            teamHeaderTitle.textContent = showOpponents ? 'Gegner Team' : 'Heim Team';
-            zeichneRosterListe(showOpponents);
+        teamToggle.addEventListener('click', (e) => {
+            // Toggle state
+            const isChecked = teamToggle.getAttribute('aria-checked') === 'true';
+            const newState = !isChecked;
+
+            teamToggle.setAttribute('aria-checked', newState);
+            teamToggle.dataset.state = newState ? 'checked' : 'unchecked';
+
+            teamHeaderTitle.textContent = newState ? 'Gegner Team' : 'Heim Team';
+            zeichneRosterListe(newState);
+            // Also need to redraw grid so action buttons have correct context if needed
+            // But zeichneRosterListe handles the list.
         });
     }
 
@@ -170,7 +178,7 @@ export function registerEventListeners() {
             // Schließe alle anderen Bereiche und Modals
             rosterBereich.classList.add('versteckt');
             spielBereich.classList.add('versteckt');
-            settingsModal.classList.add('versteckt');
+            settingsBereich.classList.add('versteckt');
             // Zeige Historie
             historieBereich.classList.remove('versteckt');
             renderHistoryList();
@@ -259,18 +267,61 @@ export function registerEventListeners() {
     }
 
     // === Bildschirm 2: Game ===
-    backToRosterButton.addEventListener('click', switchToRoster);
     gamePhaseButton.addEventListener('click', handleGamePhaseClick);
     pauseButton.addEventListener('click', handleRealPauseClick);
     zurueckButton.addEventListener('click', () => handleZeitSprung(-30));
     vorButton.addEventListener('click', () => handleZeitSprung(30));
     neuesSpielButton.addEventListener('click', starteNeuesSpiel);
 
+    // === Heatmap Filters (Main & Live Overview) ===
+    const triggerHeatmapUpdate = (svg, context) => {
+        // Ensure context is set if we are in that mode?
+        // Actually renderHeatmap checks global context. 
+        // If we are in live overview, context is 'liveOverview'.
+        renderHeatmap(svg, null, false);
+    };
+
+    // Main Heatmap Filters
+    if (heatmapToreFilter && heatmapSvg) heatmapToreFilter.addEventListener('change', () => renderHeatmap(heatmapSvg));
+    if (heatmapMissedFilter && heatmapSvg) heatmapMissedFilter.addEventListener('change', () => renderHeatmap(heatmapSvg));
+    if (heatmap7mFilter && heatmapSvg) heatmap7mFilter.addEventListener('change', () => renderHeatmap(heatmapSvg));
+
+    // Team Toggles for Main Heatmap
+    if (heatmapHeimFilter && heatmapSvg) heatmapHeimFilter.addEventListener('change', () => renderHeatmap(heatmapSvg));
+    if (heatmapGegnerFilter && heatmapSvg) heatmapGegnerFilter.addEventListener('change', () => renderHeatmap(heatmapSvg));
+
+    // Live Overview Heatmap Filters
+    if (liveOverviewHeatmapToreFilter && liveOverviewHeatmapSvg) liveOverviewHeatmapToreFilter.addEventListener('change', () => renderHeatmap(liveOverviewHeatmapSvg));
+    if (liveOverviewHeatmapMissedFilter && liveOverviewHeatmapSvg) liveOverviewHeatmapMissedFilter.addEventListener('change', () => renderHeatmap(liveOverviewHeatmapSvg));
+    if (liveOverviewHeatmap7mFilter && liveOverviewHeatmapSvg) liveOverviewHeatmap7mFilter.addEventListener('change', () => renderHeatmap(liveOverviewHeatmapSvg));
+
+    // Live Overview Team Toggles
+    const liveTeamRadios = document.querySelectorAll('input[name="liveOverviewHeatTeam"]');
+    liveTeamRadios.forEach(radio => {
+        radio.addEventListener('change', () => {
+            if (currentHeatmapContext === 'liveOverview') {
+                renderHeatmap(liveOverviewHeatmapSvg);
+            }
+        });
+    });
+
     // === Score Korrektur ===
-    heimScoreUp.addEventListener('click', () => logScoreKorrektur('heim', 1));
-    heimScoreDown.addEventListener('click', () => logScoreKorrektur('heim', -1));
-    gegnerScoreUp.addEventListener('click', () => logScoreKorrektur('gegner', 1));
-    gegnerScoreDown.addEventListener('click', () => logScoreKorrektur('gegner', -1));
+    heimScoreUp.addEventListener('click', () => {
+        const target = spielstand.settings.isAuswaertsspiel ? 'gegner' : 'heim';
+        logScoreKorrektur(target, 1);
+    });
+    heimScoreDown.addEventListener('click', () => {
+        const target = spielstand.settings.isAuswaertsspiel ? 'gegner' : 'heim';
+        if (spielstand.score[target] > 0) logScoreKorrektur(target, -1);
+    });
+    gegnerScoreUp.addEventListener('click', () => {
+        const target = spielstand.settings.isAuswaertsspiel ? 'heim' : 'gegner';
+        logScoreKorrektur(target, 1);
+    });
+    gegnerScoreDown.addEventListener('click', () => {
+        const target = spielstand.settings.isAuswaertsspiel ? 'heim' : 'gegner';
+        if (spielstand.score[target] > 0) logScoreKorrektur(target, -1);
+    });
 
     // === Modal 1: Haupt-Aktionsmenü ===
     aktionAbbrechen.addEventListener('click', schliesseAktionsMenue);
@@ -279,11 +330,8 @@ export function registerEventListeners() {
         aktionVorauswahl.classList.remove('versteckt');
     });
 
-    document.querySelectorAll('#aktionsMenue .aktion-button[data-aktion]').forEach(btn => {
-        btn.addEventListener('click', () => {
-            logAktion(btn.dataset.aktion);
-        });
-    });
+    // (AktionsMenue and Gute Aktion listeners are handled by event delegation below)
+
 
     // === Modal 2: "Gute Aktion" Vorauswahl ===
     aktionVorauswahlAbbrechen.addEventListener('click', () => {
@@ -291,15 +339,8 @@ export function registerEventListeners() {
         aktionsMenue.classList.remove('versteckt');
     });
 
-    document.querySelectorAll('#aktionVorauswahl .aktion-button[data-aktion]').forEach(btn => {
-        btn.addEventListener('click', () => {
-            setAktuelleAktionTyp('Gute Aktion: ' + btn.dataset.aktion);
-            kommentarTitel.textContent = `Kommentar für: ${aktuelleAktionTyp}`;
-            aktionVorauswahl.classList.add('versteckt');
-            kommentarBereich.classList.remove('versteckt');
-            kommentarInput.focus();
-        });
-    });
+    // (AktionVorauswahl buttons are handled by event delegation below)
+
 
     // === Modal 3: Kommentar ===
     kommentarSpeichernButton.addEventListener('click', () => {
@@ -308,32 +349,22 @@ export function registerEventListeners() {
         kommentarInput.value = '';
     });
 
-    // === Einstellungen ===
-    if (settingsButton) {
-        settingsButton.addEventListener('click', () => {
-            if (spielstand.settings) {
-                if (toggleDarkMode) toggleDarkMode.checked = spielstand.settings.darkMode;
-                if (toggleAuswaertsspiel) toggleAuswaertsspiel.checked = spielstand.settings.isAuswaertsspiel;
-                if (toggleTorTracker) toggleTorTracker.checked = spielstand.settings.showTorTracker;
-                if (toggleTorTrackerGegner) toggleTorTrackerGegner.checked = spielstand.settings.showTorTrackerGegner;
-                if (toggleWurfbildHeim) toggleWurfbildHeim.checked = spielstand.settings.showWurfbildHeim;
-                if (toggleWurfbildGegner) toggleWurfbildGegner.checked = spielstand.settings.showWurfbildGegner;
-                if (inputTeamNameHeim) inputTeamNameHeim.value = spielstand.settings.teamNameHeim || 'Heim';
-                if (inputTeamNameGegner) inputTeamNameGegner.value = spielstand.settings.teamNameGegner || 'Gegner';
-            }
-            settingsModal.classList.remove('versteckt');
+    // === Einstellungen (Inline) ===
+    if (inputTeamNameHeim) {
+        inputTeamNameHeim.addEventListener('input', (e) => {
+            if (!spielstand.settings) spielstand.settings = {};
+            spielstand.settings.teamNameHeim = e.target.value || 'Heim';
+            updateScoreDisplay();
+            speichereSpielstand();
         });
     }
 
-    if (settingsSchliessen) {
-        settingsSchliessen.addEventListener('click', () => {
-            if (spielstand.settings) {
-                spielstand.settings.teamNameHeim = inputTeamNameHeim.value || 'Heim';
-                spielstand.settings.teamNameGegner = inputTeamNameGegner.value || 'Gegner';
-                updateScoreDisplay();
-                speichereSpielstand();
-            }
-            settingsModal.classList.add('versteckt');
+    if (inputTeamNameGegner) {
+        inputTeamNameGegner.addEventListener('input', (e) => {
+            if (!spielstand.settings) spielstand.settings = {};
+            spielstand.settings.teamNameGegner = e.target.value || 'Gegner';
+            updateScoreDisplay();
+            speichereSpielstand();
         });
     }
 
@@ -346,24 +377,7 @@ export function registerEventListeners() {
         });
     }
 
-    if (toggleTorTracker) {
-        toggleTorTracker.addEventListener('change', (e) => {
-            if (!spielstand.settings) spielstand.settings = {};
-            spielstand.settings.showTorTracker = e.target.checked;
-            applyViewSettings();
-            speichereSpielstand();
-        });
-    }
 
-    if (toggleTorTrackerGegner) {
-        toggleTorTrackerGegner.addEventListener('change', (e) => {
-            if (!spielstand.settings) spielstand.settings = {};
-            spielstand.settings.showTorTrackerGegner = e.target.checked;
-            applyViewSettings();
-            updateTorTracker();
-            speichereSpielstand();
-        });
-    }
 
     if (toggleWurfbildHeim) {
         toggleWurfbildHeim.addEventListener('change', (e) => {
@@ -398,6 +412,23 @@ export function registerEventListeners() {
     }
 
     // === Auswärtsspiel Toggle ===
+    if (gameSwapSidesBtn) {
+        gameSwapSidesBtn.addEventListener('click', () => {
+            if (!spielstand.settings) spielstand.settings = {};
+            spielstand.settings.isAuswaertsspiel = !spielstand.settings.isAuswaertsspiel;
+            speichereSpielstand();
+
+            // Refresh Game Tab UI
+            updateScoreDisplay();
+            zeichneSpielerRaster();
+
+            // Sync toggle if visible in settings
+            if (toggleAuswaertsspiel) {
+                toggleAuswaertsspiel.checked = spielstand.settings.isAuswaertsspiel;
+            }
+        });
+    }
+
     if (toggleAuswaertsspiel) {
         toggleAuswaertsspiel.addEventListener('change', (e) => {
             if (!spielstand.settings) spielstand.settings = {};
@@ -436,7 +467,17 @@ export function registerEventListeners() {
 
             const lastEntry = spielstand.gameLog[0];
             const isOpponent = lastEntry && (lastEntry.action.startsWith('Gegner') || lastEntry.gegnerNummer);
-            const showWurfbild = isOpponent ? spielstand.settings.showWurfbildGegner : spielstand.settings.showWurfbildHeim;
+
+            // Logic: Determine active side (Heim/Gest) for settings check
+            const isAuswaerts = spielstand.settings.isAuswaertsspiel;
+            let sideIsHeim = false;
+            if (isOpponent) {
+                sideIsHeim = isAuswaerts;
+            } else {
+                sideIsHeim = !isAuswaerts;
+            }
+
+            const showWurfbild = sideIsHeim ? spielstand.settings.showWurfbildHeim : spielstand.settings.showWurfbildGegner;
 
             if (showWurfbild && lastEntry && (lastEntry.action === 'Tor' || lastEntry.action === 'Fehlwurf' || lastEntry.action === 'Gegner Tor' || lastEntry.action === 'Gegner Wurf Vorbei')) {
                 oeffneWurfbildModal(isOpponent ? 'gegner' : 'standard');
@@ -451,7 +492,17 @@ export function registerEventListeners() {
             if (spielstand.gameLog.length > 0) {
                 const lastEntry = spielstand.gameLog[0];
                 const isOpponent = lastEntry && (lastEntry.action.startsWith('Gegner') || lastEntry.gegnerNummer);
-                const showWurfbild = isOpponent ? spielstand.settings.showWurfbildGegner : spielstand.settings.showWurfbildHeim;
+
+                // Logic: Determine active side (Heim/Gest) for settings check
+                const isAuswaerts = spielstand.settings.isAuswaertsspiel;
+                let sideIsHeim = false;
+                if (isOpponent) {
+                    sideIsHeim = isAuswaerts;
+                } else {
+                    sideIsHeim = !isAuswaerts;
+                }
+
+                const showWurfbild = sideIsHeim ? spielstand.settings.showWurfbildHeim : spielstand.settings.showWurfbildGegner;
 
                 if (showWurfbild && (lastEntry.action === 'Tor' || lastEntry.action === 'Fehlwurf' || lastEntry.action === 'Gegner Tor' || lastEntry.action === 'Gegner Wurf Vorbei')) {
                     oeffneWurfbildModal(isOpponent ? 'gegner' : 'standard');
@@ -463,12 +514,28 @@ export function registerEventListeners() {
     // === Wurfbild Logic ===
     if (wurfbildUmgebung) {
         wurfbildUmgebung.addEventListener('click', (e) => {
-            const rect = torRahmen.getBoundingClientRect();
-            const clickX = e.clientX;
-            const clickY = e.clientY;
+            const rect = inputGoalSvg.getBoundingClientRect();
+            const viewBox = inputGoalSvg.viewBox.baseVal;
+            const vbWidth = viewBox.width || 300;
+            const vbHeight = viewBox.height || 200;
 
-            const x = ((clickX - rect.left) / rect.width) * 100;
-            const y = ((clickY - rect.top) / rect.height) * 100;
+            const clickXOffset = e.clientX - rect.left;
+            const clickYOffset = e.clientY - rect.top;
+
+            const scaleX = rect.width / vbWidth;
+            const scaleY = rect.height / vbHeight;
+
+            // Coordinate in SVG space
+            const svgX = clickXOffset / scaleX;
+            const svgY = clickYOffset / scaleY;
+
+            // Map to Goal Inner Rect (x=25, y=10, w=250, h=180)
+            const x = ((svgX - 25) / 250) * 100;
+            const y = ((svgY - 10) / 180) * 100;
+
+            // Clamp values strictly to 0-100? Or allow slight margin?
+            // Heatmap clamps display, so allowing slight margin is fine, but maybe clamping is safer for clean data.
+            // Let's not clamp tightly, as long as it's reasonable. User clicks where they click.
 
             let color = 'gray';
 
@@ -499,40 +566,67 @@ export function registerEventListeners() {
         wurfbildUeberspringen.addEventListener('click', schliesseWurfbildModal);
     }
 
-    if (showWurfbilderButton) showWurfbilderButton.addEventListener('click', zeigeWurfstatistik);
     if (closeWurfbilderStats) closeWurfbilderStats.addEventListener('click', () => wurfbilderStatsModal.classList.add('versteckt'));
 
     if (gegnerNummerSpeichern) {
         gegnerNummerSpeichern.addEventListener('click', () => {
             const val = neueGegnerNummer.value;
             const name = neueGegnerName.value.trim();
-            if (val) speichereGegnerNummer(val, name);
+            if (val) {
+                speichereGegnerNummer(val, name);
+            } else {
+                customAlert("Bitte eine gültige Nummer eingeben!");
+            }
         });
     }
     if (gegnerNummerUeberspringen) {
         gegnerNummerUeberspringen.addEventListener('click', skipGegnerNummer);
     }
 
-    // === 7m Outcome Buttons ===
-    document.querySelectorAll('#sevenMeterOutcomeModal .aktion-button[data-outcome]').forEach(btn => {
-        btn.addEventListener('click', () => {
-            handle7mOutcome(btn.dataset.outcome);
+    // === Action Menu Event Delegation (Shadcn) ===
+    if (aktionsMenue) {
+        aktionsMenue.addEventListener('click', (e) => {
+            const btn = e.target.closest('button[data-aktion]');
+            if (btn) {
+                const aktion = btn.dataset.aktion;
+                logAktion(aktion);
+            }
         });
-    });
+    }
+
+    if (aktionVorauswahl) {
+        aktionVorauswahl.addEventListener('click', (e) => {
+            const btn = e.target.closest('button[data-aktion]');
+            if (btn) {
+                const aktion = btn.dataset.aktion;
+                setAktuelleAktionTyp('Gute Aktion: ' + aktion);
+                if (kommentarTitel) kommentarTitel.textContent = `Kommentar für: ${aktuelleAktionTyp}`;
+                aktionVorauswahl.classList.add('versteckt');
+                if (kommentarBereich) {
+                    kommentarBereich.classList.remove('versteckt');
+                    kommentarInput.focus();
+                } else {
+                    // Fallback if comment modal is missing
+                    logAktion(aktuelleAktionTyp);
+                }
+            }
+        });
+    }
+
+    // === 7m Outcome Buttons ===
+    if (sevenMeterOutcomeModal) {
+        sevenMeterOutcomeModal.addEventListener('click', (e) => {
+            const btn = e.target.closest('button[data-outcome]');
+            if (btn) {
+                handle7mOutcome(btn.dataset.outcome);
+            }
+        });
+    }
 
     // === Event Delegation for Dynamic Elements ===
 
     rosterListe.addEventListener('click', (e) => {
-        if (e.target.classList.contains('edit-player')) {
-            const index = e.target.dataset.index;
-            const opponentIndex = e.target.dataset.opponentIndex;
-
-            if (opponentIndex !== undefined) {
-                oeffneOpponentEditModus(opponentIndex);
-            } else if (index !== undefined) {
-                oeffneEditModus(index);
-            }
-        } else if (e.target.classList.contains('delete-player')) {
+        if (e.target.classList.contains('delete-player')) {
             const index = e.target.dataset.index;
             const opponentIndex = e.target.dataset.opponentIndex;
 
@@ -626,8 +720,9 @@ export function registerEventListeners() {
     });
 
     protokollAusgabe.addEventListener('click', (e) => {
-        if (e.target.classList.contains('loeschButton')) {
-            const index = e.target.dataset.index;
+        const deleteBtn = e.target.closest('.log-delete');
+        if (deleteBtn) {
+            const index = deleteBtn.dataset.index;
             loescheProtokollEintrag(index);
         }
     });
@@ -656,6 +751,8 @@ export function registerEventListeners() {
                 } else {
                     customAlert('Dieser Gegner ist bereits in der Liste.');
                 }
+            } else {
+                customAlert("Bitte eine gültige Nummer eingeben!");
             }
         });
     }
@@ -674,25 +771,6 @@ export function registerEventListeners() {
         });
     }
 
-    // === Heatmap button (Live Game) ===
-    if (showHeatmapButton) {
-        showHeatmapButton.addEventListener('click', () => {
-            setCurrentHeatmapContext(null);
-
-            const filterContainer = heatmapModal.querySelector('.heatmap-filter');
-            if (filterContainer) filterContainer.classList.remove('versteckt');
-
-            heatmapModal.classList.remove('versteckt');
-            renderHeatmap(heatmapSvg, null, false);
-        });
-    }
-
-    if (closeHeatmapModal) {
-        closeHeatmapModal.addEventListener('click', () => {
-            heatmapModal.classList.add('versteckt');
-            setCurrentHeatmapContext(null);
-        });
-    }
 
     // === Tab switching (Live Game) ===
     document.querySelectorAll('.heatmap-tab[data-tab]').forEach(tab => {
@@ -708,14 +786,92 @@ export function registerEventListeners() {
     });
 
     // === Filter changes (Live Game) ===
-    [heatmapHeimFilter, heatmapGegnerFilter, heatmapToreFilter, heatmapMissedFilter].forEach(filter => {
+    [heatmapHeimFilter, heatmapGegnerFilter, heatmapToreFilter, heatmapMissedFilter, heatmap7mFilter].forEach(filter => {
         if (filter) {
             filter.addEventListener('change', () => renderHeatmap(heatmapSvg, null, false));
         }
     });
 
-    // === PDF Export ===
-    if (exportPdfButton) {
-        exportPdfButton.addEventListener('click', exportiereAlsPdf);
+    // === Mobile Sidebar Toggle ===
+    if (mobileMenuBtn && sidebar && sidebarOverlay) {
+        mobileMenuBtn.addEventListener('click', () => {
+            sidebar.classList.toggle('active');
+            sidebarOverlay.classList.toggle('active');
+        });
+
+        sidebarOverlay.addEventListener('click', () => {
+            sidebar.classList.remove('active');
+            sidebarOverlay.classList.remove('active');
+        });
+
+        // Close sidebar when a nav item is clicked (on mobile)
+        if (navItems) {
+            navItems.forEach(item => {
+                item.addEventListener('click', () => {
+                    if (window.innerWidth <= 768) {
+                        sidebar.classList.remove('active');
+                        sidebarOverlay.classList.remove('active');
+                    }
+                });
+            });
+        }
     }
 }
+
+// Live Overview Filters
+const liveFilters = [liveOverviewHeatmapToreFilter, liveOverviewHeatmapMissedFilter, liveOverviewHeatmap7mFilter];
+liveFilters.forEach(f => {
+    if (f) {
+        f.addEventListener('change', () => {
+            if (currentHeatmapContext === 'liveOverview') {
+                renderHeatmap(liveOverviewHeatmapSvg, null, false);
+            }
+        });
+    }
+});
+
+document.querySelectorAll('input[name="liveOverviewHeatTeam"]').forEach(radio => {
+    radio.addEventListener('change', () => {
+        if (currentHeatmapContext === 'liveOverview') {
+            renderHeatmap(liveOverviewHeatmapSvg, null, false);
+        }
+    });
+});
+
+if (toggleAuswaertsspiel) {
+    toggleAuswaertsspiel.addEventListener('change', () => {
+        spielstand.settings.isAuswaertsspiel = toggleAuswaertsspiel.checked;
+        updateScoreDisplay();
+        speichereSpielstand();
+
+        // Refresh Live Overview if active
+        // Simplest way is to trigger click on the active nav item if it is 'overview'
+        const activeNav = document.querySelector('.nav-item[data-view="overview"]');
+        if (activeNav && activeNav.classList.contains('active')) {
+            import('../main.js').then(m => m.showLiveOverviewInline());
+        }
+    });
+}
+
+// Subtabs for Live Overview Heatmap
+const liveSubTabs = [
+    { id: 'liveOverviewSubTabTor', tab: 'tor' },
+    { id: 'liveOverviewSubTabFeld', tab: 'feld' },
+    { id: 'liveOverviewSubTabKombi', tab: 'kombiniert' }
+];
+
+liveSubTabs.forEach(item => {
+    const btn = document.getElementById(item.id);
+    if (btn) {
+        btn.addEventListener('click', () => {
+            // Update active class
+            liveSubTabs.forEach(t => document.getElementById(t.id).classList.remove('active'));
+            btn.classList.add('active');
+
+            setCurrentHeatmapTab(item.tab);
+            if (currentHeatmapContext === 'liveOverview') {
+                renderHeatmap(liveOverviewHeatmapSvg, null, false);
+            }
+        });
+    }
+});

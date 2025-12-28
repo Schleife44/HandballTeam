@@ -16,8 +16,7 @@ export let spielstand = {
     activeSuspensions: [],
     settings: {
         darkMode: false,
-        showTorTracker: true,
-        showTorTrackerGegner: false,
+
         showWurfbildHeim: false,
         showWurfbildGegner: false,
         showWurfpositionHeim: false,
@@ -50,8 +49,7 @@ export function ladeSpielstandDaten() {
         if (!spielstand.settings) spielstand.settings = {};
 
         if (typeof spielstand.settings.darkMode === 'undefined') spielstand.settings.darkMode = false;
-        if (typeof spielstand.settings.showTorTracker === 'undefined') spielstand.settings.showTorTracker = true;
-        if (typeof spielstand.settings.showTorTrackerGegner === 'undefined') spielstand.settings.showTorTrackerGegner = false;
+
         if (typeof spielstand.settings.showWurfbildHeim === 'undefined') spielstand.settings.showWurfbildHeim = false;
         if (typeof spielstand.settings.showWurfbildGegner === 'undefined') spielstand.settings.showWurfbildGegner = false;
         if (typeof spielstand.settings.showWurfpositionHeim === 'undefined') spielstand.settings.showWurfpositionHeim = false;

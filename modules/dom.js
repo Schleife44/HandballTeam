@@ -1,17 +1,47 @@
+// Sidebar Navigation
+export const sidebar = document.getElementById('sidebar');
+export const mainContent = document.getElementById('main-content');
+export const navItems = document.querySelectorAll('.nav-item');
+export const mobileMenuBtn = document.getElementById('mobileMenuBtn');
+export const sidebarOverlay = document.getElementById('sidebarOverlay');
+
+// Roster & Team Management
 export const addPlayerForm = document.getElementById('addPlayerForm');
 export const playerNameInput = document.getElementById('playerNameInput');
 export const playerNumberInput = document.getElementById('playerNumberInput');
 export const editPlayerIndex = document.getElementById('editPlayerIndex');
 export const cancelEditButton = document.getElementById('cancelEditButton');
 export const rosterListe = document.getElementById('rosterListe');
-export const startGameButton = document.getElementById('startGameButton');
+
 export const deleteTeamButton = document.getElementById('deleteTeamButton');
 export const teamToggle = document.getElementById('teamToggle');
 export const teamHeaderTitle = document.getElementById('teamHeaderTitle');
 export const rosterTeamNameHeim = document.getElementById('rosterTeamNameHeim');
 export const rosterTeamNameGegner = document.getElementById('rosterTeamNameGegner');
+
+// Main Content Sections
 export const rosterBereich = document.getElementById('rosterBereich');
 export const spielBereich = document.getElementById('spielBereich');
+export const liveOverviewBereich = document.getElementById('liveOverviewBereich');
+export const liveOverviewContent = document.getElementById('liveOverviewContent');
+export const seasonBereich = document.getElementById('seasonBereich');
+export const seasonContent = document.getElementById('seasonContent');
+export const teamDiagrammBereich = document.getElementById('teamDiagrammBereich');
+export const teamDiagrammContent = document.getElementById('teamDiagrammContent');
+export const shotsBereich = document.getElementById('shotsBereich');
+export const shotsContent = document.getElementById('shotsContent');
+export const exportBereich = null; // Removed
+export const exportContent = null; // Removed
+export const settingsBereich = document.getElementById('settingsBereich');
+export const historieBereich = document.getElementById('historieBereich');
+export const historieDetailBereich = document.getElementById('historieDetailBereich');
+export const liveHeatmapBereich = document.getElementById('liveHeatmapBereich');
+export const protokollBereich = document.getElementById('protokollBereich');
+
+// Removed inline settings buttons
+export const historyButtonInline = null;
+export const seasonOverviewButtonInline = null;
+
 export const exportTeamButton = document.getElementById('exportTeamButton');
 export const importTeamButton = document.getElementById('importTeamButton');
 export const importFileInput = document.getElementById('importFileInput');
@@ -30,21 +60,25 @@ export const editTeamNameInput = document.getElementById('editTeamNameInput');
 export const viewTeamPlayersList = document.getElementById('viewTeamPlayersList');
 export const saveTeamChanges = document.getElementById('saveTeamChanges');
 export const viewTeamClose = document.getElementById('viewTeamClose');
+
 export const backToRosterButton = document.getElementById('backToRosterButton');
 export const gamePhaseButton = document.getElementById('gamePhaseButton');
 export const timerAnzeige = document.getElementById('timerAnzeige');
+export const sidebarTimer = document.getElementById('sidebarTimer');
 export const pauseButton = document.getElementById('pauseButton');
 export const zurueckButton = document.getElementById('zurueckButton');
 export const vorButton = document.getElementById('vorButton');
 export const suspensionContainer = document.getElementById('suspensionContainer');
 export const scoreWrapper = document.getElementById('scoreWrapper');
 export const scoreAnzeige = document.getElementById('scoreAnzeige');
+export const scoreAnzeigeGegner = document.getElementById('scoreAnzeigeGegner');
 export const teamNameHeimDisplay = document.getElementById('teamNameHeimDisplay');
 export const teamNameGegnerDisplay = document.getElementById('teamNameGegnerDisplay');
 export const heimScoreUp = document.getElementById('heimScoreUp');
 export const heimScoreDown = document.getElementById('heimScoreDown');
 export const gegnerScoreUp = document.getElementById('gegnerScoreUp');
 export const gegnerScoreDown = document.getElementById('gegnerScoreDown');
+export const gameSwapSidesBtn = document.getElementById('gameSwapSidesBtn');
 export const neuesSpielButton = document.getElementById('neuesSpielButton');
 export const exportButton = document.getElementById('exportButton');
 export const exportCsvButton = document.getElementById('exportCsvButton');
@@ -53,6 +87,7 @@ export const heimSpielerRaster = document.getElementById('heimSpielerRaster');
 export const gegnerSpielerRaster = document.getElementById('gegnerSpielerRaster');
 export const labelSpielerHeimRaster = document.getElementById('labelSpielerHeimRaster');
 export const labelSpielerGegnerRaster = document.getElementById('labelSpielerGegnerRaster');
+export const spielerAuswahlContainer = document.getElementById('spielerAuswahlContainer');
 export const protokollAusgabe = document.getElementById('protokollAusgabe');
 export const aktionsMenue = document.getElementById('aktionsMenue');
 export const aktionsMenueTitel = document.getElementById('aktionsMenueTitel');
@@ -65,29 +100,22 @@ export const kommentarTitel = document.getElementById('kommentarTitel');
 export const kommentarInput = document.getElementById('kommentarInput');
 export const kommentarSpeichernButton = document.getElementById('kommentarSpeichernButton');
 export const settingsButton = document.getElementById('settingsButton');
-export const settingsModal = document.getElementById('settingsModal');
 export const settingsSchliessen = document.getElementById('settingsSchliessen');
 export const toggleDarkMode = document.getElementById('toggleDarkMode');
-export const toggleTorTracker = document.getElementById('toggleTorTracker');
-export const toggleTorTrackerGegner = document.getElementById('toggleTorTrackerGegner');
+
 export const toggleWurfbildHeim = document.getElementById('toggleWurfbildHeim');
 export const toggleWurfbildGegner = document.getElementById('toggleWurfbildGegner');
 export const inputTeamNameHeim = document.getElementById('inputTeamNameHeim');
 export const inputTeamNameGegner = document.getElementById('inputTeamNameGegner');
 export const toggleAuswaertsspiel = document.getElementById('toggleAuswaertsspiel');
-export const torTrackerHeimContainer = document.getElementById('torTrackerHeimContainer');
-export const torTrackerGegnerContainer = document.getElementById('torTrackerGegnerContainer');
-export const labelTorTrackerHeim = document.getElementById('labelTorTrackerHeim');
-export const labelTorTrackerGegner = document.getElementById('labelTorTrackerGegner');
-export const torTabelleBody = document.getElementById('torTabelleBody');
-export const torTabelleGegnerBody = document.getElementById('torTabelleGegnerBody');
+
 export const statistikSidebar = document.getElementById('statistikSidebar');
 export const statistikWrapper = document.getElementById('statistikWrapper');
 export const statistikTabelleBody = document.getElementById('statistikTabelleBody');
 export const wurfbildModal = document.getElementById('wurfbildModal');
 export const wurfbildTitel = document.getElementById('wurfbildTitel');
 export const wurfbildUmgebung = document.getElementById('wurfbildUmgebung');
-export const torRahmen = document.getElementById('torRahmen');
+export const inputGoalSvg = document.getElementById('inputGoalSvg');
 export const wurfbildUeberspringen = document.getElementById('wurfbildUeberspringen');
 export const showWurfbilderButton = document.getElementById('showWurfbilderButton');
 export const wurfbilderStatsModal = document.getElementById('wurfbilderStatsModal');
@@ -122,20 +150,17 @@ export const wurfpositionModal = document.getElementById('wurfpositionModal');
 export const wurfpositionFeld = document.getElementById('wurfpositionFeld');
 export const wurfpositionUeberspringen = document.getElementById('wurfpositionUeberspringen');
 
-export const showHeatmapButton = document.getElementById('showHeatmapButton');
-export const heatmapModal = document.getElementById('heatmapModal');
 export const heatmapSvg = document.getElementById('heatmapSvg');
-export const closeHeatmapModal = document.getElementById('closeHeatmapModal');
 export const heatmapHeimFilter = document.getElementById('heatmapHeimFilter');
 export const heatmapGegnerFilter = document.getElementById('heatmapGegnerFilter');
 export const heatmapHeimLabel = document.getElementById('heatmapHeimLabel');
 export const heatmapGegnerLabel = document.getElementById('heatmapGegnerLabel');
 export const heatmapToreFilter = document.getElementById('heatmapToreFilter');
+export const heatmap7mFilter = document.getElementById('heatmap7mFilter');
 export const heatmapMissedFilter = document.getElementById('heatmapMissedFilter');
 
 // History UI
 export const spielBeendenButton = document.getElementById('spielBeendenButton');
-export const historieBereich = document.getElementById('historieBereich');
 export const historieListe = document.getElementById('historieListe');
 export const backToStartFromHistory = document.getElementById('backToStartFromHistory');
 export const historyButton = document.getElementById('historyButton');
@@ -149,7 +174,6 @@ export const importSpielButton = document.getElementById('importSpielButton');
 export const importSpielInput = document.getElementById('importSpielInput');
 
 // History Detail UI
-export const historieDetailBereich = document.getElementById('historieDetailBereich');
 export const backToHistoryList = document.getElementById('backToHistoryList');
 export const histDetailTeams = document.getElementById('histDetailTeams');
 export const histDetailScore = document.getElementById('histDetailScore');
@@ -170,6 +194,7 @@ export const histSubTabFeld = document.getElementById('histSubTabFeld');
 export const histSubTabKombi = document.getElementById('histSubTabKombi');
 export const histHeatmapSvg = document.getElementById('histHeatmapSvg');
 export const histHeatmapToreFilter = document.getElementById('histHeatmapToreFilter');
+export const histHeatmap7mFilter = document.getElementById('histHeatmap7mFilter');
 export const histHeatmapMissedFilter = document.getElementById('histHeatmapMissedFilter');
 
 // Custom Confirm/Alert Modal
@@ -183,3 +208,20 @@ export const customAlertTitle = document.getElementById('customAlertTitle');
 export const customAlertMessage = document.getElementById('customAlertMessage');
 export const customAlertOk = document.getElementById('customAlertOk');
 
+// Live Game Overview
+export const showLiveGameOverviewButton = document.getElementById('showLiveGameOverviewButton');
+export const liveGameOverviewModal = document.getElementById('liveGameOverviewModal');
+export const liveOverviewTabStats = document.getElementById('liveOverviewTabStats');
+export const liveOverviewTabHeatmap = document.getElementById('liveOverviewTabHeatmap');
+export const liveOverviewContentStats = document.getElementById('liveOverviewContentStats');
+export const liveOverviewContentHeatmap = document.getElementById('liveOverviewContentHeatmap');
+export const liveOverviewStatsBody = document.getElementById('liveOverviewStatsBody');
+export const liveOverviewStatsGegnerBody = document.getElementById('liveOverviewStatsGegnerBody');
+export const liveOverviewSubTabTor = document.getElementById('liveOverviewSubTabTor');
+export const liveOverviewSubTabFeld = document.getElementById('liveOverviewSubTabFeld');
+export const liveOverviewSubTabKombi = document.getElementById('liveOverviewSubTabKombi');
+export const liveOverviewHeatmapSvg = document.getElementById('liveOverviewHeatmapSvg');
+export const liveOverviewHeatmapToreFilter = document.getElementById('liveOverviewHeatmapToreFilter');
+export const liveOverviewHeatmap7mFilter = document.getElementById('liveOverviewHeatmap7mFilter');
+export const liveOverviewHeatmapMissedFilter = document.getElementById('liveOverviewHeatmapMissedFilter');
+export const closeLiveGameOverview = document.getElementById('closeLiveGameOverview');

@@ -5,9 +5,9 @@ import { spielstand, speichereSpielstand } from './state.js';
 import {
     rosterBereich, historieBereich, historieDetailBereich,
     historieListe, histDetailTeams, histDetailScore, histDetailDate,
-    histStatsBody, histStatsGegnerBody, heatmapModal, heatmapSvg,
+    histStatsBody, histStatsGegnerBody, heatmapSvg,
     histHeatmapSvg, histContentHeatmap, histSubTabTor, histSubTabFeld, histSubTabKombi,
-    histHeatmapToreFilter, histHeatmapMissedFilter
+    histHeatmapToreFilter, histHeatmapMissedFilter, histHeatmap7mFilter
 } from './dom.js';
 import { berechneStatistiken, berechneGegnerStatistiken, berechneTore } from './stats.js';
 import { speichereSpielInHistorie, getHistorie, loescheSpielAusHistorie } from './history.js';
@@ -64,52 +64,91 @@ export async function handleSpielBeenden() {
 // --- Render History List ---
 export function renderHistoryList() {
     historieListe.innerHTML = '';
+
+    // Ensure grid container class
+    historieListe.className = 'history-grid';
+    historieListe.style.display = 'grid'; // Force grid if class not applied instantly via CSS transition
+
     const games = getHistorie();
 
     if (games.length === 0) {
-        historieListe.innerHTML = '<p style="text-align:center; padding:20px;">Keine gespeicherten Spiele.</p>';
+        historieListe.style.display = 'block'; // Fallback for message
+        historieListe.innerHTML = '<p style="text-align:center; padding:20px; color: var(--text-muted);">Keine gespeicherten Spiele vorhanden.</p>';
         return;
     }
 
     games.forEach(game => {
         const div = document.createElement('div');
-        div.className = 'history-card';
-        div.style.cssText = 'background: #2c3036; padding: 15px; margin-bottom: 10px; border-radius: 8px; cursor: pointer; display: flex; justify-content: space-between; align-items: center;';
+        div.className = 'history-card-modern';
+        div.setAttribute('role', 'button');
+        div.setAttribute('tabindex', '0');
 
-        const date = new Date(game.date).toLocaleDateString() + ' ' + new Date(game.date).toLocaleTimeString();
+        const heimScore = game.score.heim;
+        const gastScore = game.score.gegner;
+        let statusColor = 'var(--text-muted)';
+        let statusText = 'Unentschieden';
+
+        if (heimScore > gastScore) {
+            statusColor = '#22c55e'; // Green
+            statusText = 'Sieg';
+        } else if (heimScore < gastScore) {
+            statusColor = '#ef4444'; // Red
+            statusText = 'Niederlage';
+        }
+
+        const date = new Date(game.date).toLocaleDateString();
+
         div.innerHTML = `
-            <div>
-                <strong style="color: #61dafb; font-size: 1.1em;">${game.teams.heim} vs ${game.teams.gegner}</strong>
-                <div style="font-size: 0.9em; color: #aaa;">${date}</div>
+            <div class="history-card-header" style="pointer-events: none;">
+                <span style="font-weight: 600; color: ${statusColor}">${statusText}</span>
+                <span>${date}</span>
             </div>
-            <div style="text-align: right; display: flex; gap: 8px; align-items: center;">
-                <span style="font-size: 1.5em; font-weight: bold; margin-right: 10px;">${game.score.heim}:${game.score.gegner}</span>
-                <button class="export-pdf-btn" data-id="${game.id}" style="background: #28a745; color: white; border: none; padding: 5px 10px; border-radius: 4px; cursor: pointer;" title="Als PDF exportieren">📄</button>
-                <button class="export-history-btn" data-id="${game.id}" style="background: #17a2b8; color: white; border: none; padding: 5px 10px; border-radius: 4px; cursor: pointer;" title="Als JSON exportieren">📥</button>
-                <button class="delete-history-btn" data-id="${game.id}" style="background: #dc3545; color: white; border: none; padding: 5px 10px; border-radius: 4px; cursor: pointer;" title="Löschen">🗑️</button>
+            
+            <div class="history-card-body" style="pointer-events: none;">
+                <div class="history-card-teams">
+                    ${game.teams.heim} <span style="font-weight: 400; opacity: 0.6;">vs</span> ${game.teams.gegner}
+                </div>
+                <div class="history-card-score">
+                    ${heimScore} : ${gastScore}
+                </div>
+            </div>
+
+            <div style="display: flex; gap: 8px; margin-top: 4px;">
+                <button class="shadcn-btn-outline shadcn-btn-sm export-pdf-btn" data-id="${game.id}" style="padding: 6px 10px; flex: 1;" title="PDF">
+                    PDF
+                </button>
+                <button class="shadcn-btn-outline shadcn-btn-sm export-history-btn" data-id="${game.id}" style="padding: 6px 10px; flex: 1;" title="Export">
+                    JSON
+                </button>
+                <button class="shadcn-btn-outline shadcn-btn-sm delete-history-btn" data-id="${game.id}" style="padding: 6px 10px; border-color: rgba(239, 68, 68, 0.2); color: #ef4444;" title="Löschen">
+                    Löschen
+                </button>
             </div>
         `;
 
-        div.addEventListener('click', (e) => {
-            if (e.target.classList.contains('delete-history-btn')) return;
-            if (e.target.classList.contains('export-history-btn')) return;
-            if (e.target.classList.contains('export-pdf-btn')) return;
+        const triggerAction = (e) => {
+            if (e.target.closest('button')) return;
             openHistoryDetail(game);
+        };
+
+        div.addEventListener('click', triggerAction);
+        div.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                triggerAction(e);
+            }
         });
 
-        // Export PDF Button
         div.querySelector('.export-pdf-btn').addEventListener('click', (e) => {
             e.stopPropagation();
             exportiereHistorieAlsPdf(game);
         });
 
-        // Export JSON Button
         div.querySelector('.export-history-btn').addEventListener('click', (e) => {
             e.stopPropagation();
             exportiereEinzelnesSpiel(game);
         });
 
-        // Delete Button
         div.querySelector('.delete-history-btn').addEventListener('click', async (e) => {
             e.stopPropagation();
             const confirmed = await customConfirm("Spiel wirklich aus der Historie löschen?", "Löschen?");
@@ -124,7 +163,7 @@ export function renderHistoryList() {
 }
 
 // --- Render Home Stats in History ---
-export function renderHomeStatsInHistory(tbody, statsData, gameLog) {
+export function renderHomeStatsInHistory(tbody, statsData, gameLog, isLive = false) {
     tbody.innerHTML = '';
     const toreMap = berechneTore(gameLog);
 
@@ -146,8 +185,8 @@ export function renderHomeStatsInHistory(tbody, statsData, gameLog) {
         const has7m = playerLog.some(e => e.action.includes('7m'));
 
         let buttonsHtml = '';
-        if (hasField) buttonsHtml += `<button class="heatmap-btn" data-mode="field" style="padding: 2px 8px; font-size: 0.8rem;">🎯</button>`;
-        if (has7m) buttonsHtml += `<button class="heatmap-btn" data-mode="7m" style="padding: 2px 5px; font-size: 0.7rem; margin-left: 2px;">7m</button>`;
+        if (hasField) buttonsHtml += `<button class="heatmap-btn shadcn-btn-secondary" data-mode="field" style="padding: 0 8px; height: 28px; display:inline-flex; align-items:center; vertical-align:middle; font-size: 0.75rem;"><i data-lucide="crosshair" style="width: 14px; height: 14px;"></i></button>`;
+        if (has7m) buttonsHtml += `<button class="heatmap-btn shadcn-btn-outline" data-mode="7m" style="padding: 0 8px; height: 28px; font-size: 0.75rem; margin-left: 4px; border-color: #f59e0b; color: #f59e0b; display:inline-flex; align-items:center; vertical-align:middle;">7m</button>`;
 
         const tr = document.createElement('tr');
         tr.innerHTML = `
@@ -170,17 +209,26 @@ export function renderHomeStatsInHistory(tbody, statsData, gameLog) {
             btn.addEventListener('click', (e) => {
                 e.stopPropagation();
                 const mode = btn.dataset.mode;
-                openPlayerHistoryHeatmap(gameLog, stats.number, 'heim', stats.name, mode);
+                if (isLive) {
+                    // Navigate to Live Heatmap
+                    const navItem = document.querySelector('.nav-item[data-view="heatmap"]');
+                    if (navItem) navItem.click();
+                } else {
+                    openPlayerHistoryHeatmap(gameLog, stats.number, 'heim', stats.name, mode);
+                }
             });
         });
 
         tbody.appendChild(tr);
     });
+    if (typeof lucide !== 'undefined') lucide.createIcons({ root: tbody });
 }
 
 // --- Render Opponent Stats in History ---
-export function renderOpponentStatsInHistory(tbody, statsData, gameLog) {
+export function renderOpponentStatsInHistory(tbody, statsData, gameLog, isLive = false) {
     tbody.innerHTML = '';
+    const toreMap = berechneTore(gameLog); // Needed if not already in statsData
+
     statsData.forEach(stats => {
         const goals = stats.tore || 0;
         const sevenMGoals = stats.siebenMeterTore || 0;
@@ -190,33 +238,13 @@ export function renderOpponentStatsInHistory(tbody, statsData, gameLog) {
         const quote = fieldAttempts > 0 ? Math.round((feldtore / fieldAttempts) * 100) + '%' : '-';
         const sevenMDisplay = (stats.siebenMeterVersuche > 0) ? `${stats.siebenMeterTore}/${stats.siebenMeterVersuche}` : "0/0";
 
-        // Filter log for this opponent
-        // Opponent entries have action starting with 'Gegner' or 'gegnerNummer'
-        const playerLog = gameLog.filter(e => {
-            const isOpp = e.action.startsWith('Gegner') || e.gegnerNummer
-                || e.action.startsWith('Gegner 7m') || e.action === 'Gegner Tor' || e.action === 'Gegner Wurf Vorbei';
-            // Check mapping (names match? or numbers?)
-            // Usually stats has name.
-            if (!isOpp) return false;
-            // stats.name is the key.
-            // gameLog might not have gegnerName consistently.
-            // But stats.number might be available if we extracted it.
-            // For now, simpler check: if we have stats, we assume we have log?
-            // statsData comes from berechneGegnerStatistiken.
-            return true; // Simplified for heatmap availability check generally, but need refinement for button splitting
-        });
-
-        // Actually berechneGegnerStatistiken groups by name/number.
-        // We can check if *any* opponent action matches. 
-        // Just show buttons if they have any stats?
-        // Let's refine:
-        // stats has 'siebenMeterVersuche'.
+        // Check for heatmap data
         const has7m = stats.siebenMeterVersuche > 0;
-        const hasField = (goals + stats.fehlwurf) > stats.siebenMeterVersuche; // Rough approximation
+        const hasField = (goals + stats.fehlwurf) > stats.siebenMeterVersuche;
 
         let buttonsHtml = '';
-        if (hasField || goals > 0) buttonsHtml += `<button class="heatmap-btn" data-mode="field" style="padding: 2px 8px; font-size: 0.8rem;">🎯</button>`;
-        if (has7m) buttonsHtml += `<button class="heatmap-btn" data-mode="7m" style="padding: 2px 5px; font-size: 0.7rem; margin-left: 2px;">7m</button>`;
+        if (hasField || goals > 0) buttonsHtml += `<button class="heatmap-btn shadcn-btn-secondary" data-mode="field" style="padding: 0 8px; height: 28px; display:inline-flex; align-items:center; vertical-align:middle; font-size: 0.75rem;"><i data-lucide="crosshair" style="width: 14px; height: 14px;"></i></button>`;
+        if (has7m) buttonsHtml += `<button class="heatmap-btn shadcn-btn-outline" data-mode="7m" style="padding: 0 8px; height: 28px; font-size: 0.75rem; margin-left: 4px; border-color: #f59e0b; color: #f59e0b; display:inline-flex; align-items:center; vertical-align:middle;">7m</button>`;
 
         const tr = document.createElement('tr');
         tr.innerHTML = `
@@ -238,92 +266,54 @@ export function renderOpponentStatsInHistory(tbody, statsData, gameLog) {
         btns.forEach(btn => {
             btn.addEventListener('click', (e) => {
                 e.stopPropagation();
-                const num = (stats.number && stats.number !== '?') ? stats.number : null;
-                const mode = btn.dataset.mode;
-                openPlayerHistoryHeatmap(gameLog, num, 'gegner', stats.name, mode);
+                if (isLive) {
+                    // Navigate to Live Heatmap
+                    const navItem = document.querySelector('.nav-item[data-view="heatmap"]');
+                    if (navItem) navItem.click();
+                } else {
+                    const num = (stats.number && stats.number !== '?') ? stats.number : null;
+                    const mode = btn.dataset.mode;
+                    openPlayerHistoryHeatmap(gameLog, num, 'gegner', stats.name, mode);
+                }
             });
         });
 
         tbody.appendChild(tr);
     });
+    if (typeof lucide !== 'undefined') lucide.createIcons({ root: tbody });
 }
 
 // --- Open Player History Heatmap ---
 // --- Open Player History Heatmap ---
 export function openPlayerHistoryHeatmap(gameLog, identifier, team, playerName, mode = 'field') {
-    heatmapModal.classList.remove('versteckt');
+    // Determine the title
+    const title = mode === '7m' ? `7m Grafik - ${playerName}` : `Wurfbild - ${playerName}`;
 
-    // Remove existing title if any (copied from seasonView logic)
-    const existingTitle = heatmapModal.querySelector('h3');
-    if (existingTitle && existingTitle.id !== 'wurfbildTitel') existingTitle.remove();
-    const defaultTitle = document.getElementById('wurfbildTitel');
-    if (defaultTitle) defaultTitle.style.display = 'none';
-
-    // Custom Title
-    const titleText = mode === '7m' ? `7m Grafik - ${playerName}` : `Wurfbild - ${playerName}`;
-    const customTitle = document.createElement('h3');
-    customTitle.textContent = titleText;
-    customTitle.style.cssText = 'text-align: center; margin-bottom: 10px; color: var(--text-main);';
-    customTitle.className = 'history-heatmap-title';
-
-    const content = heatmapModal.querySelector('.modal-content');
-    if (content) content.insertBefore(customTitle, content.firstChild);
-
-    // Filter Logic
-    const filterContainer = heatmapModal.querySelector('.heatmap-filter');
-    if (filterContainer) filterContainer.classList.add('versteckt'); // Hide team toggles but goal/miss handled by modification to heatmap.js?
-    // Wait, heatmap.js hides PARENT LABELS now, but KEEPS CONTAINER.
-    // So we should NOT add 'versteckt' to the container here if we want filtering.
-    // The previous implementation used 'versteckt'. 
-    // We should rely on heatmap.js new logic?
-    // BUT heatmap.js new logic applies if currentHeatmapContext is set.
-    // So distinct handling here might interfere. 
-    // Let's remove the forced hiding here and rely on heatmap.js or manual hiding of team toggles.
-
-    // Actually, update cleanup to restore title
-    const cleanup = () => {
-        if (defaultTitle) defaultTitle.style.display = 'block';
-        const ct = heatmapModal.querySelector('.history-heatmap-title');
-        if (ct) ct.remove();
-
-        // Restore tabs
-        const tabsContainer = heatmapModal.querySelector('.heatmap-tabs');
-        if (tabsContainer) tabsContainer.style.display = '';
-
-        // Restore filter container (if we hide it)
-        if (filterContainer) {
-            filterContainer.classList.remove('versteckt');
-            const labels = filterContainer.querySelectorAll('label');
-            labels.forEach(l => l.style.display = '');
-        }
-    };
-
-    const closeButton = document.getElementById('closeHeatmapModal');
-    if (closeButton) {
-        closeButton.addEventListener('click', cleanup, { once: true });
-    }
-
-    // Filter the log based on mode
+    // Filter the log based on mode for the context
     let filteredLog = gameLog;
     if (mode === '7m') {
-        filteredLog = gameLog.filter(e => e.action.includes('7m'));
-        const tabsContainer = heatmapModal.querySelector('.heatmap-tabs');
-        if (tabsContainer) tabsContainer.style.display = 'none';
-        setCurrentHeatmapTab('tor');
-    } else {
-        filteredLog = gameLog.filter(e => !e.action.includes('7m'));
-        setCurrentHeatmapTab('tor');
+        filteredLog = gameLog.filter(e => e.action && e.action.includes('7m'));
     }
 
+    // Set Context for the global heatmap view
     setCurrentHeatmapContext({
         log: filteredLog,
+        title: title,
         filter: {
             team: team,
             player: identifier
-        }
+        },
+        type: 'season-specific'
     });
 
-    renderHeatmap(heatmapSvg, filteredLog, false, { team, player: identifier });
+    // Default to 'tor' for the global view
+    setCurrentHeatmapTab('tor');
+
+    // Simulate navigation to the heatmap view
+    const navItem = document.querySelector('.nav-item[data-view="seasonheatmap"]');
+    if (navItem) {
+        navItem.click();
+    }
 }
 
 // --- Open History Detail ---
@@ -331,16 +321,109 @@ export function openHistoryDetail(game) {
     historieBereich.classList.add('versteckt');
     historieDetailBereich.classList.remove('versteckt');
 
-    histDetailTeams.textContent = `${game.teams.heim} vs ${game.teams.gegner}`;
-    histDetailScore.textContent = `${game.score.heim}:${game.score.gegner}`;
-    histDetailDate.textContent = new Date(game.date).toLocaleString();
+    // Header info is now handled dynamically in the Score Card below
 
+    // --- REPLICATE LIVE OVERVIEW LAYOUT ---
+    const histContentStats = document.getElementById('histContentStats');
+
+    // Determine winner/loser for coloring
+    const isAuswaerts = false; // History doesn't track "isAuswaerts" explicitly in view logic usually, but we could check settings if stored. 
+    // Usually history view just shows Heim vs Gegner as stored.
+
+    const homeName = game.teams.heim;
+    const oppName = game.teams.gegner;
+    const homeScore = game.score.heim;
+    const oppScore = game.score.gegner;
+
+    const html = `
+        <div class="live-overview-container" style="display: flex; flex-direction: column; gap: 20px;">
+            <!-- Score Card -->
+            <div class="stats-card score-card" style="background: var(--bg-card); border-radius: 12px; padding: 20px; text-align: center; border: 1px solid var(--border-color);">
+                <h2 class="card-title" style="margin: 0 0 15px 0; color: var(--text-muted); font-size: 0.9rem; text-transform: uppercase;">Endergebnis</h2>
+                <div class="score-display" style="display: flex; justify-content: center; align-items: center; gap: 30px;">
+                    <div class="score-team" style="text-align: right;">
+                        <span class="team-name" style="display: block; font-size: 1.1rem; font-weight: 700; color: var(--text-main);">${homeName}</span>
+                        <span class="team-score" style="display: block; font-size: 2.5rem; font-weight: 800; color: ${homeScore > oppScore ? '#4ade80' : (homeScore < oppScore ? '#f87171' : '#94a3b8')};">${homeScore}</span>
+                    </div>
+                    <span class="score-separator" style="font-size: 2rem; color: var(--text-muted); font-weight: 300;">:</span>
+                    <div class="score-team" style="text-align: left;">
+                        <span class="team-name" style="display: block; font-size: 1.1rem; font-weight: 700; color: var(--text-main);">${oppName}</span>
+                        <span class="team-score" style="display: block; font-size: 2.5rem; font-weight: 800; color: ${oppScore > homeScore ? '#4ade80' : (oppScore < homeScore ? '#f87171' : '#94a3b8')};">${oppScore}</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Home Stats Card -->
+            <div class="stats-card" style="background: var(--bg-card); border-radius: 12px; padding: 15px; border: 1px solid var(--border-color);">
+                <h2 class="card-title" style="margin: 0 0 15px 0; font-size: 1.1rem; border-bottom: 1px solid var(--border-color); padding-bottom: 10px;">${homeName}</h2>
+                <div class="table-container" style="overflow-x: auto;">
+                    <table class="modern-stats-table" style="width: 100%; border-collapse: collapse;">
+                        <thead>
+                            <tr style="text-align: left; color: var(--text-muted); font-size: 0.8rem;">
+                                <th style="padding: 10px;">Spieler</th>
+                                <th style="padding: 10px;">Tore</th>
+                                <th style="padding: 10px;">Feld</th>
+                                <th style="padding: 10px;">7m</th>
+                                <th style="padding: 10px;">Fehl</th>
+                                <th style="padding: 10px;">Quote</th>
+                                <th style="padding: 10px;">Gut</th>
+                                <th style="padding: 10px;">TF</th>
+                                <th style="padding: 10px;">G</th>
+                                <th style="padding: 10px;">2'</th>
+                                <th style="padding: 10px;">R</th>
+                                <th style="padding: 10px;"></th>
+                            </tr>
+                        </thead>
+                        <tbody id="histStatsBodyNew"></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Opponent Stats Card -->
+            <div class="stats-card" style="background: var(--bg-card); border-radius: 12px; padding: 15px; border: 1px solid var(--border-color);">
+                <h2 class="card-title" style="margin: 0 0 15px 0; font-size: 1.1rem; border-bottom: 1px solid var(--border-color); padding-bottom: 10px;">${oppName}</h2>
+                <div class="table-container" style="overflow-x: auto;">
+                    <table class="modern-stats-table" style="width: 100%; border-collapse: collapse;">
+                        <thead>
+                            <tr style="text-align: left; color: var(--text-muted); font-size: 0.8rem;">
+                                <th style="padding: 10px;">Name</th>
+                                <th style="padding: 10px;">Tore</th>
+                                <th style="padding: 10px;">Feld</th>
+                                <th style="padding: 10px;">7m</th>
+                                <th style="padding: 10px;">Fehl</th>
+                                <th style="padding: 10px;">Quote</th>
+                                <th style="padding: 10px;">Gut</th>
+                                <th style="padding: 10px;">TF</th>
+                                <th style="padding: 10px;">G</th>
+                                <th style="padding: 10px;">2'</th>
+                                <th style="padding: 10px;">R</th>
+                                <th style="padding: 10px;"></th>
+                            </tr>
+                        </thead>
+                        <tbody id="histStatsGegnerBodyNew"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    `;
+
+    histContentStats.innerHTML = html;
+
+    // Clean up or hide manual detail header items if they overlap
+    const histHeader = document.getElementById('historieHeader');
+    if (histHeader) histHeader.style.display = 'none';
+
+    // Populate data
     const homeStats = berechneStatistiken(game.gameLog, game.roster);
     const opponentStats = berechneGegnerStatistiken(game.gameLog);
 
-    renderHomeStatsInHistory(histStatsBody, homeStats, game.gameLog);
-    renderOpponentStatsInHistory(histStatsGegnerBody, opponentStats, game.gameLog);
+    const histStatsBodyNew = document.getElementById('histStatsBodyNew');
+    const histStatsGegnerBodyNew = document.getElementById('histStatsGegnerBodyNew');
 
+    renderHomeStatsInHistory(histStatsBodyNew, homeStats, game.gameLog);
+    renderOpponentStatsInHistory(histStatsGegnerBodyNew, opponentStats, game.gameLog);
+
+    // Re-bind Heatmap Logic (unchanged from old function, just simple rebinding)
     const renderBound = () => renderHeatmap(histHeatmapSvg, game.gameLog, true);
 
     const histFilter = histContentHeatmap.querySelector('.heatmap-filter');
@@ -354,6 +437,7 @@ export function openHistoryDetail(game) {
 
     if (histHeatmapToreFilter) histHeatmapToreFilter.onchange = renderBound;
     if (histHeatmapMissedFilter) histHeatmapMissedFilter.onchange = renderBound;
+    if (histHeatmap7mFilter) histHeatmap7mFilter.onchange = renderBound;
 
     histSubTabTor.addEventListener('click', () => {
         setCurrentHeatmapTab('tor');

@@ -1,5 +1,5 @@
 import { spielstand, speichereSpielstand } from './state.js';
-import { zeichneRosterListe } from './ui.js';
+import { zeichneRosterListe, zeichneSpielerRaster } from './ui.js';
 import { berechneTore, berechneStatistiken, berechneGegnerStatistiken } from './stats.js';
 import { customAlert, customConfirm } from './customDialog.js';
 
@@ -67,6 +67,7 @@ export function handleFileImport(event) {
 
                     speichereSpielstand();
                     zeichneRosterListe(isOpponentMode);
+                    zeichneSpielerRaster();
                     customAlert(`${teamName} erfolgreich importiert!`);
                 }
             } else {
