@@ -957,11 +957,27 @@ function showSeasonHeatmapInline() {
             teamSelect.addEventListener('change', () => {
                 // Reset player selection when team changes
                 if (playerSelect) playerSelect.value = 'all';
-                renderSeasonHeatmap();
+                // Reset context to ensure dropdown selections work
+                import('./modules/heatmap.js').then(heatmap => {
+                    heatmap.setCurrentHeatmapContext('season');
+                    // Reset title
+                    const h1 = document.querySelector('.heatmap-view-header h1');
+                    if (h1) h1.textContent = 'Saison-Heatmap';
+                    renderSeasonHeatmap();
+                });
             });
         }
         if (playerSelect) {
-            playerSelect.addEventListener('change', () => renderSeasonHeatmap());
+            playerSelect.addEventListener('change', () => {
+                // Reset context to ensure dropdown selections work
+                import('./modules/heatmap.js').then(heatmap => {
+                    heatmap.setCurrentHeatmapContext('season');
+                    // Reset title
+                    const h1 = document.querySelector('.heatmap-view-header h1');
+                    if (h1) h1.textContent = 'Saison-Heatmap';
+                    renderSeasonHeatmap();
+                });
+            });
         }
     }
 
