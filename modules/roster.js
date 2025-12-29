@@ -1,12 +1,19 @@
 import { spielstand, speichereSpielstand } from './state.js';
-import { playerNameInput, playerNumberInput, editPlayerIndex, addGegnerModal, addGegnerNummerInput, addGegnerNameInput } from './dom.js';
-import { zeichneRosterListe, zeichneSpielerRaster, oeffneEditModusUI, schliesseEditModusUI } from './ui.js';
+import {
+    playerNameInput, playerNumberInput, playerTorwartInput, editPlayerIndex,
+    addGegnerModal, addGegnerNummerInput, addGegnerNameInput,
+    rosterTeamNameHeim, rosterTeamNameGegner, teamColorInput, teamColorInputGegner,
+    teamColorTrigger, teamColorTriggerGegner, teamToggle, teamHeaderTitle
+} from './dom.js';
+import { zeichneRosterListe, zeichneSpielerRaster, oeffneEditModusUI, schliesseEditModusUI, updateScoreDisplay } from './ui.js';
 import { customAlert, customConfirm } from './customDialog.js';
+import { getContrastTextColor } from './utils.js';
 
 export async function addPlayer(e) {
     e.preventDefault();
     const name = playerNameInput.value.trim();
     const number = parseInt(playerNumberInput.value, 10);
+    const isGoalkeeper = playerTorwartInput.checked;
     const editIndex = editPlayerIndex.value;
 
     if (isNaN(number)) {
@@ -26,14 +33,15 @@ export async function addPlayer(e) {
     const isOpponentMode = teamToggle && teamToggle.getAttribute('aria-checked') === 'true';
 
     if (isOpponentMode) {
-        // Add to opponent team
+        // Add to opponent team (Opponents don't have goalie flag yet, or maybe they strictly don't need it)
         const existingOpponent = spielstand.knownOpponents.find((opp, i) => opp.number === number && i != editIndex);
         if (existingOpponent) {
             await customAlert("Diese Nummer ist bereits beim Gegner-Team vergeben.", "Nummer belegt");
             return;
         }
 
-        spielstand.knownOpponents.push({ number, name: name || '' });
+        const isGoalkeeper = playerTorwartInput.checked;
+        spielstand.knownOpponents.push({ number, name: name || '', isGoalkeeper });
         spielstand.knownOpponents.sort((a, b) => a.number - b.number);
         speichereSpielstand();
         zeichneRosterListe(true);
@@ -50,9 +58,10 @@ export async function addPlayer(e) {
             const player = spielstand.roster[editIndex];
             player.name = name;
             player.number = number;
+            player.isGoalkeeper = isGoalkeeper;
             schliesseEditModus();
         } else {
-            spielstand.roster.push({ name, number });
+            spielstand.roster.push({ name, number, isGoalkeeper });
         }
 
         spielstand.roster.sort((a, b) => a.number - b.number);
@@ -64,6 +73,7 @@ export async function addPlayer(e) {
     if (!editIndex) {
         playerNameInput.value = '';
         playerNumberInput.value = '';
+        playerTorwartInput.checked = false;
         playerNameInput.focus();
     }
 }
@@ -130,6 +140,7 @@ export function oeffneOpponentEditModus(index) {
     const opponent = spielstand.knownOpponents[index];
     playerNameInput.value = opponent.name || '';
     playerNumberInput.value = opponent.number;
+    playerTorwartInput.checked = opponent.isGoalkeeper || false;
     editPlayerIndex.value = 'opponent_' + index;
     addPlayerForm.querySelector('button[type="submit"]').textContent = 'Speichern';
     cancelEditButton.classList.remove('versteckt');
@@ -151,7 +162,8 @@ export async function saveOpponent(index) {
         return;
     }
 
-    spielstand.knownOpponents[index] = { number, name: name || '' };
+    const isGoalkeeper = playerTorwartInput.checked;
+    spielstand.knownOpponents[index] = { number, name: name || '', isGoalkeeper };
     spielstand.knownOpponents.sort((a, b) => a.number - b.number);
     speichereSpielstand();
     zeichneRosterListe(true);
@@ -165,4 +177,66 @@ export function manageOpponents() {
     addGegnerNameInput.value = '';
     addGegnerModal.classList.remove('versteckt');
     addGegnerNummerInput.focus();
+}
+
+export function swapTeams() {
+    // Swap Names
+    const tempName = spielstand.settings.teamNameHeim;
+    spielstand.settings.teamNameHeim = spielstand.settings.teamNameGegner;
+    spielstand.settings.teamNameGegner = tempName;
+
+    // Swap Colors
+    const tempColor = spielstand.settings.teamColor;
+    spielstand.settings.teamColor = spielstand.settings.teamColorGegner;
+    spielstand.settings.teamColorGegner = tempColor;
+
+    // Swap Rosters
+    const tempRoster = JSON.parse(JSON.stringify(spielstand.roster));
+    spielstand.roster = JSON.parse(JSON.stringify(spielstand.knownOpponents));
+    spielstand.knownOpponents = tempRoster;
+
+    // Swap Scores
+    if (spielstand.score) {
+        const tempScoreHeim = spielstand.score.heim;
+        spielstand.score.heim = spielstand.score.gegner;
+        spielstand.score.gegner = tempScoreHeim;
+    }
+
+    // Update UI Inputs
+    if (rosterTeamNameHeim) rosterTeamNameHeim.value = spielstand.settings.teamNameHeim || '';
+    if (rosterTeamNameGegner) rosterTeamNameGegner.value = spielstand.settings.teamNameGegner || '';
+    if (teamColorInput) teamColorInput.value = spielstand.settings.teamColor || '#dc3545';
+    if (teamColorInputGegner) teamColorInputGegner.value = spielstand.settings.teamColorGegner || '#2563eb';
+
+    // Update Color Trigger Styles
+    if (teamColorTrigger) {
+        const icon = teamColorTrigger.querySelector('i') || teamColorTrigger.querySelector('svg');
+        if (icon) icon.style.color = spielstand.settings.teamColor;
+    }
+    if (teamColorTriggerGegner) {
+        const icon = teamColorTriggerGegner.querySelector('i') || teamColorTriggerGegner.querySelector('svg');
+        if (icon) icon.style.color = spielstand.settings.teamColorGegner;
+    }
+
+    // Determine current view state (Heim or Gegner)
+    const isOpponentMode = teamToggle && teamToggle.getAttribute('aria-checked') === 'true';
+
+    // Save and Redraw
+    speichereSpielstand();
+    zeichneRosterListe(isOpponentMode); // Refresh list with current view
+    zeichneSpielerRaster();
+    updateScoreDisplay();
+
+    // Update Header Title (just in case)
+    if (teamHeaderTitle) {
+        teamHeaderTitle.textContent = isOpponentMode ? 'Gegner Team' : 'Heim Team';
+    }
+
+    // Re-apply document variables for colors if needed
+    document.documentElement.style.setProperty('--btn-primary', spielstand.settings.teamColor);
+    document.documentElement.style.setProperty('--heim-color', spielstand.settings.teamColor);
+    document.documentElement.style.setProperty('--primary', spielstand.settings.teamColor);
+    document.documentElement.style.setProperty('--gegner-color', spielstand.settings.teamColorGegner);
+    document.documentElement.style.setProperty('--heim-text-color', getContrastTextColor(spielstand.settings.teamColor));
+    document.documentElement.style.setProperty('--gegner-text-color', getContrastTextColor(spielstand.settings.teamColorGegner));
 }

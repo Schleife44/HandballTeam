@@ -14,6 +14,7 @@ import { speichereSpielInHistorie, getHistorie, loescheSpielAusHistorie } from '
 import { renderHeatmap, setCurrentHeatmapContext, setCurrentHeatmapTab, currentHeatmapTab } from './heatmap.js';
 import { customConfirm, customAlert } from './customDialog.js';
 import { exportiereHistorieAlsPdf } from './export.js';
+import { getGameResult } from './utils.js';
 
 // --- Export einzelnes Spiel ---
 export function exportiereEinzelnesSpiel(game) {
@@ -88,10 +89,13 @@ export function renderHistoryList() {
         let statusColor = 'var(--text-muted)';
         let statusText = 'Unentschieden';
 
-        if (heimScore > gastScore) {
+        // Use getGameResult to determine win/loss based on team name
+        // Pass current myTeamName for old games that don't have it saved
+        const result = getGameResult(game, spielstand.settings.myTeamName);
+        if (result === 'win') {
             statusColor = '#22c55e'; // Green
             statusText = 'Sieg';
-        } else if (heimScore < gastScore) {
+        } else if (result === 'loss') {
             statusColor = '#ef4444'; // Red
             statusText = 'Niederlage';
         }
@@ -225,7 +229,7 @@ export function renderHomeStatsInHistory(tbody, statsData, gameLog, isLive = fal
 }
 
 // --- Render Opponent Stats in History ---
-export function renderOpponentStatsInHistory(tbody, statsData, gameLog, isLive = false) {
+export function renderOpponentStatsInHistory(tbody, statsData, gameLog, game = null, isLive = false) {
     tbody.innerHTML = '';
     const toreMap = berechneTore(gameLog); // Needed if not already in statsData
 
@@ -273,7 +277,8 @@ export function renderOpponentStatsInHistory(tbody, statsData, gameLog, isLive =
                 } else {
                     const num = (stats.number && stats.number !== '?') ? stats.number : null;
                     const mode = btn.dataset.mode;
-                    openPlayerHistoryHeatmap(gameLog, num, 'gegner', stats.name, mode);
+                    const teamName = (game && game.teams && game.teams.gegner) || stats.team || 'gegner';
+                    openPlayerHistoryHeatmap(gameLog, num, teamName, stats.name, mode);
                 }
             });
         });
@@ -287,23 +292,28 @@ export function renderOpponentStatsInHistory(tbody, statsData, gameLog, isLive =
 // --- Open Player History Heatmap ---
 export function openPlayerHistoryHeatmap(gameLog, identifier, team, playerName, mode = 'field') {
     // Determine the title
-    const title = mode === '7m' ? `7m Grafik - ${playerName}` : `Wurfbild - ${playerName}`;
+    const modeLabel = mode === '7m' ? `7m Grafik` : `Wurfbild`;
+    const myTeamName = (spielstand.settings.myTeamName || '').toLowerCase().trim();
+    const mappedLog = gameLog.map(e => ({
+        ...e,
+        isOpponent: team !== 'heim' && team !== 'Heim' // Correct: anything not Heim is opponent
+    }));
 
-    // Filter the log based on mode for the context
-    let filteredLog = gameLog;
-    if (mode === '7m') {
-        filteredLog = gameLog.filter(e => e.action && e.action.includes('7m'));
-    }
-
-    // Set Context for the global heatmap view
+    // Set Context
     setCurrentHeatmapContext({
-        log: filteredLog,
-        title: title,
+        log: mappedLog,
+        title: `${modeLabel} - ${playerName} #${identifier}`,
         filter: {
-            team: team,
+            team: team, // 'heim' or 'gegner'
             player: identifier
         },
-        type: 'season-specific'
+        mode: mode,  // Add mode information
+        initialFilters: {  // Add initial filter states
+            tore: mode !== '7m',  // Feldtore only if not 7m mode
+            seven_m: mode === '7m',  // 7m only in 7m mode
+            missed: true  // Always show misses
+        },
+        type: 'history-specific'
     });
 
     // Default to 'tor' for the global view
@@ -421,10 +431,40 @@ export function openHistoryDetail(game) {
     const histStatsGegnerBodyNew = document.getElementById('histStatsGegnerBodyNew');
 
     renderHomeStatsInHistory(histStatsBodyNew, homeStats, game.gameLog);
-    renderOpponentStatsInHistory(histStatsGegnerBodyNew, opponentStats, game.gameLog);
+    renderOpponentStatsInHistory(histStatsGegnerBodyNew, opponentStats, game.gameLog, game);
+
+    // --- Robust Perspective Detection ---
+    const globalNameTrim = (spielstand.settings.myTeamName || '').toLowerCase().trim();
+    const hName = (game.settings?.teamNameHeim || game.teams?.heim || 'Heim').toLowerCase().trim();
+    const gName = (game.settings?.teamNameGegner || game.teams?.gegner || 'Gegner').toLowerCase().trim();
+
+    const heimSideIsUsName = globalNameTrim !== '' && (hName.includes(globalNameTrim) || globalNameTrim.includes(hName));
+    const gastSideIsUsName = globalNameTrim !== '' && (gName.includes(globalNameTrim) || globalNameTrim.includes(gName));
+
+    // Heuristic: Check player overlap
+    const currentRosterNumbers = new Set((spielstand.roster || []).map(p => String(p.number)));
+    const gameRosterNumbers = (game.roster || []).map(p => String(p.number));
+    const overlapCount = gameRosterNumbers.filter(n => currentRosterNumbers.has(n)).length;
+    const heimSideLooksLikeUs = overlapCount > 0 && overlapCount >= (gameRosterNumbers.length / 2);
+
+    let weAreGast = false;
+    if (heimSideIsUsName && !gastSideIsUsName) {
+        weAreGast = false;
+    } else if (gastSideIsUsName && !heimSideIsUsName) {
+        weAreGast = true;
+    } else if (heimSideLooksLikeUs) {
+        weAreGast = false;
+    } else if (game.settings && game.settings.isAuswaertsspiel !== undefined) {
+        weAreGast = !!game.settings.isAuswaertsspiel;
+    }
+    // Filtered Log with correct perspective for heatmap
+    const perspectiveMappedLog = game.gameLog.map(e => ({
+        ...e,
+        isOpponent: weAreGast ? !(e.action?.startsWith('Gegner') || e.gegnerNummer) : (e.action?.startsWith('Gegner') || e.gegnerNummer)
+    }));
 
     // Re-bind Heatmap Logic (unchanged from old function, just simple rebinding)
-    const renderBound = () => renderHeatmap(histHeatmapSvg, game.gameLog, true);
+    const renderBound = () => renderHeatmap(histHeatmapSvg, perspectiveMappedLog, true);
 
     const histFilter = histContentHeatmap.querySelector('.heatmap-filter');
     if (histFilter) histFilter.classList.remove('versteckt');

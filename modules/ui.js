@@ -9,7 +9,7 @@ import {
     statistikTabelleBody, rosterListe, wurfbildModal, wurfbilderContainer, wurfbilderStatsModal,
     gegnerNummerTitel, gegnerNummerModal, neueGegnerNummer, bekannteGegnerListe,
     aktionsMenueTitel, aktionsMenue, aktionVorauswahl, kommentarBereich,
-    playerNameInput, playerNumberInput, editPlayerIndex, addPlayerForm, cancelEditButton,
+    playerNameInput, playerNumberInput, playerTorwartInput, editPlayerIndex, addPlayerForm, cancelEditButton,
     spielBeendenButton, historieBereich, historieListe, backToStartFromHistory, historyButton,
     historieDetailBereich, backToHistoryList, histDetailTeams, histDetailScore, histDetailDate,
     histStatsTable, histStatsBody, histStatsGegnerTable, histStatsGegnerBody,
@@ -86,13 +86,16 @@ export function updateScoreDisplay() {
         }
     }
 
-    // Bei Auswärtspielen: Team-Namen-Anzeige beim Score tauschen
+    // Unified Labeling Logic
+    const myName = spielstand.settings.myTeamName || spielstand.settings.teamNameHeim || 'Unser Team';
+    const oppName = spielstand.settings.teamNameGegner || 'Gegner';
+
     if (isAway) {
-        if (teamNameHeimDisplay) teamNameHeimDisplay.textContent = spielstand.settings.teamNameGegner.toUpperCase();
-        if (teamNameGegnerDisplay) teamNameGegnerDisplay.textContent = spielstand.settings.teamNameHeim.toUpperCase();
+        if (teamNameHeimDisplay) teamNameHeimDisplay.textContent = oppName.toUpperCase();
+        if (teamNameGegnerDisplay) teamNameGegnerDisplay.textContent = myName.toUpperCase();
     } else {
-        if (teamNameHeimDisplay) teamNameHeimDisplay.textContent = spielstand.settings.teamNameHeim.toUpperCase();
-        if (teamNameGegnerDisplay) teamNameGegnerDisplay.textContent = spielstand.settings.teamNameGegner.toUpperCase();
+        if (teamNameHeimDisplay) teamNameHeimDisplay.textContent = myName.toUpperCase();
+        if (teamNameGegnerDisplay) teamNameGegnerDisplay.textContent = oppName.toUpperCase();
     }
 
     // Spieler-Raster Labels & Container-Direction
@@ -101,8 +104,8 @@ export function updateScoreDisplay() {
         else spielerAuswahlContainer.classList.remove('side-swapped');
     }
 
-    if (labelSpielerHeimRaster) labelSpielerHeimRaster.textContent = spielstand.settings.teamNameHeim;
-    if (labelSpielerGegnerRaster) labelSpielerGegnerRaster.textContent = spielstand.settings.teamNameGegner;
+    if (labelSpielerHeimRaster) labelSpielerHeimRaster.textContent = isAway ? oppName : myName;
+    if (labelSpielerGegnerRaster) labelSpielerGegnerRaster.textContent = isAway ? myName : oppName;
 
 
     // Heatmap Filter Labels
@@ -134,53 +137,80 @@ export function zeichneSpielerRaster() {
     heimSpielerRaster.innerHTML = '';
     gegnerSpielerRaster.innerHTML = '';
 
-    // Populate home players
-    spielstand.roster.forEach((player, index) => {
+    const isAway = spielstand.settings.isAuswaertsspiel;
+    const leftSidePlayers = isAway ? (spielstand.knownOpponents || []) : (spielstand.roster || []);
+    const rightSidePlayers = isAway ? (spielstand.roster || []) : (spielstand.knownOpponents || []);
+
+    const leftSideIsUs = !isAway;
+    const rightSideIsUs = isAway;
+
+    // Populate Left Side (Heim-Raster)
+    leftSidePlayers.forEach((player, index) => {
         const btn = document.createElement('button');
-
-        // Define display content
-        const numberSpan = `<span class="spieler-nummer-display">${player.number}</span>`;
+        const twIcon = player.isGoalkeeper ? '<span class="tw-badge-compact" style="font-size: 0.6rem; font-weight: 800; border: 1px solid currentColor; border-radius: 2px; padding: 0 2px; height: 1.1rem; display: flex; align-items: center; justify-content: center; transform: translateY(-1px);">TW</span>' : '';
+        const numberGrid = `
+            <div style="display: grid; grid-template-columns: 1fr auto 1fr; width: 100%; align-items: center; justify-items: center;">
+                <div style="grid-column: 2;" class="spieler-nummer-display">${player.number}</div>
+                <div style="grid-column: 3; justify-self: start; margin-left: 4px;">${twIcon}</div>
+            </div>
+        `;
         const nameSpan = `<span class="spieler-name-display">${player.name || ''}</span>`;
-
-        btn.innerHTML = `${numberSpan}${nameSpan}`;
+        btn.innerHTML = `${numberGrid}${nameSpan}`;
         btn.className = 'spieler-button';
-        btn.dataset.index = index; // For event delegation
+        if (player.isGoalkeeper) btn.classList.add('torwart');
+
+        if (leftSideIsUs) {
+            btn.dataset.index = index;
+        } else {
+            btn.classList.add('gegner-button');
+            btn.dataset.gegnerNummer = player.number;
+        }
         heimSpielerRaster.appendChild(btn);
     });
 
-    // Populate opponent players
-    if (spielstand.knownOpponents && spielstand.knownOpponents.length > 0) {
-        spielstand.knownOpponents.forEach((opponent) => {
-            const btn = document.createElement('button');
+    // Populate Right Side (Gegner-Raster)
+    rightSidePlayers.forEach((player, index) => {
+        const btn = document.createElement('button');
+        const twIcon = player.isGoalkeeper ? '<span class="tw-badge-compact" style="font-size: 0.6rem; font-weight: 800; border: 1px solid currentColor; border-radius: 2px; padding: 0 2px; height: 1.1rem; display: flex; align-items: center; justify-content: center; transform: translateY(-1px);">TW</span>' : '';
+        const numberGrid = `
+            <div style="display: grid; grid-template-columns: 1fr auto 1fr; width: 100%; align-items: center; justify-items: center;">
+                <div style="grid-column: 2;" class="spieler-nummer-display">${player.number}</div>
+                <div style="grid-column: 3; justify-self: start; margin-left: 4px;">${twIcon}</div>
+            </div>
+        `;
+        const nameSpan = `<span class="spieler-name-display">${player.name || ''}</span>`;
+        btn.innerHTML = `${numberGrid}${nameSpan}`;
+        btn.className = 'spieler-button';
+        if (player.isGoalkeeper) btn.classList.add('torwart');
 
-            const numberSpan = `<span class="spieler-nummer-display">${opponent.number}</span>`;
-            const nameSpan = `<span class="spieler-name-display">${opponent.name || ''}</span>`;
-
-            btn.innerHTML = `${numberSpan}${nameSpan}`;
-            btn.className = 'spieler-button gegner-button';
-            btn.dataset.gegnerNummer = opponent.number;
-            gegnerSpielerRaster.appendChild(btn);
-        });
-    }
+        if (rightSideIsUs) {
+            btn.dataset.index = index;
+        } else {
+            btn.classList.add('gegner-button');
+            btn.dataset.gegnerNummer = player.number;
+        }
+        gegnerSpielerRaster.appendChild(btn);
+    });
 
     // Update Header Labels
     if (labelSpielerHeimRaster) labelSpielerHeimRaster.textContent = spielstand.settings.teamNameHeim || getMyTeamLabel();
     if (labelSpielerGegnerRaster) labelSpielerGegnerRaster.textContent = spielstand.settings.teamNameGegner || getOpponentLabel();
 
-    // Add "+" button for home team
+    // Add "+" buttons
     const addHeimBtn = document.createElement('button');
     addHeimBtn.innerHTML = '<span class="spieler-nummer">+</span>';
     addHeimBtn.className = 'spieler-button add-player-button';
-    addHeimBtn.id = 'addHeimSpielerButton';
-    addHeimBtn.title = 'Spieler hinzufügen';
+    if (!leftSideIsUs) addHeimBtn.classList.add('gegner-button');
+    addHeimBtn.id = leftSideIsUs ? 'addHeimSpielerButton' : 'addGegnerSpielerButton';
+    addHeimBtn.title = (leftSideIsUs ? getMyTeamLabel() : getOpponentLabel()) + ' hinzufügen';
     heimSpielerRaster.appendChild(addHeimBtn);
 
-    // Add "+" button for opponent team
     const addGegnerBtn = document.createElement('button');
     addGegnerBtn.innerHTML = '<span class="spieler-nummer">+</span>';
-    addGegnerBtn.className = 'spieler-button gegner-button add-player-button';
-    addGegnerBtn.id = 'addGegnerSpielerButton';
-    addGegnerBtn.title = getOpponentLabel() + ' hinzufügen';
+    addGegnerBtn.className = 'spieler-button add-player-button';
+    if (!rightSideIsUs) addGegnerBtn.classList.add('gegner-button');
+    addGegnerBtn.id = rightSideIsUs ? 'addHeimSpielerButton' : 'addGegnerSpielerButton';
+    addGegnerBtn.title = (rightSideIsUs ? getMyTeamLabel() : getOpponentLabel()) + ' hinzufügen';
     gegnerSpielerRaster.appendChild(addGegnerBtn);
 }
 
@@ -199,6 +229,8 @@ export function updateProtokollAnzeige() {
             div.classList.add('gegner-tor');
         } else if (eintrag.action.toLowerCase().includes('gelb') || eintrag.action.toLowerCase().includes('2 min') || eintrag.action.toLowerCase().includes('rot')) {
             div.classList.add('strafe');
+        } else if (eintrag.action.toLowerCase().includes('gehalten') || eintrag.action.toLowerCase().includes('parade') || (eintrag.wurfbild && eintrag.wurfbild.isSave)) {
+            div.classList.add('gehalten');
         }
 
         const spielstandText = eintrag.spielstand ? ` (${eintrag.spielstand})` : '';
@@ -283,6 +315,10 @@ export function zeichneRosterListe(showOpponents = false) {
             </div>
             <div class="edit-row-controls">
                 <input type="number" class="shadcn-input inline-number-input" value="${player.number}" min="1" max="99" placeholder="Nr.">
+                <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; margin-right: 5px;">
+                     <label style="font-size: 0.6rem; margin-bottom: 2px;">TW</label>
+                     <input type="checkbox" class="inline-tw-input" ${player.isGoalkeeper ? 'checked' : ''} style="cursor: pointer;">
+                </div>
                 <div class="inline-edit-actions">
                     <button class="inline-save-btn shadcn-btn-primary shadcn-btn-sm" title="Speichern">✓</button>
                     <button class="inline-cancel-btn shadcn-btn-outline shadcn-btn-sm" title="Abbrechen">✕</button>
@@ -293,6 +329,22 @@ export function zeichneRosterListe(showOpponents = false) {
         // Actions
         const actionsDiv = document.createElement('div');
         actionsDiv.className = 'roster-player-actions';
+        // Flexible layout for icon + buttons
+        actionsDiv.style.display = 'flex';
+        actionsDiv.style.alignItems = 'center';
+        actionsDiv.style.gap = '8px';
+
+        if (player.isGoalkeeper) {
+            const twBadge = document.createElement('span');
+            twBadge.textContent = "TW";
+            twBadge.style.fontSize = "0.75rem";
+            twBadge.style.fontWeight = "700";
+            twBadge.style.color = "var(--btn-primary)";
+            twBadge.style.border = "1px solid var(--btn-primary)";
+            twBadge.style.borderRadius = "4px";
+            twBadge.style.padding = "1px 4px";
+            actionsDiv.appendChild(twBadge);
+        }
 
         const editBtn = document.createElement('button');
         editBtn.className = 'shadcn-btn-outline shadcn-btn-sm roster-edit-btn';
@@ -332,6 +384,7 @@ export function zeichneRosterListe(showOpponents = false) {
         editDiv.querySelector('.inline-save-btn').onclick = async () => {
             const newName = editDiv.querySelector('.inline-name-input').value.trim();
             const newNum = parseInt(editDiv.querySelector('.inline-number-input').value);
+            const newTw = editDiv.querySelector('.inline-tw-input').checked;
 
             if (isNaN(newNum)) {
                 await customAlert('Bitte Nummer eingeben');
@@ -347,6 +400,7 @@ export function zeichneRosterListe(showOpponents = false) {
 
             player.name = newName;
             player.number = newNum;
+            player.isGoalkeeper = newTw;
             list.sort((a, b) => a.number - b.number);
             speichereSpielstand();
             zeichneRosterListe(showOpponents);
@@ -355,6 +409,8 @@ export function zeichneRosterListe(showOpponents = false) {
 
         rosterListe.appendChild(div);
     });
+
+    if (window.lucide) window.lucide.createIcons();
 }
 
 export function oeffneWurfbildModal(modus) {
@@ -381,9 +437,18 @@ export function zeigeWurfstatistik() {
         const isOpponent = playerData.isOpponent || false;
 
         playerData.wuerfe.forEach(w => {
-            if (w.color === 'yellow') gehalten++;
-            else if (w.color === 'gray') vorbei++;
-            else tore++;
+            const act = (w.action || "").toLowerCase();
+            const isSave = act.includes('gehalten') || act.includes('parade') || (w.isSave === true) || (w.color === 'yellow');
+            const isMiss = act.includes('vorbei') || act.includes('verworfen') || act.includes('fehlwurf') || (w.color === 'gray');
+
+            // Strictly ONLY count as Goal if it contains 'tor' and is NOT a save or miss
+            if (isSave) {
+                gehalten++;
+            } else if (isMiss) {
+                vorbei++;
+            } else if (!isSave && !isMiss && act.includes('tor')) {
+                tore++;
+            }
         });
 
         const totalWuerfe = tore + gehalten + vorbei;
@@ -398,23 +463,38 @@ export function zeigeWurfstatistik() {
         const hasWurfbild = playerData.wuerfe.some(w => w.x && w.y);
 
         // Prepare points for drawing functions
+        const mapWurfToPoint = (w) => {
+            const act = (w.action || "").toLowerCase();
+            const isSave = act.includes('gehalten') || act.includes('parade') || (w.isSave === true) || (w.color === 'yellow');
+            const isMiss = act.includes('vorbei') || act.includes('verworfen') || act.includes('fehlwurf') || (w.color === 'gray');
+            const isGoal = !isSave && !isMiss && act.includes('tor');
+
+            return {
+                x: parseFloat(w.x || (w.wurfposition ? w.wurfposition.x : 0)),
+                y: parseFloat(w.y || (w.wurfposition ? w.wurfposition.y : 0)),
+                isOpponent: isOpponent,
+                isGoal: isGoal,
+                isMiss: isMiss || isSave,
+                isSave: isSave
+            };
+        };
+
         const pointsTor = playerData.wuerfe
             .filter(w => w.x && w.y)
-            .map(w => ({
-                x: parseFloat(w.x),
-                y: parseFloat(w.y),
-                isOpponent: isOpponent,
-                isMiss: w.color === 'gray' || w.action === 'Fehlwurf' || w.action === 'Gegner Wurf Vorbei' || w.action?.includes('Verworfen')
-            }));
-
+            .map(w => {
+                const p = mapWurfToPoint(w);
+                p.x = parseFloat(w.x);
+                p.y = parseFloat(w.y);
+                return p;
+            });
         const pointsFeld = playerData.wuerfe
             .filter(w => w.wurfposition)
-            .map(w => ({
-                x: parseFloat(w.wurfposition.x),
-                y: parseFloat(w.wurfposition.y),
-                isOpponent: isOpponent,
-                isMiss: w.color === 'gray' || w.action === 'Fehlwurf' || w.action === 'Gegner Wurf Vorbei' || w.action?.includes('Verworfen')
-            }));
+            .map(w => {
+                const p = mapWurfToPoint(w);
+                p.x = parseFloat(w.wurfposition.x);
+                p.y = parseFloat(w.wurfposition.y);
+                return p;
+            });
 
         const prefix = 'wb_' + (playerData.number || '0') + (isOpponent ? 'opp' : 'hm');
         let svgContent = '';
@@ -443,7 +523,8 @@ export function zeigeWurfstatistik() {
                     const fx = 10 + (parseFloat(w.wurfposition.x) / 100) * 280;
                     const fy = 10 + (parseFloat(w.wurfposition.y) / 100) * 380 + yOffsetField;
 
-                    const isMiss = w.color === 'gray' || w.action === 'Fehlwurf' || w.action === 'Gegner Wurf Vorbei' || w.action?.includes('Verworfen');
+                    const act = (w.action || "").toLowerCase();
+                    const isMiss = w.color === 'gray' || act.includes('vorbei') || act.includes('verworfen') || act.includes('fehlwurf') || act.includes('gehalten') || act.includes('parade') || w.isSave;
                     const color = isMiss ? 'rgba(108, 117, 125, 0.5)' : (isOpponent ? 'rgba(13, 110, 253, 0.5)' : 'rgba(220, 53, 69, 0.5)');
                     linesContent += `<line x1="${fx}" y1="${fy}" x2="${gx}" y2="${gy}" stroke="${color}" stroke-width="2" />`;
                 }
@@ -476,25 +557,25 @@ export function zeigeWurfstatistik() {
     if (daten.heim.length > 0) {
         const h4 = document.createElement('h4'); h4.textContent = spielstand.settings.teamNameHeim;
         const groupDiv = document.createElement('div'); groupDiv.className = 'wurfbild-gruppe'; groupDiv.appendChild(h4);
-        daten.heim.sort((a, b) => a.nummer - b.nummer).forEach(p => groupDiv.appendChild(renderPlayerGroup(p)));
+        daten.heim.sort((a, b) => a.number - b.number).forEach(p => groupDiv.appendChild(renderPlayerGroup(p)));
         wurfbilderContainer.appendChild(groupDiv);
     }
     if (daten.heim7m && daten.heim7m.length > 0) {
         const h4 = document.createElement('h4'); h4.textContent = spielstand.settings.teamNameHeim + " (7m)";
         const groupDiv = document.createElement('div'); groupDiv.className = 'wurfbild-gruppe'; groupDiv.appendChild(h4);
-        daten.heim7m.sort((a, b) => a.nummer - b.nummer).forEach(p => groupDiv.appendChild(renderPlayerGroup(p, true)));
+        daten.heim7m.sort((a, b) => a.number - b.number).forEach(p => groupDiv.appendChild(renderPlayerGroup(p, true)));
         wurfbilderContainer.appendChild(groupDiv);
     }
     if (daten.gegner.length > 0) {
         const h4 = document.createElement('h4'); h4.textContent = spielstand.settings.teamNameGegner + " (" + getOpponentLabel() + " Feldtore)";
         const groupDiv = document.createElement('div'); groupDiv.className = 'wurfbild-gruppe'; groupDiv.appendChild(h4);
-        daten.gegner.sort((a, b) => a.nummer - b.nummer).forEach(p => groupDiv.appendChild(renderPlayerGroup(p)));
+        daten.gegner.sort((a, b) => a.number - b.number).forEach(p => groupDiv.appendChild(renderPlayerGroup(p)));
         wurfbilderContainer.appendChild(groupDiv);
     }
     if (daten.gegner7m.length > 0) {
         const h4 = document.createElement('h4'); h4.textContent = getOpponentLabel() + " 7m";
         const groupDiv = document.createElement('div'); groupDiv.className = 'wurfbild-gruppe'; groupDiv.appendChild(h4);
-        daten.gegner7m.sort((a, b) => a.nummer - b.nummer).forEach(p => groupDiv.appendChild(renderPlayerGroup(p, true)));
+        daten.gegner7m.sort((a, b) => a.number - b.number).forEach(p => groupDiv.appendChild(renderPlayerGroup(p, true)));
         wurfbilderContainer.appendChild(groupDiv);
     }
     if (daten.heim.length === 0 && (!daten.heim7m || daten.heim7m.length === 0) && daten.gegner.length === 0 && daten.gegner7m.length === 0) {
@@ -518,6 +599,8 @@ export function oeffneGegnerNummerModal(type, currentGegnerActionTypeSetter) {
     gegnerNummerModal.classList.remove('versteckt');
     renderGegnerButtons();
     neueGegnerNummer.value = '';
+    neueGegnerName.value = '';
+    if (neueGegnerTorwart) neueGegnerTorwart.checked = false;
     neueGegnerNummer.focus();
 }
 
@@ -535,8 +618,82 @@ export function renderGegnerButtons() {
     });
 }
 
+export function renderActionMenus(isGoalkeeper) {
+    const aktionsMenueBody = aktionsMenue.querySelector('.shadcn-modal-body');
+    const aktionsVorauswahlBody = aktionVorauswahl.querySelector('.shadcn-modal-body');
+
+    // Helper to create button
+    const createBtn = (label, action, classes = []) => {
+        const btn = document.createElement('button');
+        btn.className = `shadcn-btn-outline ${classes.join(' ')}`;
+        btn.textContent = label;
+        if (action) btn.dataset.aktion = action;
+        return btn;
+    };
+
+    // Helper to clear and append
+    const populate = (container, buttons) => {
+        container.innerHTML = '';
+        buttons.forEach(btn => container.appendChild(btn));
+    };
+
+    // --- Configurations ---
+    const fieldMain = [
+        createBtn('Tor', 'Tor'),
+        createBtn('Fehlwurf', 'Fehlwurf'),
+        createBtn('7m', '7m'),
+        createBtn('Anderes', 'Anderes'), // Trigger
+        createBtn('Gelbe Karte', 'Gelbe Karte', ['strafe-gelb']),
+        createBtn('2 Minuten', '2 Minuten', ['strafe-zeit']),
+        createBtn('Rote Karte', 'Rote Karte', ['strafe-rot'])
+    ];
+
+    const fieldSub = [
+        createBtn('Steal', 'Steal'),
+        createBtn('7M Rausgeholt', '7M Rausgeholt'),
+        createBtn('TG Pass', 'TG Pass'),
+        createBtn('Assist', 'Assist'),
+        createBtn('Fehlpass', 'Fehlpass'),
+        createBtn('Technischer Fehler', 'Technischer Fehler'),
+        createBtn('Sonstiges', 'Sonstiges')
+    ];
+
+    const goalieMain = [
+        createBtn('Parade', 'Parade'),
+        createBtn('TG Pass', 'TG Pass'),
+        createBtn('Fehlpass', 'Fehlpass'),
+        createBtn('Anderes', 'Anderes'), // Trigger
+        createBtn('Gelbe Karte', 'Gelbe Karte', ['strafe-gelb']),
+        createBtn('2 Minuten', '2 Minuten', ['strafe-zeit']),
+        createBtn('Rote Karte', 'Rote Karte', ['strafe-rot'])
+    ];
+
+    const goalieSub = [
+        createBtn('Tor', 'Tor'),
+        createBtn('Fehlwurf', 'Fehlwurf'),
+        createBtn('7m', '7m'),
+        createBtn('Steal', 'Steal'),
+        createBtn('Assist', 'Assist'),
+        createBtn('Technischer Fehler', 'Technischer Fehler'),
+        createBtn('Sonstiges', 'Sonstiges')
+    ];
+
+    // --- Render ---
+    if (isGoalkeeper) {
+        populate(aktionsMenueBody, goalieMain);
+        populate(aktionsVorauswahlBody, goalieSub);
+    } else {
+        populate(aktionsMenueBody, fieldMain);
+        populate(aktionsVorauswahlBody, fieldSub);
+    }
+}
+
 export function oeffneAktionsMenueUI(index, playerOverride = null) {
     const player = playerOverride || spielstand.roster[index];
+    const isGoalkeeper = player.isGoalkeeper || false;
+
+    renderActionMenus(isGoalkeeper);
+
     const displayName = player.name ? `#${player.number} (${player.name})` : `#${player.number}`;
     aktionsMenueTitel.textContent = `Aktion für ${displayName}`;
     aktionsMenue.classList.remove('versteckt');
@@ -552,6 +709,7 @@ export function oeffneEditModusUI(index) {
     const player = spielstand.roster[index];
     playerNameInput.value = player.name;
     playerNumberInput.value = player.number;
+    playerTorwartInput.checked = player.isGoalkeeper || false;
     editPlayerIndex.value = index;
     addPlayerForm.querySelector('button[type="submit"]').textContent = 'Speichern';
     cancelEditButton.classList.remove('versteckt');
@@ -560,6 +718,7 @@ export function oeffneEditModusUI(index) {
 export function schliesseEditModusUI() {
     playerNameInput.value = '';
     playerNumberInput.value = '';
+    playerTorwartInput.checked = false;
     editPlayerIndex.value = '';
     addPlayerForm.querySelector('button[type="submit"]').textContent = 'Hinzufügen';
     cancelEditButton.classList.add('versteckt');

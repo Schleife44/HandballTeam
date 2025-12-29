@@ -114,7 +114,7 @@ export function renderSeasonStats() {
                 currentTeam = player.team;
 
                 const headerText = currentTeam === 'Heim'
-                    ? (spielstand.settings.teamNameHeim || 'Unser Team')
+                    ? (spielstand.settings.myTeamName || spielstand.settings.teamNameHeim || 'Unser Team')
                     : currentTeam;
 
                 const headerDiv = document.createElement('div');
@@ -512,7 +512,7 @@ export function showTeamHeatmap(teamName) {
     setCurrentHeatmapTab('tor');
 
     const displayName = teamName === 'Heim'
-        ? (spielstand.settings.teamNameHeim || 'Unser Team')
+        ? (spielstand.settings.myTeamName || spielstand.settings.teamNameHeim || 'Unser Team')
         : teamName;
 
     // Set Context
@@ -703,7 +703,7 @@ export function renderTeamScatterPlot(players) {
     filterSelect.appendChild(optAll);
 
     // Heim Team
-    const homeName = spielstand.settings.teamNameHeim || 'Heim';
+    const homeName = spielstand.settings.myTeamName || spielstand.settings.teamNameHeim || 'Heim';
     const optHome = document.createElement('option');
     optHome.value = 'Heim';
     optHome.textContent = homeName;
@@ -994,7 +994,9 @@ export function renderTeamScatterPlot(players) {
 
             // Color Coding
             const isHome = p.team === 'Heim';
-            const color = isHome ? "#00E5FF" : "#FF4081"; // Bright Cyan, Pink/Red
+            const color = isHome
+                ? (spielstand.settings.teamColor || "#dc3545")
+                : (spielstand.settings.teamColorGegner || "#2563eb"); // Custom Color or Default Blue for Opponent
 
             circle.setAttribute("fill", color);
             circle.setAttribute("stroke", "#fff");

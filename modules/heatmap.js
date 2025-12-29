@@ -3,15 +3,22 @@
 
 import { spielstand, speichereSpielstand } from './state.js';
 import {
-    heatmapSvg, heatmapHeimFilter, heatmapGegnerFilter,
+    heatmapSvg, heatmapTeamToggle,
     heatmapToreFilter, heatmapMissedFilter, heatmap7mFilter, histContentHeatmap,
     histHeatmapToreFilter, histHeatmapMissedFilter, histHeatmap7mFilter,
-    liveOverviewHeatmapToreFilter, liveOverviewHeatmapMissedFilter, liveOverviewHeatmap7mFilter
+    liveOverviewHeatmapToreFilter, liveOverviewHeatmapMissedFilter, liveOverviewHeatmap7mFilter,
+    liveOverviewHeatmapSvg
 } from './dom.js';
 
 // --- Heatmap State ---
 export let currentHeatmapTab = 'tor';
 export let currentHeatmapContext = null;
+// ...
+// (Skipping down to renderHeatmap changes)
+// Wait, I cannot skip lines inside ReplacementContent easily without context.
+// I will do two separate replaces.
+// First: Update Import.
+
 
 export function setCurrentHeatmapTab(tab) {
     currentHeatmapTab = tab;
@@ -26,17 +33,53 @@ export function getCurrentHeatmapContext() {
 }
 
 // --- SVG Generation Helpers (Exported) ---
+// Helper to assume hex to rgb
+function hexToRgb(hex) {
+    var shorthandRegex = /^#?([a-f\d])([a-f\d])([a-f\d])$/i;
+    hex = hex.replace(shorthandRegex, function (m, r, g, b) {
+        return r + r + g + g + b + b;
+    });
+
+    var result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+    return result ? {
+        r: parseInt(result[1], 16),
+        g: parseInt(result[2], 16),
+        b: parseInt(result[3], 16)
+    } : { r: 0, g: 0, b: 0 };
+}
+
+/**
+ * Returns colors based on identity (Us vs Them) rather than fixed Heim/Gegner side.
+ */
+function getIdentityColors() {
+    const sideColorHeim = spielstand?.settings?.teamColor || '#dc3545';
+    const sideColorGegner = spielstand?.settings?.teamColorGegner || '#2563eb';
+
+    const myTeamName = (spielstand?.settings?.myTeamName || '').toLowerCase().trim();
+    const gastNameAktuell = (spielstand?.settings?.teamNameGegner || 'Gegner').toLowerCase().trim();
+    const weAreGastAktuell = myTeamName && (gastNameAktuell === myTeamName);
+
+    return {
+        us: weAreGastAktuell ? sideColorGegner : sideColorHeim,
+        them: weAreGastAktuell ? sideColorHeim : sideColorGegner
+    };
+}
+
 export const drawGoalHeatmap = (pts, yOffset = 0, prefix = 'gen', isHistory = false) => {
+    const colors = getIdentityColors();
+    const rgbUs = hexToRgb(colors.us);
+    const rgbThem = hexToRgb(colors.them);
+
     let content = `
         <g transform="translate(0, ${yOffset})">
             <defs>
                 <radialGradient id="heatGradient${prefix}${isHistory ? 'H' : ''}${yOffset}">
-                    <stop offset="0%" style="stop-color:rgba(255,0,0,0.6)"/>
-                    <stop offset="100%" style="stop-color:rgba(255,0,0,0)"/>
+                    <stop offset="0%" style="stop-color:rgba(${rgbUs.r},${rgbUs.g},${rgbUs.b},0.6)"/>
+                    <stop offset="100%" style="stop-color:rgba(${rgbUs.r},${rgbUs.g},${rgbUs.b},0)"/>
                 </radialGradient>
                 <radialGradient id="heatGradientBlue${prefix}${isHistory ? 'H' : ''}${yOffset}">
-                    <stop offset="0%" style="stop-color:rgba(13,110,253,0.6)"/>
-                    <stop offset="100%" style="stop-color:rgba(13,110,253,0)"/>
+                    <stop offset="0%" style="stop-color:rgba(${rgbThem.r},${rgbThem.g},${rgbThem.b},0.6)"/>
+                    <stop offset="100%" style="stop-color:rgba(${rgbThem.r},${rgbThem.g},${rgbThem.b},0)"/>
                 </radialGradient>
             </defs>
             <rect x="25" y="10" width="250" height="180" fill="none" stroke="#666" stroke-width="3"/>
@@ -52,6 +95,7 @@ export const drawGoalHeatmap = (pts, yOffset = 0, prefix = 'gen', isHistory = fa
         let y = 10 + (p.y / 100) * 180;
         x = Math.max(-10, Math.min(310, x));
         y = Math.max(-55, Math.min(195, y));
+        // isOpponent in pts means Identity: Them
         const gradient = p.isOpponent ? `url(#heatGradientBlue${prefix}${isHistory ? 'H' : ''}${yOffset})` : `url(#heatGradient${prefix}${isHistory ? 'H' : ''}${yOffset})`;
         content += `<circle cx="${x}" cy="${y}" r="30" fill="${gradient}"/>`;
     });
@@ -61,8 +105,27 @@ export const drawGoalHeatmap = (pts, yOffset = 0, prefix = 'gen', isHistory = fa
         let y = 10 + (p.y / 100) * 180;
         x = Math.max(-10, Math.min(310, x));
         y = Math.max(-55, Math.min(195, y));
-        const color = p.isMiss ? '#6c757d' : (p.isOpponent ? '#0d6efd' : '#dc3545');
-        content += `<circle cx="${x}" cy="${y}" r="4" fill="${color}" stroke="white" stroke-width="1"/>`;
+
+        let fillColor;
+        if (p.isSave) {
+            fillColor = '#ffc107';
+        } else if (p.isMiss) {
+            fillColor = '#6c757d';
+        } else if (p.isOpponent) {
+            fillColor = colors.them;
+        } else {
+            fillColor = colors.us;
+        }
+
+        let glowStyle = '';
+        if (p.isSave) {
+            glowStyle = `style="filter: drop-shadow(0 0 5px #ffc107); cursor: pointer;"`;
+        } else {
+            glowStyle = `style="filter: drop-shadow(0 0 5px ${fillColor}); cursor: pointer;"`;
+        }
+
+        const radius = 4;
+        content += `<circle cx="${x}" cy="${y}" r="${radius}" fill="${fillColor}" stroke="white" stroke-width="1" ${glowStyle}/>`;
     });
 
     content += `</g>`;
@@ -70,16 +133,20 @@ export const drawGoalHeatmap = (pts, yOffset = 0, prefix = 'gen', isHistory = fa
 };
 
 export const drawFieldHeatmap = (pts, yOffset = 0, prefix = 'gen', isHistory = false) => {
+    const colors = getIdentityColors();
+    const rgbUs = hexToRgb(colors.us);
+    const rgbThem = hexToRgb(colors.them);
+
     let content = `
         <g transform="translate(0, ${yOffset})">
             <defs>
                 <radialGradient id="heatGradientF${prefix}${isHistory ? 'H' : ''}${yOffset}">
-                    <stop offset="0%" style="stop-color:rgba(255,0,0,0.5)"/>
-                    <stop offset="100%" style="stop-color:rgba(255,0,0,0)"/>
+                    <stop offset="0%" style="stop-color:rgba(${rgbUs.r},${rgbUs.g},${rgbUs.b},0.5)"/>
+                    <stop offset="100%" style="stop-color:rgba(${rgbUs.r},${rgbUs.g},${rgbUs.b},0)"/>
                 </radialGradient>
                 <radialGradient id="heatGradientBlueF${prefix}${isHistory ? 'H' : ''}${yOffset}">
-                    <stop offset="0%" style="stop-color:rgba(13,110,253,0.5)"/>
-                    <stop offset="100%" style="stop-color:rgba(13,110,253,0)"/>
+                    <stop offset="0%" style="stop-color:rgba(${rgbThem.r},${rgbThem.g},${rgbThem.b},0.5)"/>
+                    <stop offset="100%" style="stop-color:rgba(${rgbThem.r},${rgbThem.g},${rgbThem.b},0)"/>
                 </radialGradient>
             </defs>
             <rect x="10" y="10" width="280" height="380" fill="none" stroke="#666" stroke-width="2"/>
@@ -99,10 +166,29 @@ export const drawFieldHeatmap = (pts, yOffset = 0, prefix = 'gen', isHistory = f
     });
 
     pts.forEach(p => {
-        const x = 10 + (p.x / 100) * 280;
-        const y = 10 + (p.y / 100) * 380;
-        const color = p.isMiss ? '#6c757d' : (p.isOpponent ? '#0d6efd' : '#dc3545');
-        content += `<circle cx="${x}" cy="${y}" r="5" fill="${color}" stroke="white" stroke-width="1"/>`;
+        let x = 10 + (p.x / 100) * 280;
+        let y = 10 + (p.y / 100) * 380;
+        x = Math.max(0, Math.min(300, x));
+        y = Math.max(0, Math.min(500, y));
+
+        let fillColor;
+        if (p.isSave) {
+            fillColor = '#ffc107';
+        } else if (p.isMiss) {
+            fillColor = '#6c757d';
+        } else if (p.isOpponent) {
+            fillColor = colors.them;
+        } else {
+            fillColor = colors.us;
+        }
+
+        const radius = 4;
+        let glowStyle = '';
+        if (p.isSave) {
+            glowStyle = `style="filter: drop-shadow(0 0 5px #ffc107); cursor: pointer;"`;
+        }
+
+        content += `<circle cx="${x}" cy="${y}" r="${radius}" fill="${fillColor}" stroke="white" stroke-width="1" ${glowStyle}/>`;
     });
 
     content += `</g>`;
@@ -115,134 +201,147 @@ export function renderHeatmap(svgElement, logSource, isHistory = false, filterOv
 
     let log = logSource || spielstand.gameLog;
 
-    // Filters
+    // Filters (Redacted for brevity, unchanged)
     let showHeim = true;
     let showGegner = false;
     let playerFilter = null;
 
-    // Check global context for overrides (Single Player History Mode)
+    // ... [Filter Logic Unchanged] ...
+    // Note: Re-implementing filter logic briefly to ensure context is correct
     if (currentHeatmapContext && typeof currentHeatmapContext === 'object' && svgElement === heatmapSvg) {
         log = currentHeatmapContext.log;
-
         if (currentHeatmapContext.filter) {
             if (currentHeatmapContext.filter.team === 'heim') { showHeim = true; showGegner = false; }
             else { showHeim = false; showGegner = true; }
             playerFilter = currentHeatmapContext.filter.player;
         }
-
+        // ... (Hide Filters logic)
         const modal = svgElement.closest('.modal-content') || svgElement.closest('.modal-overlay');
-        if (modal) {
-            // Hide ONLY Team Toggles, keep Goal/Miss filters
-            const heimFilter = modal.querySelector('#heatmapHeimFilter');
-            const gegnerFilter = modal.querySelector('#heatmapGegnerFilter');
-            const separator = modal.querySelector('.heatmap-filter span:not([id])'); // The | separator
+        const hf = modal ? modal.querySelector('#heatmapHeimFilter') : document.getElementById('heatmapHeimFilter');
+        const gf = modal ? modal.querySelector('#heatmapGegnerFilter') : document.getElementById('heatmapGegnerFilter');
+        if (hf) hf.closest('label').style.display = 'none';
+        if (gf) gf.closest('label').style.display = 'none';
 
-            if (heimFilter) heimFilter.closest('label').style.display = 'none';
-            if (gegnerFilter) gegnerFilter.closest('label').style.display = 'none';
-            if (separator) separator.style.display = 'none';
-
-            const filterContainer = modal.querySelector('.heatmap-filter');
-            if (filterContainer) filterContainer.classList.remove('versteckt');
-        } else {
-            // Fallback if not inside modal
-            const filterContainer = document.querySelector('#liveHeatmapBereich .heatmap-filter');
-            if (filterContainer) filterContainer.classList.remove('versteckt');
-            // Try to find filters via ID globally if we are in main heatmap mode
-            const heimFilter = document.getElementById('heatmapHeimFilter');
-            const gegnerFilter = document.getElementById('heatmapGegnerFilter');
-            if (heimFilter) heimFilter.closest('label').style.display = 'none';
-            if (gegnerFilter) gegnerFilter.closest('label').style.display = 'none';
-        }
-        // Force hide filters
-        const heimFilter = document.getElementById('heatmapHeimFilter');
-        const gegnerFilter = document.getElementById('heatmapGegnerFilter');
-        if (heimFilter) heimFilter.closest('label').style.display = 'none';
-        if (gegnerFilter) gegnerFilter.closest('label').style.display = 'none';
-
-    } else if (currentHeatmapContext === 'season' || (currentHeatmapContext && typeof currentHeatmapContext === 'object' && currentHeatmapContext.type === 'season-specific')) {
-        if (currentHeatmapContext && typeof currentHeatmapContext === 'object' && currentHeatmapContext.filter) {
-            if (currentHeatmapContext.filter.team === 'heim') { showHeim = true; showGegner = false; }
-            else if (currentHeatmapContext.filter.team === 'gegner') { showHeim = false; showGegner = true; }
-            else { showHeim = true; showGegner = true; }
+    } else if (currentHeatmapContext === 'season' || (currentHeatmapContext?.type === 'season-specific')) {
+        if (currentHeatmapContext?.filter) {
+            const t = currentHeatmapContext.filter.team;
+            if (t === 'heim' || t === 'Heim') { showHeim = true; showGegner = false; }
+            else if (t === 'all') { showHeim = true; showGegner = true; }
+            else { showHeim = false; showGegner = true; }
             playerFilter = currentHeatmapContext.filter.player;
-        } else {
-            showHeim = true;
-            showGegner = true;
-        }
-    } else if (currentHeatmapContext === 'liveOverview') {
+        } else { showHeim = true; showGegner = true; }
+    } else if (currentHeatmapContext === 'liveOverview' || (svgElement && (svgElement.id === 'liveOverviewHeatmapSvg' || svgElement === liveOverviewHeatmapSvg))) {
         const selected = document.querySelector('input[name="liveOverviewHeatTeam"]:checked');
-        if (selected && selected.value === 'gegner') {
-            showHeim = false;
-            showGegner = true;
-        } else {
-            showHeim = true;
-            showGegner = false;
-        }
+        if (selected && selected.value === 'gegner') { showHeim = false; showGegner = true; }
+        else { showHeim = true; showGegner = false; }
     } else {
         if (filterOverride) {
-            if (filterOverride.team === 'heim') {
-                showHeim = true;
-                showGegner = false;
-            } else {
-                showHeim = false;
-                showGegner = true;
-            }
+            if (filterOverride.team === 'heim') { showHeim = true; showGegner = false; }
+            else { showHeim = false; showGegner = true; }
             playerFilter = filterOverride.player;
-        }
-        else if (isHistory) {
+        } else if (isHistory) {
             const selected = document.querySelector('input[name="histHeatTeam"]:checked');
-            if (selected && selected.value === 'gegner') {
-                showHeim = false;
-                showGegner = true;
-            } else {
-                showHeim = true;
-                showGegner = false;
-            }
+            if (selected && selected.value === 'gegner') { showHeim = false; showGegner = true; }
+            else { showHeim = true; showGegner = false; }
         } else {
-            // Normal Mode: Show filters if they were hidden
             if (svgElement === heatmapSvg) {
-                const heimFilter = document.getElementById('heatmapHeimFilter');
-                const gegnerFilter = document.getElementById('heatmapGegnerFilter');
-                if (heimFilter) heimFilter.closest('label').style.display = '';
-                if (gegnerFilter) gegnerFilter.closest('label').style.display = '';
+                const hf = document.getElementById('heatmapHeimFilter');
+                if (hf) hf.closest('label').style.display = '';
+                const gf = document.getElementById('heatmapGegnerFilter');
+                if (gf) gf.closest('label').style.display = '';
             }
-            showHeim = heatmapHeimFilter?.checked ?? true;
-            showGegner = heatmapGegnerFilter?.checked ?? false;
+
+            // Default Logic (Main Heatmap)
+            // Fallback to Settings/Sliders if dedicated filters don't exist
+            // Default Logic (Main Heatmap)
+            // Use heatmapTeamToggle if available (New UI)
+            if (heatmapTeamToggle) {
+                const isChecked = heatmapTeamToggle.getAttribute('data-state') === 'checked'; // checked = Gegner (Right)
+                if (isChecked) {
+                    showHeim = false;
+                    showGegner = true;
+                } else {
+                    showHeim = true;
+                    showGegner = false;
+                }
+            } else {
+                // Fallback (Legacy or missing UI)
+                if (currentHeatmapTab === 'tor') {
+                    showHeim = document.getElementById('toggleWurfbildHeim')?.checked ?? true;
+                    showGegner = document.getElementById('toggleWurfbildGegner')?.checked ?? false;
+                } else {
+                    showHeim = true;
+                    showGegner = false;
+                }
+            }
+
+            // Check for Player Selection (Main Heatmap)
+            const playerSelect = document.getElementById('heatmapPlayerSelect');
+
+            if (playerSelect && playerSelect.value !== 'all') {
+                if (playerSelect.value.includes('|')) {
+                    const parts = playerSelect.value.split('|');
+                    if (parts.length === 2) {
+                        playerFilter = parseInt(parts[1], 10);
+                    }
+                } else {
+                    // Simple number case (Live View)
+                    playerFilter = parseInt(playerSelect.value, 10);
+                }
+            }
         }
     }
 
     let showTore, showMissed, show7m;
-    if (isHistory) {
+    if (currentHeatmapContext?.type === 'history-specific' || currentHeatmapContext === 'season' || (currentHeatmapContext?.type === 'season-specific')) {
+        // For season heatmap (including history-specific player views which redirect there)
+        showTore = document.getElementById('seasonHeatmapToreFilter')?.checked ?? (heatmapToreFilter?.checked ?? true);
+        showMissed = document.getElementById('seasonHeatmapMissedFilter')?.checked ?? (heatmapMissedFilter?.checked ?? true);
+        show7m = document.getElementById('seasonHeatmap7mFilter')?.checked ?? (heatmap7mFilter?.checked ?? false);
+    } else if (isHistory && svgElement.id === 'histHeatmapSvg') {
         showTore = histHeatmapToreFilter?.checked ?? true;
         showMissed = histHeatmapMissedFilter?.checked ?? true;
         show7m = histHeatmap7mFilter?.checked ?? false;
-    } else if (currentHeatmapContext === 'liveOverview') {
+    } else if (currentHeatmapContext === 'liveOverview' || (svgElement && (svgElement.id === 'liveOverviewHeatmapSvg' || svgElement === liveOverviewHeatmapSvg))) {
         showTore = liveOverviewHeatmapToreFilter?.checked ?? true;
         showMissed = liveOverviewHeatmapMissedFilter?.checked ?? true;
         show7m = liveOverviewHeatmap7mFilter?.checked ?? false;
-    } else if (currentHeatmapContext === 'season' || (currentHeatmapContext && typeof currentHeatmapContext === 'object' && currentHeatmapContext.type === 'season-specific')) {
-        showTore = document.getElementById('seasonHeatmapToreFilter')?.checked ?? true;
-        showMissed = document.getElementById('seasonHeatmapMissedFilter')?.checked ?? true;
-        show7m = document.getElementById('seasonHeatmap7mFilter')?.checked ?? false;
     } else {
         showTore = heatmapToreFilter?.checked ?? true;
         showMissed = heatmapMissedFilter?.checked ?? true;
         show7m = heatmap7mFilter?.checked ?? false;
     }
 
-    // Collect data points
     const pointsTor = [];
     const pointsFeld = [];
 
     log.forEach(entry => {
-        const isOpponent = entry.action?.startsWith('Gegner') || entry.gegnerNummer;
+        // 1. Trust existing isOpponent property if present (from Season View / aggregated data)
+        let isOpponent = entry.isOpponent;
+
+        if (isOpponent === undefined) {
+            // 2. Identify "my team" perspective for this specific log (History/Live)
+            // If we are in history, we might have the game context via filterOverride or by checking specific team names
+            const myTeamName = (spielstand.settings.myTeamName || '').toLowerCase().trim();
+            const logActionIsGegner = entry.action?.startsWith('Gegner') || entry.gegnerNummer;
+
+            // Map side to identity: If we are Gast, then Side-Gegner is Us (isOpponent=false)
+            const weAreGastAktuell = spielstand.settings.isAuswaertsspiel;
+            isOpponent = weAreGastAktuell ? !logActionIsGegner : logActionIsGegner;
+        }
 
         if (playerFilter !== null) {
             if (showHeim) {
                 if (isOpponent) return;
-                if (entry.playerId !== playerFilter) return;
+                // Standard GameLog uses entry.player object or number
+                const pNum = (entry.player && typeof entry.player === 'object') ? entry.player.number : entry.player;
+                // Heatmap aggregated data uses entry.playerId
+                const checkNum = entry.playerId ?? pNum;
+
+                if (checkNum !== playerFilter) return;
             } else {
                 if (!isOpponent) return;
+                // For opponents, sometimes stored in gegnerNummer
                 if (entry.gegnerNummer !== playerFilter) return;
             }
         } else {
@@ -250,13 +349,16 @@ export function renderHeatmap(svgElement, logSource, isHistory = false, filterOv
             if (!isOpponent && !showHeim) return;
         }
 
-        const is7m = entry.action && entry.action.includes('7m');
+        const is7m = (entry.action && entry.action.toLowerCase().includes('7m')) || entry.is7m;
         if (is7m && !show7m) return;
 
-        const isGoal = entry.action === 'Tor' || entry.action === 'Gegner Tor' ||
-            entry.action?.includes('7m Tor');
-        const isMiss = entry.action === 'Fehlwurf' || entry.action === 'Gegner Wurf Vorbei' ||
-            entry.action?.includes('Verworfen') || entry.action?.includes('Gehalten');
+        const actionLower = (entry.action || "").toLowerCase();
+        const isGoal = actionLower === 'tor' || actionLower === 'gegner tor' || actionLower.includes('7m tor');
+        const isMiss = actionLower.includes('fehlwurf') || actionLower.includes('vorbei') ||
+            actionLower.includes('verworfen') || actionLower.includes('gehalten');
+
+        // Robust Save Detection
+        const isSave = actionLower.includes('gehalten') || actionLower.includes('parade');
 
         if (isGoal && !is7m && !showTore) return;
         // Feld-Fehlwürfe nur dann verstecken, wenn 7m aktiv ist (Fokus auf 7m) 
@@ -264,117 +366,109 @@ export function renderHeatmap(svgElement, logSource, isHistory = false, filterOv
         if (isMiss && !is7m && !showTore && show7m) return;
         if (isMiss && !showMissed) return;
 
+        // CRITICAL: Filter out non-shots (e.g. "Parade" which might have coords but isn't a shot)
+        if (!isGoal && !isMiss) return;
+
         if (entry.wurfbild) {
             pointsTor.push({
                 x: parseFloat(entry.wurfbild.x),
                 y: parseFloat(entry.wurfbild.y),
                 isOpponent,
                 isGoal,
-                isMiss
+                isMiss,
+                color: entry.wurfbild.color,
+                isSave: isSave || entry.wurfbild.isSave // Use derived or stored
             });
-        } else if (entry.x !== undefined && entry.y !== undefined && entry.x !== null) {
+        } else if (entry.x !== undefined && entry.x !== null) {
             pointsTor.push({
-                x: parseFloat(entry.x),
-                y: parseFloat(entry.y),
-                isOpponent,
-                isGoal,
-                isMiss
+                x: parseFloat(entry.x), y: parseFloat(entry.y),
+                isOpponent, isGoal, isMiss
             });
         }
 
         let pos = entry.wurfposition;
-        if (is7m) {
-            pos = { x: 50, y: 29.0 };
-        }
-
+        if (is7m) pos = { x: 50, y: 29.0 };
         if (pos) {
             pointsFeld.push({
                 x: parseFloat(pos.x),
                 y: parseFloat(pos.y),
                 isOpponent,
                 isGoal,
-                isMiss
+                isMiss,
+                isSave: isSave // Add isSave
             });
         }
     });
 
-    // Generate SVG content
     const prefix = svgElement.id || 'gen';
     let svgContent = '';
 
     if (currentHeatmapTab === 'tor') {
         svgElement.setAttribute('viewBox', '0 -60 300 280');
         svgContent = drawGoalHeatmap(pointsTor, 0, prefix, isHistory);
-        svgContent += `
-        <text x="10" y="210" font-size="10" fill="#666">
-            ${pointsTor.length} Würfe angezeigt
-        </text>`;
-
+        svgContent += `<text x="10" y="210" font-size="10" fill="#666">${pointsTor.length} Würfe angezeigt</text>`;
     } else if (currentHeatmapTab === 'feld') {
         svgElement.setAttribute('viewBox', '0 0 300 420');
         svgContent = drawFieldHeatmap(pointsFeld, 0, prefix, isHistory);
-        svgContent += `
-        <text x="10" y="410" font-size="10" fill="#666">
-            ${pointsFeld.length} Würfe angezeigt
-        </text>`;
-
+        svgContent += `<text x="10" y="410" font-size="10" fill="#666">${pointsFeld.length} Würfe angezeigt</text>`;
     } else if (currentHeatmapTab === 'kombiniert') {
         svgElement.setAttribute('viewBox', '0 0 300 500');
-
         const scaleGoal = 0.35;
         const xOffsetGoal = (300 - (300 * scaleGoal)) / 2;
         const yOffsetGoal = 24;
         const yOffsetField = 80;
 
         let linesContent = '<g>';
+        // Get Colors for Lines
+        const colors = getIdentityColors();
+        const rgbUs = hexToRgb(colors.us);
+        const rgbThem = hexToRgb(colors.them);
 
         log.forEach(entry => {
-            const isOpponent = entry.action?.startsWith('Gegner') || entry.gegnerNummer;
-            if (playerFilter !== null) {
-                if (showHeim) {
-                    if (isOpponent) return;
-                    if (entry.playerId !== playerFilter) return;
-                } else {
-                    if (!isOpponent) return;
-                    if (entry.gegnerNummer !== playerFilter) return;
-                }
-            } else {
-                if (isOpponent && !showGegner) return;
-                if (!isOpponent && !showHeim) return;
+            let isOpponent = entry.isOpponent;
+            if (isOpponent === undefined) {
+                const logActionIsGegner = entry.action?.startsWith('Gegner') || entry.gegnerNummer;
+                isOpponent = weAreGastAktuell ? !logActionIsGegner : logActionIsGegner;
             }
 
+            let visible = true;
+            if (playerFilter !== null) {
+                if (showHeim && (isOpponent || (entry.playerId !== playerFilter))) visible = false;
+                if (!showHeim && (!isOpponent || (entry.gegnerNummer !== playerFilter))) visible = false;
+            } else {
+                if (isOpponent && !showGegner) visible = false;
+                if (!isOpponent && !showHeim) visible = false;
+            }
+            const is7m = entry.action?.includes('7m');
+            if (is7m && !show7m) visible = false;
             const isGoal = entry.action === 'Tor' || entry.action === 'Gegner Tor' || entry.action?.includes('7m Tor');
-            const isMiss = entry.action === 'Fehlwurf' || entry.action === 'Gegner Wurf Vorbei' || entry.action?.includes('Verworfen') || entry.action?.includes('Gehalten');
+            const isMiss = entry.action?.includes('Fehlwurf') || entry.action?.includes('Vorbei') || entry.action?.includes('Verworfen') || entry.action?.includes('Gehalten');
+            if (isGoal && !is7m && !showTore) visible = false;
+            if (isMiss && !is7m && !showTore && show7m) visible = false;
+            if (isMiss && !showMissed) visible = false;
 
-            const is7m = entry.action && entry.action.includes('7m');
-
-            if (isGoal && !is7m && !showTore) return;
-            if (isMiss && !is7m && !showTore && show7m) return;
-            if (isMiss && !showMissed) return;
-
-            if (is7m && !show7m) return;
+            if (!visible) return;
 
             let pos = entry.wurfposition;
             if (is7m) pos = { x: 50, y: 29.0 };
+            let wx = entry.wurfbild?.x ?? entry.x;
+            let wy = entry.wurfbild?.y ?? entry.y;
 
-            let wx = (entry.wurfbild && entry.wurfbild.x !== undefined) ? entry.wurfbild.x : entry.x;
-            let wy = (entry.wurfbild && entry.wurfbild.y !== undefined) ? entry.wurfbild.y : entry.y;
-
-            if (wx !== undefined && wy !== undefined && pos) {
+            if (wx != null && wy != null && pos) {
                 let rawGx = 25 + (parseFloat(wx) / 100) * 250;
                 let rawGy = 10 + (parseFloat(wy) / 100) * 180;
                 rawGx = Math.max(-10, Math.min(310, rawGx));
                 rawGy = Math.max(-55, Math.min(195, rawGy));
-
                 const gx = xOffsetGoal + (rawGx * scaleGoal);
                 const gy = yOffsetGoal + (rawGy * scaleGoal);
-
                 const fx = 10 + (parseFloat(pos.x) / 100) * 280;
                 const fy = 10 + (parseFloat(pos.y) / 100) * 380 + yOffsetField;
 
-                const color = isMiss ? 'rgba(108, 117, 125, 0.5)' : (isOpponent ? 'rgba(13, 110, 253, 0.5)' : 'rgba(220, 53, 69, 0.5)');
+                let c = isMiss ? 'rgba(108, 117, 125, 0.5)' :
+                    (isOpponent ? `rgba(${rgbThem.r}, ${rgbThem.g}, ${rgbThem.b}, 0.5)`
+                        : `rgba(${rgbUs.r}, ${rgbUs.g}, ${rgbUs.b}, 0.5)`);
 
-                linesContent += `<line x1="${fx}" y1="${fy}" x2="${gx}" y2="${gy}" stroke="${color}" stroke-width="2" />`;
+                linesContent += `<line x1="${fx}" y1="${fy}" x2="${gx}" y2="${gy}" stroke="${c}" stroke-width="2" />`;
             }
         });
         linesContent += '</g>';
@@ -385,6 +479,5 @@ export function renderHeatmap(svgElement, logSource, isHistory = false, filterOv
         svgContent += drawGoalHeatmap(pointsTor, 0, prefix, isHistory);
         svgContent += `</g>`;
     }
-
     svgElement.innerHTML = svgContent;
 }

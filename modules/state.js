@@ -18,11 +18,13 @@ export let spielstand = {
         darkMode: false,
 
         showWurfbildHeim: false,
-        showWurfbildGegner: false,
-        showWurfpositionHeim: false,
-        showWurfpositionGegner: false,
+        showWurfbildGegner: true,
+        showWurfpositionHeim: true,
+        showWurfpositionGegner: true,
         teamNameHeim: 'Heim',
         teamNameGegner: 'Gegner',
+        teamColor: '#dc3545', // Default Red
+        teamColorGegner: '#2563eb', // Default Blue
         isAuswaertsspiel: false
     },
     knownOpponents: [] // { number: 7, name: 'Max' } - Name ist optional

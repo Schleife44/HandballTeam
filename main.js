@@ -3,7 +3,7 @@
 
 import { ladeSpielstandDaten, spielstand, speichereSpielstand } from './modules/state.js';
 import {
-    toggleDarkMode,
+    toggleDarkMode, myTeamNameInput,
     toggleWurfbildHeim, toggleWurfbildGegner, inputTeamNameHeim,
     inputTeamNameGegner, toggleWurfpositionHeim, toggleWurfpositionGegner,
     rosterBereich, spielBereich, globalAktionen, scoreWrapper, timerAnzeige,
@@ -13,8 +13,9 @@ import {
     shotsBereich, shotsContent, historieBereich, historieDetailBereich,
     settingsBereich, rosterTeamNameHeim, rosterTeamNameGegner,
     liveHeatmapBereich, teamDiagrammBereich, teamDiagrammContent, protokollBereich,
-    mobileMenuBtn, sidebarOverlay, sidebar,
+    mobileMenuBtn, sidebarOverlay, sidebar, teamColorInput
 } from './modules/dom.js';
+import { getContrastTextColor, getGameResult } from './modules/utils.js';
 import { setSteuerungAktiv } from './modules/game.js';
 import { formatiereZeit } from './modules/utils.js';
 import { berechneStatistiken } from './modules/stats.js';
@@ -37,7 +38,6 @@ let dashboardRenderId = 0;
 let dashboardCharts = [];
 
 function initApp() {
-    initSidebar();
     const geladen = ladeSpielstandDaten();
 
     // Set UI checkboxes from loaded data
@@ -47,11 +47,16 @@ function initApp() {
     if (toggleWurfbildGegner) toggleWurfbildGegner.checked = spielstand.settings.showWurfbildGegner;
     if (toggleWurfpositionHeim) toggleWurfpositionHeim.checked = spielstand.settings.showWurfpositionHeim;
     if (toggleWurfpositionGegner) toggleWurfpositionGegner.checked = spielstand.settings.showWurfpositionGegner;
-    if (inputTeamNameHeim) inputTeamNameHeim.value = spielstand.settings.teamNameHeim;
-    if (inputTeamNameGegner) inputTeamNameGegner.value = spielstand.settings.teamNameGegner;
     if (rosterTeamNameHeim) rosterTeamNameHeim.value = spielstand.settings.teamNameHeim;
     if (rosterTeamNameGegner) rosterTeamNameGegner.value = spielstand.settings.teamNameGegner;
-    if (toggleAuswaertsspiel) toggleAuswaertsspiel.checked = spielstand.settings.isAuswaertsspiel;
+
+    // Initialize myTeamName if not set
+    if (!spielstand.settings.myTeamName) {
+        spielstand.settings.myTeamName = '';
+    }
+    if (myTeamNameInput) {
+        myTeamNameInput.value = spielstand.settings.myTeamName;
+    }
 
     applyTheme();
 
@@ -61,7 +66,6 @@ function initApp() {
         if (globalAktionen) globalAktionen.classList.remove('versteckt');
         scoreWrapper.classList.remove('versteckt');
 
-        applyViewSettings();
 
         timerAnzeige.textContent = formatiereZeit(spielstand.timer.verstricheneSekundenBisher);
         spielstand.timer.istPausiert = true;
@@ -101,9 +105,99 @@ function initApp() {
         zeichneSpielerRaster();
         updateProtokollAnzeige();
         // updateTorTracker(); // Removed feature
-    } else {
-        // Default to Dashboard
-        navigateToView('dashboard');
+    }
+
+    // Unconditional Team Color Initialization
+    const colorInput = document.getElementById('teamColorInput');
+    const colorTrigger = document.getElementById('teamColorTrigger');
+
+    if (colorInput) {
+        // Init from state
+        const savedColor = spielstand.settings.teamColor || '#dc3545';
+        colorInput.value = savedColor;
+        document.documentElement.style.setProperty('--heim-color', savedColor);
+        document.documentElement.style.setProperty('--primary', savedColor);
+        document.documentElement.style.setProperty('--heim-text-color', getContrastTextColor(savedColor));
+
+        if (colorTrigger) {
+            const icon = colorTrigger.querySelector('i') || colorTrigger.querySelector('svg');
+            if (icon) icon.style.color = savedColor;
+
+            // Ensure click listener is bound (idempotent check)
+            if (!colorTrigger.dataset.bound) {
+                colorTrigger.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    colorInput.click();
+                });
+                colorTrigger.dataset.bound = "true";
+            }
+        }
+
+        if (!colorInput.dataset.bound) {
+            colorInput.addEventListener('input', (e) => {
+                const color = e.target.value;
+                document.documentElement.style.setProperty('--heim-color', color);
+                document.documentElement.style.setProperty('--primary', color);
+                document.documentElement.style.setProperty('--heim-text-color', getContrastTextColor(color));
+
+                if (colorTrigger) {
+                    const icon = colorTrigger.querySelector('i') || colorTrigger.querySelector('svg');
+                    if (icon) icon.style.color = color;
+                }
+            });
+
+            colorInput.addEventListener('change', (e) => {
+                const color = e.target.value;
+                spielstand.settings.teamColor = color;
+                import('./modules/state.js').then(s => s.speichereSpielstand());
+            });
+            colorInput.dataset.bound = "true";
+        }
+    }
+
+    // Unconditional Opponent Color Initialization
+    const colorInputGegner = document.getElementById('teamColorInputGegner');
+    const colorTriggerGegner = document.getElementById('teamColorTriggerGegner');
+
+    if (colorInputGegner) {
+        // Init from state
+        const savedColorGegner = spielstand.settings.teamColorGegner || '#2563eb';
+        colorInputGegner.value = savedColorGegner;
+        document.documentElement.style.setProperty('--gegner-color', savedColorGegner);
+        document.documentElement.style.setProperty('--gegner-text-color', getContrastTextColor(savedColorGegner));
+
+        if (colorTriggerGegner) {
+            const icon = colorTriggerGegner.querySelector('i') || colorTriggerGegner.querySelector('svg');
+            if (icon) icon.style.color = savedColorGegner;
+
+            if (!colorTriggerGegner.dataset.bound) {
+                colorTriggerGegner.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    colorInputGegner.click();
+                });
+                colorTriggerGegner.dataset.bound = "true";
+            }
+        }
+
+        if (!colorInputGegner.dataset.bound) {
+            colorInputGegner.addEventListener('input', (e) => {
+                const color = e.target.value;
+                document.documentElement.style.setProperty('--gegner-color', color);
+                document.documentElement.style.setProperty('--gegner-text-color', getContrastTextColor(color));
+
+                if (colorTriggerGegner) {
+                    const icon = colorTriggerGegner.querySelector('i') || colorTriggerGegner.querySelector('svg');
+                    if (icon) icon.style.color = color;
+                }
+            });
+
+            colorInputGegner.addEventListener('change', (e) => {
+                const color = e.target.value;
+                spielstand.settings.teamColorGegner = color;
+                import('./modules/state.js').then(s => s.speichereSpielstand());
+            });
+            colorInputGegner.dataset.bound = "true";
+        }
     }
 }
 
@@ -353,6 +447,13 @@ export function showLiveOverviewInline() {
 
                     historyView.renderHomeStatsInHistory(document.getElementById('liveStatsHome'), homeStats, spielstand.gameLog, true);
                     historyView.renderOpponentStatsInHistory(document.getElementById('liveStatsOpp'), opponentStats, spielstand.gameLog, true);
+
+                    // Set context for Heatmap rendering
+                    heatmap.setCurrentHeatmapContext('liveOverview');
+
+                    // Initial Heatmap Render (if tab is active? defaults to stats usually, but good to prep)
+                    // Actually, let's just set the context. The render happens when tab is clicked or if logic requires.
+                    // But if we are viewing it, we ensure subsequent renders use this context.
                 });
             });
         });
@@ -430,7 +531,6 @@ function showDashboardInline() {
                 <div class="season-panel-title">Wurfstatistiken</div>
                 <div style="display: flex; flex-wrap: wrap; gap: 15px; align-items: start;">
                     <div style="flex: 1; min-width: 250px; display: flex; flex-direction: column;">
-                        <span style="font-size: 0.7rem; color: var(--text-muted); margin-bottom: 5px; text-align: center;">Gesamt</span>
                         <div class="chart-container" style="height: 180px;">
                             <canvas id="dashEffTotalChart"></canvas>
                         </div>
@@ -482,6 +582,14 @@ function showDashboardInline() {
             // New Stats
             const playerGoals = {}; // { Num: Count }
             const playerNames = {}; // { Num: Name }
+
+            // Pre-populate names from current active roster for professional labels
+            if (spielstand.roster) {
+                spielstand.roster.forEach(p => {
+                    playerNames[p.number] = p.name;
+                });
+            }
+
             let totalStatsGoals = 0;
             let totalStatsMisses = 0;
             const gameEfficiencies = []; // { date, eff }
@@ -489,36 +597,100 @@ function showDashboardInline() {
             historyGames.slice().reverse().forEach(game => {
                 const h = game.score.heim;
                 const g = game.score.gegner;
-                scored += h;
-                conceded += g;
-                if (h > g) wins++;
-                else if (h < g) losses++;
+
+                // Determine our team name from global settings
+                const globalMyTeamName = spielstand.settings.myTeamName?.toLowerCase().trim();
+
+                // Use getGameResult to determine win/loss/draw based on myTeamName
+                const result = getGameResult(game, globalMyTeamName);
+                if (result === 'win') wins++;
+                else if (result === 'loss') losses++;
                 else draws++;
+
+                if (!game.roster || !game.gameLog) return;
+
+                const heimName = (game.settings?.teamNameHeim || game.teams?.heim || 'Heim').toLowerCase().trim();
+                const gastName = (game.settings?.teamNameGegner || game.teams?.gegner || 'Gegner').toLowerCase().trim();
+                const globalNameTrim = (globalMyTeamName || '').toLowerCase().trim();
+
+                // Robust Perspective Detection
+                const heimSideIsUsName = globalNameTrim !== '' && (heimName.includes(globalNameTrim) || globalNameTrim.includes(heimName));
+                const gastSideIsUsName = globalNameTrim !== '' && (gastName.includes(globalNameTrim) || globalNameTrim.includes(gastName));
+
+                // Heuristic: Check player overlap
+                const currRosterNums = new Set((spielstand.roster || []).map(p => String(p.number)));
+                const gameRosterNums = (game.roster || []).map(p => String(p.number));
+                const overlapCnt = gameRosterNums.filter(n => currRosterNums.has(n)).length;
+                const heimSideLooksUs = overlapCnt > 0 && overlapCnt >= (gameRosterNums.length / 2);
+
+                let weWereGast = false;
+                if (heimSideIsUsName && !gastSideIsUsName) {
+                    weWereGast = false;
+                } else if (gastSideIsUsName && !heimSideIsUsName) {
+                    weWereGast = true;
+                } else if (heimSideLooksUs) {
+                    weWereGast = false;
+                } else if (game.settings && game.settings.isAuswaertsspiel !== undefined) {
+                    weWereGast = !!game.settings.isAuswaertsspiel;
+                }
+                let myScore = weWereGast ? g : h;
+                let opponentScore = weWereGast ? h : g;
+
+                scored += myScore;
+                conceded += opponentScore;
+
                 const d = new Date(game.date).toLocaleDateString(undefined, { day: '2-digit', month: '2-digit' });
                 dates.push(d);
-                scoresHeim.push(h);
-                scoresGegner.push(g);
+                scoresHeim.push(myScore); // My Team
+                scoresGegner.push(opponentScore);
 
-                // Parse Stats
+                // --- DETAIL STATS (Scorers, Efficiency, Perspective) ---
+                const ourSideRecord = weWereGast ? 'gast' : 'heim';
+
                 const logs = game.gameLog || [];
                 const rost = game.roster || [];
+                const opps = game.knownOpponents || [];
 
+                // Update playerNames for OUR side with upgrade logic
+                const isGenericName = (n) => !n || n.toLowerCase().startsWith('gegner') || n.toLowerCase().startsWith('spieler');
+                const targetPlayers = (ourSideRecord === 'heim') ? rost : opps;
+
+                targetPlayers.forEach(p => {
+                    const pNum = p.number;
+                    // Only update if we don't have a name yet, OR if the current name is generic and we found a better one
+                    if (!playerNames[pNum] || (isGenericName(playerNames[pNum]) && !isGenericName(p.name))) {
+                        playerNames[pNum] = p.name;
+                    }
+                });
                 let gGoals = 0;
                 let gMisses = 0;
 
-                // Ensure we map names
-                rost.forEach(p => playerNames[p.number] = p.name);
-
                 logs.forEach(evt => {
-                    // Goals
-                    if (evt.action === 'Tor' || evt.action === '7m Tor') {
+                    const isGegnerSideAction = !!(evt.action?.startsWith('Gegner') || evt.gegnerNummer);
+                    const eventBelongsToOurSide = (ourSideRecord === 'gast') ? isGegnerSideAction : !isGegnerSideAction;
+
+                    if (!eventBelongsToOurSide) return;
+
+                    const actionLower = (evt.action || '').toLowerCase();
+                    const isGoal = actionLower.includes('tor') && !actionLower.includes('parade') && !actionLower.includes('gehalten');
+
+                    if (isGoal) {
                         gGoals++;
-                        if (evt.playerId) {
-                            playerGoals[evt.playerId] = (playerGoals[evt.playerId] || 0) + 1;
+                        // Use the appropriate number based on side
+                        const pId = isGegnerSideAction ? evt.gegnerNummer : evt.playerId;
+                        if (pId) {
+                            playerGoals[pId] = (playerGoals[pId] || 0) + 1;
+                            // Ensure there is at least a generic name if roster didn't have it
+                            if (!playerNames[pId]) {
+                                playerNames[pId] = `Spieler #${pId}`;
+                            }
                         }
                     }
-                    // Misses
-                    if (evt.action === 'Fehlwurf' || evt.action === '7m Verworfen' || evt.action === '7m Gehalten') {
+
+                    const isMiss = actionLower.includes('fehlwurf') || actionLower.includes('verworfen') ||
+                        actionLower.includes('vorbei') || actionLower.includes('gehalten');
+
+                    if (isMiss && !actionLower.includes('parade')) {
                         gMisses++;
                     }
                 });
@@ -537,9 +709,13 @@ function showDashboardInline() {
                 listContainer.innerHTML = lastGames.map(g => {
                     const h = g.score.heim;
                     const ga = g.score.gegner;
+
+                    // Use getGameResult to determine win/loss based on team name
+                    const result = getGameResult(g, spielstand.settings.myTeamName);
                     let badge = 'D', cls = 'draw';
-                    if (h > ga) { badge = 'W'; cls = 'win'; }
-                    if (h < ga) { badge = 'L'; cls = 'loss'; }
+                    if (result === 'win') { badge = 'W'; cls = 'win'; }
+                    if (result === 'loss') { badge = 'L'; cls = 'loss'; }
+
                     return `
                          <div class="last-result-item">
                              <div style="display:flex; align-items:center;">
@@ -554,21 +730,24 @@ function showDashboardInline() {
                 }).join('') || '<div style="text-align:center; color:var(--text-muted);">Keine Spiele</div>';
             }
 
-            // Defaults for Shadcn look
-            Chart.defaults.font.family = "Inter, sans-serif";
-            Chart.defaults.color = "#94a3b8";
-            Chart.defaults.scale.grid.color = "#1e293b"; // Subtler grid for dark mode, or make transparent
-            Chart.defaults.scale.grid.display = false; // Shadcn often hides grids
+            // Common Animation Property Object
+            const animOptions = {
+                duration: 1000,
+                easing: 'easeOutQuart'
+            };
 
-            // Common Chart Config
-            const chartConfig = (type, data, options) => ({
-                type,
-                data,
-                options: {
-                    ...options,
+            // Helper to get consistent shadcn-like options
+            const getBaseOptions = (type, extra = {}) => {
+                const { plugins: extraPlugins, ...otherExtra } = extra;
+
+                return {
                     responsive: true,
                     maintainAspectRatio: false,
-                    animation: false,
+                    animation: (type === 'doughnut' || type === 'pie') ? false : {
+                        ...animOptions,
+                        animateRotate: true,
+                        animateScale: true
+                    },
                     plugins: {
                         legend: { display: false },
                         tooltip: {
@@ -579,39 +758,97 @@ function showDashboardInline() {
                             borderWidth: 1,
                             padding: 10,
                             cornerRadius: 6,
-                            displayColors: true,
                             boxPadding: 4
                         },
-                        ...options.plugins
-                    }
+                        ...extraPlugins
+                    },
+                    ...otherExtra
+                };
+            };
+
+            // Reusable Center Text Plugin
+            const commonCenterTextPlugin = {
+                id: 'centerText',
+                beforeDraw: function (chart) {
+                    if (chart.config.type !== 'doughnut') return;
+                    const pluginData = chart.config.options.plugins?.centerTextData;
+                    if (!pluginData) return;
+
+                    const { width, height, ctx } = chart;
+                    ctx.save();
+
+                    // Scaling font size
+                    const fontSize = (height / 120).toFixed(2);
+                    ctx.font = "800 " + fontSize + "em Inter, sans-serif";
+
+                    const fgVar = getComputedStyle(document.body).getPropertyValue('--foreground').trim();
+                    ctx.fillStyle = fgVar ? `hsl(${fgVar})` : '#ffffff';
+                    ctx.textBaseline = "middle";
+                    ctx.textAlign = "center";
+
+                    const text = pluginData.text || '';
+
+                    // Draw Number (slightly raised)
+                    ctx.fillText(text, width / 2, height / 2 - 10);
+
+                    // Draw Label (slightly lowered)
+                    const labelFontSize = (height / 280).toFixed(2);
+                    ctx.font = "500 " + labelFontSize + "em Inter, sans-serif";
+
+                    const mutedVar = getComputedStyle(document.body).getPropertyValue('--muted-foreground').trim();
+                    ctx.fillStyle = mutedVar ? `hsl(${mutedVar})` : '#94a3b8';
+                    ctx.fillText(pluginData.subText || '', width / 2, height / 2 + 15);
+                    ctx.restore();
                 }
-            });
+            };
 
             // 2. Matches Doughnut
             const ctxM = document.getElementById('dashMatchesChart');
-            if (ctxM) createChart(ctxM, chartConfig('doughnut', {
-                labels: ['Sieg', 'Unentschieden', 'Niederlage'],
-                datasets: [{
-                    data: [wins, draws, losses],
-                    backgroundColor: [colors.green, colors.draw, colors.red],
-                    borderWidth: 0
-                }]
-            }, {
-                cutout: '75%' // Thinner ring
-            }));
+            if (ctxM) createChart(ctxM, {
+                type: 'doughnut',
+                data: {
+                    labels: ['Sieg', 'Unentschieden', 'Niederlage'],
+                    datasets: [{
+                        data: [wins, draws, losses],
+                        backgroundColor: [colors.green, colors.draw, colors.red],
+                        borderWidth: 0
+                    }]
+                },
+                plugins: [commonCenterTextPlugin],
+                options: getBaseOptions('doughnut', {
+                    cutout: '70%',
+                    plugins: {
+                        centerTextData: {
+                            text: (wins + draws + losses).toString(),
+                            subText: 'Spiele'
+                        }
+                    }
+                })
+            });
 
             // 3. Goals Doughnut
             const ctxG = document.getElementById('dashGoalsChart');
-            if (ctxG) createChart(ctxG, chartConfig('doughnut', {
-                labels: ['Erzielt', 'Kassiert'],
-                datasets: [{
-                    data: [scored, conceded],
-                    backgroundColor: [colors.green, colors.red],
-                    borderWidth: 0
-                }]
-            }, {
-                cutout: '75%'
-            }));
+            if (ctxG) createChart(ctxG, {
+                type: 'doughnut',
+                data: {
+                    labels: ['Erzielt', 'Kassiert'],
+                    datasets: [{
+                        data: [scored, conceded],
+                        backgroundColor: [colors.green, colors.red],
+                        borderWidth: 0
+                    }]
+                },
+                plugins: [commonCenterTextPlugin],
+                options: getBaseOptions('doughnut', {
+                    cutout: '70%',
+                    plugins: {
+                        centerTextData: {
+                            text: (scored + conceded).toString(),
+                            subText: 'Tore'
+                        }
+                    }
+                })
+            });
 
             // 4. Scorers Pie
             const ctxScorers = document.getElementById('dashScorersChart');
@@ -637,22 +874,19 @@ function showDashboardInline() {
 
                     const totalGoals = sortedData.reduce((a, b) => a + b, 0);
 
-                    // Add center text plugin manually
+                    // Add center text plugin manually (restored as requested)
                     const centerTextPlugin = {
                         id: 'centerText',
                         beforeDraw: function (chart) {
                             if (chart.config.type !== 'doughnut') return;
-                            const width = chart.width,
-                                height = chart.height,
-                                ctx = chart.ctx;
+                            const { width, height, ctx } = chart;
+                            ctx.save();
 
-                            ctx.restore();
                             // Scaling font size
                             const fontSize = (height / 120).toFixed(2);
                             ctx.font = "800 " + fontSize + "em Inter, sans-serif";
-                            // Dynamically get foreground color (requires wrapping in hsl() because vars are just numbers)
+
                             const fgVar = getComputedStyle(document.body).getPropertyValue('--foreground').trim();
-                            // If fgVar exists, wrap it in hsl(), otherwise fallback to white
                             ctx.fillStyle = fgVar ? `hsl(${fgVar})` : '#ffffff';
                             ctx.textBaseline = "middle";
                             ctx.textAlign = "center";
@@ -666,11 +900,10 @@ function showDashboardInline() {
                             const labelFontSize = (height / 280).toFixed(2);
                             ctx.font = "500 " + labelFontSize + "em Inter, sans-serif";
 
-                            // Dynamic muted color
                             const mutedVar = getComputedStyle(document.body).getPropertyValue('--muted-foreground').trim();
                             ctx.fillStyle = mutedVar ? `hsl(${mutedVar})` : '#94a3b8';
                             ctx.fillText("Tore", width / 2, height / 2 + 15);
-                            ctx.save();
+                            ctx.restore();
                         }
                     };
 
@@ -686,26 +919,9 @@ function showDashboardInline() {
                             }]
                         },
                         plugins: [centerTextPlugin],
-                        options: {
-                            responsive: true,
-                            maintainAspectRatio: false,
-                            animation: false,
-                            cutout: '60%',
-                            plugins: {
-                                legend: { display: false },
-                                tooltip: {
-                                    backgroundColor: 'rgba(15, 23, 42, 0.95)',
-                                    titleColor: '#f1f5f9',
-                                    bodyColor: '#e2e8f0',
-                                    borderColor: 'rgba(148, 163, 184, 0.1)',
-                                    borderWidth: 1,
-                                    padding: 10,
-                                    cornerRadius: 6,
-                                    displayColors: true,
-                                    boxPadding: 4
-                                }
-                            }
-                        }
+                        options: getBaseOptions('doughnut', {
+                            cutout: '60%'
+                        })
                     });
                     dashboardCharts.push(c);
                 }
@@ -742,11 +958,8 @@ function showDashboardInline() {
                             }
                         ]
                     },
-                    options: {
-                        responsive: true,
-                        maintainAspectRatio: false,
+                    options: getBaseOptions('line', {
                         interaction: { mode: 'index', intersect: false },
-                        plugins: { legend: { display: false } }, // Shadcn style usually minimal legend
                         scales: {
                             x: {
                                 grid: { display: false },
@@ -759,29 +972,35 @@ function showDashboardInline() {
                                 ticks: { stepSize: 5, color: '#64748b' }
                             }
                         }
-                    }
+                    })
                 });
             }
 
-            // 6. Efficiency Total (Bar - Horizontal)
+            // 6. Efficiency Total (Doughnut)
             const ctxEffTot = document.getElementById('dashEffTotalChart');
             if (ctxEffTot) {
                 createChart(ctxEffTot, {
-                    type: 'bar',
+                    type: 'doughnut',
                     data: {
-                        labels: ['Verteilung'],
+                        labels: ['Treffer', 'Fehlwürfe'],
                         datasets: [
-                            { label: 'Treffer', data: [totalStatsGoals], backgroundColor: colors.green, borderRadius: 4, barThickness: 20 },
-                            { label: 'Fehlwürfe', data: [totalStatsMisses], backgroundColor: colors.red, borderRadius: 4, barThickness: 20 }
+                            {
+                                data: [totalStatsGoals, totalStatsMisses],
+                                backgroundColor: [colors.green, colors.red],
+                                borderWidth: 0
+                            }
                         ]
                     },
-                    options: {
-                        indexAxis: 'y',
-                        responsive: true,
-                        maintainAspectRatio: false,
-                        scales: { x: { display: false, stacked: true }, y: { display: false, stacked: true } },
-                        plugins: { legend: { position: 'top', align: 'start', labels: { boxWidth: 8, usePointStyle: true } } }
-                    }
+                    plugins: [commonCenterTextPlugin],
+                    options: getBaseOptions('doughnut', {
+                        cutout: '70%',
+                        plugins: {
+                            centerTextData: {
+                                text: (totalStatsGoals + totalStatsMisses).toString(),
+                                subText: 'Würfe'
+                            }
+                        }
+                    })
                 });
             }
 
@@ -800,19 +1019,16 @@ function showDashboardInline() {
                             barPercentage: 0.6
                         }]
                     },
-                    options: {
-                        responsive: true,
-                        maintainAspectRatio: false,
-                        plugins: { legend: { display: false } },
+                    options: getBaseOptions('bar', {
                         scales: {
                             x: { grid: { display: false }, ticks: { display: false } },
                             y: { display: false, min: 0, max: 100 }
                         }
-                    }
+                    })
                 });
             }
         }
-    }, 50);
+    }, 250);
 
     dashboardBereich.classList.remove('versteckt');
 }
@@ -954,27 +1170,33 @@ function showSeasonHeatmapInline() {
         const playerSelect = seasonHeatmapBereich.querySelector('#seasonHeatmapPlayerSelect');
 
         if (teamSelect) {
-            teamSelect.addEventListener('change', () => {
+            teamSelect.addEventListener('change', (e) => {
                 // Reset player selection when team changes
                 if (playerSelect) playerSelect.value = 'all';
-                // Reset context to ensure dropdown selections work
+                // Always reset context on manual user change
                 import('./modules/heatmap.js').then(heatmap => {
                     heatmap.setCurrentHeatmapContext('season');
-                    // Reset title
-                    const h1 = document.querySelector('.heatmap-view-header h1');
-                    if (h1) h1.textContent = 'Saison-Heatmap';
+                    // Reset title (only for Season Heatmap)
+                    const seasonBereich = document.getElementById('seasonHeatmapBereich');
+                    if (seasonBereich) {
+                        const h1 = seasonBereich.querySelector('.heatmap-view-header h1');
+                        if (h1) h1.textContent = 'Saison-Heatmap';
+                    }
                     renderSeasonHeatmap();
                 });
             });
         }
         if (playerSelect) {
             playerSelect.addEventListener('change', () => {
-                // Reset context to ensure dropdown selections work
+                // Always reset context on manual user change
                 import('./modules/heatmap.js').then(heatmap => {
                     heatmap.setCurrentHeatmapContext('season');
-                    // Reset title
-                    const h1 = document.querySelector('.heatmap-view-header h1');
-                    if (h1) h1.textContent = 'Saison-Heatmap';
+                    // Reset title (only for Season Heatmap)
+                    const seasonBereich = document.getElementById('seasonHeatmapBereich');
+                    if (seasonBereich) {
+                        const h1 = seasonBereich.querySelector('.heatmap-view-header h1');
+                        if (h1) h1.textContent = 'Saison-Heatmap';
+                    }
                     renderSeasonHeatmap();
                 });
             });
@@ -984,28 +1206,154 @@ function showSeasonHeatmapInline() {
     seasonHeatmapBereich.classList.remove('versteckt');
 
     // Set initial context and state
-    import('./modules/heatmap.js').then(heatmap => {
-        const existingContext = heatmap.getCurrentHeatmapContext();
-        let useSeasonDefault = true;
+    import('./modules/seasonView.js').then(seasonView => {
+        import('./modules/heatmap.js').then(heatmap => {
+            const existingContext = heatmap.getCurrentHeatmapContext();
+            let useSeasonDefault = true;
 
-        if (existingContext && typeof existingContext === 'object' && existingContext.type === 'season-specific') {
-            useSeasonDefault = false;
-        }
+            if (existingContext && typeof existingContext === 'object' && (existingContext.type === 'season-specific' || existingContext.type === 'history-specific')) {
+                useSeasonDefault = false;
 
-        if (useSeasonDefault) {
-            heatmap.setCurrentHeatmapContext('season');
-            heatmap.setCurrentHeatmapTab('tor');
+                // Set dropdowns and filters based on context
+                const teamSelect = seasonHeatmapBereich.querySelector('#seasonHeatmapTeamSelect');
+                const playerSelect = seasonHeatmapBereich.querySelector('#seasonHeatmapPlayerSelect');
 
-            // Reset Tabs UI
-            const tabButtons = seasonHeatmapBereich.querySelectorAll('.heatmap-tab');
-            if (tabButtons.length > 0) {
-                tabButtons.forEach(b => b.classList.remove('active'));
-                const torTab = seasonHeatmapBereich.querySelector('[data-tab="tor"]');
-                if (torTab) torTab.classList.add('active');
+                // Set filter checkboxes based on context
+                if (existingContext.initialFilters) {
+                    const toreFilter = seasonHeatmapBereich.querySelector('#seasonHeatmapToreFilter');
+                    const sevenMFilter = seasonHeatmapBereich.querySelector('#seasonHeatmap7mFilter');
+                    const missedFilter = seasonHeatmapBereich.querySelector('#seasonHeatmapMissedFilter');
+
+                    if (toreFilter) toreFilter.checked = existingContext.initialFilters.tore;
+                    if (sevenMFilter) sevenMFilter.checked = existingContext.initialFilters.seven_m;
+                    if (missedFilter) missedFilter.checked = existingContext.initialFilters.missed;
+                }
+
+                // Set dropdowns immediately (no setTimeout needed)
+                if (teamSelect && playerSelect && existingContext.filter) {
+                    const requestedTeam = existingContext.filter.team;
+                    let team = requestedTeam === 'heim' ? 'Heim' : requestedTeam;
+
+                    // Match normalized team name to existing summary data
+                    const summary = seasonView.getSeasonSummary();
+
+                    const normalize = (name) => {
+                        if (!name) return '';
+                        return name.toLowerCase().trim().replace(/^(tv|sg|hsg|tsv|sv|tus|sc)\b\s*/, '');
+                    };
+                    const normRequested = normalize(team);
+
+                    if (summary && team !== 'Heim') {
+                        const match = summary.players.find(p => p.team !== 'Heim' && normalize(p.team) === normRequested);
+                        if (match) {
+                            team = match.team;
+                        }
+                    }
+
+
+
+                    // Set team dropdown (even if option doesn't exist yet, renderSeasonHeatmap will populate)
+                    // But we need to populate it first if it's empty
+
+                    if (summary && teamSelect.options.length <= 1) {
+                        const teams = new Set();
+                        summary.players.forEach(p => teams.add(p.team || 'Heim'));
+
+                        const optOpp = document.createElement('option');
+                        optOpp.value = 'all_opponents';
+                        optOpp.textContent = 'Alle Gegner';
+                        teamSelect.appendChild(optOpp);
+
+                        const sortedTeams = Array.from(teams).sort((a, b) => {
+                            if (a === 'Heim') return -1;
+                            if (b === 'Heim') return 1;
+                            return a.localeCompare(b);
+                        });
+
+                        const myLabel = spielstand.settings.myTeamName || spielstand.settings.teamNameHeim || 'Heim';
+
+                        sortedTeams.forEach(t => {
+                            const opt = document.createElement('option');
+                            opt.value = t;
+                            opt.textContent = t === 'Heim' ? myLabel : t;
+                            teamSelect.appendChild(opt);
+                        });
+                    } else if (summary && team !== 'Heim' && team !== 'all' && team !== 'all_opponents') {
+                        // Dropdown already has options, but check if this specific team exists
+                        const teamOption = teamSelect.querySelector(`option[value="${team}"]`);
+                        if (!teamOption) {
+                            // Add the missing team option
+                            const opt = document.createElement('option');
+                            opt.value = team;
+                            opt.textContent = team;
+                            teamSelect.appendChild(opt);
+                        }
+                    }
+
+                    teamSelect.value = team;
+
+                    // Manually populate player dropdown (dispatchEvent doesn't work)
+
+                    if (summary) {
+                        const filteredPlayers = summary.players.filter(p => {
+                            if (team === 'all') return true;
+                            if (team === 'all_opponents') return p.team !== 'Heim';
+                            return p.team === team;
+                        });
+
+                        filteredPlayers.sort((a, b) => (a.number || 0) - (b.number || 0));
+
+                        playerSelect.innerHTML = '<option value="all">Alle Spieler</option>';
+                        filteredPlayers.forEach(p => {
+                            const opt = document.createElement('option');
+                            opt.value = `${p.team}|${p.number}`;
+                            let labelName = p.name || '';
+                            if (p.team !== 'Heim' && (!labelName || labelName.toLowerCase().startsWith('gegner'))) {
+                                labelName = labelName ? `${labelName} (${p.team})` : `(${p.team})`;
+                            }
+                            opt.textContent = `#${p.number} ${labelName}`;
+                            playerSelect.appendChild(opt);
+                        });
+
+
+                        // Set the selected player after DOM update
+                        setTimeout(() => {
+                            if (existingContext.filter.player) {
+                                const playerValue = `${team}|${existingContext.filter.player}`;
+                                const playerOption = playerSelect.querySelector(`option[value="${playerValue}"]`);
+                                if (playerOption) {
+                                    playerSelect.value = playerValue;
+                                } else {
+                                    // Player not found in list - reset to 'all'
+                                    playerSelect.value = 'all';
+                                    console.warn(`Player ${playerValue} not found in dropdown`);
+                                }
+                            } else {
+                                playerSelect.value = 'all';
+                            }
+
+                            // Set lastContext to sync with renderSeasonHeatmap logic
+                            playerSelect.dataset.lastContext = `team:${team}`;
+                        }, 50);
+                    }
+                }
             }
-        }
 
-        renderSeasonHeatmap();
+            if (useSeasonDefault) {
+                heatmap.setCurrentHeatmapContext('season');
+                heatmap.setCurrentHeatmapTab('tor');
+
+                // Reset Tabs UI
+                const tabButtons = seasonHeatmapBereich.querySelectorAll('.heatmap-tab');
+                if (tabButtons.length > 0) {
+                    tabButtons.forEach(b => b.classList.remove('active'));
+                    const torTab = seasonHeatmapBereich.querySelector('[data-tab="tor"]');
+                    if (torTab) torTab.classList.add('active');
+                }
+            }
+
+            renderSeasonHeatmap();
+        });
     });
 }
 
@@ -1018,45 +1366,36 @@ function renderSeasonHeatmap() {
 
             // Toggle controls visibility based on context
             const controls = document.querySelector('.heatmap-controls');
-            const isSpecificContext = context && typeof context === 'object' && context.type === 'season-specific' && context.log;
+            const isSpecificContext = context && typeof context === 'object' && (context.type === 'season-specific' || context.type === 'history-specific') && context.log;
 
             if (controls) {
-                controls.style.display = isSpecificContext ? 'none' : 'flex';
+                // Keep controls visible so users see the selection, but maybe style it?
+                // For now, let's just make sure they are flex.
+                controls.style.display = 'flex';
             }
 
             // If specific context provided (from Team/Player Grafik click), render it directly
             if (isSpecificContext) {
-                heatmap.renderHeatmap(svg, context.log);
+                // Pass filter if available in context
+                heatmap.renderHeatmap(svg, context.log, true, context.filter);
 
-                // Update title if available
                 if (context.title) {
-                    const h1 = document.querySelector('.heatmap-view-header h1');
+                    const seasonBereich = document.getElementById('seasonHeatmapBereich');
+                    const h1 = seasonBereich?.querySelector('.heatmap-view-header h1');
                     if (h1) h1.textContent = context.title;
                 }
+
                 return;
             }
 
             // Default: Aggregate all season data
-            const h1 = document.querySelector('.heatmap-view-header h1');
             const teamSelect = document.getElementById('seasonHeatmapTeamSelect');
             const playerSelect = document.getElementById('seasonHeatmapPlayerSelect');
 
             const selectedTeam = teamSelect ? teamSelect.value : 'all';
             const selectedPlayerVal = playerSelect ? playerSelect.value : 'all';
 
-            // Optional: Update title based on selection
-            if (h1 && !context.title) {
-                if (selectedPlayerVal !== 'all') {
-                    const opt = playerSelect.options[playerSelect.selectedIndex];
-                    h1.textContent = opt ? `Saison: ${opt.textContent}` : 'Saison-Heatmap';
-                } else if (selectedTeam === 'all_opponents') {
-                    h1.textContent = 'Saison: Alle Gegner';
-                } else if (selectedTeam !== 'all') {
-                    h1.textContent = `Saison: ${selectedTeam === 'Heim' ? (spielstand.settings.teamNameHeim || 'Heim') : selectedTeam}`;
-                } else {
-                    h1.textContent = 'Saison-Heatmap';
-                }
-            }
+            // Title remains static as "Saison-Heatmap" (not dynamically updated)
 
             const summary = seasonView.getSeasonSummary();
             if (!summary) return;
@@ -1081,10 +1420,12 @@ function renderSeasonHeatmap() {
                         return a.localeCompare(b);
                     });
 
+                    const myLabel = spielstand.settings.myTeamName || spielstand.settings.teamNameHeim || 'Heim';
+
                     sortedTeams.forEach(team => {
                         const opt = document.createElement('option');
                         opt.value = team;
-                        opt.textContent = team === 'Heim' ? (spielstand.settings.teamNameHeim || 'Heim') : team;
+                        opt.textContent = team === 'Heim' ? myLabel : team;
                         teamSelect.appendChild(opt);
                     });
                 }
@@ -1178,9 +1519,17 @@ function showShotsInline() {
                 const isOpponent = playerData.isOpponent || false;
 
                 playerData.wuerfe.forEach(w => {
-                    if (w.color === 'yellow') gehalten++;
-                    else if (w.color === 'gray') vorbei++;
-                    else tore++;
+                    const act = (w.action || "").toLowerCase();
+                    const isSave = act.includes('gehalten') || act.includes('parade') || (w.isSave === true) || (w.color === 'yellow');
+                    const isMiss = act.includes('vorbei') || act.includes('verworfen') || act.includes('fehlwurf') || (w.color === 'gray');
+
+                    if (isSave) {
+                        gehalten++;
+                    } else if (isMiss) {
+                        vorbei++;
+                    } else if (!isSave && !isMiss && act.includes('tor')) {
+                        tore++;
+                    }
                 });
 
                 const totalWuerfe = tore + gehalten + vorbei;
@@ -1188,21 +1537,40 @@ function showShotsInline() {
 
                 const infoDiv = document.createElement('div');
                 infoDiv.className = 'player-shot-info';
-                infoDiv.innerHTML = `<strong>#${playerData.nummer} ${playerData.name}${is7m ? ' (7m)' : ''}</strong>${tore} Tore${gehalten > 0 ? `, ${gehalten} Geh.` : ''}${vorbei > 0 ? `, ${vorbei} Vorb.` : ''} <strong>(${quote}%)</strong>`;
+                infoDiv.innerHTML = `<strong>#${playerData.number} ${playerData.name}${is7m ? ' (7m)' : ''}</strong>${tore} Tore${gehalten > 0 ? `, ${gehalten} Geh.` : ''}${vorbei > 0 ? `, ${vorbei} Vorb.` : ''} <strong>(${quote}%)</strong>`;
                 div.appendChild(infoDiv);
 
                 const hasWurfposition = is7m ? false : playerData.wuerfe.some(w => w.wurfposition);
                 const hasWurfbild = playerData.wuerfe.some(w => w.x && w.y);
 
-                const pointsTor = playerData.wuerfe.filter(w => w.x && w.y).map(w => ({
-                    x: parseFloat(w.x), y: parseFloat(w.y), isOpponent,
-                    isMiss: w.color === 'gray' || w.action === 'Fehlwurf' || w.action?.includes('Verworfen')
-                }));
+                const mapWurfToPoint = (w) => {
+                    const act = (w.action || "").toLowerCase();
+                    const isSave = act.includes('gehalten') || act.includes('parade') || (w.isSave === true) || (w.color === 'yellow');
+                    const isMiss = act.includes('vorbei') || act.includes('verworfen') || act.includes('fehlwurf') || (w.color === 'gray');
+                    const isGoal = !isSave && !isMiss && act.includes('tor');
 
-                const pointsFeld = playerData.wuerfe.filter(w => w.wurfposition).map(w => ({
-                    x: parseFloat(w.wurfposition.x), y: parseFloat(w.wurfposition.y), isOpponent,
-                    isMiss: w.color === 'gray' || w.action === 'Fehlwurf' || w.action?.includes('Verworfen')
-                }));
+                    return {
+                        x: parseFloat(w.x || (w.wurfposition ? w.wurfposition.x : 0)),
+                        y: parseFloat(w.y || (w.wurfposition ? w.wurfposition.y : 0)),
+                        isOpponent: isOpponent,
+                        isGoal: isGoal,
+                        isMiss: isMiss || isSave,
+                        isSave: isSave
+                    };
+                };
+
+                const pointsTor = playerData.wuerfe.filter(w => w.x && w.y).map(w => {
+                    const p = mapWurfToPoint(w);
+                    p.x = parseFloat(w.x);
+                    p.y = parseFloat(w.y);
+                    return p;
+                });
+                const pointsFeld = playerData.wuerfe.filter(w => w.wurfposition).map(w => {
+                    const p = mapWurfToPoint(w);
+                    p.x = parseFloat(w.wurfposition.x);
+                    p.y = parseFloat(w.wurfposition.y);
+                    return p;
+                });
 
                 const prefix = 'wb_' + (playerData.number || '0') + (isOpponent ? 'opp' : 'hm');
                 let svgContent = '';
@@ -1231,7 +1599,8 @@ function showShotsInline() {
                             const fx = 10 + (parseFloat(w.wurfposition.x) / 100) * 280;
                             const fy = 10 + (parseFloat(w.wurfposition.y) / 100) * 380 + yOffsetField;
 
-                            const isMiss = w.color === 'gray' || w.action === 'Fehlwurf';
+                            const act = (w.action || "").toLowerCase();
+                            const isMiss = w.color === 'gray' || act.includes('vorbei') || act.includes('verworfen') || act.includes('fehlwurf') || act.includes('gehalten') || act.includes('parade') || w.isSave;
                             const color = isMiss ? 'rgba(108, 117, 125, 0.5)' : (isOpponent ? 'rgba(13, 110, 253, 0.5)' : 'rgba(220, 53, 69, 0.5)');
                             linesContent += `<line x1="${fx}" y1="${fy}" x2="${gx}" y2="${gy}" stroke="${color}" stroke-width="2" />`;
                         }
@@ -1275,7 +1644,7 @@ function showShotsInline() {
                 h4.textContent = spielstand.settings.teamNameHeim;
                 h4.style.marginLeft = '10px';
                 shotsContent.appendChild(h4);
-                wurfbilder.heim.sort((a, b) => a.nummer - b.nummer).forEach(p => shotsContent.appendChild(renderPlayerGroup(p)));
+                wurfbilder.heim.sort((a, b) => a.number - b.number).forEach(p => shotsContent.appendChild(renderPlayerGroup(p)));
             }
 
             if (wurfbilder.heim7m && wurfbilder.heim7m.length > 0) {
@@ -1283,7 +1652,7 @@ function showShotsInline() {
                 h4.textContent = spielstand.settings.teamNameHeim + " (7m)";
                 h4.style.marginLeft = '10px';
                 shotsContent.appendChild(h4);
-                wurfbilder.heim7m.sort((a, b) => a.nummer - b.nummer).forEach(p => shotsContent.appendChild(renderPlayerGroup(p, true)));
+                wurfbilder.heim7m.sort((a, b) => a.number - b.number).forEach(p => shotsContent.appendChild(renderPlayerGroup(p, true)));
             }
 
             if (wurfbilder.gegner.length > 0) {
@@ -1291,7 +1660,7 @@ function showShotsInline() {
                 h4.textContent = spielstand.settings.teamNameGegner + " (Feldtore)";
                 h4.style.marginLeft = '10px';
                 shotsContent.appendChild(h4);
-                wurfbilder.gegner.sort((a, b) => a.nummer - b.nummer).forEach(p => shotsContent.appendChild(renderPlayerGroup(p)));
+                wurfbilder.gegner.sort((a, b) => a.number - b.number).forEach(p => shotsContent.appendChild(renderPlayerGroup(p)));
             }
 
             if (wurfbilder.gegner7m.length > 0) {
@@ -1299,7 +1668,7 @@ function showShotsInline() {
                 h4.textContent = "Gegner 7m";
                 h4.style.marginLeft = '10px';
                 shotsContent.appendChild(h4);
-                wurfbilder.gegner7m.sort((a, b) => a.nummer - b.nummer).forEach(p => shotsContent.appendChild(renderPlayerGroup(p, true)));
+                wurfbilder.gegner7m.sort((a, b) => a.number - b.number).forEach(p => shotsContent.appendChild(renderPlayerGroup(p, true)));
             }
 
             if (wurfbilder.heim.length === 0 && (!wurfbilder.heim7m || wurfbilder.heim7m.length === 0) && wurfbilder.gegner.length === 0 && wurfbilder.gegner7m.length === 0) {
@@ -1390,8 +1759,7 @@ function showLiveHeatmapInline() {
 
 function showSettingsInline() {
     settingsBereich.classList.remove('versteckt');
-    // Ensure values are fresh
-    if (toggleAuswaertsspiel) toggleAuswaertsspiel.checked = spielstand.settings.isAuswaertsspiel;
+    // Settings values are managed by initApp
 }
 
 function hideAllSections() {
@@ -1448,8 +1816,25 @@ registerEventListeners();
 initApp();
 initSidebar();
 
-// --- Initial Sidebar Timer State ---
-const initialView = document.querySelector('.nav-item.active')?.dataset.view || 'roster';
+// --- Initial View State ---
+let initialView = 'dashboard';
+if (spielstand.uiState === 'game') {
+    initialView = 'game';
+} else {
+    initialView = document.querySelector('.nav-item.active')?.dataset.view || 'dashboard';
+}
+
+// Ensure correct item is active in sidebar
+const navItems = document.querySelectorAll('.nav-item');
+navItems.forEach(i => {
+    if (i.dataset.view === initialView) {
+        i.classList.add('active');
+    } else {
+        i.classList.remove('active');
+    }
+});
+
+navigateToView(initialView);
 updateSidebarTimerVisibility(initialView);
 
 

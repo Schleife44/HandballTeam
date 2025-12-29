@@ -188,13 +188,14 @@ button:disabled {
 /* Shadcn-specific classes used in index.html */
 /* We use higher specificity (button.) to override the too-broad button selector */
 button.shadcn-btn-primary {
-    background-color: hsl(var(--primary));
-    color: hsl(var(--primary-foreground));
+    background-color: var(--heim-color, #dc3545);
+    /* Text color contrasts with the team color background */
+    color: var(--heim-text-color, white);
     border: none;
 }
 
 button.shadcn-btn-primary:hover {
-    background-color: hsl(var(--primary) / 0.9);
+    opacity: 0.9;
 }
 
 button.shadcn-btn-secondary {
@@ -216,6 +217,26 @@ button.shadcn-btn-outline {
 button.shadcn-btn-outline:hover {
     background-color: hsl(var(--accent));
     color: hsl(var(--accent-foreground));
+}
+
+button.shadcn-btn-white {
+    background-color: white;
+    color: black;
+    border: 1px solid #e5e7eb;
+}
+
+button.shadcn-btn-white:hover {
+    background-color: #f9fafb;
+}
+
+button.shadcn-btn-red {
+    background-color: #dc2626;
+    color: white;
+    border: none;
+}
+
+button.shadcn-btn-red:hover {
+    background-color: #b91c1c;
 }
 
 button.shadcn-btn-ghost {
@@ -435,7 +456,8 @@ textarea:focus {
 #main-content {
     margin-left: 200px;
     min-height: 100vh;
-    padding: 2rem;
+    padding: 1rem;
+    padding-top: 3rem;
     transition: margin-left 0.3s;
 }
 
@@ -547,8 +569,8 @@ textarea:focus {
     width: 100%;
     max-width: 900px;
     /* Reduced from 1200px to constrain width */
-    margin-bottom: 3rem;
-    /* Added extra space bottom */
+    margin-bottom: 1rem;
+    /* Reduced from 3rem to prevent scrolling */
 }
 
 /* Responsive Grid */
@@ -647,13 +669,13 @@ textarea:focus {
 
     /* Default Colors (Home/Red) */
     background-color: #d81b1b;
-    color: white;
+    color: var(--heim-text-color, white);
 }
 
 .spieler-button.gegner-button {
-    background-color: #2563eb;
+    background-color: var(--gegner-color, #2563eb);
     /* Blue for Opponent */
-    color: white;
+    color: var(--gegner-text-color, white);
 }
 
 /* Specific override for Add Button */
@@ -686,9 +708,9 @@ textarea:focus {
 
 /* Keep distinct colors for Team/Opponent buttons as they are functional context */
 .spieler-button:not(.gegner-button):not(.add-player-button) {
-    background-color: hsl(var(--destructive));
+    background-color: var(--heim-color, #dc3545);
     /* Usually Home is Red in this app */
-    color: #fff;
+    color: var(--heim-text-color, #fff);
 }
 
 .gegner-button {
@@ -2027,4 +2049,12 @@ body.dark-mode .heatmap-tab.white-style:not(.active) {
     text-align: left;
     white-space: normal;
     word-break: break-word;
+}
+
+/* Log Entry Styling */
+.log-entry.tor,
+.log-entry.gegner-tor,
+.log-entry.strafe,
+.log-entry.gehalten {
+    border-left: none;
 }

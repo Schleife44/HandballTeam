@@ -26,8 +26,7 @@ let istGegnerAktion = false;
 let aktuelleGegnernummer = null;
 
 export function setSteuerungAktiv(aktiv) {
-    const spielerButtons = document.querySelectorAll('.spieler-button');
-    spielerButtons.forEach(btn => btn.disabled = !aktiv);
+    // Player buttons are always enabled - removed: spielerButtons.forEach(btn => btn.disabled = !aktiv);
 
     heimScoreUp.disabled = !aktiv;
     heimScoreDown.disabled = !aktiv;
@@ -255,8 +254,12 @@ export function oeffneGegnerAktionsMenue(gegnernummer) {
     istGegnerAktion = true;
     aktuelleGegnernummer = gegnernummer;
     aktuellerSpielerIndex = null;
-    // Öffne UI mit Anzeige der Gegnernummer
-    const player = { number: gegnernummer, name: `Gegner #${gegnernummer}` };
+
+    // Lookup existing opponent to get isGoalkeeper status
+    const num = parseInt(gegnernummer, 10);
+    const existingOpponent = spielstand.knownOpponents.find(o => parseInt(o.number, 10) === num);
+    const player = existingOpponent || { number: num, name: `Gegner #${num}` };
+
     oeffneAktionsMenueUI(null, player);
 }
 
@@ -277,6 +280,34 @@ export function logAktion(aktion, kommentar = null) {
     if (istGegnerAktion && aktuelleGegnernummer) {
         handleGegnerAktion(aktion, kommentar);
         return;
+    }
+
+    // Retrospektive Parade-Logik
+    if (aktion === "Parade") {
+        let success = false;
+        if (spielstand.gameLog.length > 0) {
+            const lastEntry = spielstand.gameLog[0];
+            // Prüfe, ob der letzte Eintrag ein vergebener Wurf des Gegners war
+            if (lastEntry.action === "Gegner Wurf Vorbei") {
+                lastEntry.action = "Gegner Wurf Gehalten";
+                if (lastEntry.wurfbild) {
+                    lastEntry.wurfbild.isSave = true;
+                }
+                success = true;
+            } else if (lastEntry.action === "Gegner 7m Verworfen") {
+                lastEntry.action = "Gegner 7m Gehalten";
+                if (lastEntry.wurfbild) {
+                    lastEntry.wurfbild.isSave = true;
+                }
+                success = true;
+            }
+        }
+
+        if (!success) {
+            customAlert("Zuvor war kein passender Fehlwurf des Gegners! Die Parade kann nicht zugeordnet werden.", "Fehlende Aktion");
+            schliesseAktionsMenue();
+            return;
+        }
     }
 
     // Behandle 7m-Aktion - zeige zuerst Ergebnis-Modal
@@ -382,6 +413,32 @@ function handleGegnerAktion(aktion, kommentar) {
             remaining: 120
         });
         updateSuspensionDisplay();
+    } else if (aktion === "Parade") {
+        mappedAction = "Gegner Parade";
+        let success = false;
+        // Retrospektive Logik: Finde den letzten Wurf des Heim-Teams
+        if (spielstand.gameLog.length > 0) {
+            const lastEntry = spielstand.gameLog[0];
+            if (lastEntry.action === "Fehlwurf") {
+                lastEntry.action = "Wurf Gehalten";
+                if (lastEntry.wurfbild) {
+                    lastEntry.wurfbild.isSave = true;
+                }
+                success = true;
+            } else if (lastEntry.action === "7m Verworfen") {
+                lastEntry.action = "7m Gehalten";
+                if (lastEntry.wurfbild) {
+                    lastEntry.wurfbild.isSave = true;
+                }
+                success = true;
+            }
+        }
+
+        if (!success) {
+            customAlert("Zuvor war kein passender Fehlwurf des Heim-Teams! Die Parade kann nicht zugeordnet werden.", "Fehlende Aktion");
+            schliesseAktionsMenue();
+            return;
+        }
     } else {
         // Für andere Aktionen, präfixiere einfach mit "Gegner"
         mappedAction = `Gegner ${aktion}`;
@@ -518,7 +575,7 @@ export function oeffneGegnerNummerModal(type) {
     uiOeffneGegnerNummerModal(type);
 }
 
-export function speichereGegnerNummer(nummer, name = '') {
+export function speichereGegnerNummer(nummer, name = '', isGoalkeeper = false) {
     nummer = parseInt(nummer);
     const aktuelleZeit = timerAnzeige.textContent;
 
@@ -559,7 +616,7 @@ export function speichereGegnerNummer(nummer, name = '') {
 
     // Füge Gegner als Objekt hinzu, falls noch nicht vorhanden
     if (nummer && !spielstand.knownOpponents.find(opp => opp.number === nummer)) {
-        spielstand.knownOpponents.push({ number: nummer, name: name || '' });
+        spielstand.knownOpponents.push({ number: nummer, name: name || '', isGoalkeeper: isGoalkeeper });
         spielstand.knownOpponents.sort((a, b) => a.number - b.number);
     }
     speichereSpielstand();

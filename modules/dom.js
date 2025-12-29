@@ -9,6 +9,7 @@ export const sidebarOverlay = document.getElementById('sidebarOverlay');
 export const addPlayerForm = document.getElementById('addPlayerForm');
 export const playerNameInput = document.getElementById('playerNameInput');
 export const playerNumberInput = document.getElementById('playerNumberInput');
+export const playerTorwartInput = document.getElementById('playerTorwartInput');
 export const editPlayerIndex = document.getElementById('editPlayerIndex');
 export const cancelEditButton = document.getElementById('cancelEditButton');
 export const rosterListe = document.getElementById('rosterListe');
@@ -18,6 +19,11 @@ export const teamToggle = document.getElementById('teamToggle');
 export const teamHeaderTitle = document.getElementById('teamHeaderTitle');
 export const rosterTeamNameHeim = document.getElementById('rosterTeamNameHeim');
 export const rosterTeamNameGegner = document.getElementById('rosterTeamNameGegner');
+export const teamColorInput = document.getElementById('teamColorInput');
+export const teamColorTrigger = document.getElementById('teamColorTrigger');
+export const teamColorInputGegner = document.getElementById('teamColorInputGegner');
+export const teamColorTriggerGegner = document.getElementById('teamColorTriggerGegner');
+export const rosterSwapTeamsBtn = document.getElementById('rosterSwapTeamsBtn');
 
 // Main Content Sections
 export const rosterBereich = document.getElementById('rosterBereich');
@@ -102,6 +108,7 @@ export const kommentarSpeichernButton = document.getElementById('kommentarSpeich
 export const settingsButton = document.getElementById('settingsButton');
 export const settingsSchliessen = document.getElementById('settingsSchliessen');
 export const toggleDarkMode = document.getElementById('toggleDarkMode');
+export const myTeamNameInput = document.getElementById('myTeamNameInput');
 
 export const toggleWurfbildHeim = document.getElementById('toggleWurfbildHeim');
 export const toggleWurfbildGegner = document.getElementById('toggleWurfbildGegner');
@@ -133,16 +140,19 @@ export const globalAktionen = document.getElementById('globalAktionen');
 export const addGegnerModal = document.getElementById('addGegnerModal');
 export const addGegnerNummerInput = document.getElementById('addGegnerNummerInput');
 export const addGegnerNameInput = document.getElementById('addGegnerNameInput');
+export const addGegnerTorwartInput = document.getElementById('addGegnerTorwartInput');
 export const addGegnerSpeichern = document.getElementById('addGegnerSpeichern');
 export const addGegnerAbbrechen = document.getElementById('addGegnerAbbrechen');
 
 export const quickAddPlayerModal = document.getElementById('quickAddPlayerModal');
 export const quickPlayerNumber = document.getElementById('quickPlayerNumber');
 export const quickPlayerName = document.getElementById('quickPlayerName');
+export const quickPlayerTorwart = document.getElementById('quickPlayerTorwart');
 export const quickAddPlayerSave = document.getElementById('quickAddPlayerSave');
 export const quickAddPlayerCancel = document.getElementById('quickAddPlayerCancel');
 
 export const neueGegnerName = document.getElementById('neueGegnerName');
+export const neueGegnerTorwart = document.getElementById('neueGegnerTorwart');
 
 export const toggleWurfpositionHeim = document.getElementById('toggleWurfpositionHeim');
 export const toggleWurfpositionGegner = document.getElementById('toggleWurfpositionGegner');
@@ -151,8 +161,8 @@ export const wurfpositionFeld = document.getElementById('wurfpositionFeld');
 export const wurfpositionUeberspringen = document.getElementById('wurfpositionUeberspringen');
 
 export const heatmapSvg = document.getElementById('heatmapSvg');
-export const heatmapHeimFilter = document.getElementById('heatmapHeimFilter');
-export const heatmapGegnerFilter = document.getElementById('heatmapGegnerFilter');
+export const heatmapTeamToggle = document.getElementById('heatmapTeamToggle');
+export const heatmapPlayerSelect = document.getElementById('heatmapPlayerSelect');
 export const heatmapHeimLabel = document.getElementById('heatmapHeimLabel');
 export const heatmapGegnerLabel = document.getElementById('heatmapGegnerLabel');
 export const heatmapToreFilter = document.getElementById('heatmapToreFilter');
