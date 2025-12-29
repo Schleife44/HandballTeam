@@ -40,7 +40,8 @@ export function berechneStatistiken(overrideGameLog, overrideRoster) {
             guteAktion: 0,
             gelb: 0,
             zweiMinuten: 0,
-            rot: 0
+            rot: 0,
+            tore: 0
         });
     });
 
@@ -51,23 +52,26 @@ export function berechneStatistiken(overrideGameLog, overrideRoster) {
 
         const stats = statsMap.get(eintrag.playerId);
 
-        if (eintrag.action.startsWith("Gute Aktion")) {
+        if (eintrag.action === "Steal" || eintrag.action === "Assist" ||
+            eintrag.action === "Abwehr" || eintrag.action === "Guter Pass" ||
+            eintrag.action === "Parade" || eintrag.action === "Gegner Parade" ||
+            eintrag.action === "7M Rausgeholt" || eintrag.action === "TG Pass" ||
+            eintrag.action.startsWith("Gute Aktion")) {
             stats.guteAktion++;
-        } else if (eintrag.action === "Fehlwurf") {
+        } else if (eintrag.action === "Fehlwurf" || eintrag.action === "Wurf Gehalten") {
             stats.fehlwurf++;
         } else if (eintrag.action === "Technischer Fehler") {
             stats.techFehler++;
-        } else if (eintrag.action === "7M Rausgeholt") {
-            stats.siebenMeter++;
         } else if (eintrag.action === "Gelbe Karte") {
             stats.gelb++;
         } else if (eintrag.action === "2 Minuten") {
             stats.zweiMinuten++;
         } else if (eintrag.action === "Rote Karte") {
             stats.rot++;
-        }
-
-        else if (eintrag.action === "7m Tor") {
+        } else if (eintrag.action === "Tor") {
+            stats.tore++;
+        } else if (eintrag.action === "7m Tor") {
+            stats.tore++;
             stats.siebenMeterTore++;
             stats.siebenMeterVersuche++;
         } else if (eintrag.action === "7m Verworfen" || eintrag.action === "7m Gehalten") {
@@ -116,6 +120,7 @@ export function berechneGegnerStatistiken(overrideGameLog) {
             stats.siebenMeterTore++;
             stats.siebenMeterVersuche++;
         } else if (eintrag.action === "Gegner Wurf Vorbei" ||
+            eintrag.action === "Gegner Wurf Gehalten" ||
             eintrag.action === "Gehalten") {
             stats.fehlwurf++;
         } else if (eintrag.action === "Gegner 7m Verworfen" ||
@@ -129,7 +134,7 @@ export function berechneGegnerStatistiken(overrideGameLog) {
             stats.techFehler++;
         } else if (eintrag.action === "Gegner Gelb") {
             stats.gelb++;
-        } else if (eintrag.action === "Gegner 2min") {
+        } else if (eintrag.action === "Gegner 2 min") {
             stats.zweiMinuten++;
         } else if (eintrag.action === "Gegner Rot") {
             stats.rot++;
@@ -159,10 +164,10 @@ export function berechneWurfbilder(overrideGameLog) {
             action: eintrag.action
         };
 
-        if ((eintrag.action === "Tor" || eintrag.action === "Fehlwurf") && eintrag.playerId) {
+        if ((eintrag.action === "Tor" || eintrag.action === "Fehlwurf" || eintrag.action === "Wurf Gehalten" || eintrag.action === "7m Gehalten") && eintrag.playerId) {
             if (!heimWuerfe[eintrag.playerId]) {
                 heimWuerfe[eintrag.playerId] = {
-                    name: eintrag.playerName, nummer: eintrag.playerId, wuerfe: [], isOpponent: false
+                    name: eintrag.playerName, number: eintrag.playerId, wuerfe: [], isOpponent: false
                 };
             }
             heimWuerfe[eintrag.playerId].wuerfe.push(wurfEntry);
@@ -170,17 +175,17 @@ export function berechneWurfbilder(overrideGameLog) {
         else if (eintrag.action.startsWith("7m ") && eintrag.playerId) {
             if (!heim7mWuerfe[eintrag.playerId]) {
                 heim7mWuerfe[eintrag.playerId] = {
-                    name: `${eintrag.playerName} (7m)`, nummer: eintrag.playerId, wuerfe: [], isOpponent: false
+                    name: `${eintrag.playerName} (7m)`, number: eintrag.playerId, wuerfe: [], isOpponent: false
                 };
             }
             heim7mWuerfe[eintrag.playerId].wuerfe.push(wurfEntry);
         }
-        else if (eintrag.action === "Gegner Tor" || eintrag.action === "Gegner Wurf Vorbei") {
+        else if (eintrag.action === "Gegner Tor" || eintrag.action === "Gegner Wurf Vorbei" || eintrag.action === "Gegner Wurf Gehalten" || eintrag.action === "Gegner 7m Gehalten") {
             const key = eintrag.gegnerNummer ? eintrag.gegnerNummer : "Unbekannt";
             if (!gegnerWuerfe[key]) {
                 gegnerWuerfe[key] = {
                     name: eintrag.gegnerNummer ? `Gegner #${eintrag.gegnerNummer}` : "Gegner (Unbekannt)",
-                    nummer: eintrag.gegnerNummer || 999, wuerfe: [], isOpponent: true
+                    number: eintrag.gegnerNummer || 999, wuerfe: [], isOpponent: true
                 };
             }
             gegnerWuerfe[key].wuerfe.push(wurfEntry);
@@ -190,7 +195,7 @@ export function berechneWurfbilder(overrideGameLog) {
             if (!gegner7mWuerfe[key]) {
                 gegner7mWuerfe[key] = {
                     name: eintrag.gegnerNummer ? `Gegner #${eintrag.gegnerNummer} (7m)` : "Gegner (Unbekannt) (7m)",
-                    nummer: eintrag.gegnerNummer || 999, wuerfe: [], isOpponent: true
+                    number: eintrag.gegnerNummer || 999, wuerfe: [], isOpponent: true
                 };
             }
             gegner7mWuerfe[key].wuerfe.push(wurfEntry);

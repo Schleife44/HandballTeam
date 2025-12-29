@@ -1,5 +1,6 @@
 import { getHistorie } from './history.js';
 import { berechneTore, berechneStatistiken, berechneGegnerStatistiken } from './stats.js';
+import { spielstand } from './state.js';
 
 // Sammelt alle Spiele aus der Historie
 export function getAllGames() {
@@ -7,102 +8,172 @@ export function getAllGames() {
     return history || [];
 }
 
-// Prüft ob zwei Spieler identisch sind (gleiche Nummer + Name)
-function isSamePlayer(player1, player2) {
-    return player1.number === player2.number &&
-        (player1.name || '').trim().toLowerCase() === (player2.name || '').trim().toLowerCase();
-}
-
 // Aggregiert Spieler-Statistiken über alle Spiele
 export function aggregatePlayerStats() {
+    // 1. Create a map of current roster names for high-priority naming
+    const rosterNameMap = {};
+    (spielstand.roster || []).forEach(p => {
+        rosterNameMap[String(p.number).trim()] = p.name;
+    });
+
     const games = getAllGames();
     const playerMap = new Map(); // Key: "number_name", Value: aggregated stats
+    const masterTeamNames = {}; // Key: normalized, Value: best display
 
     games.forEach(game => {
         if (!game.roster || !game.gameLog) return;
 
-        // Berechne Statistiken für dieses Spiel (Heim)
+        // Calculate raw stats for both sides for this game
         const gameStats = berechneStatistiken(game.gameLog, game.roster);
         const gameTore = berechneTore(game.gameLog);
-
-        // Berechne Statistiken für Gegner
         const opponentStats = berechneGegnerStatistiken(game.gameLog);
 
-        // --- Verarbeite Heim-Spieler ---
-        game.roster.forEach(rosterPlayer => {
-            const key = `HEIM_${rosterPlayer.number}_${(rosterPlayer.name || '').trim().toLowerCase()}`;
+        // --- Robust Perspective Detection ---
+        const globalNameTrim = (spielstand.settings.myTeamName || '').toLowerCase().trim();
+        const heimName = (game.settings?.teamNameHeim || game.teams?.heim || 'Heim').toLowerCase().trim();
+        const gastName = (game.settings?.teamNameGegner || game.teams?.gegner || 'Gegner').toLowerCase().trim();
 
-            // Finde Stats für diesen Spieler in diesem Spiel
-            const playerGameStats = gameStats.find(s => s.number === rosterPlayer.number);
-            const playerTore = gameTore.get(rosterPlayer.number) || 0;
+        const heimSideIsUsName = globalNameTrim !== '' && (heimName.includes(globalNameTrim) || globalNameTrim.includes(heimName));
+        const gastSideIsUsName = globalNameTrim !== '' && (gastName.includes(globalNameTrim) || globalNameTrim.includes(gastName));
+
+        // Heuristic: Check player overlap
+        const currentRosterNumbers = new Set(Object.keys(rosterNameMap));
+        const gameHeimNumbers = (game.roster || []).map(p => String(p.number).trim());
+        const gameGastNumbers = (game.knownOpponents || []).map(p => String(p.number).trim());
+
+        const heimOverlap = gameHeimNumbers.filter(n => currentRosterNumbers.has(n)).length;
+        const gastOverlap = gameGastNumbers.filter(n => currentRosterNumbers.has(n)).length;
+
+        const heimSideLooksLikeUs = heimOverlap > 0 && heimOverlap >= (gameHeimNumbers.length / 2);
+        const gastSideLooksLikeUs = gastOverlap > 0 && gastOverlap >= (gameGastNumbers.length / 2);
+
+        let ourSideRecord = 'heim';
+        if (heimSideIsUsName && !gastSideIsUsName) {
+            ourSideRecord = 'heim';
+        } else if (gastSideIsUsName && !heimSideIsUsName) {
+            ourSideRecord = 'gast';
+        } else if (heimSideLooksLikeUs && !gastSideLooksLikeUs) {
+            ourSideRecord = 'heim';
+        } else if (gastSideLooksLikeUs && !heimSideLooksLikeUs) {
+            ourSideRecord = 'gast';
+        }
+        // DEFAULT: Assume 'heim' if no clear match, as standard recording (playerId) is identity-Us
+        // DO NOT use isAuswaertsspiel here, it's just a visual toggle.
+
+        // --- Verarbeite "Heim" (Identity: Us) ---
+        const ourStatsForGame = (ourSideRecord === 'heim') ? gameStats : opponentStats;
+
+        ourStatsForGame.forEach(statPlayer => {
+            // Identifier is strictly NUMBER based for US team to ensure merging even if names vary
+            const pNumStr = String(statPlayer.number).trim();
+            const key = `HEIM_${pNumStr}`;
 
             if (!playerMap.has(key)) {
-                // Neuer Spieler
                 playerMap.set(key, {
-                    number: rosterPlayer.number,
-                    name: rosterPlayer.name || '',
-                    team: 'Heim', // Flag for sorting/filtering if needed
+                    number: statPlayer.number,
+                    name: rosterNameMap[pNumStr] || statPlayer.name || `Spieler #${statPlayer.number}`,
+                    team: 'Heim', // Internal Label for charts
                     totalGames: 0,
                     tore: 0,
                     fehlwurf: 0,
                     siebenMeterTore: 0,
                     siebenMeterVersuche: 0,
-                    siebenMeter: 0, // rausgeholt
+                    siebenMeter: 0,
                     guteAktion: 0,
                     techFehler: 0,
                     gelb: 0,
                     zweiMinuten: 0,
                     rot: 0,
-                    seasonLog: [] // Unified log
+                    seasonLog: [] // Unified log for heatmap
                 });
-            }
+            } else {
+                // Name Upgrade logic
+                const currentAgg = playerMap.get(key);
+                const isGeneric = (n) => !n || n.toLowerCase().startsWith('gegner') || n.toLowerCase().startsWith('spieler');
 
+                if (rosterNameMap[pNumStr]) {
+                    currentAgg.name = rosterNameMap[pNumStr];
+                } else if (isGeneric(currentAgg.name) && !isGeneric(statPlayer.name)) {
+                    currentAgg.name = statPlayer.name;
+                }
+            }
             const aggregated = playerMap.get(key);
             aggregated.totalGames++;
-            aggregated.tore += playerTore;
+            aggregated.tore += statPlayer.tore || 0;
+            aggregated.fehlwurf += statPlayer.fehlwurf || 0;
+            aggregated.siebenMeterTore += statPlayer.siebenMeterTore || 0;
+            aggregated.siebenMeterVersuche += statPlayer.siebenMeterVersuche || 0;
+            aggregated.siebenMeter += statPlayer.siebenMeter || 0;
+            aggregated.guteAktion += statPlayer.guteAktion || 0;
+            aggregated.techFehler += statPlayer.techFehler || 0;
+            aggregated.gelb += statPlayer.gelb || 0;
+            aggregated.zweiMinuten += statPlayer.zweiMinuten || 0;
+            aggregated.rot += statPlayer.rot || 0;
 
-            if (playerGameStats) {
-                aggregated.fehlwurf += playerGameStats.fehlwurf || 0;
-                aggregated.siebenMeterTore += playerGameStats.siebenMeterTore || 0;
-                aggregated.siebenMeterVersuche += playerGameStats.siebenMeterVersuche || 0;
-                aggregated.siebenMeter += playerGameStats.siebenMeter || 0;
-                aggregated.guteAktion += playerGameStats.guteAktion || 0;
-                aggregated.techFehler += playerGameStats.techFehler || 0;
-                aggregated.gelb += playerGameStats.gelb || 0;
-                aggregated.zweiMinuten += playerGameStats.zweiMinuten || 0;
-                aggregated.rot += playerGameStats.rot || 0;
-            }
-
-            // Sammle Wurf-Daten für Heatmaps (Unified)
+            // Collect Heatmap Data for this player
             game.gameLog.forEach(entry => {
-                if (entry.playerId === rosterPlayer.number) {
-                    if (entry.wurfbild || entry.wurfposition) {
-                        const is7m = entry.action && (entry.action.includes('7m'));
+                const isGegnerAction = !!(entry.action?.startsWith('Gegner') || entry.gegnerNummer);
+                // If we identified 'Us' as recorded-Gast, then our actions are isGegnerAction
+                const isOurSideAction = (ourSideRecord === 'gast') ? isGegnerAction : !isGegnerAction;
+                if (!isOurSideAction) return;
+
+                const entryNum = isGegnerAction ? (entry.gegnerNummer || "Team") : entry.playerId;
+                if (String(entryNum).trim() === pNumStr) {
+                    // Include any entry with coords
+                    if (entry.wurfbild || entry.wurfposition || entry.x !== undefined) {
                         aggregated.seasonLog.push({
-                            wurfbild: entry.wurfbild,
-                            wurfposition: entry.wurfposition,
-                            action: entry.action,
-                            isOpponent: false,
-                            playerId: rosterPlayer.number,
-                            is7m: is7m
+                            ...entry,
+                            isOpponent: false, // Internal identity for Heatmap
+                            playerId: statPlayer.number
                         });
                     }
                 }
             });
         });
 
-        // --- Verarbeite Gegner ---
-        const opponentTeamName = (game.teams && game.teams.gegner) ? game.teams.gegner : 'Gegner';
+        // --- Verarbeite "Gegner" (Identity: Them) ---
+        const oppStatsForGame = (ourSideRecord === 'heim') ? opponentStats : gameStats;
+        const rawOpponentTeamName = (ourSideRecord === 'heim') ? (game.teams?.gegner || 'Gegner') : (game.teams?.heim || 'Heim');
 
-        opponentStats.forEach(opp => {
-            // Use opponent team name in key for proper grouping
-            const key = `GEGNER_${opponentTeamName}_${opp.number}_${(opp.name || '').trim().toLowerCase()}`;
+        // Normalize team name for merging
+        const normalizeTeam = (name) => {
+            if (!name) return 'gegner';
+            let n = name.toLowerCase().trim();
+            n = n.replace(/^(tv|sg|hsg|tsv|sv|tus|sc)\b\s*/, '');
+            return n || 'gegner';
+        };
 
+        const normalizedOppTeam = normalizeTeam(rawOpponentTeamName);
+
+        // Track the "best" display name for each normalized team
+        if (!masterTeamNames[normalizedOppTeam] || (masterTeamNames[normalizedOppTeam].toLowerCase().startsWith('gegner') && !rawOpponentTeamName.toLowerCase().startsWith('gegner'))) {
+            masterTeamNames[normalizedOppTeam] = rawOpponentTeamName;
+        }
+        const opponentTeamName = masterTeamNames[normalizedOppTeam];
+
+        oppStatsForGame.forEach(opp => {
+            // Safety Net: If this "opponent" name actually matches OUR team name, treat them as US (Heim bucket)
+            const matchesMyTeam = globalNameTrim !== '' &&
+                (normalizedOppTeam.includes(globalNameTrim) || globalNameTrim.includes(normalizedOppTeam));
+
+            let key, isHeimSide;
+            if (matchesMyTeam) {
+                key = `HEIM_${String(opp.number).trim()}`;
+                isHeimSide = true;
+            } else {
+                key = `GEGNER_${normalizedOppTeam}_${String(opp.number).trim()}`;
+                isHeimSide = false;
+            }
             if (!playerMap.has(key)) {
+                // If redirection to Heim-Bucket, use roster name resolution
+                const displayName = isHeimSide
+                    ? (rosterNameMap[String(opp.number).trim()] || opp.name || `Spieler #${opp.number}`)
+                    : opp.name;
+
                 playerMap.set(key, {
                     number: opp.number,
-                    name: opp.name,
-                    team: opponentTeamName,
+                    name: displayName,
+                    team: isHeimSide ? 'Heim' : opponentTeamName,
                     totalGames: 0,
                     tore: 0,
                     fehlwurf: 0,
@@ -116,12 +187,20 @@ export function aggregatePlayerStats() {
                     rot: 0,
                     seasonLog: []
                 });
+            } else {
+                // Name Upgrade logic for ALL aggregated players (Us AND Opponents)
+                const currentAgg = playerMap.get(key);
+                const pNumStr = String(opp.number).trim();
+                const isGeneric = (n) => !n || n.toLowerCase().startsWith('gegner') || n.toLowerCase().startsWith('spieler');
+
+                if (isHeimSide && rosterNameMap[pNumStr]) {
+                    currentAgg.name = rosterNameMap[pNumStr];
+                } else if (isGeneric(currentAgg.name) && !isGeneric(opp.name)) {
+                    currentAgg.name = opp.name;
+                }
             }
-
             const aggregated = playerMap.get(key);
-            aggregated.totalGames++; // Increment games for this distinct opponent identity
-
-            // Add stats
+            aggregated.totalGames++;
             aggregated.tore += opp.tore || 0;
             aggregated.fehlwurf += opp.fehlwurf || 0;
             aggregated.siebenMeterTore += opp.siebenMeterTore || 0;
@@ -135,12 +214,11 @@ export function aggregatePlayerStats() {
 
             // Collect Heatmap Data for Opponent
             game.gameLog.forEach(entry => {
-                const isGegnerAction = entry.action.startsWith("Gegner") || entry.gegnerNummer;
-                if (!isGegnerAction) return;
+                const isGegnerAction = !!(entry.action?.startsWith('Gegner') || entry.gegnerNummer);
+                const isOpponentSideAction = (ourSideRecord === 'heim') ? isGegnerAction : !isGegnerAction;
+                if (!isOpponentSideAction) return;
 
-                // Match number (handle "Team" case if number is missing/string)
-                const entryNum = entry.gegnerNummer || "Team";
-                // Loose comparison string vs number
+                const entryNum = isGegnerAction ? (entry.gegnerNummer || "Team") : entry.playerId;
                 if (String(entryNum) === String(opp.number)) {
                     if (entry.wurfbild || entry.wurfposition) {
                         const is7m = entry.action && entry.action.includes('7m');
@@ -148,8 +226,9 @@ export function aggregatePlayerStats() {
                             wurfbild: entry.wurfbild,
                             wurfposition: entry.wurfposition,
                             action: entry.action,
-                            isOpponent: true,
-                            gegnerNummer: entryNum,
+                            isOpponent: !isHeimSide, // Unified identity
+                            playerId: isHeimSide ? entryNum : undefined,
+                            gegnerNummer: isHeimSide ? undefined : entryNum,
                             is7m: is7m
                         });
                     }
@@ -160,12 +239,26 @@ export function aggregatePlayerStats() {
 
     // Konvertiere Map zu Array und berechne Wurfquoten
     const players = Array.from(playerMap.values()).map(player => {
-        // Add 7m goals to total goals (berechneTore only counts field goals "Tor")
-        player.tore = player.tore + (player.siebenMeterTore || 0);
+        // Berechne Feld-Tore und Quote
+        // Für unser Team (Heim) enthält player.tore nur Feld-Tore (aus berechneTore)
+        // Für Gegner-Spieler enthält player.tore bereits Feld- und 7m-Tore (aus berechneGegnerStatistiken)
 
-        const totalSchuesse = player.tore + player.fehlwurf;
-        player.wurfQuote = totalSchuesse > 0
-            ? Math.round((player.tore / totalSchuesse) * 100) + '%'
+        let gesamtTore = player.tore;
+        let feldTore = player.tore;
+
+        if (player.team === 'Heim') {
+            // 7m Tore zum Gesamtergebnis addieren
+            gesamtTore = player.tore + (player.siebenMeterTore || 0);
+        } else {
+            // Feldtore berechnen (7m abziehen, da sie in .tore enthalten sind)
+            feldTore = player.tore - (player.siebenMeterTore || 0);
+        }
+
+        player.tore = gesamtTore;
+        const fieldAttempts = feldTore + player.fehlwurf;
+
+        player.wurfQuote = fieldAttempts > 0
+            ? Math.round((feldTore / fieldAttempts) * 100) + '%'
             : '-';
         return player;
     });

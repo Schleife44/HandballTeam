@@ -8,14 +8,14 @@ import {
 } from './dom.js';
 import {
     applyViewSettings, updateScoreDisplay, updateProtokollAnzeige,
-    updateTorTracker, updateSuspensionDisplay, zeichneSpielerRaster,
+    updateSuspensionDisplay, zeichneSpielerRaster,
     zeichneStatistikTabelle, oeffneWurfbildModal, oeffneGegnerNummerModal as uiOeffneGegnerNummerModal,
     oeffneAktionsMenueUI, schliesseAktionsMenueUI, zeichneRosterListe
 } from './ui.js';
 import { startTimer, stoppTimer, updateTimer } from './timer.js';
 import { formatiereZeit } from './utils.js';
 import { berechneStatistiken } from './stats.js';
-import { customConfirm } from './customDialog.js';
+import { customConfirm, customAlert } from './customDialog.js';
 
 let aktuellerSpielerIndex = null;
 export let aktuelleAktionTyp = '';
@@ -26,8 +26,7 @@ let istGegnerAktion = false;
 let aktuelleGegnernummer = null;
 
 export function setSteuerungAktiv(aktiv) {
-    const spielerButtons = document.querySelectorAll('.spieler-button');
-    spielerButtons.forEach(btn => btn.disabled = !aktiv);
+    // Player buttons are always enabled - removed: spielerButtons.forEach(btn => btn.disabled = !aktiv);
 
     heimScoreUp.disabled = !aktiv;
     heimScoreDown.disabled = !aktiv;
@@ -37,7 +36,7 @@ export function setSteuerungAktiv(aktiv) {
 
 export function switchToGame() {
     if (spielstand.roster.length === 0) {
-        alert("Bitte füge zuerst Spieler hinzu.");
+        customAlert("Bitte füge zuerst Spieler hinzu.");
         return;
     }
     spielstand.uiState = 'game';
@@ -52,19 +51,18 @@ export function switchToGame() {
 
     statistikWrapper.classList.add('versteckt');
 
-    if (spielstand.timer.gamePhase === 1) {
-        spielstand.timer.istPausiert = true;
-        gamePhaseButton.textContent = 'Spielstart';
-        timerAnzeige.textContent = formatiereZeit(0);
-        setSteuerungAktiv(false);
-        updateScoreDisplay();
-        pauseButton.classList.add('versteckt');
-        pauseButton.disabled = true;
+    updateGameControls();
+
+    // Resume timer if needed (specific to switchToGame / initial load)
+    if ((spielstand.timer.gamePhase === 2 || spielstand.timer.gamePhase === 4) && !spielstand.timer.istPausiert) {
+        startTimer();
     }
 
     zeichneSpielerRaster();
+
+    zeichneSpielerRaster();
     updateProtokollAnzeige();
-    updateTorTracker();
+    // updateTorTracker(); // Removed feature
     updateSuspensionDisplay();
 }
 
@@ -101,6 +99,67 @@ export function switchToRoster() {
     }
 
     zeichneRosterListe(isOpponentMode);
+}
+
+export function updateGameControls() {
+    // State Restoration (Fix for Reload or View Switch)
+    const phase = spielstand.timer.gamePhase;
+
+    if (phase === 1) {
+        gamePhaseButton.textContent = 'Spielstart';
+        timerAnzeige.textContent = formatiereZeit(0);
+        setSteuerungAktiv(false);
+        pauseButton.classList.add('versteckt');
+        gamePhaseButton.disabled = false;
+        gamePhaseButton.classList.remove('beendet');
+    }
+    else if (phase === 2) {
+        gamePhaseButton.textContent = 'Halbzeit';
+        setSteuerungAktiv(true);
+        pauseButton.classList.remove('versteckt');
+        pauseButton.disabled = false;
+        pauseButton.textContent = spielstand.timer.istPausiert ? 'Weiter' : 'Pause';
+    }
+    else if (phase === 3) {
+        gamePhaseButton.textContent = 'Weiter (2. HZ)';
+        setSteuerungAktiv(false);
+        pauseButton.classList.add('versteckt');
+        stoppTimer(); // Ensure paused
+    }
+    else if (phase === 4) {
+        gamePhaseButton.textContent = 'Spiel Ende';
+        setSteuerungAktiv(true);
+        pauseButton.classList.remove('versteckt');
+        pauseButton.disabled = false;
+        pauseButton.textContent = spielstand.timer.istPausiert ? 'Weiter' : 'Pause';
+    }
+    else if (phase === 5) {
+        gamePhaseButton.textContent = 'Beendet';
+        gamePhaseButton.disabled = true;
+        gamePhaseButton.classList.add('beendet');
+        setSteuerungAktiv(false);
+        pauseButton.classList.add('versteckt');
+        statistikWrapper.classList.remove('versteckt');
+    }
+
+    updateScoreDisplay();
+
+    // Immediate Timer Display Update
+    let currentSeconds = spielstand.timer.verstricheneSekundenBisher;
+    if (!spielstand.timer.istPausiert && spielstand.timer.segmentStartZeit) {
+        const now = Date.now();
+        const diff = Math.floor((now - spielstand.timer.segmentStartZeit) / 1000);
+        currentSeconds += diff;
+    }
+    if (timerAnzeige) {
+        timerAnzeige.textContent = formatiereZeit(Math.max(0, currentSeconds));
+    }
+
+    // Resume Timer Loop if active
+    // This ensures the interval starts even after a page reload
+    if (!spielstand.timer.istPausiert && (phase === 2 || phase === 4)) {
+        startTimer();
+    }
 }
 
 export function handleGamePhaseClick() {
@@ -195,8 +254,12 @@ export function oeffneGegnerAktionsMenue(gegnernummer) {
     istGegnerAktion = true;
     aktuelleGegnernummer = gegnernummer;
     aktuellerSpielerIndex = null;
-    // Öffne UI mit Anzeige der Gegnernummer
-    const player = { number: gegnernummer, name: `Gegner #${gegnernummer}` };
+
+    // Lookup existing opponent to get isGoalkeeper status
+    const num = parseInt(gegnernummer, 10);
+    const existingOpponent = spielstand.knownOpponents.find(o => parseInt(o.number, 10) === num);
+    const player = existingOpponent || { number: num, name: `Gegner #${num}` };
+
     oeffneAktionsMenueUI(null, player);
 }
 
@@ -217,6 +280,34 @@ export function logAktion(aktion, kommentar = null) {
     if (istGegnerAktion && aktuelleGegnernummer) {
         handleGegnerAktion(aktion, kommentar);
         return;
+    }
+
+    // Retrospektive Parade-Logik
+    if (aktion === "Parade") {
+        let success = false;
+        if (spielstand.gameLog.length > 0) {
+            const lastEntry = spielstand.gameLog[0];
+            // Prüfe, ob der letzte Eintrag ein vergebener Wurf des Gegners war
+            if (lastEntry.action === "Gegner Wurf Vorbei") {
+                lastEntry.action = "Gegner Wurf Gehalten";
+                if (lastEntry.wurfbild) {
+                    lastEntry.wurfbild.isSave = true;
+                }
+                success = true;
+            } else if (lastEntry.action === "Gegner 7m Verworfen") {
+                lastEntry.action = "Gegner 7m Gehalten";
+                if (lastEntry.wurfbild) {
+                    lastEntry.wurfbild.isSave = true;
+                }
+                success = true;
+            }
+        }
+
+        if (!success) {
+            customAlert("Zuvor war kein passender Fehlwurf des Gegners! Die Parade kann nicht zugeordnet werden.", "Fehlende Aktion");
+            schliesseAktionsMenue();
+            return;
+        }
     }
 
     // Behandle 7m-Aktion - zeige zuerst Ergebnis-Modal
@@ -263,15 +354,20 @@ export function logAktion(aktion, kommentar = null) {
     });
 
     updateProtokollAnzeige();
-    updateTorTracker();
+    updateProtokollAnzeige();
+    // updateTorTracker();
     speichereSpielstand();
     schliesseAktionsMenue();
 
     // Zeige Modals basierend auf Einstellungen (Wurfposition zuerst, dann Wurfbild)
     if (aktion === "Tor" || aktion === "Fehlwurf") {
-        if (spielstand.settings.showWurfpositionHeim) {
+        const isAuswaerts = spielstand.settings.isAuswaertsspiel;
+        const showPos = isAuswaerts ? spielstand.settings.showWurfpositionGegner : spielstand.settings.showWurfpositionHeim;
+        const showWurfbild = isAuswaerts ? spielstand.settings.showWurfbildGegner : spielstand.settings.showWurfbildHeim;
+
+        if (showPos) {
             wurfpositionModal.classList.remove('versteckt');
-        } else if (spielstand.settings.showWurfbildHeim) {
+        } else if (showWurfbild) {
             oeffneWurfbildModal('standard');
         }
     }
@@ -317,6 +413,32 @@ function handleGegnerAktion(aktion, kommentar) {
             remaining: 120
         });
         updateSuspensionDisplay();
+    } else if (aktion === "Parade") {
+        mappedAction = "Gegner Parade";
+        let success = false;
+        // Retrospektive Logik: Finde den letzten Wurf des Heim-Teams
+        if (spielstand.gameLog.length > 0) {
+            const lastEntry = spielstand.gameLog[0];
+            if (lastEntry.action === "Fehlwurf") {
+                lastEntry.action = "Wurf Gehalten";
+                if (lastEntry.wurfbild) {
+                    lastEntry.wurfbild.isSave = true;
+                }
+                success = true;
+            } else if (lastEntry.action === "7m Verworfen") {
+                lastEntry.action = "7m Gehalten";
+                if (lastEntry.wurfbild) {
+                    lastEntry.wurfbild.isSave = true;
+                }
+                success = true;
+            }
+        }
+
+        if (!success) {
+            customAlert("Zuvor war kein passender Fehlwurf des Heim-Teams! Die Parade kann nicht zugeordnet werden.", "Fehlende Aktion");
+            schliesseAktionsMenue();
+            return;
+        }
     } else {
         // Für andere Aktionen, präfixiere einfach mit "Gegner"
         mappedAction = `Gegner ${aktion}`;
@@ -337,18 +459,29 @@ function handleGegnerAktion(aktion, kommentar) {
     });
 
     updateProtokollAnzeige();
-    updateTorTracker();
+    updateProtokollAnzeige();
+    // updateTorTracker();
     speichereSpielstand();
     schliesseAktionsMenue();
 
     // Zeige Modals basierend auf Einstellungen (Wurfposition zuerst, dann Wurfbild)
     // Nur für Tor und Fehlwurf (gemappt auf Gegner Tor und Gegner Wurf Vorbei)
     const isTorOrFehlwurf = mappedAction === "Gegner Tor" || mappedAction === "Gegner Wurf Vorbei";
-    if (isTorOrFehlwurf && (shouldOpenWurfbild || spielstand.settings.showWurfpositionGegner)) {
+
+    // Determine effective settings based on side
+    const isAuswaerts = spielstand.settings.isAuswaertsspiel;
+    // Opponent is Heim if we are Auswärts, else Opponent is Gast
+    const oppIsHeim = isAuswaerts;
+
+    const showPos = oppIsHeim ? spielstand.settings.showWurfpositionHeim : spielstand.settings.showWurfpositionGegner;
+    // shouldOpenWurfbild was already derived from "Gegner" setting, but we need strictly side-based
+    const showWurfbild = oppIsHeim ? spielstand.settings.showWurfbildHeim : spielstand.settings.showWurfbildGegner;
+
+    if (isTorOrFehlwurf && (showWurfbild || showPos)) {
         spielstand.tempGegnerNummer = gegnernummer;
-        if (spielstand.settings.showWurfpositionGegner) {
+        if (showPos) {
             wurfpositionModal.classList.remove('versteckt');
-        } else if (shouldOpenWurfbild) {
+        } else if (showWurfbild) {
             oeffneWurfbildModal('gegner');
         }
     }
@@ -358,7 +491,11 @@ export function logGlobalAktion(aktion, kommentar = null, gegnerNummer = null) {
     const aktuelleZeit = timerAnzeige.textContent;
 
     if (aktion === "Gegner 7m") {
-        if (spielstand.settings.showWurfbildGegner) {
+        const isAuswaerts = spielstand.settings.isAuswaertsspiel;
+        const oppIsHeim = isAuswaerts;
+        const showWurfbild = oppIsHeim ? spielstand.settings.showWurfbildHeim : spielstand.settings.showWurfbildGegner;
+
+        if (showWurfbild) {
             oeffneGegnerNummerModal('7m');
             return;
         } else {
@@ -395,7 +532,8 @@ export function logGlobalAktion(aktion, kommentar = null, gegnerNummer = null) {
     });
 
     updateProtokollAnzeige();
-    updateTorTracker();
+    updateProtokollAnzeige();
+    // updateTorTracker();
     speichereSpielstand();
 }
 
@@ -427,7 +565,8 @@ export function logScoreKorrektur(team, change) {
     });
 
     updateProtokollAnzeige();
-    updateTorTracker();
+    updateProtokollAnzeige();
+    // updateTorTracker();
     speichereSpielstand();
 }
 
@@ -436,7 +575,7 @@ export function oeffneGegnerNummerModal(type) {
     uiOeffneGegnerNummerModal(type);
 }
 
-export function speichereGegnerNummer(nummer, name = '') {
+export function speichereGegnerNummer(nummer, name = '', isGoalkeeper = false) {
     nummer = parseInt(nummer);
     const aktuelleZeit = timerAnzeige.textContent;
 
@@ -477,7 +616,7 @@ export function speichereGegnerNummer(nummer, name = '') {
 
     // Füge Gegner als Objekt hinzu, falls noch nicht vorhanden
     if (nummer && !spielstand.knownOpponents.find(opp => opp.number === nummer)) {
-        spielstand.knownOpponents.push({ number: nummer, name: name || '' });
+        spielstand.knownOpponents.push({ number: nummer, name: name || '', isGoalkeeper: isGoalkeeper });
         spielstand.knownOpponents.sort((a, b) => a.number - b.number);
     }
     speichereSpielstand();
@@ -538,15 +677,30 @@ export function handle7mOutcome(outcome) {
         kommentar: kommentar,
         spielstand: aktuellerSpielstand,
         gegnerNummer: nummer,
+        wurfposition: { x: 50, y: 29.0 },
         wurfbild: null
     });
 
     updateProtokollAnzeige();
-    updateTorTracker();
+    updateProtokollAnzeige();
+    // updateTorTracker(); // Removed feature
     speichereSpielstand();
 
     // Zeige Wurfbild-Modal, falls aktiviert
-    const showWurfbild = isOpponent ? spielstand.settings.showWurfbildGegner : spielstand.settings.showWurfbildHeim;
+    const isAuswaerts = spielstand.settings.isAuswaertsspiel;
+    // Logic: 
+    // If Opponent: Side is Heim (if swapped) or Gast (if normal)
+    // If MyTeam: Side is Gast (if swapped) or Heim (if normal)
+
+    let sideIsHeim = false;
+    if (isOpponent) {
+        sideIsHeim = isAuswaerts; // Opponent is Heim if we are Auswärts
+    } else {
+        sideIsHeim = !isAuswaerts; // My Team is Heim if NOT Auswärts
+    }
+
+    const showWurfbild = sideIsHeim ? spielstand.settings.showWurfbildHeim : spielstand.settings.showWurfbildGegner;
+
     if (showWurfbild) {
         spielstand.temp7mOutcome = outcome;
         oeffneWurfbildModal(isOpponent ? 'gegner7m' : 'standard');
@@ -587,7 +741,8 @@ export async function loescheProtokollEintrag(index) {
 
         updateScoreDisplay();
         updateProtokollAnzeige();
-        updateTorTracker();
+        updateProtokollAnzeige();
+        // updateTorTracker();
         speichereSpielstand();
     }
 }
@@ -596,6 +751,7 @@ export async function loescheProtokollEintrag(index) {
 export async function starteNeuesSpiel() {
     const confirmed = await customConfirm("Bist du sicher? Das löscht das gesamte Spielprotokoll, aber dein Team bleibt gespeichert.", "Neues Spiel?");
     if (confirmed) {
+        stoppTimer(); // Stop timer first to prevent glitches
 
         spielstand.gameLog = [];
         spielstand.score = { heim: 0, gegner: 0 };
@@ -609,7 +765,17 @@ export async function starteNeuesSpiel() {
         };
 
         speichereSpielstand();
-        location.reload();
+
+        // Reset UI without reload to stay on Game View
+        updateGameControls();
+        zeichneSpielerRaster();
+        updateProtokollAnzeige();
+        updateProtokollAnzeige();
+        // updateTorTracker();
+        updateSuspensionDisplay();
+
+        // Ensure inputs are reset if needed (optional)
+        // location.reload(); // Removed to stay on page
     }
 }
 

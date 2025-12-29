@@ -1,5 +1,5 @@
 import { spielstand, speichereSpielstand } from './state.js';
-import { zeichneRosterListe } from './ui.js';
+import { zeichneRosterListe, zeichneSpielerRaster } from './ui.js';
 import { customAlert, customConfirm } from './customDialog.js';
 import { getHistorie } from './history.js';
 
@@ -149,6 +149,7 @@ export async function loadSavedTeam(teamKey, index) {
 
     // Update display
     zeichneRosterListe(isOpponentMode);
+    zeichneSpielerRaster();
 
     // Close modal
     const loadTeamModal = document.getElementById('loadTeamModal');
@@ -214,6 +215,7 @@ export async function loadHistoryTeam(index) {
 
     speichereSpielstand();
     zeichneRosterListe(true);
+    zeichneSpielerRaster();
 
     // Close modal
     const loadTeamModal = document.getElementById('loadTeamModal');
@@ -359,8 +361,7 @@ function createHistoryTeamCard(team, index) {
                 <small style="color: #666;">${team.players.length} Spieler · Spiel vom ${gameDate}</small>
             </div>
             <div style="display: flex; gap: 5px; flex-wrap: wrap;">
-                <button class="load-history-team-btn" data-index="${index}" 
-                    style="background-color: #28a745; color: white; border: none; padding: 8px 12px; border-radius: 5px; cursor: pointer; font-size: 0.9rem;">
+                <button class="load-history-team-btn shadcn-btn-primary shadcn-btn-sm" data-index="${index}">
                     Laden
                 </button>
             </div>
@@ -392,16 +393,13 @@ function createTeamCard(team, index, teamKey) {
                 <small style="color: #666;">${team.players.length} Spieler · ${savedDate}</small>
             </div>
             <div style="display: flex; gap: 5px; flex-wrap: wrap;">
-                <button class="view-team-btn" data-key="${teamKey}" data-index="${index}" 
-                    style="background-color: #6c757d; color: white; border: none; padding: 8px 12px; border-radius: 5px; cursor: pointer; font-size: 0.9rem;">
+                <button class="view-team-btn shadcn-btn-outline shadcn-btn-sm" data-key="${teamKey}" data-index="${index}">
                     Anschauen
                 </button>
-                <button class="load-team-btn" data-key="${teamKey}" data-index="${index}" 
-                    style="background-color: #28a745; color: white; border: none; padding: 8px 12px; border-radius: 5px; cursor: pointer; font-size: 0.9rem;">
+                <button class="load-team-btn shadcn-btn-primary shadcn-btn-sm" data-key="${teamKey}" data-index="${index}">
                     Laden
                 </button>
-                <button class="delete-saved-team-btn" data-key="${teamKey}" data-index="${index}"
-                    style="background-color: #dc3545; color: white; border: none; padding: 8px 12px; border-radius: 5px; cursor: pointer; font-size: 0.9rem;">
+                <button class="delete-saved-team-btn shadcn-btn-outline shadcn-btn-sm" data-key="${teamKey}" data-index="${index}" style="color: hsl(var(--destructive)); border-color: hsl(var(--destructive));">
                     Löschen
                 </button>
             </div>
@@ -454,8 +452,7 @@ export function viewTeam(teamKey, index) {
                     <input type="text" class="edit-player-name" data-player-index="${playerIndex}" 
                         value="${player.name || ''}" placeholder="Name (optional)"
                         style="flex: 1; padding: 5px; border: 1px solid #ddd; border-radius: 3px;">
-                    <button class="delete-team-player-btn" data-player-index="${playerIndex}"
-                        style="background-color: #dc3545; color: white; border: none; padding: 5px 10px; border-radius: 3px; cursor: pointer; font-size: 0.85rem;">
+                    <button class="delete-team-player-btn shadcn-btn-outline shadcn-btn-xs" data-player-index="${playerIndex}" style="color: hsl(var(--destructive)); border-color: hsl(var(--destructive));">
                         Löschen
                     </button>
                 </div>
