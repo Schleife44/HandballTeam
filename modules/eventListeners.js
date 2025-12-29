@@ -12,7 +12,7 @@ import {
     pauseButton, zurueckButton, vorButton, neuesSpielButton, gameSwapSidesBtn,
     heimScoreUp, heimScoreDown, gegnerScoreUp, gegnerScoreDown,
     aktionAbbrechen, guteAktionModalButton, aktionVorauswahlAbbrechen,
-    inputTeamNameGegner, toggleAuswaertsspiel, inputGoalSvg, wurfbildUeberspringen,
+    inputTeamNameHeim, inputTeamNameGegner, toggleAuswaertsspiel, inputGoalSvg, wurfbildUeberspringen,
     settingsBereich, myTeamNameInput,
     closeWurfbilderStats, gegnerNummerSpeichern,
     gegnerNummerUeberspringen, aktionsMenue, aktionVorauswahl,
@@ -378,6 +378,22 @@ export function registerEventListeners() {
         myTeamNameInput.addEventListener('input', (e) => {
             if (!spielstand.settings) spielstand.settings = {};
             spielstand.settings.myTeamName = e.target.value.trim();
+            speichereSpielstand();
+        });
+    }
+
+    if (inputTeamNameHeim) {
+        inputTeamNameHeim.addEventListener('input', (e) => {
+            if (!spielstand.settings) spielstand.settings = {};
+            spielstand.settings.teamNameHeim = e.target.value.trim();
+            speichereSpielstand();
+        });
+    }
+
+    if (inputTeamNameGegner) {
+        inputTeamNameGegner.addEventListener('input', (e) => {
+            if (!spielstand.settings) spielstand.settings = {};
+            spielstand.settings.teamNameGegner = e.target.value.trim();
             speichereSpielstand();
         });
     }
