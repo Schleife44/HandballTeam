@@ -99,10 +99,7 @@ export function updateScoreDisplay() {
     }
 
     // Spieler-Raster Labels & Container-Direction
-    if (spielerAuswahlContainer) {
-        if (isAway) spielerAuswahlContainer.classList.add('side-swapped');
-        else spielerAuswahlContainer.classList.remove('side-swapped');
-    }
+    // Removed redundant side-swapped class as manual data swap handles this
 
     if (labelSpielerHeimRaster) labelSpielerHeimRaster.textContent = isAway ? oppName : myName;
     if (labelSpielerGegnerRaster) labelSpielerGegnerRaster.textContent = isAway ? myName : oppName;
