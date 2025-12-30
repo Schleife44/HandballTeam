@@ -764,10 +764,7 @@ function showDashboardInline() {
                 return {
                     responsive: true,
                     maintainAspectRatio: false,
-                    animation: {
-                        animateRotate: true,
-                        animateScale: true
-                    },
+                    animation: false,
                     plugins: {
                         legend: { display: false },
                         tooltip: {
@@ -832,7 +829,7 @@ function showDashboardInline() {
                         }
                     }
                 })
-            }, false);
+            }, true);
 
 
             // 3. Goals Doughnut
@@ -856,7 +853,7 @@ function showDashboardInline() {
                         }
                     }
                 })
-            }, false);
+            }, true);
 
 
             // 4. Scorers Pie
@@ -891,7 +888,7 @@ function showDashboardInline() {
                             }
                         }
                     })
-                }, false);
+                }, true);
             }
 
 
@@ -938,7 +935,7 @@ function showDashboardInline() {
                         }
                     }
                 })
-            }, false); // Observe line chart too
+            }, true); // Observe line chart too
 
 
             // 6. Efficiency Total (Doughnut) - DEFINITELY OBSERVE
@@ -964,7 +961,7 @@ function showDashboardInline() {
                         }
                     }
                 })
-            }, false); // false = use IntersectionObserver
+            }, true); // false = use IntersectionObserver
 
 
             // 7. Efficiency Per Game (Bar) - DEFINITELY OBSERVE
@@ -988,7 +985,7 @@ function showDashboardInline() {
                         }
                     }
                 })
-            }, false);
+            }, true);
         }
     }, 250);
 
