@@ -562,6 +562,7 @@ function showDashboardInline() {
         if (currentRenderId !== dashboardRenderId) return;
 
         // --- CHART JS RENDERING ---
+        // --- CHART JS RENDERING ---
         if (window.Chart) {
             // Shadcn-like Color Palette (HSL based approximations)
             const colors = {
@@ -584,7 +585,6 @@ function showDashboardInline() {
             };
 
             // Force reflow to ensure animations trigger by reading layout property
-            // This ensures the browser has calculated dimensions before we ask Chart.js to render
             const forceReflow = (id) => {
                 const el = document.getElementById(id);
                 if (el) {
@@ -593,6 +593,42 @@ function showDashboardInline() {
                 }
                 return null;
             };
+
+            // Intersection Observer helper for delayed rendering
+            const createChartOnVisible = (canvasId, config) => {
+                const canvas = document.getElementById(canvasId);
+                if (!canvas) return;
+
+                const observer = new IntersectionObserver((entries, obs) => {
+                    entries.forEach(entry => {
+                        if (entry.isIntersecting) {
+                            const ctx = forceReflow(canvasId);
+                            if (ctx) {
+                                // Small timeout to ensure smooth transition into view
+                                setTimeout(() => {
+                                    createChart(ctx, config);
+                                }, 100);
+                            }
+                            obs.disconnect();
+                        }
+                    });
+                }, { threshold: 0.1 }); // Trigger when 10% visible
+
+                observer.observe(canvas);
+            };
+
+            // Immediate creation helper for top charts (optional, but keeps consistency)
+            // or check visibility for everything. Let's start with IntersectionObserver for all 
+            // to ensure good performance and animation timing.
+            const initChart = (id, config, immediate = false) => {
+                if (immediate) {
+                    const ctx = forceReflow(id);
+                    if (ctx) createChart(ctx, config);
+                } else {
+                    createChartOnVisible(id, config);
+                }
+            };
+
 
             const historyGames = getHistorie();
             let wins = 0, draws = 0, losses = 0;
@@ -606,7 +642,6 @@ function showDashboardInline() {
             const playerGoals = {}; // { Num: Count }
             const playerNames = {}; // { Num: Name }
 
-            // Pre-populate names from current active roster for professional labels
             if (spielstand.roster) {
                 spielstand.roster.forEach(p => {
                     playerNames[p.number] = p.name;
@@ -621,10 +656,8 @@ function showDashboardInline() {
                 const h = game.score.heim;
                 const g = game.score.gegner;
 
-                // Determine our team name from global settings
                 const globalMyTeamName = spielstand.settings.myTeamName?.toLowerCase().trim();
 
-                // Use getGameResult to determine win/loss/draw based on myTeamName
                 const gameResult = getGameResult(game, globalMyTeamName);
                 if (gameResult === 'win') wins++;
                 else if (gameResult === 'loss') losses++;
@@ -632,11 +665,7 @@ function showDashboardInline() {
 
                 if (!game.roster || !game.gameLog) return;
 
-                // Simplified logic: playerId = our team, gegnerNummer = opponent
-                // No need for complex perspective detection - identities don't change!
-
                 let myScore = 0, opponentScore = 0;
-                // Use getGameResult logic to get actual scores
                 const isAway = game.settings?.isAuswaertsspiel || false;
                 myScore = isAway ? g : h;
                 opponentScore = isAway ? h : g;
@@ -646,17 +675,14 @@ function showDashboardInline() {
 
                 const d = new Date(game.date).toLocaleDateString(undefined, { day: '2-digit', month: '2-digit' });
                 dates.push(d);
-                scoresHeim.push(myScore); // My Team
+                scoresHeim.push(myScore);
                 scoresGegner.push(opponentScore);
 
-                // --- DETAIL STATS (Scorers, Efficiency) ---
                 const logs = game.gameLog || [];
                 const rost = game.roster || [];
 
-                // Helper function
                 const isGenericName = (n) => !n || n.toLowerCase().startsWith('gegner') || n.toLowerCase().startsWith('spieler');
 
-                // Update playerNames from roster
                 rost.forEach(p => {
                     const pNum = p.number;
                     if (!playerNames[pNum] || (isGenericName(playerNames[pNum]) && !isGenericName(p.name))) {
@@ -668,10 +694,9 @@ function showDashboardInline() {
                 let gMisses = 0;
 
                 logs.forEach(evt => {
-                    // Simple rule: events with playerId (no "Gegner" prefix) = our team
                     const isOurTeamAction = !evt.action?.startsWith('Gegner') && !evt.gegnerNummer && evt.playerId;
 
-                    if (!isOurTeamAction) return; // Skip opponent events
+                    if (!isOurTeamAction) return;
 
                     const actionLower = (evt.action || '').toLowerCase();
                     const isGoal = actionLower.includes('tor') && !actionLower.includes('parade') && !actionLower.includes('gehalten');
@@ -703,14 +728,11 @@ function showDashboardInline() {
                 totalStatsMisses += gMisses;
             });
 
-            // Render List
             const listContainer = document.getElementById('dashLastResults');
             if (listContainer) {
                 listContainer.innerHTML = lastGames.map(g => {
                     const h = g.score.heim;
                     const ga = g.score.gegner;
-
-                    // Use getGameResult to determine win/loss based on team name
                     const result = getGameResult(g, spielstand.settings.myTeamName);
                     let badge = 'D', cls = 'draw';
                     if (result === 'win') { badge = 'W'; cls = 'win'; }
@@ -730,13 +752,12 @@ function showDashboardInline() {
                 }).join('') || '<div style="text-align:center; color:var(--text-muted);">Keine Spiele</div>';
             }
 
-            // Common Animation Property Object
+
             const animOptions = {
                 duration: 1000,
                 easing: 'easeOutQuart'
             };
 
-            // Helper to get consistent shadcn-like options
             const getBaseOptions = (type, extra = {}) => {
                 const { plugins: extraPlugins, animation: extraAnimation, ...otherExtra } = extra;
 
@@ -765,35 +786,24 @@ function showDashboardInline() {
                 };
             };
 
-            // Reusable Center Text Plugin
             const commonCenterTextPlugin = {
                 id: 'centerText',
                 beforeDraw: function (chart) {
                     if (chart.config.type !== 'doughnut') return;
                     const pluginData = chart.config.options.plugins?.centerTextData;
                     if (!pluginData) return;
-
                     const { width, height, ctx } = chart;
                     ctx.save();
-
-                    // Scaling font size
                     const fontSize = (height / 120).toFixed(2);
                     ctx.font = "800 " + fontSize + "em Inter, sans-serif";
-
                     const fgVar = getComputedStyle(document.body).getPropertyValue('--foreground').trim();
                     ctx.fillStyle = fgVar ? `hsl(${fgVar})` : '#ffffff';
                     ctx.textBaseline = "middle";
                     ctx.textAlign = "center";
-
                     const text = pluginData.text || '';
-
-                    // Draw Number (slightly raised)
                     ctx.fillText(text, width / 2, height / 2 - 10);
-
-                    // Draw Label (slightly lowered)
                     const labelFontSize = (height / 280).toFixed(2);
                     ctx.font = "500 " + labelFontSize + "em Inter, sans-serif";
-
                     const mutedVar = getComputedStyle(document.body).getPropertyValue('--muted-foreground').trim();
                     ctx.fillStyle = mutedVar ? `hsl(${mutedVar})` : '#94a3b8';
                     ctx.fillText(pluginData.subText || '', width / 2, height / 2 + 15);
@@ -801,209 +811,184 @@ function showDashboardInline() {
                 }
             };
 
-            // 2. Matches Doughnut
-            const ctxM = forceReflow('dashMatchesChart');
-            if (ctxM) {
-                createChart(ctxM, {
-                    type: 'doughnut',
-                    data: {
-                        labels: ['Sieg', 'Unentschieden', 'Niederlage'],
-                        datasets: [{
-                            data: [wins, draws, losses],
-                            backgroundColor: [colors.green, colors.draw, colors.red],
-                            borderWidth: 0
-                        }]
-                    },
-                    plugins: [commonCenterTextPlugin],
-                    options: getBaseOptions('doughnut', {
-                        cutout: '70%',
-                        plugins: {
-                            centerTextData: {
-                                text: (wins + draws + losses).toString(),
-                                subText: 'Spiele'
-                            }
+            // 2. Matches Doughnut (Top, can be immediate or observed)
+            initChart('dashMatchesChart', {
+                type: 'doughnut',
+                data: {
+                    labels: ['Sieg', 'Unentschieden', 'Niederlage'],
+                    datasets: [{
+                        data: [wins, draws, losses],
+                        backgroundColor: [colors.green, colors.draw, colors.red],
+                        borderWidth: 0
+                    }]
+                },
+                plugins: [commonCenterTextPlugin],
+                options: getBaseOptions('doughnut', {
+                    cutout: '70%',
+                    plugins: {
+                        centerTextData: {
+                            text: (wins + draws + losses).toString(),
+                            subText: 'Spiele'
                         }
-                    })
-                });
-            }
+                    }
+                })
+            }, false);
+
 
             // 3. Goals Doughnut
-            const ctxG = forceReflow('dashGoalsChart');
-            if (ctxG) {
-                createChart(ctxG, {
+            initChart('dashGoalsChart', {
+                type: 'doughnut',
+                data: {
+                    labels: ['Erzielt', 'Kassiert'],
+                    datasets: [{
+                        data: [scored, conceded],
+                        backgroundColor: [colors.green, colors.red],
+                        borderWidth: 0
+                    }]
+                },
+                plugins: [commonCenterTextPlugin],
+                options: getBaseOptions('doughnut', {
+                    cutout: '70%',
+                    plugins: {
+                        centerTextData: {
+                            text: (scored + conceded).toString(),
+                            subText: 'Tore'
+                        }
+                    }
+                })
+            }, false);
+
+
+            // 4. Scorers Pie
+            const labels = Object.keys(playerGoals).map(num => playerNames[num] || `#${num}`);
+            const sorted = Object.keys(playerGoals).sort((a, b) => playerGoals[b] - playerGoals[a]);
+            const sortedLabels = sorted.map(num => playerNames[num] || `#${num}`);
+            const sortedData = sorted.map(num => playerGoals[num]);
+
+            if (sortedData.length > 0) {
+                const palette = ['#172554', '#1e3a8a', '#1e40af', '#2563eb', '#60a5fa'];
+                const bgColors = sortedLabels.map((_, i) => palette[i % palette.length]);
+                const totalGoals = sortedData.reduce((a, b) => a + b, 0);
+
+                initChart('dashScorersChart', {
                     type: 'doughnut',
                     data: {
-                        labels: ['Erzielt', 'Kassiert'],
+                        labels: sortedLabels,
                         datasets: [{
-                            data: [scored, conceded],
-                            backgroundColor: [colors.green, colors.red],
-                            borderWidth: 0
+                            data: sortedData,
+                            backgroundColor: bgColors,
+                            borderWidth: 0,
+                            hoverOffset: 10
                         }]
                     },
                     plugins: [commonCenterTextPlugin],
                     options: getBaseOptions('doughnut', {
-                        cutout: '70%',
+                        cutout: '60%',
                         plugins: {
                             centerTextData: {
-                                text: (scored + conceded).toString(),
+                                text: totalGoals.toString(),
                                 subText: 'Tore'
                             }
                         }
                     })
-                });
+                }, false);
             }
 
-            // 4. Scorers Pie
-            const ctxScorers = forceReflow('dashScorersChart');
-            if (ctxScorers) {
-                const labels = Object.keys(playerGoals).map(num => playerNames[num] || `#${num}`);
-                // Simple sort by goals desc
-                const sorted = Object.keys(playerGoals).sort((a, b) => playerGoals[b] - playerGoals[a]);
-
-                const sortedLabels = sorted.map(num => playerNames[num] || `#${num}`);
-                const sortedData = sorted.map(num => playerGoals[num]);
-
-                if (sortedData.length > 0) {
-                    // Shadcn Blue Palette (Monochromatic Blue)
-                    const palette = [
-                        '#172554', // blue-950
-                        '#1e3a8a', // blue-900
-                        '#1e40af', // blue-800
-                        '#2563eb', // blue-600
-                        '#60a5fa', // blue-400
-                    ];
-                    // Cycle colors
-                    const bgColors = sortedLabels.map((_, i) => palette[i % palette.length]);
-
-                    const totalGoals = sortedData.reduce((a, b) => a + b, 0);
-
-                    createChart(ctxScorers, {
-                        type: 'doughnut',
-                        data: {
-                            labels: sortedLabels,
-                            datasets: [{
-                                data: sortedData,
-                                backgroundColor: bgColors,
-                                borderWidth: 0,
-                                hoverOffset: 10
-                            }]
-                        },
-                        plugins: [commonCenterTextPlugin],
-                        options: getBaseOptions('doughnut', {
-                            cutout: '60%',
-                            plugins: {
-                                centerTextData: {
-                                    text: totalGoals.toString(),
-                                    subText: 'Tore'
-                                }
-                            }
-                        })
-                    });
-                }
-            }
 
             // 5. Scores Line
-            // For line chart we want grid lines on Y axis maybe, but very subtle
-            const ctxS = forceReflow('dashScoresChart');
-            if (ctxS) {
-                createChart(ctxS, {
-                    type: 'line',
-                    data: {
-                        labels: dates,
-                        datasets: [
-                            {
-                                label: 'Wir',
-                                data: scoresHeim,
-                                borderColor: colors.green,
-                                backgroundColor: colors.green,
-                                tension: 0.4,
-                                borderWidth: 2,
-                                pointRadius: 2,
-                                pointHoverRadius: 5
-                            },
-                            {
-                                label: 'Gegner',
-                                data: scoresGegner,
-                                borderColor: colors.red,
-                                backgroundColor: colors.red,
-                                tension: 0.4,
-                                borderWidth: 2,
-                                pointRadius: 2,
-                                pointHoverRadius: 5
-                            }
-                        ]
-                    },
-                    options: getBaseOptions('line', {
-                        interaction: { mode: 'index', intersect: false },
-                        scales: {
-                            x: {
-                                grid: { display: false },
-                                ticks: { font: { size: 10 }, color: '#64748b' }
-                            },
-                            y: {
-                                beginAtZero: true,
-                                grid: { color: '#334155', drawBorder: false, tickLength: 0 },
-                                border: { display: false },
-                                ticks: { stepSize: 5, color: '#64748b' }
-                            }
+            initChart('dashScoresChart', {
+                type: 'line',
+                data: {
+                    labels: dates,
+                    datasets: [
+                        {
+                            label: 'Wir',
+                            data: scoresHeim,
+                            borderColor: colors.green,
+                            backgroundColor: colors.green,
+                            tension: 0.4,
+                            borderWidth: 2,
+                            pointRadius: 2,
+                            pointHoverRadius: 5
+                        },
+                        {
+                            label: 'Gegner',
+                            data: scoresGegner,
+                            borderColor: colors.red,
+                            backgroundColor: colors.red,
+                            tension: 0.4,
+                            borderWidth: 2,
+                            pointRadius: 2,
+                            pointHoverRadius: 5
                         }
-                    })
-                });
-            }
+                    ]
+                },
+                options: getBaseOptions('line', {
+                    interaction: { mode: 'index', intersect: false },
+                    scales: {
+                        x: {
+                            grid: { display: false },
+                            ticks: { font: { size: 10 }, color: '#64748b' }
+                        },
+                        y: {
+                            beginAtZero: true,
+                            grid: { color: '#334155', drawBorder: false, tickLength: 0 },
+                            border: { display: false },
+                            ticks: { stepSize: 5, color: '#64748b' }
+                        }
+                    }
+                })
+            }, false); // Observe line chart too
 
-            // 6. Efficiency Total (Doughnut)
-            const ctxEffTot = forceReflow('dashEffTotalChart');
-            if (ctxEffTot) {
-                createChart(ctxEffTot, {
-                    type: 'doughnut',
-                    data: {
-                        labels: ['Treffer', 'Fehlwürfe'],
-                        datasets: [
-                            {
-                                data: [totalStatsGoals, totalStatsMisses],
-                                backgroundColor: [colors.green, colors.red],
-                                borderWidth: 0
-                            }
-                        ]
-                    },
-                    plugins: [commonCenterTextPlugin],
-                    options: getBaseOptions('doughnut', {
-                        cutout: '70%',
-                        plugins: {
-                            centerTextData: {
-                                text: (totalStatsGoals + totalStatsMisses).toString(),
-                                subText: 'Würfe'
-                            }
-                        }
-                    })
-                });
-            }
 
-            // 7. Efficiency Per Game (Bar)
-            const ctxEffGame = forceReflow('dashEffGameChart');
-            if (ctxEffGame) {
-                createChart(ctxEffGame, {
-                    type: 'bar',
-                    data: {
-                        labels: dates,
-                        datasets: [{
-                            label: 'Quote (%)',
-                            data: gameEfficiencies,
-                            backgroundColor: colors.chart1,
-                            borderRadius: 4,
-                            barPercentage: 0.6
-                        }]
-                    },
-                    options: getBaseOptions('bar', {
-                        scales: {
-                            y: {
-                                beginAtZero: true,
-                                max: 100
-                            }
+            // 6. Efficiency Total (Doughnut) - DEFINITELY OBSERVE
+            initChart('dashEffTotalChart', {
+                type: 'doughnut',
+                data: {
+                    labels: ['Treffer', 'Fehlwürfe'],
+                    datasets: [
+                        {
+                            data: [totalStatsGoals, totalStatsMisses],
+                            backgroundColor: [colors.green, colors.red],
+                            borderWidth: 0
                         }
-                    })
-                });
-            }
+                    ]
+                },
+                plugins: [commonCenterTextPlugin],
+                options: getBaseOptions('doughnut', {
+                    cutout: '70%',
+                    plugins: {
+                        centerTextData: {
+                            text: (totalStatsGoals + totalStatsMisses).toString(),
+                            subText: 'Würfe'
+                        }
+                    }
+                })
+            }, false); // false = use IntersectionObserver
+
+
+            // 7. Efficiency Per Game (Bar) - DEFINITELY OBSERVE
+            initChart('dashEffGameChart', {
+                type: 'bar',
+                data: {
+                    labels: dates,
+                    datasets: [{
+                        label: 'Quote (%)',
+                        data: gameEfficiencies,
+                        backgroundColor: colors.chart1,
+                        borderRadius: 4,
+                        barPercentage: 0.6
+                    }]
+                },
+                options: getBaseOptions('bar', {
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            max: 100
+                        }
+                    }
+                })
+            }, false);
         }
     }, 250);
 
