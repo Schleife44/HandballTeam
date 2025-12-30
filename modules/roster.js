@@ -8,6 +8,7 @@ import {
 import { zeichneRosterListe, zeichneSpielerRaster, oeffneEditModusUI, schliesseEditModusUI, updateScoreDisplay, applyTheme } from './ui.js';
 import { customAlert, customConfirm } from './customDialog.js';
 import { getContrastTextColor } from './utils.js';
+import { updateRosterInputsForValidation } from './settingsManager.js';
 
 export async function addPlayer(e) {
     e.preventDefault();
@@ -226,4 +227,7 @@ export function swapTeams() {
     zeichneSpielerRaster();
     updateScoreDisplay(); // Now handles teamHeaderTitle too
     applyTheme(); // Centralized theme and variable application
+
+    // Update validation state for roster inputs (lock follows the team after swap)
+    updateRosterInputsForValidation();
 }

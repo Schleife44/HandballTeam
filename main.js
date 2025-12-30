@@ -33,6 +33,7 @@ import { openSeasonOverview, renderTeamScatterPlot, getSeasonSummary } from './m
 import { getHistorie } from './modules/history.js';
 import { exportiereAlsPdf, exportiereAlsTxt, exportiereAlsCsv } from './modules/export.js';
 import { showDashboardInline } from './modules/dashboardView.js';
+import { initSettingsPage, updateRosterInputsForValidation } from './modules/settingsManager.js';
 
 // --- App Initialization ---
 // --- App Initialization ---
@@ -246,6 +247,8 @@ function navigateToView(view) {
         case 'roster':
             rosterBereich.classList.remove('versteckt');
             zeichneRosterListe();
+            // Update roster input locks based on validation state
+            updateRosterInputsForValidation();
             break;
         case 'game':
             // Always show game view
@@ -274,6 +277,8 @@ function navigateToView(view) {
             break;
         case 'settings':
             showSettingsInline();
+            // Initialize settings page UI (set values and validation state)
+            initSettingsPage();
             break;
         case 'heatmap':
             showLiveHeatmapInline();

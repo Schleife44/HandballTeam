@@ -10,7 +10,8 @@ import {
     histHeatmapToreFilter, histHeatmapMissedFilter, histHeatmap7mFilter,
     histHeatmapStatsArea, histHeatmapStatsBodyHome, histHeatmapStatsBodyGegner,
     histHeatmapHomeTitle, histHeatmapGegnerTitle, histHeatmapPlayerSelect,
-    histHeatmapTeamToggle, histHeatTeamLabelHeim, histHeatTeamLabelGegner
+    histHeatmapTeamToggle, histHeatTeamLabelHeim, histHeatTeamLabelGegner,
+    heatmapTeamToggle, heatmapPlayerSelect, heatmapHeimLabel, heatmapGegnerLabel
 } from './dom.js';
 import { berechneStatistiken, berechneGegnerStatistiken, berechneTore } from './stats.js';
 import { speichereSpielInHistorie, getHistorie, loescheSpielAusHistorie } from './history.js';
@@ -233,6 +234,19 @@ export function renderHomeStatsInHistory(tbody, statsData, gameLog, isLive = fal
                 if (isLive) {
                     // Navigate to Live Heatmap
                     const navItem = document.querySelector('.nav-item[data-view="heatmap"]');
+
+                    // Force Team Toggle to Home (Unchecked)
+                    if (heatmapTeamToggle) {
+                        heatmapTeamToggle.setAttribute('data-state', 'unchecked');
+                        heatmapTeamToggle.setAttribute('aria-checked', 'false');
+                        if (heatmapHeimLabel) heatmapHeimLabel.style.color = 'hsl(var(--primary))';
+                        if (heatmapGegnerLabel) heatmapGegnerLabel.style.color = 'hsl(var(--muted-foreground))';
+                    }
+                    // Select Player
+                    if (heatmapPlayerSelect) {
+                        heatmapPlayerSelect.value = stats.number;
+                    }
+
                     if (navItem) navItem.click();
                 } else if (stayInHeatmap) {
                     // Update current heatmap context locally
@@ -294,6 +308,19 @@ export function renderOpponentStatsInHistory(tbody, statsData, gameLog, game = n
                 if (isLive) {
                     // Navigate to Live Heatmap
                     const navItem = document.querySelector('.nav-item[data-view="heatmap"]');
+
+                    // Force Team Toggle to Opponent (Checked)
+                    if (heatmapTeamToggle) {
+                        heatmapTeamToggle.setAttribute('data-state', 'checked');
+                        heatmapTeamToggle.setAttribute('aria-checked', 'true');
+                        if (heatmapHeimLabel) heatmapHeimLabel.style.color = 'hsl(var(--muted-foreground))';
+                        if (heatmapGegnerLabel) heatmapGegnerLabel.style.color = 'white'; // or appropriate contrast
+                    }
+                    // Select Player (if specific)
+                    if (heatmapPlayerSelect && stats.number && stats.number !== '?') {
+                        heatmapPlayerSelect.value = stats.number;
+                    }
+
                     if (navItem) navItem.click();
                 } else if (stayInHeatmap) {
                     const num = (stats.number && stats.number !== '?') ? stats.number : null;

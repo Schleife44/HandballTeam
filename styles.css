@@ -181,7 +181,6 @@ button:hover {
 }
 
 button:disabled {
-    pointer-events: none;
     opacity: 0.5;
 }
 
@@ -217,6 +216,36 @@ button.shadcn-btn-outline {
 button.shadcn-btn-outline:hover {
     background-color: hsl(var(--accent));
     color: hsl(var(--accent-foreground));
+}
+
+button.shadcn-btn-outline.locked:hover {
+    background-color: transparent;
+    color: hsl(var(--foreground));
+}
+
+.lock-icon-container {
+    position: relative;
+    width: 20px;
+    height: 20px;
+}
+
+.lock-icon {
+    position: absolute;
+    top: 0;
+    left: 0;
+    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    width: 20px;
+    height: 20px;
+}
+
+.lock-icon.hidden {
+    opacity: 0;
+    transform: scale(0.5) rotate(-45deg);
+}
+
+.lock-icon.visible {
+    opacity: 1;
+    transform: scale(1) rotate(0);
 }
 
 button.shadcn-btn-white {

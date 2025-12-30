@@ -25,7 +25,12 @@ export let spielstand = {
         teamNameGegner: 'Gegner',
         teamColor: '#dc3545', // Default Red
         teamColorGegner: '#2563eb', // Default Blue
-        isAuswaertsspiel: false
+        isAuswaertsspiel: false,
+
+        // Team identity settings (cross-game)
+        teamSettingsValidated: false,
+        myTeamName: '',
+        myTeamColor: '#dc3545'
     },
     knownOpponents: [] // { number: 7, name: 'Max' } - Name ist optional
 };
@@ -59,6 +64,11 @@ export function ladeSpielstandDaten() {
         if (!spielstand.settings.teamNameHeim) spielstand.settings.teamNameHeim = 'Heim';
         if (!spielstand.settings.teamNameGegner) spielstand.settings.teamNameGegner = 'Gegner';
         if (typeof spielstand.settings.isAuswaertsspiel === 'undefined') spielstand.settings.isAuswaertsspiel = false;
+
+        // Team identity defaults
+        if (typeof spielstand.settings.teamSettingsValidated === 'undefined') spielstand.settings.teamSettingsValidated = false;
+        if (!spielstand.settings.myTeamName) spielstand.settings.myTeamName = '';
+        if (!spielstand.settings.myTeamColor) spielstand.settings.myTeamColor = '#dc3545';
 
         if (!spielstand.knownOpponents) spielstand.knownOpponents = [];
 

@@ -62,6 +62,7 @@ import { renderHeatmap, setCurrentHeatmapTab, setCurrentHeatmapContext, currentH
 import { saveCurrentTeam, showLoadTeamModal, loadSavedTeam, deleteSavedTeam, viewTeam, updateTeam, deletePlayerFromSavedTeam, loadHistoryTeam } from './teamStorage.js';
 import { openSeasonOverview, closeSeasonOverview, showPlayerHeatmap, showTeamHeatmap } from './seasonView.js';
 import { customAlert } from './customDialog.js';
+import { validateTeamSettings, initSettingsPage, saveMyTeamName, saveMyTeamColor, updateRosterInputsForValidation, toggleValidation } from './settingsManager.js';
 
 // --- Register All Event Listeners ---
 export function registerEventListeners() {
@@ -376,9 +377,21 @@ export function registerEventListeners() {
 
     if (myTeamNameInput) {
         myTeamNameInput.addEventListener('input', (e) => {
-            if (!spielstand.settings) spielstand.settings = {};
-            spielstand.settings.myTeamName = e.target.value.trim();
-            speichereSpielstand();
+            saveMyTeamName(e.target.value);
+        });
+    }
+
+    const myTeamColorInput = document.getElementById('myTeamColorInput');
+    if (myTeamColorInput) {
+        myTeamColorInput.addEventListener('input', (e) => {
+            saveMyTeamColor(e.target.value);
+        });
+    }
+
+    const toggleValidationBtn = document.getElementById('toggleValidationBtn');
+    if (toggleValidationBtn) {
+        toggleValidationBtn.addEventListener('click', () => {
+            toggleValidation();
         });
     }
 

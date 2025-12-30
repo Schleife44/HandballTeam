@@ -789,8 +789,18 @@ export function showLiveGameOverview() {
     const stats = berechneStatistiken(spielstand.gameLog, spielstand.roster);
     const gegnerStats = berechneGegnerStatistiken(spielstand.gameLog);
 
-    renderHomeStatsInHistory(liveOverviewStatsBody, stats, spielstand.gameLog, true);
-    renderOpponentStatsInHistory(liveOverviewStatsGegnerBody, gegnerStats, spielstand.gameLog, true);
+    const isAway = spielstand.settings.isAuswaertsspiel;
+
+    // If Away: My Team (stats) is Gast (Body2), Opponent (gegnerStats) is Heim (Body1)
+    // If Home: My Team (stats) is Heim (Body1), Opponent (gegnerStats) is Gast (Body2)
+
+    if (isAway) {
+        renderHomeStatsInHistory(liveOverviewStatsGegnerBody, stats, spielstand.gameLog, true);
+        renderOpponentStatsInHistory(liveOverviewStatsBody, gegnerStats, spielstand.gameLog, true);
+    } else {
+        renderHomeStatsInHistory(liveOverviewStatsBody, stats, spielstand.gameLog, true);
+        renderOpponentStatsInHistory(liveOverviewStatsGegnerBody, gegnerStats, spielstand.gameLog, true);
+    }
 
     // Initial Tab State
     liveOverviewContentStats.classList.remove('versteckt');

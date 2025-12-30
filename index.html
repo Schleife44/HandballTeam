@@ -98,7 +98,12 @@
                         <div class="roster-input-group">
                             <label for="rosterTeamNameHeim">Heim Team Name</label>
                             <div style="display: flex; gap: 10px; align-items: center;">
-                                <input type="text" id="rosterTeamNameHeim" placeholder="Heim Team" style="flex: 1;">
+                                <div style="position: relative; flex: 1;">
+                                    <input type="text" id="rosterTeamNameHeim" placeholder="Heim Team"
+                                        style="width: 100%; padding-right: 30px;">
+                                    <i id="rosterHeimLockIcon" data-lucide="lock"
+                                        style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); width: 16px; height: 16px; color: #64748b; display: none;"></i>
+                                </div>
                                 <div class="color-picker-wrapper" title="Trikotfarbe wählen"
                                     style="position: relative; cursor: pointer;">
                                     <button id="teamColorTrigger" class="shadcn-btn-outline"
@@ -119,12 +124,19 @@
                         <div class="roster-input-group">
                             <label for="rosterTeamNameGegner">Gast Team Name</label>
                             <div style="display: flex; gap: 10px; align-items: center;">
-                                <input type="text" id="rosterTeamNameGegner" placeholder="Gast Team" style="flex: 1;">
+                                <div style="position: relative; flex: 1;">
+                                    <input type="text" id="rosterTeamNameGegner" placeholder="Gast Team"
+                                        style="width: 100%; padding-right: 30px;">
+                                    <i id="rosterGegnerLockIcon" data-lucide="lock"
+                                        style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); width: 16px; height: 16px; color: #64748b; display: none;"></i>
+                                </div>
                                 <div class="color-picker-wrapper" title="Trikotfarbe wählen"
                                     style="position: relative; cursor: pointer;">
                                     <button id="teamColorTriggerGegner" class="shadcn-btn-outline"
                                         style="width: 36px; height: 36px; padding: 0; display: flex; align-items: center; justify-content: center; border-radius: 8px;">
-                                        <i data-lucide="shirt" style="width: 20px; height: 20px;"></i>
+                                        <div class="lock-icon-container">
+                                            <i data-lucide="shirt" style="width: 20px; height: 20px;"></i>
+                                        </div>
                                     </button>
                                     <input type="color" id="teamColorInputGegner" value="#2563eb"
                                         style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer;">
@@ -339,8 +351,35 @@
                         </div>
                         <div class="setting-row" style="display: flex; flex-direction: column; gap: 8px;">
                             <label for="myTeamNameInput" style="font-weight: 500;">Mein Team Name:</label>
-                            <input type="text" id="myTeamNameInput" placeholder="Mein Team" shadcn-input"
-                                style="width: 100%;">
+                            <div style="display: flex; gap: 10px; align-items: center;">
+                                <input type="text" id="myTeamNameInput" placeholder="Mein Team" class="shadcn-input"
+                                    style="flex: 1;">
+                                <div class="color-picker-wrapper" title="Team Farbe wählen"
+                                    style="position: relative; cursor: pointer;">
+                                    <button id="myTeamColorTrigger" class="shadcn-btn-outline"
+                                        style="width: 40px; height: 40px; padding: 0; display: flex; align-items: center; justify-content: center; border-radius: 8px;">
+                                        <i id="myTeamColorIcon" data-lucide="shirt"
+                                            style="width: 20px; height: 20px; color: #dc3545;"></i>
+                                    </button>
+                                    <input type="color" id="myTeamColorInput" value="#dc3545"
+                                        style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer;">
+                                </div>
+                                <button id="toggleValidationBtn" class="shadcn-btn-outline"
+                                    title="Einstellungen sperren/entsperren"
+                                    style="width: 40px; height: 40px; padding: 0; display: flex; align-items: center; justify-content: center; border-radius: 8px;">
+                                    <div class="lock-icon-container">
+                                        <i id="iconLocked" class="lock-icon hidden" data-lucide="lock"
+                                            style="color: #22c55e;"></i>
+                                        <i id="iconUnlocked" class="lock-icon visible" data-lucide="lock-open"
+                                            style="color: #9ca3af;"></i>
+                                    </div>
+                                </button>
+                            </div>
+                        </div>
+                        <div id="settingsValidatedIndicator" class="versteckt"
+                            style="margin-top: 10px; padding: 10px; background: #22c55e20; border: 1px solid #22c55e; border-radius: 8px; display: flex; align-items: center; gap: 8px; color: #22c55e;">
+                            <i data-lucide="check-circle" style="width: 16px; height: 16px;"></i>
+                            <span>Einstellungen sind im Kader gespeichert</span>
                         </div>
                     </div>
                 </div>
