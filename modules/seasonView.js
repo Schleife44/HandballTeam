@@ -140,15 +140,12 @@ export function renderSeasonStats() {
                 // Team Statistics Button
                 const teamStatsBtn = document.createElement('button');
                 teamStatsBtn.textContent = 'Team Grafik';
-                teamStatsBtn.className = 'shadcn-btn-primary';
-                teamStatsBtn.style.height = '28px';
+                teamStatsBtn.className = 'show-team-heatmap-btn shadcn-btn-secondary'; // Changed class
+                teamStatsBtn.style.height = '32px'; // Changed height
                 teamStatsBtn.style.fontSize = '0.75rem';
                 teamStatsBtn.style.padding = '0 10px';
-                teamStatsBtn.dataset.team = currentTeam;
-                teamStatsBtn.addEventListener('click', (e) => {
-                    e.stopPropagation();
-                    showTeamHeatmap(currentTeam);
-                });
+                teamStatsBtn.dataset.team = currentTeam; // Kept data-team attribute
+                // Removed addEventListener
                 headerDiv.appendChild(teamStatsBtn);
 
                 // Create container for team players
@@ -477,7 +474,7 @@ export function showPlayerHeatmap(playerIndex, mode = 'field') {
         log: logEntries,
         title: `${modeLabel} - ${displayName} (Saison)`,
         filter: {
-            team: isOpponentPlayer ? 'gegner' : 'heim',
+            team: player.team,
             player: player.number
         },
         type: 'season-specific'
@@ -520,7 +517,7 @@ export function showTeamHeatmap(teamName) {
         log: allLogEntries,
         title: `Team Grafik - ${displayName} (${teamPlayers.length} Spieler)`,
         filter: {
-            team: teamName === 'Heim' ? 'heim' : 'gegner',
+            team: teamName,
             player: null // Team-wide
         },
         type: 'season-specific'

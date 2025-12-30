@@ -40,6 +40,39 @@ export function applyTheme() {
     } else {
         document.body.classList.remove('dark-mode');
     }
+
+    // Apply document variables for colors
+    const isAway = spielstand.settings.isAuswaertsspiel;
+
+    const colorHeim = spielstand.settings.teamColor || '#dc3545';
+    const colorGegner = spielstand.settings.teamColorGegner || '#2563eb';
+
+    // Identity Colors (Our Team vs Opponent)
+    const ourColor = isAway ? colorGegner : colorHeim;
+    const oppColor = isAway ? colorHeim : colorGegner;
+
+    document.documentElement.style.setProperty('--btn-primary', ourColor);
+    document.documentElement.style.setProperty('--team-primary-color', ourColor);
+    document.documentElement.style.setProperty('--team-opponent-color', oppColor);
+
+    // Side Colors (Heim/Left vs Gegner/Right)
+    document.documentElement.style.setProperty('--heim-color', colorHeim);
+    document.documentElement.style.setProperty('--gegner-color', colorGegner);
+
+    // Contrast
+    const getContrast = (hex) => {
+        if (!hex) return '#ffffff';
+        const r = parseInt(hex.slice(1, 3), 16);
+        const g = parseInt(hex.slice(3, 5), 16);
+        const b = parseInt(hex.slice(5, 7), 16);
+        const yiq = ((r * 299) + (g * 587) + (b * 114)) / 1000;
+        return (yiq >= 128) ? '#000000' : '#ffffff';
+    };
+
+    document.documentElement.style.setProperty('--our-text-color', getContrast(ourColor));
+    document.documentElement.style.setProperty('--opponent-text-color', getContrast(oppColor));
+    document.documentElement.style.setProperty('--heim-text-color', getContrast(colorHeim));
+    document.documentElement.style.setProperty('--gegner-text-color', getContrast(colorGegner));
 }
 
 export function applyViewSettings() {
@@ -71,11 +104,13 @@ export function updateScoreDisplay() {
 
     if (scoreAnzeige && scoreAnzeigeGegner) {
         if (isAway) {
-            scoreAnzeige.textContent = spielstand.score.gegner;
-            scoreAnzeigeGegner.textContent = spielstand.score.heim;
+            // When away: Bösperde is RIGHT (teamNameGegner), Opponent is LEFT (teamNameHeim)
+            scoreAnzeige.textContent = spielstand.score.heim;  // Left shows opponent (heim after swap)
+            scoreAnzeigeGegner.textContent = spielstand.score.gegner;  // Right shows us (gegner after swap)
         } else {
-            scoreAnzeige.textContent = spielstand.score.heim;
-            scoreAnzeigeGegner.textContent = spielstand.score.gegner;
+            // When home: Bösperde is LEFT (teamNameHeim), Opponent is RIGHT (teamNameGegner)
+            scoreAnzeige.textContent = spielstand.score.heim;  // Left shows us (heim)
+            scoreAnzeigeGegner.textContent = spielstand.score.gegner;  // Right shows opponent (gegner)
         }
     } else if (scoreAnzeige) {
         // Fallback for views using old combined display
@@ -87,27 +122,25 @@ export function updateScoreDisplay() {
     }
 
     // Unified Labeling Logic
-    const myName = spielstand.settings.myTeamName || spielstand.settings.teamNameHeim || 'Unser Team';
-    const oppName = spielstand.settings.teamNameGegner || 'Gegner';
+    const heimName = spielstand.settings.teamNameHeim || 'Heim';
+    const gegnerName = spielstand.settings.teamNameGegner || 'Gegner';
 
-    if (isAway) {
-        if (teamNameHeimDisplay) teamNameHeimDisplay.textContent = oppName.toUpperCase();
-        if (teamNameGegnerDisplay) teamNameGegnerDisplay.textContent = myName.toUpperCase();
-    } else {
-        if (teamNameHeimDisplay) teamNameHeimDisplay.textContent = myName.toUpperCase();
-        if (teamNameGegnerDisplay) teamNameGegnerDisplay.textContent = oppName.toUpperCase();
+    if (teamNameHeimDisplay) teamNameHeimDisplay.textContent = heimName.toUpperCase();
+    if (teamNameGegnerDisplay) teamNameGegnerDisplay.textContent = gegnerName.toUpperCase();
+
+    // Spieler-Raster Labels
+    if (labelSpielerHeimRaster) labelSpielerHeimRaster.textContent = heimName;
+    if (labelSpielerGegnerRaster) labelSpielerGegnerRaster.textContent = gegnerName;
+
+    // Roster View Title
+    const isOpponentMode = teamToggle && teamToggle.getAttribute('aria-checked') === 'true';
+    if (teamHeaderTitle) {
+        teamHeaderTitle.textContent = isOpponentMode ? gegnerName : heimName;
     }
 
-    // Spieler-Raster Labels & Container-Direction
-    // Removed redundant side-swapped class as manual data swap handles this
-
-    if (labelSpielerHeimRaster) labelSpielerHeimRaster.textContent = isAway ? oppName : myName;
-    if (labelSpielerGegnerRaster) labelSpielerGegnerRaster.textContent = isAway ? myName : oppName;
-
-
     // Heatmap Filter Labels
-    if (heatmapHeimLabel) heatmapHeimLabel.textContent = spielstand.settings.teamNameHeim || getMyTeamLabel().toUpperCase();
-    if (heatmapGegnerLabel) heatmapGegnerLabel.textContent = spielstand.settings.teamNameGegner || getOpponentLabel().toUpperCase();
+    if (heatmapHeimLabel) heatmapHeimLabel.textContent = heimName.toUpperCase();
+    if (heatmapGegnerLabel) heatmapGegnerLabel.textContent = gegnerName.toUpperCase();
 }
 
 export function updateSuspensionDisplay() {
@@ -281,13 +314,22 @@ export function zeichneStatistikTabelle(statsData) {
     });
 }
 
-export function zeichneRosterListe(showOpponents = false) {
+export function zeichneRosterListe(showGastTab = false) {
     rosterListe.innerHTML = '';
 
-    const list = showOpponents ? spielstand.knownOpponents : spielstand.roster;
+    const isAway = spielstand.settings.isAuswaertsspiel;
+
+    // Logic: 
+    // If showGastTab is false (Heim): Show opponents if we are away, else show our roster.
+    // If showGastTab is true (Gast): Show our roster if we are away, else show opponents.
+    const isShowingOpponents = showGastTab ? !isAway : isAway;
+    const isShowingOurTeam = !isShowingOpponents;
+
+    const list = isShowingOurTeam ? (spielstand.roster || []) : (spielstand.knownOpponents || []);
 
     if (list.length === 0) {
-        rosterListe.innerHTML = `<div style="grid-column: 1 / -1; text-align: center; padding: 40px; color: var(--text-muted);">Noch keine Spieler im ${showOpponents ? getOpponentLabel() : getMyTeamLabel()}-Team hinzugefügt.</div>`;
+        const teamLabel = showGastTab ? getOpponentLabel() : getMyTeamLabel();
+        rosterListe.innerHTML = `<div style="grid-column: 1 / -1; text-align: center; padding: 40px; color: var(--text-muted);">Noch keine Spieler im ${teamLabel}-Team hinzugefügt.</div>`;
         return;
     }
 
@@ -326,7 +368,6 @@ export function zeichneRosterListe(showOpponents = false) {
         // Actions
         const actionsDiv = document.createElement('div');
         actionsDiv.className = 'roster-player-actions';
-        // Flexible layout for icon + buttons
         actionsDiv.style.display = 'flex';
         actionsDiv.style.alignItems = 'center';
         actionsDiv.style.gap = '8px';
@@ -336,8 +377,10 @@ export function zeichneRosterListe(showOpponents = false) {
             twBadge.textContent = "TW";
             twBadge.style.fontSize = "0.75rem";
             twBadge.style.fontWeight = "700";
-            twBadge.style.color = "var(--btn-primary)";
-            twBadge.style.border = "1px solid var(--btn-primary)";
+            // Use identity-based colors
+            const identityColor = isShowingOurTeam ? 'var(--team-primary-color)' : 'var(--team-opponent-color)';
+            twBadge.style.color = identityColor;
+            twBadge.style.border = `1px solid ${identityColor}`;
             twBadge.style.borderRadius = "4px";
             twBadge.style.padding = "1px 4px";
             actionsDiv.appendChild(twBadge);
@@ -353,7 +396,7 @@ export function zeichneRosterListe(showOpponents = false) {
         deleteBtn.style.borderColor = 'hsl(var(--destructive))';
         deleteBtn.innerHTML = 'Löschen';
         deleteBtn.dataset.index = index;
-        if (showOpponents) deleteBtn.dataset.opponentIndex = index;
+        if (isShowingOpponents) deleteBtn.dataset.opponentIndex = index;
 
         actionsDiv.appendChild(editBtn);
         actionsDiv.appendChild(deleteBtn);
@@ -400,7 +443,7 @@ export function zeichneRosterListe(showOpponents = false) {
             player.isGoalkeeper = newTw;
             list.sort((a, b) => a.number - b.number);
             speichereSpielstand();
-            zeichneRosterListe(showOpponents);
+            zeichneRosterListe(showGastTab);
             zeichneSpielerRaster();
         };
 

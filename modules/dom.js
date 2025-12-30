@@ -84,7 +84,6 @@ export const heimScoreUp = document.getElementById('heimScoreUp');
 export const heimScoreDown = document.getElementById('heimScoreDown');
 export const gegnerScoreUp = document.getElementById('gegnerScoreUp');
 export const gegnerScoreDown = document.getElementById('gegnerScoreDown');
-export const gameSwapSidesBtn = document.getElementById('gameSwapSidesBtn');
 export const neuesSpielButton = document.getElementById('neuesSpielButton');
 export const exportButton = document.getElementById('exportButton');
 export const exportCsvButton = document.getElementById('exportCsvButton');
@@ -206,6 +205,15 @@ export const histHeatmapSvg = document.getElementById('histHeatmapSvg');
 export const histHeatmapToreFilter = document.getElementById('histHeatmapToreFilter');
 export const histHeatmap7mFilter = document.getElementById('histHeatmap7mFilter');
 export const histHeatmapMissedFilter = document.getElementById('histHeatmapMissedFilter');
+export const histHeatmapStatsArea = document.getElementById('histHeatmapStatsArea');
+export const histHeatmapStatsBodyHome = document.getElementById('histHeatmapStatsBodyHome');
+export const histHeatmapStatsBodyGegner = document.getElementById('histHeatmapStatsBodyGegner');
+export const histHeatmapHomeTitle = document.getElementById('histHeatmapHomeTitle');
+export const histHeatmapGegnerTitle = document.getElementById('histHeatmapGegnerTitle');
+export const histHeatmapPlayerSelect = document.getElementById('histHeatmapPlayerSelect');
+export const histHeatmapTeamToggle = document.getElementById('histHeatmapTeamToggle');
+export const histHeatTeamLabelHeim = document.getElementById('histHeatTeamLabelHeim');
+export const histHeatTeamLabelGegner = document.getElementById('histHeatTeamLabelGegner');
 
 // Custom Confirm/Alert Modal
 export const customConfirmModal = document.getElementById('customConfirmModal');

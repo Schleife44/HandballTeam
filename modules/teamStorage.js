@@ -1,5 +1,5 @@
 import { spielstand, speichereSpielstand } from './state.js';
-import { zeichneRosterListe, zeichneSpielerRaster } from './ui.js';
+import { zeichneRosterListe, zeichneSpielerRaster, applyTheme } from './ui.js';
 import { customAlert, customConfirm } from './customDialog.js';
 import { getHistorie } from './history.js';
 
@@ -139,15 +139,26 @@ export async function loadSavedTeam(teamKey, index) {
         // Load into opponent roster
         spielstand.knownOpponents = JSON.parse(JSON.stringify(team.players));
         spielstand.knownOpponents.sort((a, b) => a.number - b.number);
+
+        // Update opponent team name
+        spielstand.settings.teamNameGegner = team.name;
+        const rosterTeamNameGegner = document.getElementById('rosterTeamNameGegner');
+        if (rosterTeamNameGegner) rosterTeamNameGegner.value = team.name;
     } else {
         // Load into home roster
         spielstand.roster = JSON.parse(JSON.stringify(team.players));
         spielstand.roster.sort((a, b) => a.number - b.number);
+
+        // Update home team name
+        spielstand.settings.teamNameHeim = team.name;
+        const rosterTeamNameHeim = document.getElementById('rosterTeamNameHeim');
+        if (rosterTeamNameHeim) rosterTeamNameHeim.value = team.name;
     }
 
     speichereSpielstand();
 
-    // Update display
+    // Update display and refresh colors
+    applyTheme();
     zeichneRosterListe(isOpponentMode);
     zeichneSpielerRaster();
 
@@ -206,6 +217,10 @@ export async function loadHistoryTeam(index) {
     // Update team name
     spielstand.settings.teamNameGegner = team.name;
 
+    // Update input field
+    const rosterTeamNameGegner = document.getElementById('rosterTeamNameGegner');
+    if (rosterTeamNameGegner) rosterTeamNameGegner.value = team.name;
+
     // Switch to opponent view
     spielstand.activeTeam = 'gegner';
 
@@ -214,6 +229,9 @@ export async function loadHistoryTeam(index) {
     if (teamToggle) teamToggle.checked = true;
 
     speichereSpielstand();
+
+    // Refresh display and colors
+    applyTheme();
     zeichneRosterListe(true);
     zeichneSpielerRaster();
 

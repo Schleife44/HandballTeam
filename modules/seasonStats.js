@@ -25,45 +25,17 @@ export function aggregatePlayerStats() {
 
         // Calculate raw stats for both sides for this game
         const gameStats = berechneStatistiken(game.gameLog, game.roster);
-        const gameTore = berechneTore(game.gameLog);
-        const opponentStats = berechneGegnerStatistiken(game.gameLog);
+        // Note: gameStats already filters events by playerId (our team), so no perspective detection needed!
 
-        // --- Robust Perspective Detection ---
-        const globalNameTrim = (spielstand.settings.myTeamName || '').toLowerCase().trim();
-        const heimName = (game.settings?.teamNameHeim || game.teams?.heim || 'Heim').toLowerCase().trim();
-        const gastName = (game.settings?.teamNameGegner || game.teams?.gegner || 'Gegner').toLowerCase().trim();
+        // Derive current "my team name" from current settings (needed for opponent matching later)
+        const currentMyTeamName = spielstand.settings.isAuswaertsspiel
+            ? spielstand.settings.teamNameGegner
+            : spielstand.settings.teamNameHeim;
+        const globalNameTrim = (currentMyTeamName || '').toLowerCase().trim();
 
-        const heimSideIsUsName = globalNameTrim !== '' && (heimName.includes(globalNameTrim) || globalNameTrim.includes(heimName));
-        const gastSideIsUsName = globalNameTrim !== '' && (gastName.includes(globalNameTrim) || globalNameTrim.includes(gastName));
-
-        // Heuristic: Check player overlap
-        const currentRosterNumbers = new Set(Object.keys(rosterNameMap));
-        const gameHeimNumbers = (game.roster || []).map(p => String(p.number).trim());
-        const gameGastNumbers = (game.knownOpponents || []).map(p => String(p.number).trim());
-
-        const heimOverlap = gameHeimNumbers.filter(n => currentRosterNumbers.has(n)).length;
-        const gastOverlap = gameGastNumbers.filter(n => currentRosterNumbers.has(n)).length;
-
-        const heimSideLooksLikeUs = heimOverlap > 0 && heimOverlap >= (gameHeimNumbers.length / 2);
-        const gastSideLooksLikeUs = gastOverlap > 0 && gastOverlap >= (gameGastNumbers.length / 2);
-
-        let ourSideRecord = 'heim';
-        if (heimSideIsUsName && !gastSideIsUsName) {
-            ourSideRecord = 'heim';
-        } else if (gastSideIsUsName && !heimSideIsUsName) {
-            ourSideRecord = 'gast';
-        } else if (heimSideLooksLikeUs && !gastSideLooksLikeUs) {
-            ourSideRecord = 'heim';
-        } else if (gastSideLooksLikeUs && !heimSideLooksLikeUs) {
-            ourSideRecord = 'gast';
-        }
-        // DEFAULT: Assume 'heim' if no clear match, as standard recording (playerId) is identity-Us
-        // DO NOT use isAuswaertsspiel here, it's just a visual toggle.
-
-        // --- Verarbeite "Heim" (Identity: Us) ---
-        const ourStatsForGame = (ourSideRecord === 'heim') ? gameStats : opponentStats;
-
-        ourStatsForGame.forEach(statPlayer => {
+        // --- Aggregate Our Team's Stats ---
+        // gameStats already contains only our players' stats (filtered by playerId in berechneStatistiken)
+        gameStats.forEach(statPlayer => {
             // Identifier is strictly NUMBER based for US team to ensure merging even if names vary
             const pNumStr = String(statPlayer.number).trim();
             const key = `HEIM_${pNumStr}`;
@@ -112,12 +84,11 @@ export function aggregatePlayerStats() {
 
             // Collect Heatmap Data for this player
             game.gameLog.forEach(entry => {
-                const isGegnerAction = !!(entry.action?.startsWith('Gegner') || entry.gegnerNummer);
-                // If we identified 'Us' as recorded-Gast, then our actions are isGegnerAction
-                const isOurSideAction = (ourSideRecord === 'gast') ? isGegnerAction : !isGegnerAction;
-                if (!isOurSideAction) return;
+                // Simple rule: our team events have playerId (no "Gegner" prefix)
+                const isOurTeamAction = !entry.action?.startsWith('Gegner') && !entry.gegnerNummer && entry.playerId;
+                if (!isOurTeamAction) return;
 
-                const entryNum = isGegnerAction ? (entry.gegnerNummer || "Team") : entry.playerId;
+                const entryNum = entry.playerId;
                 if (String(entryNum).trim() === pNumStr) {
                     // Include any entry with coords
                     if (entry.wurfbild || entry.wurfposition || entry.x !== undefined) {
@@ -131,9 +102,9 @@ export function aggregatePlayerStats() {
             });
         });
 
-        // --- Verarbeite "Gegner" (Identity: Them) ---
-        const oppStatsForGame = (ourSideRecord === 'heim') ? opponentStats : gameStats;
-        const rawOpponentTeamName = (ourSideRecord === 'heim') ? (game.teams?.gegner || 'Gegner') : (game.teams?.heim || 'Heim');
+        // --- Process Opponent Stats ---
+        const opponentStats = berechneGegnerStatistiken(game.gameLog);
+        const rawOpponentTeamName = game.teams?.gegner || game.settings?.teamNameGegner || 'Gegner';
 
         // Normalize team name for merging
         const normalizeTeam = (name) => {
@@ -151,7 +122,8 @@ export function aggregatePlayerStats() {
         }
         const opponentTeamName = masterTeamNames[normalizedOppTeam];
 
-        oppStatsForGame.forEach(opp => {
+        // opponentStats already contains only opponent actions (filtered by "Gegner" prefix)
+        opponentStats.forEach(opp => {
             // Safety Net: If this "opponent" name actually matches OUR team name, treat them as US (Heim bucket)
             const matchesMyTeam = globalNameTrim !== '' &&
                 (normalizedOppTeam.includes(globalNameTrim) || globalNameTrim.includes(normalizedOppTeam));
@@ -214,11 +186,11 @@ export function aggregatePlayerStats() {
 
             // Collect Heatmap Data for Opponent
             game.gameLog.forEach(entry => {
-                const isGegnerAction = !!(entry.action?.startsWith('Gegner') || entry.gegnerNummer);
-                const isOpponentSideAction = (ourSideRecord === 'heim') ? isGegnerAction : !isGegnerAction;
-                if (!isOpponentSideAction) return;
+                // Simple rule: opponent events have "Gegner" prefix or gegnerNummer
+                const isOpponentAction = !!(entry.action?.startsWith('Gegner') || entry.gegnerNummer);
+                if (!isOpponentAction) return;
 
-                const entryNum = isGegnerAction ? (entry.gegnerNummer || "Team") : entry.playerId;
+                const entryNum = entry.gegnerNummer || "Team";
                 if (String(entryNum) === String(opp.number)) {
                     if (entry.wurfbild || entry.wurfposition) {
                         const is7m = entry.action && entry.action.includes('7m');
@@ -226,10 +198,10 @@ export function aggregatePlayerStats() {
                             wurfbild: entry.wurfbild,
                             wurfposition: entry.wurfposition,
                             action: entry.action,
-                            isOpponent: !isHeimSide, // Unified identity
-                            playerId: isHeimSide ? entryNum : undefined,
-                            gegnerNummer: isHeimSide ? undefined : entryNum,
-                            is7m: is7m
+                            team: opponentTeamName,
+                            isOpponent: true,
+                            is7m: is7m,
+                            playerId: opp.number
                         });
                     }
                 }
@@ -239,20 +211,9 @@ export function aggregatePlayerStats() {
 
     // Konvertiere Map zu Array und berechne Wurfquoten
     const players = Array.from(playerMap.values()).map(player => {
-        // Berechne Feld-Tore und Quote
-        // Für unser Team (Heim) enthält player.tore nur Feld-Tore (aus berechneTore)
-        // Für Gegner-Spieler enthält player.tore bereits Feld- und 7m-Tore (aus berechneGegnerStatistiken)
-
-        let gesamtTore = player.tore;
-        let feldTore = player.tore;
-
-        if (player.team === 'Heim') {
-            // 7m Tore zum Gesamtergebnis addieren
-            gesamtTore = player.tore + (player.siebenMeterTore || 0);
-        } else {
-            // Feldtore berechnen (7m abziehen, da sie in .tore enthalten sind)
-            feldTore = player.tore - (player.siebenMeterTore || 0);
-        }
+        // Standardwerte: tore ist bereits die Summe aller Tore (Feld + 7m) in stats.js/berechneStatistiken
+        const gesamtTore = player.tore;
+        const feldTore = player.tore - (player.siebenMeterTore || 0);
 
         player.tore = gesamtTore;
         const fieldAttempts = feldTore + player.fehlwurf;

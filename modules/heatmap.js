@@ -54,14 +54,11 @@ function hexToRgb(hex) {
 function getIdentityColors() {
     const sideColorHeim = spielstand?.settings?.teamColor || '#dc3545';
     const sideColorGegner = spielstand?.settings?.teamColorGegner || '#2563eb';
-
-    const myTeamName = (spielstand?.settings?.myTeamName || '').toLowerCase().trim();
-    const gastNameAktuell = (spielstand?.settings?.teamNameGegner || 'Gegner').toLowerCase().trim();
-    const weAreGastAktuell = myTeamName && (gastNameAktuell === myTeamName);
+    const isAuswaerts = spielstand?.settings?.isAuswaertsspiel || false;
 
     return {
-        us: weAreGastAktuell ? sideColorGegner : sideColorHeim,
-        them: weAreGastAktuell ? sideColorHeim : sideColorGegner
+        us: isAuswaerts ? sideColorGegner : sideColorHeim,
+        them: isAuswaerts ? sideColorHeim : sideColorGegner
     };
 }
 
@@ -208,10 +205,42 @@ export function renderHeatmap(svgElement, logSource, isHistory = false, filterOv
 
     // ... [Filter Logic Unchanged] ...
     // Note: Re-implementing filter logic briefly to ensure context is correct
-    if (currentHeatmapContext && typeof currentHeatmapContext === 'object' && svgElement === heatmapSvg) {
+    if (filterOverride) {
+        const t = (filterOverride.team || '').toLowerCase();
+        if (t === 'heim') { showHeim = true; showGegner = false; }
+        else { showHeim = false; showGegner = true; }
+        playerFilter = filterOverride.player;
+    }
+    // PRIORITY 2: History detail view (explicit SVG or flag)
+    else if (isHistory || (svgElement && svgElement.id === 'histHeatmapSvg')) {
+        const histToggle = document.getElementById('histHeatmapTeamToggle');
+        if (histToggle) {
+            const isChecked = histToggle.getAttribute('data-state') === 'checked';
+            showHeim = !isChecked;
+            showGegner = isChecked;
+        } else {
+            const selected = document.querySelector('input[name="histHeatTeam"]:checked');
+            if (selected && selected.value === 'gegner') { showHeim = false; showGegner = true; }
+            else { showHeim = true; showGegner = false; }
+        }
+
+        const hps = document.getElementById('histHeatmapPlayerSelect');
+        if (hps && hps.value !== 'all') {
+            playerFilter = parseInt(hps.value, 10);
+        }
+    }
+    // PRIORITY 3: Live Overview Modal
+    else if (currentHeatmapContext === 'liveOverview' || (svgElement && (svgElement.id === 'liveOverviewHeatmapSvg' || svgElement === liveOverviewHeatmapSvg))) {
+        const selected = document.querySelector('input[name="liveOverviewHeatTeam"]:checked');
+        if (selected && selected.value === 'gegner') { showHeim = false; showGegner = true; }
+        else { showHeim = true; showGegner = false; }
+    }
+    // PRIORITY 4: Global Heatmap (Season/Dashboard)
+    else if (currentHeatmapContext && typeof currentHeatmapContext === 'object' && svgElement === heatmapSvg) {
         log = currentHeatmapContext.log;
         if (currentHeatmapContext.filter) {
-            if (currentHeatmapContext.filter.team === 'heim') { showHeim = true; showGegner = false; }
+            const t = (currentHeatmapContext.filter.team || '').toLowerCase();
+            if (t === 'heim') { showHeim = true; showGegner = false; }
             else { showHeim = false; showGegner = true; }
             playerFilter = currentHeatmapContext.filter.player;
         }
@@ -230,78 +259,48 @@ export function renderHeatmap(svgElement, logSource, isHistory = false, filterOv
             else { showHeim = false; showGegner = true; }
             playerFilter = currentHeatmapContext.filter.player;
         } else { showHeim = true; showGegner = true; }
-    } else if (currentHeatmapContext === 'liveOverview' || (svgElement && (svgElement.id === 'liveOverviewHeatmapSvg' || svgElement === liveOverviewHeatmapSvg))) {
-        const selected = document.querySelector('input[name="liveOverviewHeatTeam"]:checked');
-        if (selected && selected.value === 'gegner') { showHeim = false; showGegner = true; }
-        else { showHeim = true; showGegner = false; }
     } else {
-        if (filterOverride) {
-            if (filterOverride.team === 'heim') { showHeim = true; showGegner = false; }
-            else { showHeim = false; showGegner = true; }
-            playerFilter = filterOverride.player;
-        } else if (isHistory) {
-            const selected = document.querySelector('input[name="histHeatTeam"]:checked');
-            if (selected && selected.value === 'gegner') { showHeim = false; showGegner = true; }
-            else { showHeim = true; showGegner = false; }
-        } else {
-            if (svgElement === heatmapSvg) {
-                const hf = document.getElementById('heatmapHeimFilter');
-                if (hf) hf.closest('label').style.display = '';
-                const gf = document.getElementById('heatmapGegnerFilter');
-                if (gf) gf.closest('label').style.display = '';
-            }
+        if (svgElement === heatmapSvg) {
+            const hf = document.getElementById('heatmapHeimFilter');
+            if (hf) hf.closest('label').style.display = '';
+            const gf = document.getElementById('heatmapGegnerFilter');
+            if (gf) gf.closest('label').style.display = '';
+        }
 
-            // Default Logic (Main Heatmap)
-            // Fallback to Settings/Sliders if dedicated filters don't exist
-            // Default Logic (Main Heatmap)
-            // Use heatmapTeamToggle if available (New UI)
-            if (heatmapTeamToggle) {
-                const isChecked = heatmapTeamToggle.getAttribute('data-state') === 'checked'; // checked = Gegner (Right)
-                if (isChecked) {
-                    showHeim = false;
-                    showGegner = true;
-                } else {
-                    showHeim = true;
-                    showGegner = false;
-                }
+        // Default Logic (Main Heatmap)
+        // Use heatmapTeamToggle if available (New UI)
+        if (heatmapTeamToggle) {
+            const isChecked = heatmapTeamToggle.getAttribute('data-state') === 'checked'; // checked = Gegner (Right)
+            if (isChecked) {
+                showHeim = false;
+                showGegner = true;
             } else {
-                // Fallback (Legacy or missing UI)
-                if (currentHeatmapTab === 'tor') {
-                    showHeim = document.getElementById('toggleWurfbildHeim')?.checked ?? true;
-                    showGegner = document.getElementById('toggleWurfbildGegner')?.checked ?? false;
-                } else {
-                    showHeim = true;
-                    showGegner = false;
-                }
+                showHeim = true;
+                showGegner = false;
             }
-
-            // Check for Player Selection (Main Heatmap)
-            const playerSelect = document.getElementById('heatmapPlayerSelect');
-
-            if (playerSelect && playerSelect.value !== 'all') {
-                if (playerSelect.value.includes('|')) {
-                    const parts = playerSelect.value.split('|');
-                    if (parts.length === 2) {
-                        playerFilter = parseInt(parts[1], 10);
-                    }
-                } else {
-                    // Simple number case (Live View)
-                    playerFilter = parseInt(playerSelect.value, 10);
-                }
+        }
+        // ... Check Player Selection ...
+        const playerSelect = document.getElementById('heatmapPlayerSelect');
+        if (playerSelect && playerSelect.value !== 'all') {
+            if (playerSelect.value.includes('|')) {
+                const parts = playerSelect.value.split('|');
+                if (parts.length === 2) playerFilter = parseInt(parts[1], 10);
+            } else {
+                playerFilter = parseInt(playerSelect.value, 10);
             }
         }
     }
 
     let showTore, showMissed, show7m;
-    if (currentHeatmapContext?.type === 'history-specific' || currentHeatmapContext === 'season' || (currentHeatmapContext?.type === 'season-specific')) {
+    if (isHistory || (svgElement && svgElement.id === 'histHeatmapSvg')) {
+        showTore = histHeatmapToreFilter?.checked ?? true;
+        showMissed = histHeatmapMissedFilter?.checked ?? true;
+        show7m = histHeatmap7mFilter?.checked ?? false;
+    } else if (currentHeatmapContext?.type === 'history-specific' || currentHeatmapContext === 'season' || (currentHeatmapContext?.type === 'season-specific')) {
         // For season heatmap (including history-specific player views which redirect there)
         showTore = document.getElementById('seasonHeatmapToreFilter')?.checked ?? (heatmapToreFilter?.checked ?? true);
         showMissed = document.getElementById('seasonHeatmapMissedFilter')?.checked ?? (heatmapMissedFilter?.checked ?? true);
         show7m = document.getElementById('seasonHeatmap7mFilter')?.checked ?? (heatmap7mFilter?.checked ?? false);
-    } else if (isHistory && svgElement.id === 'histHeatmapSvg') {
-        showTore = histHeatmapToreFilter?.checked ?? true;
-        showMissed = histHeatmapMissedFilter?.checked ?? true;
-        show7m = histHeatmap7mFilter?.checked ?? false;
     } else if (currentHeatmapContext === 'liveOverview' || (svgElement && (svgElement.id === 'liveOverviewHeatmapSvg' || svgElement === liveOverviewHeatmapSvg))) {
         showTore = liveOverviewHeatmapToreFilter?.checked ?? true;
         showMissed = liveOverviewHeatmapMissedFilter?.checked ?? true;
@@ -428,13 +427,22 @@ export function renderHeatmap(svgElement, logSource, isHistory = false, filterOv
             let isOpponent = entry.isOpponent;
             if (isOpponent === undefined) {
                 const logActionIsGegner = entry.action?.startsWith('Gegner') || entry.gegnerNummer;
-                isOpponent = weAreGastAktuell ? !logActionIsGegner : logActionIsGegner;
+                // Fallback to global setting if no perspective present
+                const wag = (typeof weAreGastAktuell !== 'undefined' ? weAreGastAktuell : (spielstand?.settings?.isAuswaertsspiel || false));
+                isOpponent = wag ? !logActionIsGegner : logActionIsGegner;
             }
 
             let visible = true;
             if (playerFilter !== null) {
-                if (showHeim && (isOpponent || (entry.playerId !== playerFilter))) visible = false;
-                if (!showHeim && (!isOpponent || (entry.gegnerNummer !== playerFilter))) visible = false;
+                // Ensure we use the correct player number for filtering
+                const pNum = (entry.player && typeof entry.player === 'object') ? entry.player.number : entry.player;
+                const checkNum = entry.playerId ?? pNum;
+
+                if (showHeim) {
+                    if (isOpponent || (checkNum !== playerFilter)) visible = false;
+                } else {
+                    if (!isOpponent || (entry.gegnerNummer !== playerFilter)) visible = false;
+                }
             } else {
                 if (isOpponent && !showGegner) visible = false;
                 if (!isOpponent && !showHeim) visible = false;

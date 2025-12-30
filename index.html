@@ -399,12 +399,14 @@
             <div class="game-layout">
                 <!-- Top Row: Admin Controls -->
                 <div
-                    style="display: flex; flex-direction: column; align-items: center; gap: 15px; margin-bottom: 20px;">
+                    style="display: flex; flex-direction: column; align-items: center; gap: 15px; margin-top: 30px; margin-bottom: 20px;">
                     <div
-                        style="display: flex; justify-content: space-between; align-items: center; width: 100%; max-width: 800px;">
-                        <button id="neuesSpielButton" class="shadcn-btn-outline">Neues Spiel</button>
-                        <button id="gameSwapSidesBtn" class="shadcn-btn-outline" style="margin: 0;">Seiten
-                            tauschen</button>
+                        style="display: flex; justify-content: center; align-items: center; width: 100%; max-width: 800px; padding: 0 20px;">
+                        <button id="neuesSpielButton"
+                            style="width: 100%; margin: 0; padding: 18px; font-size: 1.1rem; font-weight: 700; color: white; background: linear-gradient(135deg, #ef4444 0%, #991b1b 100%); border: 1px solid rgba(255,255,255,0.1); border-radius: 12px; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 10px; transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); box-shadow: 0 4px 15px rgba(239,68,68,0.2), inset 0 1px 1px rgba(255,255,255,0.05);">
+                            <i data-lucide="plus-circle" style="width: 20px; height: 20px;"></i>
+                            Neues Spiel
+                        </button>
                     </div>
                     <!-- Sidebar is still here but layout changed a bit, let's keep it functional -->
                     <aside id="statistikSidebar" class="versteckt"
@@ -505,9 +507,11 @@
                     <!-- Trackers and Finish Button -->
                     <div style="display: flex; flex-direction: column; gap: 20px;">
 
-                        <button id="spielBeendenButton" class="cta-button"
-                            style="width: 100%; margin: 0; background-color: #343a40;">Spiel beenden &
-                            speichern</button>
+                        <button id="spielBeendenButton"
+                            style="width: 100%; margin: 10px 0; padding: 18px; font-size: 1.1rem; font-weight: 700; color: white; background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%); border: 1px solid rgba(255,255,255,0.1); border-radius: 12px; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 10px; transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); box-shadow: 0 4px 15px rgba(0,0,0,0.2), inset 0 1px 1px rgba(255,255,255,0.05);">
+                            <i data-lucide="save" style="width: 20px; height: 20px;"></i>
+                            Spiel beenden & speichern
+                        </button>
                     </div>
 
 
@@ -597,16 +601,111 @@
                     <button class="heatmap-tab shadcn-btn-outline" id="histSubTabFeld">Feld</button>
                     <button class="heatmap-tab shadcn-btn-outline" id="histSubTabKombi">Kombiniert</button>
                 </div>
-                <div class="heatmap-filter">
-                    <label><input type="radio" name="histHeatTeam" value="heim" checked> Heim</label>
-                    <label><input type="radio" name="histHeatTeam" value="gegner"> Gast</label>
-                    <span style="margin: 0 10px;">|</span>
-                    <label><input type="checkbox" id="histHeatmapToreFilter" checked> Feldtore</label>
-                    <label><input type="checkbox" id="histHeatmap7mFilter"> 7m</label>
-                    <label><input type="checkbox" id="histHeatmapMissedFilter" checked> Fehlwürfe</label>
+                <div class="heatmap-controls-card"
+                    style="padding: 15px; margin-bottom: 15px; background: var(--bg-secondary); border-radius: 12px; border: 1px solid var(--border-color);">
+                    <div style="display: flex; flex-wrap: wrap; gap: 15px; align-items: flex-end;">
+                        <div class="roster-input-group" style="flex: 1; min-width: 150px;">
+                            <label
+                                style="display: block; font-size: 0.8rem; color: var(--text-muted); margin-bottom: 5px;">Team</label>
+                            <div
+                                style="display: flex; align-items: center; gap: 12px; height: 40px; background: hsl(var(--muted)/0.3); padding: 0 15px; border-radius: 8px; border: 1px solid hsl(var(--border)); width: fit-content;">
+                                <span id="histHeatTeamLabelHeim"
+                                    style="font-size: 0.85rem; font-weight: 600; color: hsl(var(--muted-foreground));">HEIM</span>
+                                <button id="histHeatmapTeamToggle" role="switch" aria-checked="false"
+                                    data-state="unchecked" class="shadcn-switch">
+                                    <span class="shadcn-switch-thumb"></span>
+                                </button>
+                                <span id="histHeatTeamLabelGegner"
+                                    style="font-size: 0.85rem; font-weight: 600; color: hsl(var(--muted-foreground));">GAST</span>
+                            </div>
+                        </div>
+
+                        <div class="roster-input-group" style="flex: 1; min-width: 150px;">
+                            <label
+                                style="display: block; font-size: 0.8rem; color: var(--text-muted); margin-bottom: 5px;">Spieler</label>
+                            <select id="histHeatmapPlayerSelect" class="shadcn-input shadcn-select-native"
+                                style="width: 100%; height: 38px;">
+                                <option value="all">Alle Spieler</option>
+                            </select>
+                        </div>
+
+                        <div style="display: flex; gap: 12px; padding-bottom: 8px;">
+                            <label class="heatmap-filter-item"
+                                style="font-size: 0.85rem; display: flex; align-items: center; gap: 6px; cursor: pointer;">
+                                <input type="checkbox" id="histHeatmapToreFilter" checked> Feldtore
+                            </label>
+                            <label class="heatmap-filter-item"
+                                style="font-size: 0.85rem; display: flex; align-items: center; gap: 6px; cursor: pointer;">
+                                <input type="checkbox" id="histHeatmap7mFilter"> 7m
+                            </label>
+                            <label class="heatmap-filter-item"
+                                style="font-size: 0.85rem; display: flex; align-items: center; gap: 6px; cursor: pointer;">
+                                <input type="checkbox" id="histHeatmapMissedFilter" checked> Fehlwürfe
+                            </label>
+                        </div>
+                    </div>
                 </div>
                 <div id="histHeatmapContainer" style="display: flex; justify-content: center; padding: 20px;">
                     <svg id="histHeatmapSvg" viewBox="0 0 300 200" width="600" height="400"></svg>
+                </div>
+
+                <!-- Copied Statistics for Heatmap Tab -->
+                <div id="histHeatmapStatsArea" class="versteckt" style="text-align: left; margin-top: 20px;">
+                    <div class="stats-card"
+                        style="background: var(--bg-card); border-radius: 12px; padding: 15px; border: 1px solid var(--border-color); margin-bottom: 20px;">
+                        <h2 id="histHeatmapHomeTitle" class="card-title"
+                            style="margin: 0 0 15px 0; font-size: 1.1rem; border-bottom: 1px solid var(--border-color); padding-bottom: 10px;">
+                            Heim</h2>
+                        <div class="table-container" style="overflow-x: auto;">
+                            <table class="modern-stats-table" style="width: 100%; border-collapse: collapse;">
+                                <thead>
+                                    <tr style="text-align: left; color: var(--text-muted); font-size: 0.8rem;">
+                                        <th style="padding: 10px;">Spieler</th>
+                                        <th style="padding: 10px;">Tore</th>
+                                        <th style="padding: 10px;">Feld</th>
+                                        <th style="padding: 10px;">7m</th>
+                                        <th style="padding: 10px;">Fehl</th>
+                                        <th style="padding: 10px;">Quote</th>
+                                        <th style="padding: 10px;">Gut</th>
+                                        <th style="padding: 10px;">TF</th>
+                                        <th style="padding: 10px;">G</th>
+                                        <th style="padding: 10px;">2'</th>
+                                        <th style="padding: 10px;">R</th>
+                                        <th style="padding: 10px;"></th>
+                                    </tr>
+                                </thead>
+                                <tbody id="histHeatmapStatsBodyHome"></tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <div class="stats-card"
+                        style="background: var(--bg-card); border-radius: 12px; padding: 15px; border: 1px solid var(--border-color);">
+                        <h2 id="histHeatmapGegnerTitle" class="card-title"
+                            style="margin: 0 0 15px 0; font-size: 1.1rem; border-bottom: 1px solid var(--border-color); padding-bottom: 10px;">
+                            Gast</h2>
+                        <div class="table-container" style="overflow-x: auto;">
+                            <table class="modern-stats-table" style="width: 100%; border-collapse: collapse;">
+                                <thead>
+                                    <tr style="text-align: left; color: var(--text-muted); font-size: 0.8rem;">
+                                        <th style="padding: 10px;">Name</th>
+                                        <th style="padding: 10px;">Tore</th>
+                                        <th style="padding: 10px;">Feld</th>
+                                        <th style="padding: 10px;">7m</th>
+                                        <th style="padding: 10px;">Fehl</th>
+                                        <th style="padding: 10px;">Quote</th>
+                                        <th style="padding: 10px;">Gut</th>
+                                        <th style="padding: 10px;">TF</th>
+                                        <th style="padding: 10px;">G</th>
+                                        <th style="padding: 10px;">2'</th>
+                                        <th style="padding: 10px;">R</th>
+                                        <th style="padding: 10px;"></th>
+                                    </tr>
+                                </thead>
+                                <tbody id="histHeatmapStatsBodyGegner"></tbody>
+                            </table>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>

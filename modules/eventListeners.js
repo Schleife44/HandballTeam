@@ -9,7 +9,7 @@ import {
     deleteTeamButton, teamToggle, teamHeaderTitle,
     rosterTeamNameHeim, rosterTeamNameGegner,
     seasonOverviewButton, seasonOverviewModal, seasonSummary, seasonStatsContainer, seasonOverviewClose,
-    pauseButton, zurueckButton, vorButton, neuesSpielButton, gameSwapSidesBtn,
+    pauseButton, zurueckButton, vorButton, neuesSpielButton,
     heimScoreUp, heimScoreDown, gegnerScoreUp, gegnerScoreDown,
     aktionAbbrechen, guteAktionModalButton, aktionVorauswahlAbbrechen,
     inputTeamNameHeim, inputTeamNameGegner, toggleAuswaertsspiel, inputGoalSvg, wurfbildUeberspringen,
@@ -433,23 +433,6 @@ export function registerEventListeners() {
     }
 
     // === Auswärtsspiel Toggle ===
-    if (gameSwapSidesBtn) {
-        gameSwapSidesBtn.addEventListener('click', () => {
-            // Non-destructive swap: just toggle the side perspective
-            if (!spielstand.settings) spielstand.settings = {};
-            spielstand.settings.isAuswaertsspiel = !spielstand.settings.isAuswaertsspiel;
-
-            // Sync toggle if visible in settings
-            if (toggleAuswaertsspiel) {
-                toggleAuswaertsspiel.checked = spielstand.settings.isAuswaertsspiel;
-            }
-
-            // Update UI components that depend on side perspective
-            updateScoreDisplay();
-            zeichneSpielerRaster();
-            speichereSpielstand();
-        });
-    }
 
     if (toggleAuswaertsspiel) {
         toggleAuswaertsspiel.addEventListener('change', (e) => {

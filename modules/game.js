@@ -4,10 +4,10 @@ import {
     statistikWrapper, gamePhaseButton, timerAnzeige, pauseButton,
     heimScoreUp, heimScoreDown, gegnerScoreUp, gegnerScoreDown,
     gegnerNummerModal, sevenMeterOutcomeModal, aktionsMenue, aktionVorauswahl, kommentarBereich,
-    wurfpositionModal
+    wurfpositionModal, spielBeendenButton
 } from './dom.js';
 import {
-    applyViewSettings, updateScoreDisplay, updateProtokollAnzeige,
+    applyViewSettings, applyTheme, updateScoreDisplay, updateProtokollAnzeige,
     updateSuspensionDisplay, zeichneSpielerRaster,
     zeichneStatistikTabelle, oeffneWurfbildModal, oeffneGegnerNummerModal as uiOeffneGegnerNummerModal,
     oeffneAktionsMenueUI, schliesseAktionsMenueUI, zeichneRosterListe
@@ -328,7 +328,16 @@ export function logAktion(aktion, kommentar = null) {
     const aktuelleZeit = timerAnzeige.textContent;
 
     if (aktion === "Tor") {
-        spielstand.score.heim++;
+        // After swapTeams, teamNameGegner might contain our team name
+        // Always increment the score that matches our team in roster
+        // Since roster is always "us", we need to check if teamNameHeim or teamNameGegner matches our identity
+        // But actually, after swap: teamNameGegner = our team, so score.gegner should go up
+        // When not swapped: teamNameHeim = our team, so score.heim should go up
+        if (spielstand.settings.isAuswaertsspiel) {
+            spielstand.score.gegner++;  // Our team is in teamNameGegner after swap
+        } else {
+            spielstand.score.heim++;  // Our team is in teamNameHeim normally
+        }
     }
     const aktuellerSpielstand = `${spielstand.score.heim}:${spielstand.score.gegner}`;
     updateScoreDisplay();
@@ -384,7 +393,12 @@ function handleGegnerAktion(aktion, kommentar) {
     if (aktion === "Tor") {
         mappedAction = "Gegner Tor";
         shouldOpenWurfbild = spielstand.settings.showWurfbildGegner;
-        spielstand.score.gegner++;
+        // Opponent scores on opposite side from us
+        if (spielstand.settings.isAuswaertsspiel) {
+            spielstand.score.heim++;  // Opponent is in teamNameHeim after swap
+        } else {
+            spielstand.score.gegner++;  // Opponent is in teamNameGegner normally
+        }
     } else if (aktion === "7m") {
         // Zeige 7m-Ergebnis-Modal für Gegner
         spielstand.tempGegnerNummer = gegnernummer;
@@ -541,11 +555,23 @@ export function logScoreKorrektur(team, change) {
     const aktuelleZeit = timerAnzeige.textContent;
 
     if (team === 'heim') {
-        spielstand.score.heim += change;
-        if (spielstand.score.heim < 0) spielstand.score.heim = 0;
-    } else {
-        spielstand.score.gegner += change;
-        if (spielstand.score.gegner < 0) spielstand.score.gegner = 0;
+        // Manual score adjustment for our team
+        if (spielstand.settings.isAuswaertsspiel) {
+            spielstand.score.gegner += change;
+            if (spielstand.score.gegner < 0) spielstand.score.gegner = 0;
+        } else {
+            spielstand.score.heim += change;
+            if (spielstand.score.heim < 0) spielstand.score.heim = 0;
+        }
+    } else { // team === 'gegner'
+        // Manual score adjustment for opponent team
+        if (spielstand.settings.isAuswaertsspiel) {
+            spielstand.score.heim += change;
+            if (spielstand.score.heim < 0) spielstand.score.heim = 0;
+        } else {
+            spielstand.score.gegner += change;
+            if (spielstand.score.gegner < 0) spielstand.score.gegner = 0;
+        }
     }
 
     const aktuellerSpielstand = `${spielstand.score.heim}:${spielstand.score.gegner}`;
@@ -639,12 +665,17 @@ export function handle7mOutcome(outcome) {
     let nummer = null;
 
     if (isOpponent) {
-        // Gegner-7m
+        // Gegner-7m - opponent always scores on the opposite side
         nummer = spielstand.tempGegnerNummer || aktuelleGegnernummer;
         kommentar = nummer ? `(Nr. ${nummer})` : null;
 
         if (outcome === 'Tor') {
-            spielstand.score.gegner++;
+            // Opponent scores on their side (opposite of ours)
+            if (spielstand.settings.isAuswaertsspiel) {
+                spielstand.score.heim++;
+            } else {
+                spielstand.score.gegner++;
+            }
             aktion = "Gegner 7m Tor";
         } else if (outcome === 'Gehalten') {
             aktion = "Gegner 7m Gehalten";
@@ -652,12 +683,17 @@ export function handle7mOutcome(outcome) {
             aktion = "Gegner 7m Verworfen";
         }
     } else {
-        // Heimspieler-7m
+        // Our player's 7m
         playerId = temp7mPlayer.number;
         playerName = temp7mPlayer.name;
 
         if (outcome === 'Tor') {
-            spielstand.score.heim++;
+            // Our team scores based on which side we're on
+            if (spielstand.settings.isAuswaertsspiel) {
+                spielstand.score.gegner++;
+            } else {
+                spielstand.score.heim++;
+            }
             aktion = "7m Tor";
         } else if (outcome === 'Gehalten') {
             aktion = "7m Gehalten";
@@ -757,6 +793,28 @@ export async function starteNeuesSpiel() {
         spielstand.score = { heim: 0, gegner: 0 };
         spielstand.activeSuspensions = [];
         spielstand.knownOpponents = [];
+
+        // Reset perspective if we were away
+        if (spielstand.settings.isAuswaertsspiel) {
+            // Swap names and colors back so Our Team is Heim
+            const tempName = spielstand.settings.teamNameHeim;
+            spielstand.settings.teamNameHeim = spielstand.settings.teamNameGegner;
+            spielstand.settings.teamNameGegner = tempName;
+
+            const tempColor = spielstand.settings.teamColor;
+            spielstand.settings.teamColor = spielstand.settings.teamColorGegner;
+            spielstand.settings.teamColorGegner = tempColor;
+
+            spielstand.settings.isAuswaertsspiel = false;
+        }
+
+        // Reset opponent name to default if needed
+        spielstand.settings.teamNameGegner = "Gegner";
+
+        // Sync Inputs in Roster View
+        const rosterTeamNameGegner = document.getElementById('rosterTeamNameGegner');
+        if (rosterTeamNameGegner) rosterTeamNameGegner.value = "Gegner";
+
         spielstand.timer = {
             gamePhase: 1,
             istPausiert: true,
@@ -765,6 +823,11 @@ export async function starteNeuesSpiel() {
         };
 
         speichereSpielstand();
+
+        // Refresh all UI elements
+        applyTheme();
+        updateScoreDisplay();
+        zeichneRosterListe(false); // Reset roster view to Heim (our team)
 
         // Reset UI without reload to stay on Game View
         updateGameControls();

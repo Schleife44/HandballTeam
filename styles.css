@@ -250,6 +250,18 @@ button.shadcn-btn-ghost:hover {
     color: hsl(var(--accent-foreground));
 }
 
+#spielBeendenButton:hover {
+    background: linear-gradient(135deg, #334155 0%, #1e293b 100%) !important;
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3), inset 0 1px 1px rgba(255, 255, 255, 0.1) !important;
+}
+
+#neuesSpielButton:hover {
+    background: linear-gradient(135deg, #f87171 0%, #ef4444 100%) !important;
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(239, 68, 68, 0.3), inset 0 1px 1px rgba(255, 255, 255, 0.1) !important;
+}
+
 button.shadcn-btn-sm {
     height: 2rem;
     padding: 0 0.75rem;
@@ -667,15 +679,14 @@ textarea:focus {
     padding: 2px;
     overflow: hidden;
 
-    /* Default Colors (Home/Red) */
-    background-color: #d81b1b;
-    color: var(--heim-text-color, white);
+    /* Default Colors (Us) */
+    background-color: var(--team-primary-color, #d81b1b);
+    color: var(--our-text-color, white);
 }
 
 .spieler-button.gegner-button {
-    background-color: var(--gegner-color, #2563eb);
-    /* Blue for Opponent */
-    color: var(--gegner-text-color, white);
+    background-color: var(--team-opponent-color, #2563eb);
+    color: var(--opponent-text-color, white);
 }
 
 /* Specific override for Add Button */
@@ -706,17 +717,14 @@ textarea:focus {
     opacity: 0.9;
 }
 
-/* Keep distinct colors for Team/Opponent buttons as they are functional context */
+/* Ensure identity colors are prioritized for player buttons */
 .spieler-button:not(.gegner-button):not(.add-player-button) {
-    background-color: var(--heim-color, #dc3545);
-    /* Usually Home is Red in this app */
-    color: var(--heim-text-color, #fff);
+    background-color: var(--team-primary-color, #dc3545);
 }
 
 .gegner-button {
-    background-color: #2563eb;
-    /* Blue-600 */
-    color: #fff;
+    background-color: var(--team-opponent-color, #2563eb);
+    color: var(--opponent-text-color, #fff);
 }
 
 /* TABLES */
@@ -810,12 +818,12 @@ tr:hover td {
     position: relative;
     width: 300px;
     height: 200px;
-    border-top: 8px solid #ef4444;
-    /* Clean red */
-    border-left: 8px solid #ef4444;
-    border-right: 8px solid #ef4444;
+    border-top: 8px solid var(--team-primary-color, #ef4444);
+    border-left: 8px solid var(--team-primary-color, #ef4444);
+    border-right: 8px solid var(--team-primary-color, #ef4444);
     background-color: rgba(255, 255, 255, 0.9);
     margin: 0 auto;
+    transition: border-color 0.3s ease;
     /* Net Pattern */
     background-image:
         linear-gradient(0deg, transparent 24%, #e5e7eb 25%, #e5e7eb 26%, transparent 27%, transparent 74%, #e5e7eb 75%, #e5e7eb 76%, transparent 77%, transparent),
@@ -935,7 +943,8 @@ body.dark-mode #wurfpositionFeld svg circle {
 }
 
 .shadcn-switch[data-state="checked"] {
-    background-color: hsl(var(--primary));
+    background-color: #52525b;
+    /* Zinc-600 gray */
 }
 
 .shadcn-switch-thumb {
@@ -2049,6 +2058,23 @@ body.dark-mode .heatmap-tab.white-style:not(.active) {
     text-align: left;
     white-space: normal;
     word-break: break-word;
+}
+
+/* History Team Labels */
+.team-label-heim,
+.team-label-gegner {
+    background: transparent;
+    color: var(--text-muted);
+}
+
+.team-label-heim:has(input:checked) {
+    background: hsl(var(--primary));
+    color: white;
+}
+
+.team-label-gegner:has(input:checked) {
+    background: #ef4444;
+    color: white;
 }
 
 /* Log Entry Styling */

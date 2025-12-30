@@ -7,11 +7,14 @@ import {
     historieListe, histDetailTeams, histDetailScore, histDetailDate,
     histStatsBody, histStatsGegnerBody, heatmapSvg,
     histHeatmapSvg, histContentHeatmap, histSubTabTor, histSubTabFeld, histSubTabKombi,
-    histHeatmapToreFilter, histHeatmapMissedFilter, histHeatmap7mFilter
+    histHeatmapToreFilter, histHeatmapMissedFilter, histHeatmap7mFilter,
+    histHeatmapStatsArea, histHeatmapStatsBodyHome, histHeatmapStatsBodyGegner,
+    histHeatmapHomeTitle, histHeatmapGegnerTitle, histHeatmapPlayerSelect,
+    histHeatmapTeamToggle, histHeatTeamLabelHeim, histHeatTeamLabelGegner
 } from './dom.js';
 import { berechneStatistiken, berechneGegnerStatistiken, berechneTore } from './stats.js';
 import { speichereSpielInHistorie, getHistorie, loescheSpielAusHistorie } from './history.js';
-import { renderHeatmap, setCurrentHeatmapContext, setCurrentHeatmapTab, currentHeatmapTab } from './heatmap.js';
+import { renderHeatmap, setCurrentHeatmapContext, setCurrentHeatmapTab, currentHeatmapTab, currentHeatmapContext } from './heatmap.js';
 import { customConfirm, customAlert } from './customDialog.js';
 import { exportiereHistorieAlsPdf } from './export.js';
 import { getGameResult } from './utils.js';
@@ -37,11 +40,25 @@ export async function handleSpielBeenden() {
     );
 
     if (confirmed) {
+        // Determine which team name is "ours" based on perspective
+        const myTeamName = spielstand.settings.isAuswaertsspiel
+            ? spielstand.settings.teamNameGegner
+            : spielstand.settings.teamNameHeim;
+
         const gameData = {
             score: { ...spielstand.score },
             teams: { heim: spielstand.settings.teamNameHeim, gegner: spielstand.settings.teamNameGegner },
             gameLog: [...spielstand.gameLog],
             roster: [...spielstand.roster],
+            knownOpponents: [...(spielstand.knownOpponents || [])],
+            settings: {
+                teamNameHeim: spielstand.settings.teamNameHeim,
+                teamNameGegner: spielstand.settings.teamNameGegner,
+                teamColor: spielstand.settings.teamColor,
+                teamColorGegner: spielstand.settings.teamColorGegner,
+                isAuswaertsspiel: spielstand.settings.isAuswaertsspiel,
+                myTeamName: myTeamName
+            }
         };
 
         speichereSpielInHistorie(gameData);
@@ -167,7 +184,7 @@ export function renderHistoryList() {
 }
 
 // --- Render Home Stats in History ---
-export function renderHomeStatsInHistory(tbody, statsData, gameLog, isLive = false) {
+export function renderHomeStatsInHistory(tbody, statsData, gameLog, isLive = false, stayInHeatmap = false, renderBound = null) {
     tbody.innerHTML = '';
     const toreMap = berechneTore(gameLog);
 
@@ -217,6 +234,10 @@ export function renderHomeStatsInHistory(tbody, statsData, gameLog, isLive = fal
                     // Navigate to Live Heatmap
                     const navItem = document.querySelector('.nav-item[data-view="heatmap"]');
                     if (navItem) navItem.click();
+                } else if (stayInHeatmap) {
+                    // Update current heatmap context locally
+                    openPlayerHistoryHeatmap(gameLog, stats.number, 'heim', stats.name, mode, false);
+                    if (renderBound) renderBound();
                 } else {
                     openPlayerHistoryHeatmap(gameLog, stats.number, 'heim', stats.name, mode);
                 }
@@ -229,7 +250,7 @@ export function renderHomeStatsInHistory(tbody, statsData, gameLog, isLive = fal
 }
 
 // --- Render Opponent Stats in History ---
-export function renderOpponentStatsInHistory(tbody, statsData, gameLog, game = null, isLive = false) {
+export function renderOpponentStatsInHistory(tbody, statsData, gameLog, game = null, isLive = false, stayInHeatmap = false, renderBound = null) {
     tbody.innerHTML = '';
     const toreMap = berechneTore(gameLog); // Needed if not already in statsData
 
@@ -274,6 +295,12 @@ export function renderOpponentStatsInHistory(tbody, statsData, gameLog, game = n
                     // Navigate to Live Heatmap
                     const navItem = document.querySelector('.nav-item[data-view="heatmap"]');
                     if (navItem) navItem.click();
+                } else if (stayInHeatmap) {
+                    const num = (stats.number && stats.number !== '?') ? stats.number : null;
+                    const mode = btn.dataset.mode;
+                    const teamName = (game && game.teams && game.teams.gegner) || stats.team || 'gegner';
+                    openPlayerHistoryHeatmap(gameLog, num, teamName, stats.name, mode, false);
+                    if (renderBound) renderBound();
                 } else {
                     const num = (stats.number && stats.number !== '?') ? stats.number : null;
                     const mode = btn.dataset.mode;
@@ -289,8 +316,7 @@ export function renderOpponentStatsInHistory(tbody, statsData, gameLog, game = n
 }
 
 // --- Open Player History Heatmap ---
-// --- Open Player History Heatmap ---
-export function openPlayerHistoryHeatmap(gameLog, identifier, team, playerName, mode = 'field') {
+export function openPlayerHistoryHeatmap(gameLog, identifier, team, playerName, mode = 'field', navigate = true) {
     // Determine the title
     const modeLabel = mode === '7m' ? `7m Grafik` : `Wurfbild`;
     const myTeamName = (spielstand.settings.myTeamName || '').toLowerCase().trim();
@@ -313,16 +339,31 @@ export function openPlayerHistoryHeatmap(gameLog, identifier, team, playerName, 
             seven_m: mode === '7m',  // 7m only in 7m mode
             missed: true  // Always show misses
         },
-        type: 'history-specific'
+        type: 'history-detail'
     });
 
     // Default to 'tor' for the global view
     setCurrentHeatmapTab('tor');
 
-    // Simulate navigation to the heatmap view
-    const navItem = document.querySelector('.nav-item[data-view="seasonheatmap"]');
-    if (navItem) {
-        navItem.click();
+    if (navigate) {
+        // Switch to the heatmap tab in history detail
+        if (histTabHeatmap) histTabHeatmap.click();
+    }
+
+    // Also update the player select if it exists
+    if (histHeatmapPlayerSelect && identifier !== null) {
+        // Use the sync helper if available
+        if (histHeatmapSvg && typeof histHeatmapSvg.syncControls === 'function') {
+            const isHeim = (team === 'heim');
+            histHeatmapSvg.syncControls(isHeim ? 'heim' : 'gegner', identifier, mode);
+        } else {
+            histHeatmapPlayerSelect.value = identifier;
+        }
+
+        // Trigger local update
+        if (histHeatmapSvg && typeof histHeatmapSvg.renderBound === 'function') {
+            histHeatmapSvg.renderBound();
+        }
     }
 }
 
@@ -433,73 +474,157 @@ export function openHistoryDetail(game) {
     renderHomeStatsInHistory(histStatsBodyNew, homeStats, game.gameLog);
     renderOpponentStatsInHistory(histStatsGegnerBodyNew, opponentStats, game.gameLog, game);
 
-    // --- Robust Perspective Detection ---
-    const globalNameTrim = (spielstand.settings.myTeamName || '').toLowerCase().trim();
-    const hName = (game.settings?.teamNameHeim || game.teams?.heim || 'Heim').toLowerCase().trim();
-    const gName = (game.settings?.teamNameGegner || game.teams?.gegner || 'Gegner').toLowerCase().trim();
-
-    const heimSideIsUsName = globalNameTrim !== '' && (hName.includes(globalNameTrim) || globalNameTrim.includes(hName));
-    const gastSideIsUsName = globalNameTrim !== '' && (gName.includes(globalNameTrim) || globalNameTrim.includes(gName));
-
-    // Heuristic: Check player overlap
-    const currentRosterNumbers = new Set((spielstand.roster || []).map(p => String(p.number)));
-    const gameRosterNumbers = (game.roster || []).map(p => String(p.number));
-    const overlapCount = gameRosterNumbers.filter(n => currentRosterNumbers.has(n)).length;
-    const heimSideLooksLikeUs = overlapCount > 0 && overlapCount >= (gameRosterNumbers.length / 2);
-
-    let weAreGast = false;
-    if (heimSideIsUsName && !gastSideIsUsName) {
-        weAreGast = false;
-    } else if (gastSideIsUsName && !heimSideIsUsName) {
-        weAreGast = true;
-    } else if (heimSideLooksLikeUs) {
-        weAreGast = false;
-    } else if (game.settings && game.settings.isAuswaertsspiel !== undefined) {
-        weAreGast = !!game.settings.isAuswaertsspiel;
-    }
-    // Filtered Log with correct perspective for heatmap
+    // Simplified Perspective Detection for Heatmap
+    // Just map based on identity: "Gegner" actions or gegnerNummer = Opponent, playerId = Us
     const perspectiveMappedLog = game.gameLog.map(e => ({
         ...e,
-        isOpponent: weAreGast ? !(e.action?.startsWith('Gegner') || e.gegnerNummer) : (e.action?.startsWith('Gegner') || e.gegnerNummer)
+        isOpponent: !!(e.action?.startsWith('Gegner') || e.gegnerNummer)
     }));
 
     // Re-bind Heatmap Logic (unchanged from old function, just simple rebinding)
+    // Set initial heatmap state for this game
+    setCurrentHeatmapTab('tor');
+    setCurrentHeatmapContext({ type: 'history-detail' }); // Standardize context
+
+    // Heatmap Tabs Filter
     const renderBound = () => renderHeatmap(histHeatmapSvg, perspectiveMappedLog, true);
+    if (histHeatmapSvg) {
+        histHeatmapSvg.renderBound = renderBound;
+        // Also ensure no other context interferes
+        histHeatmapSvg.dataset.isHistory = "true";
+    }
+
+    // Helper to update player select based on team
+    const updatePlayerSelect = (activeTeam = null) => {
+        if (!histHeatmapPlayerSelect) return;
+        const isGegner = activeTeam ? (activeTeam === 'gegner') : (histHeatmapTeamToggle?.getAttribute('data-state') === 'checked');
+        histHeatmapPlayerSelect.innerHTML = '<option value="all">Alle Spieler</option>';
+        if (!isGegner) {
+            homeStats.forEach(p => {
+                const opt = document.createElement('option');
+                opt.value = p.number;
+                opt.textContent = `${p.number} - ${p.name}`;
+                histHeatmapPlayerSelect.appendChild(opt);
+            });
+        } else {
+            opponentStats.forEach(p => {
+                const opt = document.createElement('option');
+                opt.value = p.number;
+                opt.textContent = `${p.number} - ${p.name}`;
+                histHeatmapPlayerSelect.appendChild(opt);
+            });
+        }
+    };
+
+    if (histHeatmapSvg) {
+        histHeatmapSvg.syncControls = (team, identifier, mode = 'field') => {
+            const isHeim = (team === 'heim');
+            if (histHeatmapTeamToggle) {
+                histHeatmapTeamToggle.setAttribute('data-state', isHeim ? 'unchecked' : 'checked');
+                histHeatmapTeamToggle.setAttribute('aria-checked', (!isHeim).toString());
+                if (histHeatTeamLabelHeim) histHeatTeamLabelHeim.style.color = isHeim ? 'hsl(var(--primary))' : 'hsl(var(--muted-foreground))';
+                if (histHeatTeamLabelGegner) histHeatTeamLabelGegner.style.color = !isHeim ? 'white' : 'hsl(var(--muted-foreground))';
+            }
+            updatePlayerSelect(isHeim ? 'heim' : 'gegner');
+            if (histHeatmapPlayerSelect && identifier !== null) {
+                histHeatmapPlayerSelect.value = identifier;
+            }
+
+            // Sync Checkboxes based on mode
+            if (mode === '7m') {
+                if (histHeatmapToreFilter) histHeatmapToreFilter.checked = false;
+                if (histHeatmap7mFilter) histHeatmap7mFilter.checked = true;
+                if (histHeatmapMissedFilter) histHeatmapMissedFilter.checked = true;
+            } else {
+                if (histHeatmapToreFilter) histHeatmapToreFilter.checked = true;
+                if (histHeatmap7mFilter) histHeatmap7mFilter.checked = false;
+                if (histHeatmapMissedFilter) histHeatmapMissedFilter.checked = true;
+            }
+        };
+    }
+
+    // Initial populate of Heatmap Tab Stats
+    if (histHeatmapStatsArea) {
+        histHeatmapStatsArea.classList.remove('versteckt');
+        if (histHeatmapHomeTitle) histHeatmapHomeTitle.textContent = homeName;
+        if (histHeatmapGegnerTitle) histHeatmapGegnerTitle.textContent = oppName;
+
+        renderHomeStatsInHistory(histHeatmapStatsBodyHome, homeStats, game.gameLog, false, true, renderBound);
+        renderOpponentStatsInHistory(histHeatmapStatsBodyGegner, opponentStats, game.gameLog, game, false, true, renderBound);
+    }
 
     const histFilter = histContentHeatmap.querySelector('.heatmap-filter');
     if (histFilter) histFilter.classList.remove('versteckt');
 
-    const histTeamRadios = document.querySelectorAll('input[name="histHeatTeam"]');
-    histTeamRadios.forEach(r => {
-        r.checked = (r.value === 'heim');
-        r.addEventListener('change', renderBound);
-    });
+    // Populate Heatmap Player Select
+    if (histHeatmapPlayerSelect) {
+        updatePlayerSelect();
+        histHeatmapPlayerSelect.onchange = () => {
+            renderBound();
+        };
+    }
+
+    if (histHeatTeamLabelHeim) {
+        histHeatTeamLabelHeim.textContent = homeName;
+        // Initial highlight
+        histHeatTeamLabelHeim.style.color = 'hsl(var(--primary))';
+    }
+    if (histHeatTeamLabelGegner) {
+        histHeatTeamLabelGegner.textContent = oppName;
+        histHeatTeamLabelGegner.style.color = 'hsl(var(--muted-foreground))';
+    }
+
+    if (histHeatmapTeamToggle) {
+        // Reset state
+        histHeatmapTeamToggle.setAttribute('data-state', 'unchecked');
+        histHeatmapTeamToggle.setAttribute('aria-checked', 'false');
+
+        histHeatmapTeamToggle.onclick = () => {
+            const isChecked = histHeatmapTeamToggle.getAttribute('data-state') === 'checked';
+            const newState = isChecked ? 'unchecked' : 'checked';
+            histHeatmapTeamToggle.setAttribute('data-state', newState);
+            histHeatmapTeamToggle.setAttribute('aria-checked', (!isChecked).toString());
+
+            // Highlight labels
+            if (histHeatTeamLabelHeim) histHeatTeamLabelHeim.style.color = !isChecked ? 'hsl(var(--muted-foreground))' : 'hsl(var(--primary))';
+            if (histHeatTeamLabelGegner) histHeatTeamLabelGegner.style.color = !isChecked ? 'white' : 'hsl(var(--muted-foreground))';
+
+            updatePlayerSelect();
+            renderBound();
+        };
+    }
 
     if (histHeatmapToreFilter) histHeatmapToreFilter.onchange = renderBound;
     if (histHeatmapMissedFilter) histHeatmapMissedFilter.onchange = renderBound;
     if (histHeatmap7mFilter) histHeatmap7mFilter.onchange = renderBound;
 
-    histSubTabTor.addEventListener('click', () => {
+    // Use property based listeners to avoid accumulation
+    histSubTabTor.onclick = () => {
         setCurrentHeatmapTab('tor');
         histSubTabTor.classList.add('active');
         histSubTabFeld.classList.remove('active');
         histSubTabKombi.classList.remove('active');
         renderBound();
-    });
-    histSubTabFeld.addEventListener('click', () => {
+    };
+    histSubTabFeld.onclick = () => {
         setCurrentHeatmapTab('feld');
         histSubTabFeld.classList.add('active');
         histSubTabTor.classList.remove('active');
         histSubTabKombi.classList.remove('active');
         renderBound();
-    });
-    histSubTabKombi.addEventListener('click', () => {
+    };
+    histSubTabKombi.onclick = () => {
         setCurrentHeatmapTab('kombiniert');
         histSubTabKombi.classList.add('active');
         histSubTabTor.classList.remove('active');
         histSubTabFeld.classList.remove('active');
         renderBound();
-    });
+    };
+
+    // Reset buttons UI
+    histSubTabTor.classList.add('active');
+    histSubTabFeld.classList.remove('active');
+    histSubTabKombi.classList.remove('active');
 
     renderBound();
 }

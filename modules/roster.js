@@ -5,7 +5,7 @@ import {
     rosterTeamNameHeim, rosterTeamNameGegner, teamColorInput, teamColorInputGegner,
     teamColorTrigger, teamColorTriggerGegner, teamToggle, teamHeaderTitle
 } from './dom.js';
-import { zeichneRosterListe, zeichneSpielerRaster, oeffneEditModusUI, schliesseEditModusUI, updateScoreDisplay } from './ui.js';
+import { zeichneRosterListe, zeichneSpielerRaster, oeffneEditModusUI, schliesseEditModusUI, updateScoreDisplay, applyTheme } from './ui.js';
 import { customAlert, customConfirm } from './customDialog.js';
 import { getContrastTextColor } from './utils.js';
 
@@ -190,23 +190,22 @@ export function swapTeams() {
     spielstand.settings.teamColor = spielstand.settings.teamColorGegner;
     spielstand.settings.teamColorGegner = tempColor;
 
-    // Swap Rosters
-    const tempRoster = JSON.parse(JSON.stringify(spielstand.roster));
-    spielstand.roster = JSON.parse(JSON.stringify(spielstand.knownOpponents));
-    spielstand.knownOpponents = tempRoster;
+    // Swap Scores (physical swap)
+    const tempScore = spielstand.score.heim;
+    spielstand.score.heim = spielstand.score.gegner;
+    spielstand.score.gegner = tempScore;
 
-    // Swap Scores
-    if (spielstand.score) {
-        const tempScoreHeim = spielstand.score.heim;
-        spielstand.score.heim = spielstand.score.gegner;
-        spielstand.score.gegner = tempScoreHeim;
-    }
+    // Toggle Auswärtsspiel state
+    spielstand.settings.isAuswaertsspiel = !spielstand.settings.isAuswaertsspiel;
 
     // Update UI Inputs
     if (rosterTeamNameHeim) rosterTeamNameHeim.value = spielstand.settings.teamNameHeim || '';
     if (rosterTeamNameGegner) rosterTeamNameGegner.value = spielstand.settings.teamNameGegner || '';
     if (teamColorInput) teamColorInput.value = spielstand.settings.teamColor || '#dc3545';
     if (teamColorInputGegner) teamColorInputGegner.value = spielstand.settings.teamColorGegner || '#2563eb';
+
+    const toggleAuswaertsspiel = document.getElementById('toggleAuswaertsspiel');
+    if (toggleAuswaertsspiel) toggleAuswaertsspiel.checked = spielstand.settings.isAuswaertsspiel;
 
     // Update Color Trigger Styles
     if (teamColorTrigger) {
@@ -223,20 +222,8 @@ export function swapTeams() {
 
     // Save and Redraw
     speichereSpielstand();
-    zeichneRosterListe(isOpponentMode); // Refresh list with current view
+    zeichneRosterListe(isOpponentMode); // Refresh list with current view side
     zeichneSpielerRaster();
-    updateScoreDisplay();
-
-    // Update Header Title (just in case)
-    if (teamHeaderTitle) {
-        teamHeaderTitle.textContent = isOpponentMode ? 'Gegner Team' : 'Heim Team';
-    }
-
-    // Re-apply document variables for colors if needed
-    document.documentElement.style.setProperty('--btn-primary', spielstand.settings.teamColor);
-    document.documentElement.style.setProperty('--heim-color', spielstand.settings.teamColor);
-    document.documentElement.style.setProperty('--primary', spielstand.settings.teamColor);
-    document.documentElement.style.setProperty('--gegner-color', spielstand.settings.teamColorGegner);
-    document.documentElement.style.setProperty('--heim-text-color', getContrastTextColor(spielstand.settings.teamColor));
-    document.documentElement.style.setProperty('--gegner-text-color', getContrastTextColor(spielstand.settings.teamColorGegner));
+    updateScoreDisplay(); // Now handles teamHeaderTitle too
+    applyTheme(); // Centralized theme and variable application
 }

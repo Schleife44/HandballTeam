@@ -34,34 +34,31 @@ export function getContrastTextColor(hexColor) {
  * @returns {string} - 'win', 'loss', oder 'draw'
  */
 export function getGameResult(game, currentMyTeamName = null) {
-    // Verwende entweder den im Spiel gespeicherten Team-Namen oder den aktuellen aus Settings
-    let myTeamName = game.settings?.myTeamName?.toLowerCase().trim();
+    // Get team names from the saved game
+    const heimName = (game.settings?.teamNameHeim || game.teams?.heim || '').toLowerCase().trim();
+    const gastName = (game.settings?.teamNameGegner || game.teams?.gegner || '').toLowerCase().trim();
 
-    // Fallback auf aktuellen Team-Namen für alte Spiele
-    if (!myTeamName && currentMyTeamName) {
-        myTeamName = currentMyTeamName.toLowerCase().trim();
-    }
-
-    if (!myTeamName) {
-        // Fallback: Wenn kein Team-Name gesetzt, Heim als "mein Team" annehmen
-        return game.score.heim > game.score.gegner ? 'win' :
-            game.score.heim < game.score.gegner ? 'loss' : 'draw';
-    }
-
-    // Check both game.settings and game.teams for team names (for old games)
-    const heimName = (game.settings?.teamNameHeim || game.teams?.heim)?.toLowerCase().trim();
-    const gastName = (game.settings?.teamNameGegner || game.teams?.gegner)?.toLowerCase().trim();
+    // Get "my team name" from the saved game or use current
+    let myTeamName = (game.settings?.myTeamName || currentMyTeamName || '').toLowerCase().trim();
 
     let myScore, opponentScore;
 
-    if (heimName === myTeamName) {
+    // STRATEGY 1: Try to match myTeamName to determine which side we were on
+    if (myTeamName && heimName && myTeamName === heimName) {
+        // We were the Heim team
         myScore = game.score.heim;
         opponentScore = game.score.gegner;
-    } else if (gastName === myTeamName) {
+    } else if (myTeamName && gastName && myTeamName === gastName) {
+        // We were the Gast team
         myScore = game.score.gegner;
         opponentScore = game.score.heim;
+    } else if (game.settings && game.settings.isAuswaertsspiel !== undefined) {
+        // STRATEGY 2: Use isAuswaertsspiel if available
+        const isAway = game.settings.isAuswaertsspiel;
+        myScore = isAway ? game.score.gegner : game.score.heim;
+        opponentScore = isAway ? game.score.heim : game.score.gegner;
     } else {
-        // Fallback: Heim als "mein Team"
+        // FALLBACK: Assume we were Heim
         myScore = game.score.heim;
         opponentScore = game.score.gegner;
     }
