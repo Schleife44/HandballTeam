@@ -220,20 +220,7 @@ function initSidebar() {
         });
     });
 
-    // Mobile Menu Toggles
-    if (mobileMenuBtn) {
-        mobileMenuBtn.addEventListener('click', () => {
-            if (sidebar) sidebar.classList.toggle('active');
-            if (sidebarOverlay) sidebarOverlay.classList.toggle('active');
-        });
-    }
-
-    if (sidebarOverlay) {
-        sidebarOverlay.addEventListener('click', () => {
-            if (sidebar) sidebar.classList.remove('active');
-            sidebarOverlay.classList.remove('active');
-        });
-    }
+    // Mobile Menu Toggles handled in eventListeners.js
 }
 
 function navigateToView(view) {
