@@ -4,11 +4,16 @@ import { spielstand, speichereSpielstand } from './state.js';
 import {
     statistikSidebar, scoreAnzeige, scoreAnzeigeGegner,
     teamNameHeimDisplay, teamNameGegnerDisplay,
-    labelSpielerHeimRaster, labelSpielerGegnerRaster, heatmapHeimLabel, heatmapGegnerLabel,
-    suspensionContainer, heimSpielerRaster, gegnerSpielerRaster, spielerAuswahlContainer, protokollAusgabe,
+    heatmapHeimLabel, heatmapGegnerLabel,
+    suspensionContainer,
+    heimGoalkeeperRoster, heimActiveRoster, heimBenchRoster,
+    gastGoalkeeperRoster, gastActiveRoster, gastBenchRoster,
+    heimPanelTitle, gastPanelTitle,
+    protokollAusgabe,
     statistikTabelleBody, rosterListe, wurfbildModal, wurfbilderContainer, wurfbilderStatsModal,
     gegnerNummerTitel, gegnerNummerModal, neueGegnerNummer, bekannteGegnerListe,
-    aktionsMenueTitel, aktionsMenue, aktionVorauswahl, kommentarBereich,
+    // aktionsMenueTitel, aktionsMenue, aktionVorauswahl, // Removed
+    kommentarBereich,
     playerNameInput, playerNumberInput, playerTorwartInput, editPlayerIndex, addPlayerForm, cancelEditButton,
     spielBeendenButton, historieBereich, historieListe, backToStartFromHistory, historyButton,
     historieDetailBereich, backToHistoryList, histDetailTeams, histDetailScore, histDetailDate,
@@ -27,6 +32,7 @@ import {
 import { renderHomeStatsInHistory, renderOpponentStatsInHistory, openPlayerHistoryHeatmap } from './historyView.js';
 import { renderHeatmap, setCurrentHeatmapContext, setCurrentHeatmapTab } from './heatmap.js';
 
+// We need to be careful with circular dependencies. 
 // We need to be careful with circular dependencies. 
 // ui.js imports game.js for click handlers (loescheProtokollEintrag).
 // game.js imports ui.js for update functions.
@@ -125,12 +131,9 @@ export function updateScoreDisplay() {
     const heimName = spielstand.settings.teamNameHeim || 'Heim';
     const gegnerName = spielstand.settings.teamNameGegner || 'Gegner';
 
+
     if (teamNameHeimDisplay) teamNameHeimDisplay.textContent = heimName.toUpperCase();
     if (teamNameGegnerDisplay) teamNameGegnerDisplay.textContent = gegnerName.toUpperCase();
-
-    // Spieler-Raster Labels
-    if (labelSpielerHeimRaster) labelSpielerHeimRaster.textContent = heimName;
-    if (labelSpielerGegnerRaster) labelSpielerGegnerRaster.textContent = gegnerName;
 
     // Roster View Title
     const isOpponentMode = teamToggle && teamToggle.getAttribute('aria-checked') === 'true';
@@ -156,92 +159,366 @@ export function updateSuspensionDisplay() {
 
         div.innerHTML = `
             <div>#${s.number}</div>
-            <div class="suspension-time">${timeStr}</div>
+            <div class="suspension-time"><div class="time">${timeStr}</div>
         `;
         suspensionContainer.appendChild(div);
     });
+
+    // Toggle raster redraw if number of suspensions changed (e.g. one expired)
+    const prevCount = parseInt(suspensionContainer.dataset.lastCount || "0");
+    if (spielstand.activeSuspensions.length !== prevCount) {
+        suspensionContainer.dataset.lastCount = spielstand.activeSuspensions.length;
+        zeichneSpielerRaster();
+    }
 }
 
 export function zeichneSpielerRaster() {
-    // Clear both grids
-    heimSpielerRaster.innerHTML = '';
-    gegnerSpielerRaster.innerHTML = '';
+    // Clear all roster grids
+    if (heimGoalkeeperRoster) heimGoalkeeperRoster.innerHTML = '';
+    if (heimActiveRoster) heimActiveRoster.innerHTML = '';
+    if (heimBenchRoster) heimBenchRoster.innerHTML = '';
+    if (gastGoalkeeperRoster) gastGoalkeeperRoster.innerHTML = '';
+    if (gastActiveRoster) gastActiveRoster.innerHTML = '';
+    if (gastBenchRoster) gastBenchRoster.innerHTML = '';
 
     const isAway = spielstand.settings.isAuswaertsspiel;
-    const leftSidePlayers = isAway ? (spielstand.knownOpponents || []) : (spielstand.roster || []);
-    const rightSidePlayers = isAway ? (spielstand.roster || []) : (spielstand.knownOpponents || []);
 
-    const leftSideIsUs = !isAway;
-    const rightSideIsUs = isAway;
+    // Determine which data goes to which panel
+    let heimPlayers, gastPlayers;
+    let heimIsOpponent, gastIsOpponent;
+    let heimTeamKey, gastTeamKey;
 
-    // Populate Left Side (Heim-Raster)
-    leftSidePlayers.forEach((player, index) => {
-        const btn = document.createElement('button');
-        const twIcon = player.isGoalkeeper ? '<span class="tw-badge-compact" style="font-size: 0.6rem; font-weight: 800; border: 1px solid currentColor; border-radius: 2px; padding: 0 2px; height: 1.1rem; display: flex; align-items: center; justify-content: center; transform: translateY(-1px);">TW</span>' : '';
-        const numberGrid = `
-            <div style="display: grid; grid-template-columns: 1fr auto 1fr; width: 100%; align-items: center; justify-items: center;">
-                <div style="grid-column: 2;" class="spieler-nummer-display">${player.number}</div>
-                <div style="grid-column: 3; justify-self: start; margin-left: 4px;">${twIcon}</div>
-            </div>
-        `;
-        const nameSpan = `<span class="spieler-name-display">${player.name || ''}</span>`;
-        btn.innerHTML = `${numberGrid}${nameSpan}`;
-        btn.className = 'spieler-button';
-        if (player.isGoalkeeper) btn.classList.add('torwart');
+    if (!isAway) {
+        heimPlayers = spielstand.roster || [];
+        heimIsOpponent = false;
+        heimTeamKey = 'myteam';
+        gastPlayers = spielstand.knownOpponents || [];
+        gastIsOpponent = true;
+        gastTeamKey = 'opponent';
+    } else {
+        heimPlayers = spielstand.knownOpponents || [];
+        heimIsOpponent = true;
+        heimTeamKey = 'opponent';
+        gastPlayers = spielstand.roster || [];
+        gastIsOpponent = false;
+        gastTeamKey = 'myteam';
+    }
 
-        if (leftSideIsUs) {
-            btn.dataset.index = index;
-        } else {
-            btn.classList.add('gegner-button');
-            btn.dataset.gegnerNummer = player.number;
+    // Update panel titles
+    if (heimPanelTitle) heimPanelTitle.textContent = spielstand.settings.teamNameHeim || 'HEIM';
+    if (gastPanelTitle) gastPanelTitle.textContent = spielstand.settings.teamNameGegner || 'GAST';
+
+    // Constants for lineup structure
+    const GK_SLOTS = 1;
+    const FIELD_SLOTS = 6;
+
+    // Render function for a single team
+    const renderTeam = (players, isOpponent, teamKey, gkContainer, activeContainer, benchContainer) => {
+        // If Simple Mode: Render ALL players into activeContainer, no slots, no bench container used
+        if (spielstand.gameMode === 'simple') {
+            activeContainer.innerHTML = '';
+            if (gkContainer) gkContainer.innerHTML = '';
+            if (benchContainer) benchContainer.innerHTML = '';
+
+            // Sort players by number
+            const sortedPlayers = [...players].sort((a, b) => (parseInt(a.number) || 0) - (parseInt(b.number) || 0));
+
+            sortedPlayers.forEach((player, index) => {
+                // Determine original index
+                const originalIndex = players.indexOf(player);
+                const playerForRender = { ...player, originalIndex: originalIndex };
+
+                const btn = document.createElement('button');
+
+                const nameDisplay = player.name || '';
+                const timeOnField = player.timeOnField || 0;
+                const m = Math.floor(timeOnField / 60);
+                const s = timeOnField % 60;
+                const timeStr = `${m}:${s < 10 ? '0' + s : s}`;
+
+                // Count 2min
+                const twoMinCount = (spielstand.gameLog || []).filter(e => {
+                    if (isOpponent) return e.action === "Gegner 2 min" && e.gegnerNummer == player.number;
+                    else return e.action === "2 Minuten" && e.playerId == player.number;
+                }).length;
+
+                let dotsHtml = '';
+                for (let i = 0; i < Math.min(twoMinCount, 2); i++) {
+                    dotsHtml += '<span class="two-min-dot"></span>';
+                }
+
+                btn.innerHTML = `
+                    <div class="two-min-indicators">${dotsHtml}</div>
+                    <!-- No Time Display in Simple Mode -->
+                    <div class="spieler-nummer-display">${player.number}</div>
+                    <span class="spieler-name-display">${nameDisplay}</span>
+                `;
+
+                // Use a generic valid class, but maybe reuse 'lineup-slot filled' for consistent sizing
+                // Or 'bench-player' style but in grid.
+                btn.className = 'spieler-button action-btn lineup-slot filled';
+                // if (player.isGoalkeeper) btn.classList.add('torwart'); // Removed for Simple Mode
+                if (player.disqualified) btn.classList.add('disqualified');
+
+                // Suspension check (visual only, no slot logic)
+                const isSuspended = (spielstand.activeSuspensions || []).some(s => s.teamKey === teamKey && s.number == player.number);
+                if (isSuspended) btn.classList.add('suspended');
+
+                if (!isOpponent) {
+                    btn.style.backgroundColor = 'var(--team-primary-color)';
+                    btn.style.color = 'var(--our-text-color)';
+                    btn.dataset.index = originalIndex;
+                    btn.dataset.team = 'myteam';
+                } else {
+                    btn.classList.add('gegner-button');
+                    btn.style.backgroundColor = 'var(--team-opponent-color)';
+                    btn.style.color = 'var(--opponent-text-color)';
+                    btn.dataset.gegnerNummer = player.number;
+                    btn.dataset.team = 'opponent';
+                    btn.dataset.index = originalIndex;
+                }
+
+                // Add required datasets for clicks
+                btn.dataset.teamKey = teamKey;
+
+                activeContainer.appendChild(btn);
+            });
+
+            // ADD PLAYER BUTTON (Green +)
+            const addBtn = document.createElement('button');
+            addBtn.className = 'spieler-button action-btn add-player-button';
+            // Determine text or icon
+            addBtn.innerHTML = '<div style="font-size: 2rem; font-weight: bold;">+</div>';
+
+            // Allow styling override
+            addBtn.style.backgroundColor = '#198754'; // Green
+            addBtn.style.color = 'white';
+
+            if (!isOpponent) {
+                // My Team -> Quick Add
+                addBtn.dataset.action = 'quickAdd';
+                addBtn.dataset.team = 'myteam';
+            } else {
+                // Opponent -> Add Opponent
+                addBtn.dataset.action = 'addOpponent';
+                addBtn.dataset.team = 'opponent';
+            }
+            activeContainer.appendChild(addBtn);
+
+            return; // EXIT Simple Mode Logic
         }
-        heimSpielerRaster.appendChild(btn);
-    });
 
-    // Populate Right Side (Gegner-Raster)
-    rightSidePlayers.forEach((player, index) => {
-        const btn = document.createElement('button');
-        const twIcon = player.isGoalkeeper ? '<span class="tw-badge-compact" style="font-size: 0.6rem; font-weight: 800; border: 1px solid currentColor; border-radius: 2px; padding: 0 2px; height: 1.1rem; display: flex; align-items: center; justify-content: center; transform: translateY(-1px);">TW</span>' : '';
-        const numberGrid = `
-            <div style="display: grid; grid-template-columns: 1fr auto 1fr; width: 100%; align-items: center; justify-items: center;">
-                <div style="grid-column: 2;" class="spieler-nummer-display">${player.number}</div>
-                <div style="grid-column: 3; justify-self: start; margin-left: 4px;">${twIcon}</div>
-            </div>
-        `;
-        const nameSpan = `<span class="spieler-name-display">${player.name || ''}</span>`;
-        btn.innerHTML = `${numberGrid}${nameSpan}`;
-        btn.className = 'spieler-button';
-        if (player.isGoalkeeper) btn.classList.add('torwart');
+        // --- COMPLEX MODE (Existing Logic) ---
+        // Create slot arrays - players are placed by their lineupSlot
+        // lineupSlot: 'gk' for goalkeeper, 0-5 for field players, null/undefined = bench
+        const lineupGK = new Array(GK_SLOTS).fill(null);
+        const lineupField = new Array(FIELD_SLOTS).fill(null);
+        const bench = [];
 
-        if (rightSideIsUs) {
-            btn.dataset.index = index;
-        } else {
-            btn.classList.add('gegner-button');
-            btn.dataset.gegnerNummer = player.number;
+        players.forEach((player, index) => {
+            const playerWithIndex = { ...player, originalIndex: index };
+            const slot = player.lineupSlot;
+
+            if (slot === 'gk' || slot === 'gk0') {
+                lineupGK[0] = playerWithIndex;
+            } else if (slot === 'gk1') {
+                lineupGK[1] = playerWithIndex;
+            } else if (typeof slot === 'number' && slot >= 0 && slot < FIELD_SLOTS) {
+                lineupField[slot] = playerWithIndex;
+            } else {
+                bench.push(playerWithIndex);
+            }
+        });
+
+        // Identify suspended slots
+        const activeSuspensions = (spielstand.activeSuspensions || []).filter(s => s.teamKey === teamKey);
+        const suspendedSlots = { gk: false, field: new Array(FIELD_SLOTS).fill(false) };
+        activeSuspensions.forEach(s => {
+            if (s.slotType === 'gk' || s.slotType === 'gk0') suspendedSlots.gk = true;
+            else if (s.slotType === 'field' && typeof s.slotIndex === 'number') {
+                suspendedSlots.field[s.slotIndex] = true;
+            }
+        });
+
+        // Render player button
+        const renderPlayerButton = (player, container, slotType, slotIndex) => {
+            const btn = document.createElement('button');
+            const index = player.originalIndex;
+
+            const nameDisplay = player.name || '';
+
+            const timeOnField = player.timeOnField || 0;
+            const m = Math.floor(timeOnField / 60);
+            const s = timeOnField % 60;
+            const timeStr = `${m}:${s < 10 ? '0' + s : s}`;
+
+            // Count 2min
+            const twoMinCount = (spielstand.gameLog || []).filter(e => {
+                if (isOpponent) return e.action === "Gegner 2 min" && e.gegnerNummer == player.number;
+                else return e.action === "2 Minuten" && e.playerId == player.number;
+            }).length;
+
+            let dotsHtml = '';
+            for (let i = 0; i < Math.min(twoMinCount, 2); i++) {
+                dotsHtml += '<span class="two-min-dot"></span>';
+            }
+
+            btn.innerHTML = `
+                    <div class="two-min-indicators">${dotsHtml}</div>
+                    <div class="player-time-display" id="time-display-${teamKey}-${player.number}">${timeStr}</div>
+                    <div class="spieler-nummer-display">${player.number}</div>
+                    <span class="spieler-name-display">${nameDisplay}</span>
+                `;
+            btn.className = 'spieler-button action-btn lineup-slot filled';
+            if (player.isGoalkeeper) btn.classList.add('torwart');
+
+            if (player.disqualified) {
+                btn.classList.add('disqualified');
+            }
+
+            // Set colors and data
+            if (!isOpponent) {
+                btn.style.backgroundColor = 'var(--team-primary-color)';
+                btn.style.color = 'var(--our-text-color)';
+                btn.dataset.index = index;
+                btn.dataset.team = 'myteam';
+            } else {
+                btn.classList.add('gegner-button');
+                btn.style.backgroundColor = 'var(--team-opponent-color)';
+                btn.style.color = 'var(--opponent-text-color)';
+                btn.dataset.gegnerNummer = player.number;
+                btn.dataset.team = 'opponent';
+                btn.dataset.index = index;
+            }
+
+            btn.dataset.slotType = slotType;
+            btn.dataset.slotIndex = slotIndex;
+            btn.dataset.teamKey = teamKey;
+
+            container.appendChild(btn);
+        };
+
+        // Render empty slot placeholder
+        const renderEmptySlot = (container, slotType, slotIndex) => {
+            const btn = document.createElement('button');
+            btn.className = 'spieler-button action-btn lineup-slot empty';
+            btn.innerHTML = `<div class="empty-slot-icon">+</div>`;
+            btn.dataset.slotType = slotType;
+            btn.dataset.slotIndex = slotIndex;
+            btn.dataset.teamKey = teamKey;
+            btn.dataset.empty = 'true';
+            container.appendChild(btn);
+        };
+
+        // Render bench player
+        const renderBenchPlayer = (player, container) => {
+            const btn = document.createElement('button');
+            const index = player.originalIndex;
+
+            const nameDisplay = player.name || '';
+
+            const timeOnField = player.timeOnField || 0;
+            const m = Math.floor(timeOnField / 60);
+            const s = timeOnField % 60;
+            const timeStr = `${m}:${s < 10 ? '0' + s : s}`;
+
+            // Count 2min
+            const twoMinCount = (spielstand.gameLog || []).filter(e => {
+                if (isOpponent) return e.action === "Gegner 2 min" && e.gegnerNummer == player.number;
+                else return e.action === "2 Minuten" && e.playerId == player.number;
+            }).length;
+
+            let dotsHtml = '';
+            for (let i = 0; i < Math.min(twoMinCount, 2); i++) {
+                dotsHtml += '<span class="two-min-dot"></span>';
+            }
+
+            btn.innerHTML = `
+                <div class="two-min-indicators">${dotsHtml}</div>
+                <div class="player-time-display" id="time-display-${teamKey}-${player.number}">${timeStr}</div>
+                <div class="spieler-nummer-display">${player.number}</div>
+                <span class="spieler-name-display">${nameDisplay}</span>
+            `;
+            btn.className = 'spieler-button action-btn bench-player';
+            if (player.isGoalkeeper) btn.classList.add('torwart');
+
+            // NEW: Check if suspended or disqualified
+            const isSuspended = (spielstand.activeSuspensions || []).some(s => s.teamKey === teamKey && s.number == player.number);
+            if (isSuspended) btn.classList.add('suspended');
+
+            if (player.disqualified) {
+                btn.classList.add('disqualified');
+                // Optional: remove suspended class if we want Red to override visual, 
+                // but usually they are both (serving time + disqualified).
+                // "Ausgegraut" suggests grey.
+            }
+
+            if (!isOpponent) {
+                btn.style.backgroundColor = 'var(--team-primary-color)';
+                btn.style.color = 'var(--our-text-color)';
+                btn.dataset.index = index;
+                btn.dataset.team = 'myteam';
+            } else {
+                btn.classList.add('gegner-button');
+                btn.style.backgroundColor = 'var(--team-opponent-color)';
+                btn.style.color = 'var(--opponent-text-color)';
+                btn.dataset.gegnerNummer = player.number;
+                btn.dataset.team = 'opponent';
+                btn.dataset.index = index;
+            }
+
+            btn.dataset.teamKey = teamKey;
+            btn.dataset.isBench = 'true';
+
+            container.appendChild(btn);
+        };
+
+        // Render GK slots (1 slot)
+        if (gkContainer) {
+            for (let i = 0; i < GK_SLOTS; i++) {
+                const sType = 'gk';
+                if (lineupGK[i]) {
+                    renderPlayerButton(lineupGK[i], gkContainer, sType, i);
+                } else if (suspendedSlots[sType]) {
+                    const btn = document.createElement('button');
+                    btn.className = 'spieler-button action-btn lineup-slot suspended';
+                    btn.innerHTML = `<div class="empty-slot-icon">2min</div>`;
+                    gkContainer.appendChild(btn);
+                } else {
+                    renderEmptySlot(gkContainer, sType, i);
+                }
+            }
         }
-        gegnerSpielerRaster.appendChild(btn);
-    });
 
-    // Update Header Labels
-    if (labelSpielerHeimRaster) labelSpielerHeimRaster.textContent = spielstand.settings.teamNameHeim || getMyTeamLabel();
-    if (labelSpielerGegnerRaster) labelSpielerGegnerRaster.textContent = spielstand.settings.teamNameGegner || getOpponentLabel();
+        // Render Field Player slots (6 slots)
+        if (activeContainer) {
+            for (let i = 0; i < FIELD_SLOTS; i++) {
+                if (lineupField[i]) {
+                    renderPlayerButton(lineupField[i], activeContainer, 'field', i);
+                } else if (suspendedSlots.field[i]) {
+                    const btn = document.createElement('button');
+                    btn.className = 'spieler-button action-btn lineup-slot suspended';
+                    btn.innerHTML = `<div class="empty-slot-icon">2min</div>`;
+                    activeContainer.appendChild(btn);
+                } else {
+                    renderEmptySlot(activeContainer, 'field', i);
+                }
+            }
+        }
 
-    // Add "+" buttons
-    const addHeimBtn = document.createElement('button');
-    addHeimBtn.innerHTML = '<span class="spieler-nummer">+</span>';
-    addHeimBtn.className = 'spieler-button add-player-button';
-    if (!leftSideIsUs) addHeimBtn.classList.add('gegner-button');
-    addHeimBtn.id = leftSideIsUs ? 'addHeimSpielerButton' : 'addGegnerSpielerButton';
-    addHeimBtn.title = (leftSideIsUs ? getMyTeamLabel() : getOpponentLabel()) + ' hinzufügen';
-    heimSpielerRaster.appendChild(addHeimBtn);
+        // Render Bench (all remaining players)
+        if (benchContainer) {
+            if (bench.length === 0) {
+                benchContainer.innerHTML = '<div style="color: var(--text-muted); font-size: 0.7rem; text-align: center; grid-column: 1/-1;">-</div>';
+            } else {
+                bench.forEach(p => renderBenchPlayer(p, benchContainer));
+            }
+        }
+    };
 
-    const addGegnerBtn = document.createElement('button');
-    addGegnerBtn.innerHTML = '<span class="spieler-nummer">+</span>';
-    addGegnerBtn.className = 'spieler-button add-player-button';
-    if (!rightSideIsUs) addGegnerBtn.classList.add('gegner-button');
-    addGegnerBtn.id = rightSideIsUs ? 'addHeimSpielerButton' : 'addGegnerSpielerButton';
-    addGegnerBtn.title = (rightSideIsUs ? getMyTeamLabel() : getOpponentLabel()) + ' hinzufügen';
-    gegnerSpielerRaster.appendChild(addGegnerBtn);
+    // Render both teams
+    renderTeam(heimPlayers, heimIsOpponent, heimTeamKey, heimGoalkeeperRoster, heimActiveRoster, heimBenchRoster);
+    renderTeam(gastPlayers, gastIsOpponent, gastTeamKey, gastGoalkeeperRoster, gastActiveRoster, gastBenchRoster);
 }
 
 export function updateProtokollAnzeige() {
@@ -300,12 +577,24 @@ export function zeichneStatistikTabelle(statsData) {
     statsData.forEach(stats => {
         const tr = document.createElement('tr');
         const displayName = stats.name ? `#${stats.number} ${stats.name}` : `#${stats.number}`;
+
+        const timeOnField = stats.timeOnField || 0;
+        const m = Math.floor(timeOnField / 60);
+        const s = timeOnField % 60;
+        const timeStr = `${m}:${s < 10 ? '0' + s : s}`;
+
         tr.innerHTML = `
             <td>${displayName}</td>
+            <td>${timeStr}</td>
             <td>${stats.siebenMeter}</td>
-            <td>${stats.guteAktion}</td>
             <td>${stats.fehlwurf}</td>
-            <td>${stats.techFehler}</td>
+            <td>${stats.ballverlust}</td>
+            <td>${stats.stuermerfoul}</td>
+            <td>${stats.block}</td>
+            <td>${stats.gewonnen1v1}</td>
+            <td>${stats.oneOnOneLost}</td>
+            <td>${stats.rausgeholt7m}</td>
+            <td>${stats.rausgeholt2min}</td>
             <td>${stats.gelb}</td>
             <td>${stats.zweiMinuten}</td>
             <td>${stats.rot}</td>
@@ -479,7 +768,7 @@ export function zeigeWurfstatistik() {
         playerData.wuerfe.forEach(w => {
             const act = (w.action || "").toLowerCase();
             const isSave = act.includes('gehalten') || act.includes('parade') || (w.isSave === true) || (w.color === 'yellow');
-            const isMiss = act.includes('vorbei') || act.includes('verworfen') || act.includes('fehlwurf') || (w.color === 'gray');
+            const isMiss = act.includes('vorbei') || act.includes('verworfen') || act.includes('fehlwurf') || act.includes('block') || (w.color === 'gray');
 
             // Strictly ONLY count as Goal if it contains 'tor' and is NOT a save or miss
             if (isSave) {
@@ -506,8 +795,8 @@ export function zeigeWurfstatistik() {
         const mapWurfToPoint = (w) => {
             const act = (w.action || "").toLowerCase();
             const isSave = act.includes('gehalten') || act.includes('parade') || (w.isSave === true) || (w.color === 'yellow');
-            const isMiss = act.includes('vorbei') || act.includes('verworfen') || act.includes('fehlwurf') || (w.color === 'gray');
-            const isGoal = !isSave && !isMiss && act.includes('tor');
+            const isMiss = act.includes('vorbei') || act.includes('verworfen') || act.includes('fehlwurf') || act.includes('block') || (w.color === 'gray');
+            const isBlocked = act.includes('block');
 
             return {
                 x: parseFloat(w.x || (w.wurfposition ? w.wurfposition.x : 0)),
@@ -515,7 +804,9 @@ export function zeigeWurfstatistik() {
                 isOpponent: isOpponent,
                 isGoal: isGoal,
                 isMiss: isMiss || isSave,
-                isSave: isSave
+                isSave: isSave,
+                isBlocked: isBlocked,
+                action: act // Pass action for fallback check
             };
         };
 
@@ -564,7 +855,7 @@ export function zeigeWurfstatistik() {
                     const fy = 10 + (parseFloat(w.wurfposition.y) / 100) * 380 + yOffsetField;
 
                     const act = (w.action || "").toLowerCase();
-                    const isMiss = w.color === 'gray' || act.includes('vorbei') || act.includes('verworfen') || act.includes('fehlwurf') || act.includes('gehalten') || act.includes('parade') || w.isSave;
+                    const isMiss = w.color === 'gray' || act.includes('vorbei') || act.includes('verworfen') || act.includes('fehlwurf') || act.includes('gehalten') || act.includes('parade') || act.includes('block') || w.isSave;
                     const color = isMiss ? 'rgba(108, 117, 125, 0.5)' : (isOpponent ? 'rgba(13, 110, 253, 0.5)' : 'rgba(220, 53, 69, 0.5)');
                     linesContent += `<line x1="${fx}" y1="${fy}" x2="${gx}" y2="${gy}" stroke="${color}" stroke-width="2" />`;
                 }
@@ -690,7 +981,7 @@ export function renderActionMenus(isGoalkeeper) {
 
     const fieldSub = [
         createBtn('Steal', 'Steal'),
-        createBtn('7M Rausgeholt', '7M Rausgeholt'),
+        createBtn('7m + 2min Provoziert', '7m+2min'),
         createBtn('TG Pass', 'TG Pass'),
         createBtn('Assist', 'Assist'),
         createBtn('Fehlpass', 'Fehlpass'),
@@ -862,4 +1153,13 @@ export function showLiveGameOverview() {
     closeLiveGameOverview.onclick = () => {
         liveGameOverviewModal.classList.add('versteckt');
     };
+}
+
+// Helper for button feedback
+export function startButtonAnimation(btn) {
+    if (!btn) return;
+    btn.classList.add('active-action');
+    setTimeout(() => {
+        btn.classList.remove('active-action');
+    }, 200);
 }

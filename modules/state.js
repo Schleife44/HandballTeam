@@ -4,6 +4,8 @@ export const SPEICHER_KEY = 'handballTeamState';
 
 export let spielstand = {
     uiState: 'setup', // 'setup' oder 'game'
+    gameMode: 'complex', // 'complex' = Dashboard, 'simple' = Modal (Old System)
+    modeSelected: false, // Flag for Selection UI
     roster: [], // { name: 'Anna', number: 7 } - Name ist optional
     score: { heim: 0, gegner: 0 },
     gameLog: [],

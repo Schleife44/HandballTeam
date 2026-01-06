@@ -33,8 +33,8 @@ import {
 
     historieDetailBereich, backToHistoryList, histDetailTeams, histDetailScore, histDetailDate,
     histStatsTable, histStatsBody, histStatsGegnerTable, histStatsGegnerBody,
-    histHeatmapSvg, histTabStats, histTabHeatmap, histSubTabTor, histSubTabFeld,
-    histContentStats, histContentHeatmap, exportHistorieButton,
+    histHeatmapSvg, histTabStats, histTabHeatmap, histTabProtokoll, histTabTorfolge, histSubTabTor, histSubTabFeld,
+    histContentStats, histContentHeatmap, histContentProtokoll, histContentTorfolge, histProtokollAusgabe, histTorfolgeChart, exportHistorieButton,
     importSpielButton, importSpielInput,
     histHeatmapToreFilter, histHeatmapMissedFilter,
     liveOverviewHeatmapToreFilter, liveOverviewHeatmapMissedFilter, liveOverviewHeatmap7mFilter,
@@ -47,7 +47,7 @@ import {
     logGlobalAktion, logScoreKorrektur, schliesseAktionsMenue, logAktion,
     setAktuelleAktionTyp, aktuelleAktionTyp, speichereGegnerNummer,
     skipGegnerNummer, handle7mOutcome, starteNeuesSpiel, setSteuerungAktiv,
-    oeffneAktionsMenue, loescheProtokollEintrag, oeffneGegnerAktionsMenue
+    loescheProtokollEintrag, selectPlayer, executeAction, deselectPlayer
 } from './game.js';
 import { handleZeitSprung } from './timer.js';
 import { exportTeam, handleFileImport, exportiereAlsPdf } from './export.js';
@@ -256,27 +256,182 @@ export function registerEventListeners() {
     }
 
     // === History Detail Tabs ===
-    if (histTabStats && histTabHeatmap) {
+    if (histTabStats && histTabHeatmap && histTabProtokoll && histTabTorfolge) {
         histTabStats.addEventListener('click', () => {
             histTabStats.classList.add('active');
             histTabHeatmap.classList.remove('active');
+            histTabProtokoll.classList.remove('active');
+            histTabTorfolge.classList.remove('active');
             histContentStats.classList.remove('versteckt');
             histContentHeatmap.classList.add('versteckt');
+            histContentProtokoll.classList.add('versteckt');
+            histContentTorfolge.classList.add('versteckt');
         });
         histTabHeatmap.addEventListener('click', () => {
             histTabHeatmap.classList.add('active');
             histTabStats.classList.remove('active');
+            histTabProtokoll.classList.remove('active');
+            histTabTorfolge.classList.remove('active');
             histContentHeatmap.classList.remove('versteckt');
             histContentStats.classList.add('versteckt');
+            histContentProtokoll.classList.add('versteckt');
+            histContentTorfolge.classList.add('versteckt');
+        });
+        histTabProtokoll.addEventListener('click', () => {
+            histTabProtokoll.classList.add('active');
+            histTabStats.classList.remove('active');
+            histTabHeatmap.classList.remove('active');
+            histTabTorfolge.classList.remove('active');
+            histContentProtokoll.classList.remove('versteckt');
+            histContentStats.classList.add('versteckt');
+            histContentHeatmap.classList.add('versteckt');
+            histContentTorfolge.classList.add('versteckt');
+        });
+        histTabTorfolge.addEventListener('click', () => {
+            histTabTorfolge.classList.add('active');
+            histTabStats.classList.remove('active');
+            histTabHeatmap.classList.remove('active');
+            histTabProtokoll.classList.remove('active');
+            histContentTorfolge.classList.remove('versteckt');
+            histContentStats.classList.add('versteckt');
+            histContentHeatmap.classList.add('versteckt');
+            histContentProtokoll.classList.add('versteckt');
         });
     }
 
     // === Bildschirm 2: Game ===
-    gamePhaseButton.addEventListener('click', handleGamePhaseClick);
-    pauseButton.addEventListener('click', handleRealPauseClick);
-    zurueckButton.addEventListener('click', () => handleZeitSprung(-30));
-    vorButton.addEventListener('click', () => handleZeitSprung(30));
-    neuesSpielButton.addEventListener('click', starteNeuesSpiel);
+    if (gamePhaseButton) gamePhaseButton.addEventListener('click', handleGamePhaseClick);
+    if (pauseButton) pauseButton.addEventListener('click', handleRealPauseClick);
+    if (zurueckButton) zurueckButton.addEventListener('click', () => handleZeitSprung(-30));
+    if (vorButton) vorButton.addEventListener('click', () => handleZeitSprung(30));
+    if (neuesSpielButton) neuesSpielButton.addEventListener('click', starteNeuesSpiel);
+
+
+    // === Dual Team Roster: Click Handlers for Substitution System ===
+    const handleRosterClick = (e) => {
+        const btn = e.target.closest('.spieler-button');
+        if (!btn) return;
+
+        // Handle "Add Player" logic if present (legacy or new)
+        if (btn.classList.contains('add-player-button')) return;
+
+        const slotType = btn.dataset.slotType;
+        const slotIndex = btn.dataset.slotIndex;
+        const teamKey = btn.dataset.teamKey;
+        const isEmpty = btn.dataset.empty === 'true';
+        const isBench = btn.dataset.isBench === 'true';
+        const index = btn.dataset.index;
+        const gegnerNummer = btn.dataset.gegnerNummer;
+        const team = btn.dataset.team;
+
+        // Import game.js handlers dynamically
+        import('./game.js').then(game => {
+            if (isBench) {
+                // Clicked a bench player
+                game.handleBenchPlayerClick(index ? parseInt(index) : null, teamKey, gegnerNummer);
+            } else if (slotType) {
+                // Clicked a lineup slot (filled or empty)
+                const playerIndex = index ? parseInt(index) : null;
+                game.handleLineupSlotClick(slotType, parseInt(slotIndex), teamKey, playerIndex, isEmpty);
+            } else {
+                // Fallback to old selection
+                const nameText = btn.querySelector('.spieler-name-display')?.textContent || '';
+                if (index !== undefined || gegnerNummer !== undefined) {
+                    selectPlayer(index, team, gegnerNummer, nameText);
+                }
+            }
+        });
+    };
+
+    // Attach to all roster containers
+    const heimGoalkeeperRoster = document.getElementById('heimGoalkeeperRoster');
+    const heimActiveRoster = document.getElementById('heimActiveRoster');
+    const heimBenchRoster = document.getElementById('heimBenchRoster');
+    const gastGoalkeeperRoster = document.getElementById('gastGoalkeeperRoster');
+    const gastActiveRoster = document.getElementById('gastActiveRoster');
+    const gastBenchRoster = document.getElementById('gastBenchRoster');
+
+    if (heimGoalkeeperRoster) heimGoalkeeperRoster.addEventListener('click', handleRosterClick);
+    if (heimActiveRoster) heimActiveRoster.addEventListener('click', handleRosterClick);
+    if (heimBenchRoster) heimBenchRoster.addEventListener('click', handleRosterClick);
+    if (gastGoalkeeperRoster) gastGoalkeeperRoster.addEventListener('click', handleRosterClick);
+    if (gastActiveRoster) gastActiveRoster.addEventListener('click', handleRosterClick);
+    if (gastBenchRoster) gastBenchRoster.addEventListener('click', handleRosterClick);
+
+    // === Add/Edit Player Button Handler (Simple Mode) ===
+    const handleAddPlayerClick = (e) => {
+        const btn = e.target.closest('.add-player-button');
+        if (!btn) return;
+
+        const action = btn.dataset.action;
+        if (action === 'quickAdd') {
+            if (quickAddPlayerModal) {
+                quickAddPlayerModal.classList.remove('versteckt');
+                if (quickPlayerNumber) quickPlayerNumber.focus();
+            }
+        } else if (action === 'addOpponent') {
+            if (addGegnerModal) {
+                addGegnerModal.classList.remove('versteckt');
+                if (addGegnerNummerInput) addGegnerNummerInput.focus();
+            }
+        }
+    };
+
+    if (heimActiveRoster) heimActiveRoster.addEventListener('click', handleAddPlayerClick);
+    if (gastActiveRoster) gastActiveRoster.addEventListener('click', handleAddPlayerClick);
+
+    // Close Action Dashboard (Simple Mode Modal)
+    const closeActionDashboardBtn = document.getElementById('closeActionDashboard');
+    if (closeActionDashboardBtn) {
+        closeActionDashboardBtn.addEventListener('click', () => {
+            deselectPlayer();
+        });
+    }
+
+    // Attach to containers (same as roster)
+    if (heimActiveRoster) heimActiveRoster.addEventListener('click', handleAddPlayerClick);
+    if (gastActiveRoster) gastActiveRoster.addEventListener('click', handleAddPlayerClick);
+
+
+    // === NEW: Action Dashboard ===
+    if (actionDashboard) {
+        actionDashboard.addEventListener('click', (e) => {
+            const btn = e.target.closest('.action-btn');
+            if (btn && !btn.disabled) {
+                // If it's a specific action button
+                const action = btn.dataset.action;
+                if (action) {
+                    executeAction(action);
+                } else if (btn.id === 'moreActionsBtn') {
+                    // Show "Other" actions (maybe modal or expanded menu)
+                    // For now reuse old 'Sonstiges' logic or custom alert
+                    // We need a way to show more actions. Maybe the old modal?
+                    // For now, let's use the old actionVorauswahl or simply implement "Sonstiges" directly if simple.
+                    if (kommentarBereich) {
+                        setAktuelleAktionTyp('Sonstiges');
+                        kommentarTitel.textContent = `Kommentar für: Sonstiges`;
+                        kommentarBereich.classList.remove('versteckt');
+                        kommentarInput.focus();
+                    }
+                }
+            }
+        });
+    }
+
+    // Undo Button
+    if (undoButton) {
+        undoButton.addEventListener('click', () => {
+            // loescheProtokollEintrag(0)? No, "Undo Last Action" usually means removing the top log.
+            if (spielstand.gameLog.length > 0) {
+                // Check if it's safe to undo (e.g. score).
+                // For now, just remove the top entry via loescheProtokollEintrag
+                loescheProtokollEintrag(0);
+            } else {
+                customAlert("Nichts rückgängig zu machen.");
+            }
+        });
+    }
+
 
     // === Heatmap Filters (Main & Live Overview) ===
     const triggerHeatmapUpdate = (svg, context) => {
@@ -309,39 +464,29 @@ export function registerEventListeners() {
     });
 
     // === Score Korrektur ===
-    heimScoreUp.addEventListener('click', () => {
+    if (heimScoreUp) heimScoreUp.addEventListener('click', () => {
         const target = spielstand.settings.isAuswaertsspiel ? 'gegner' : 'heim';
         logScoreKorrektur(target, 1);
     });
-    heimScoreDown.addEventListener('click', () => {
+    if (heimScoreDown) heimScoreDown.addEventListener('click', () => {
         const target = spielstand.settings.isAuswaertsspiel ? 'gegner' : 'heim';
         if (spielstand.score[target] > 0) logScoreKorrektur(target, -1);
     });
-    gegnerScoreUp.addEventListener('click', () => {
+    if (gegnerScoreUp) gegnerScoreUp.addEventListener('click', () => {
         const target = spielstand.settings.isAuswaertsspiel ? 'heim' : 'gegner';
         logScoreKorrektur(target, 1);
     });
-    gegnerScoreDown.addEventListener('click', () => {
+    if (gegnerScoreDown) gegnerScoreDown.addEventListener('click', () => {
         const target = spielstand.settings.isAuswaertsspiel ? 'heim' : 'gegner';
         if (spielstand.score[target] > 0) logScoreKorrektur(target, -1);
     });
 
-    // === Modal 1: Haupt-Aktionsmenü ===
-    aktionAbbrechen.addEventListener('click', schliesseAktionsMenue);
+    // === Modal 3: Kommentar ===
 
-    // (AktionsMenue listeners are handled by event delegation below)
-
-    // === Modal 2: "Gute Aktion" Vorauswahl ===
-    aktionVorauswahlAbbrechen.addEventListener('click', () => {
-        aktionVorauswahl.classList.add('versteckt');
-        aktionsMenue.classList.remove('versteckt');
-    });
-
-    // (AktionVorauswahl buttons are handled by event delegation below)
 
 
     // === Modal 3: Kommentar ===
-    kommentarSpeichernButton.addEventListener('click', () => {
+    if (kommentarSpeichernButton) kommentarSpeichernButton.addEventListener('click', () => {
         const kommentar = kommentarInput.value.trim() || null;
         logAktion(aktuelleAktionTyp, kommentar);
         kommentarInput.value = '';
@@ -457,6 +602,16 @@ export function registerEventListeners() {
         });
     }
 
+    // === Attributed Player Logic ===
+    const attributedPlayerModal = document.getElementById('attributedPlayerModal');
+    const attributedPlayerCancel = document.getElementById('attributedPlayerCancel');
+
+    if (attributedPlayerCancel) {
+        attributedPlayerCancel.addEventListener('click', () => {
+            attributedPlayerModal.classList.add('versteckt');
+            // Just close, current temp action stays incomplete (no attribution in log)
+        });
+    }
     // === Wurfposition Logic ===
     if (wurfpositionFeld) {
         wurfpositionFeld.addEventListener('click', (e) => {
@@ -497,11 +652,47 @@ export function registerEventListeners() {
 
             const showWurfbild = sideIsHeim ? spielstand.settings.showWurfbildHeim : spielstand.settings.showWurfbildGegner;
 
-            if (showWurfbild && lastEntry && (lastEntry.action === 'Tor' || lastEntry.action === 'Fehlwurf' || lastEntry.action === 'Gegner Tor' || lastEntry.action === 'Gegner Wurf Vorbei')) {
+            if (showWurfbild && lastEntry && (lastEntry.action === 'Tor' || lastEntry.action === 'Fehlwurf' || lastEntry.action === 'Parade' || lastEntry.action === 'Gehalten' || lastEntry.action === 'Gegner Tor' || lastEntry.action === 'Gegner Wurf Vorbei' || lastEntry.action === 'Gegner Parade' || lastEntry.action === 'Gegner Fehlwurf')) {
                 oeffneWurfbildModal(isOpponent ? 'gegner' : 'standard');
+            } else if (lastEntry && (lastEntry.action === 'Block' || lastEntry.action === 'Gegner Block')) {
+                import('./game.js').then(game => {
+                    game.oeffneAttributedPlayerModal(isOpponent ? 'myteam' : 'opponent', "Blocker auswählen", "Wer hat den Wurf geblockt?");
+                });
             }
         });
     }
+
+    // === Score Adjustment Buttons (Simple Mode) ===
+    document.body.addEventListener('click', (e) => {
+        const btn = e.target.closest('.score-adjust-btn');
+        if (!btn) return;
+
+        const team = btn.dataset.team; // 'heim' or 'gegner'
+        const delta = parseInt(btn.dataset.delta, 10);
+
+        if (team && !isNaN(delta)) {
+            // Apply correction directly
+            if (team === 'heim') {
+                spielstand.score.heim = Math.max(0, spielstand.score.heim + delta);
+            } else if (team === 'gegner') {
+                spielstand.score.gegner = Math.max(0, spielstand.score.gegner + delta);
+            }
+
+            // Log this correction? "Manuelle Korrektur"?
+            // For Simple Mode, user might expect logs.
+            const timestamp = spielstand.timer.minutes + ':' + (spielstand.timer.seconds < 10 ? '0' + spielstand.timer.seconds : spielstand.timer.seconds);
+            spielstand.gameLog.push({
+                time: timestamp,
+                action: delta > 0 ? "Manuelle Korrektur (+)" : "Manuelle Korrektur (-)",
+                team: team === 'heim' ? "Heim" : "Gegner",
+                details: `Score geändert um ${delta}`
+            });
+
+            updateScoreDisplay(); // ui.js
+            speichereSpielstand(); // state.js
+            updateProtokollAnzeige(); // ui.js
+        }
+    });
 
     if (wurfpositionUeberspringen) {
         wurfpositionUeberspringen.addEventListener('click', () => {
@@ -522,8 +713,12 @@ export function registerEventListeners() {
 
                 const showWurfbild = sideIsHeim ? spielstand.settings.showWurfbildHeim : spielstand.settings.showWurfbildGegner;
 
-                if (showWurfbild && (lastEntry.action === 'Tor' || lastEntry.action === 'Fehlwurf' || lastEntry.action === 'Gegner Tor' || lastEntry.action === 'Gegner Wurf Vorbei')) {
+                if (showWurfbild && (lastEntry.action === 'Tor' || lastEntry.action === 'Fehlwurf' || lastEntry.action === 'Parade' || lastEntry.action === 'Gehalten' || lastEntry.action === 'Gegner Tor' || lastEntry.action === 'Gegner Wurf Vorbei' || lastEntry.action === 'Gegner Parade' || lastEntry.action === 'Gegner Fehlwurf')) {
                     oeffneWurfbildModal(isOpponent ? 'gegner' : 'standard');
+                } else if (lastEntry.action === 'Block') {
+                    import('./game.js').then(game => {
+                        game.oeffneAttributedPlayerModal(isOpponent ? 'myteam' : 'opponent', "Blocker auswählen", "Wer hat den Wurf geblockt?");
+                    });
                 }
             }
         });
@@ -641,54 +836,8 @@ export function registerEventListeners() {
         }
     });
 
-    heimSpielerRaster.addEventListener('click', (e) => {
-        const btn = e.target.closest('.spieler-button');
-        if (!btn) return;
+    // Old Roster Grid Listeners Removed (handled above by handleRosterClick)
 
-        if (btn.id === 'addHeimSpielerButton') {
-            quickPlayerNumber.value = '';
-            quickPlayerName.value = '';
-            if (quickPlayerTorwart) quickPlayerTorwart.checked = false;
-            quickAddPlayerModal.classList.remove('versteckt');
-            quickPlayerNumber.focus();
-        } else if (btn.id === 'addGegnerSpielerButton') {
-            // Existing logic to add a new opponent
-            document.getElementById('addGegnerModal')?.classList.remove('versteckt');
-        } else {
-            const index = btn.dataset.index;
-            const gegnerNummer = btn.dataset.gegnerNummer;
-            if (index !== undefined) {
-                oeffneAktionsMenue(parseInt(index, 10));
-            } else if (gegnerNummer !== undefined) {
-                oeffneGegnerAktionsMenue(gegnerNummer);
-            }
-        }
-    });
-
-    if (gegnerSpielerRaster) {
-        gegnerSpielerRaster.addEventListener('click', (e) => {
-            const btn = e.target.closest('.spieler-button');
-            if (!btn) return;
-
-            if (btn.id === 'addHeimSpielerButton') {
-                quickPlayerNumber.value = '';
-                quickPlayerName.value = '';
-                if (quickPlayerTorwart) quickPlayerTorwart.checked = false;
-                quickAddPlayerModal.classList.remove('versteckt');
-                quickPlayerNumber.focus();
-            } else if (btn.id === 'addGegnerSpielerButton') {
-                document.getElementById('addGegnerModal')?.classList.remove('versteckt');
-            } else {
-                const index = btn.dataset.index;
-                const gegnerNummer = btn.dataset.gegnerNummer;
-                if (index !== undefined) {
-                    oeffneAktionsMenue(parseInt(index, 10));
-                } else if (gegnerNummer !== undefined) {
-                    oeffneGegnerAktionsMenue(gegnerNummer);
-                }
-            }
-        });
-    }
 
     // Quick Add Player Modal handlers
     if (quickAddPlayerSave) {
@@ -739,23 +888,7 @@ export function registerEventListeners() {
         });
     }
 
-    gegnerSpielerRaster.addEventListener('click', (e) => {
-        const btn = e.target.closest('.spieler-button');
-        if (btn) {
-            if (btn.id === 'addGegnerSpielerButton') {
-                addGegnerNummerInput.value = '';
-                addGegnerNameInput.value = '';
-                if (addGegnerTorwartInput) addGegnerTorwartInput.checked = false;
-                addGegnerModal.classList.remove('versteckt');
-                addGegnerNummerInput.focus();
-            } else {
-                const gegnernummer = btn.dataset.gegnerNummer;
-                if (gegnernummer) {
-                    oeffneGegnerAktionsMenue(parseInt(gegnernummer));
-                }
-            }
-        }
-    });
+
 
     protokollAusgabe.addEventListener('click', (e) => {
         const deleteBtn = e.target.closest('.log-delete');

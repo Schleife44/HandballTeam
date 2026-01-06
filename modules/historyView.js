@@ -11,7 +11,9 @@ import {
     histHeatmapStatsArea, histHeatmapStatsBodyHome, histHeatmapStatsBodyGegner,
     histHeatmapHomeTitle, histHeatmapGegnerTitle, histHeatmapPlayerSelect,
     histHeatmapTeamToggle, histHeatTeamLabelHeim, histHeatTeamLabelGegner,
-    heatmapTeamToggle, heatmapPlayerSelect, heatmapHeimLabel, heatmapGegnerLabel
+    heatmapTeamToggle, heatmapPlayerSelect, heatmapHeimLabel, heatmapGegnerLabel,
+    histTabProtokoll, histContentProtokoll, histProtokollAusgabe,
+    histTabTorfolge, histContentTorfolge, histTorfolgeChart
 } from './dom.js';
 import { berechneStatistiken, berechneGegnerStatistiken, berechneTore } from './stats.js';
 import { speichereSpielInHistorie, getHistorie, loescheSpielAusHistorie } from './history.js';
@@ -69,11 +71,32 @@ export async function handleSpielBeenden() {
         spielstand.gameLog = [];
         spielstand.score.heim = 0;
         spielstand.score.gegner = 0;
-        spielstand.timer.verstricheneSekundenBisher = 0;
-        spielstand.timer.gamePhase = 1;
+
+        // Vollständiger Timer-Reset
+        spielstand.timer = {
+            gamePhase: 1,
+            istPausiert: true,
+            segmentStartZeit: 0,
+            verstricheneSekundenBisher: 0,
+            history: []
+        };
+
         spielstand.uiState = 'roster';
         spielstand.activeSuspensions = [];
-        spielstand.timer.history = [];
+
+        // Reset Player Times
+        // Reset Player Times and Disqualification
+        if (spielstand.roster) spielstand.roster.forEach(p => {
+            p.timeOnField = 0;
+            p.disqualified = false;
+        });
+        if (spielstand.knownOpponents) spielstand.knownOpponents.forEach(p => {
+            p.timeOnField = 0;
+            p.disqualified = false;
+        });
+
+        // Reset Mode Selection for next game
+        spielstand.modeSelected = false;
 
         speichereSpielstand();
         location.reload();
@@ -200,6 +223,11 @@ export function renderHomeStatsInHistory(tbody, statsData, gameLog, isLive = fal
         const quote = fieldAttempts > 0 ? Math.round((fieldGoals / fieldAttempts) * 100) + '%' : '-';
         const sevenMDisplay = (stats.siebenMeterVersuche > 0) ? `${stats.siebenMeterTore}/${stats.siebenMeterVersuche}` : "0/0";
 
+        const timeOnField = stats.timeOnField || 0;
+        const m = Math.floor(timeOnField / 60);
+        const s = timeOnField % 60;
+        const timeStr = `${m}:${s < 10 ? '0' + s : s}`;
+
         // Check for heatmap data
         // Filter log for this player
         const playerLog = gameLog.filter(e => (e.playerId === stats.number || e.number === stats.number) && !e.action.startsWith('Gegner'));
@@ -207,19 +235,27 @@ export function renderHomeStatsInHistory(tbody, statsData, gameLog, isLive = fal
         const has7m = playerLog.some(e => e.action.includes('7m'));
 
         let buttonsHtml = '';
-        if (hasField) buttonsHtml += `<button class="heatmap-btn shadcn-btn-secondary" data-mode="field" style="padding: 0 8px; height: 28px; display:inline-flex; align-items:center; vertical-align:middle; font-size: 0.75rem;"><i data-lucide="crosshair" style="width: 14px; height: 14px;"></i></button>`;
-        if (has7m) buttonsHtml += `<button class="heatmap-btn shadcn-btn-outline" data-mode="7m" style="padding: 0 8px; height: 28px; font-size: 0.75rem; margin-left: 4px; border-color: #f59e0b; color: #f59e0b; display:inline-flex; align-items:center; vertical-align:middle;">7m</button>`;
+        if (hasField) buttonsHtml += `<button class="heatmap-btn shadcn-btn-secondary" data-mode="field" style="padding: 0 4px; height: 20px; display:inline-flex; align-items:center; vertical-align:middle; font-size: 0.6rem; min-width: 20px;"><i data-lucide="crosshair" style="width: 12px; height: 12px;"></i></button>`;
+        if (has7m) buttonsHtml += `<button class="heatmap-btn shadcn-btn-outline" data-mode="7m" style="padding: 0 4px; height: 20px; font-size: 0.6rem; margin-left: 2px; border-color: #f59e0b; color: #f59e0b; display:inline-flex; align-items:center; vertical-align:middle; min-width: 20px;">7m</button>`;
+
+        const showTime = (!spielstand.gameMode || spielstand.gameMode !== 'simple');
 
         const tr = document.createElement('tr');
         tr.innerHTML = `
             <td>#${stats.number} ${stats.name}</td>
+            ${showTime ? `<td>${timeStr}</td>` : ''}
             <td>${goals}</td>
             <td>${feldtore}</td>
             <td>${sevenMDisplay}</td>
             <td>${stats.fehlwurf}</td>
             <td>${quote}</td>
-            <td>${stats.guteAktion}</td>
-            <td>${stats.techFehler}</td>
+            <td>${stats.ballverlust}</td>
+            <td>${stats.stuermerfoul}</td>
+            <td>${stats.block}</td>
+            <td>${stats.gewonnen1v1}</td>
+            <td>${stats.oneOnOneLost}</td>
+            <td>${stats.rausgeholt7m}</td>
+            <td>${stats.rausgeholt2min}</td>
             <td>${stats.gelb}</td>
             <td>${stats.zweiMinuten}</td>
             <td>${stats.rot}</td>
@@ -281,20 +317,33 @@ export function renderOpponentStatsInHistory(tbody, statsData, gameLog, game = n
         const has7m = stats.siebenMeterVersuche > 0;
         const hasField = (goals + stats.fehlwurf) > stats.siebenMeterVersuche;
 
+        const timeOnField = stats.timeOnField || 0;
+        const m = Math.floor(timeOnField / 60);
+        const s = timeOnField % 60;
+        const timeStr = `${m}:${s < 10 ? '0' + s : s}`;
+
         let buttonsHtml = '';
-        if (hasField || goals > 0) buttonsHtml += `<button class="heatmap-btn shadcn-btn-secondary" data-mode="field" style="padding: 0 8px; height: 28px; display:inline-flex; align-items:center; vertical-align:middle; font-size: 0.75rem;"><i data-lucide="crosshair" style="width: 14px; height: 14px;"></i></button>`;
-        if (has7m) buttonsHtml += `<button class="heatmap-btn shadcn-btn-outline" data-mode="7m" style="padding: 0 8px; height: 28px; font-size: 0.75rem; margin-left: 4px; border-color: #f59e0b; color: #f59e0b; display:inline-flex; align-items:center; vertical-align:middle;">7m</button>`;
+        if (hasField || goals > 0) buttonsHtml += `<button class="heatmap-btn shadcn-btn-secondary" data-mode="field" style="padding: 0 4px; height: 20px; display:inline-flex; align-items:center; vertical-align:middle; font-size: 0.6rem; min-width: 20px;"><i data-lucide="crosshair" style="width: 12px; height: 12px;"></i></button>`;
+        if (has7m) buttonsHtml += `<button class="heatmap-btn shadcn-btn-outline" data-mode="7m" style="padding: 0 4px; height: 20px; font-size: 0.6rem; margin-left: 2px; border-color: #f59e0b; color: #f59e0b; display:inline-flex; align-items:center; vertical-align:middle; min-width: 20px;">7m</button>`;
+
+        const showTime = (!spielstand.gameMode || spielstand.gameMode !== 'simple');
 
         const tr = document.createElement('tr');
         tr.innerHTML = `
             <td>${stats.name}</td>
+            ${showTime ? `<td>${timeStr}</td>` : ''}
             <td>${goals}</td>
             <td>${feldtore}</td>
             <td>${sevenMDisplay}</td>
             <td>${stats.fehlwurf}</td>
             <td>${quote}</td>
-            <td>${stats.guteAktion}</td>
-            <td>${stats.techFehler}</td>
+            <td>${stats.ballverlust || 0}</td>
+            <td>${stats.stuermerfoul || 0}</td>
+            <td>${stats.block || 0}</td>
+            <td>${stats.gewonnen1v1 || 0}</td>
+            <td>${stats.oneOnOneLost || 0}</td>
+            <td>${stats.rausgeholt7m || 0}</td>
+            <td>${stats.rausgeholt2min || 0}</td>
             <td>${stats.gelb}</td>
             <td>${stats.zweiMinuten}</td>
             <td>${stats.rot}</td>
@@ -395,6 +444,203 @@ export function openPlayerHistoryHeatmap(gameLog, identifier, team, playerName, 
 }
 
 // --- Open History Detail ---
+// --- Render Goal Sequence Chart ---
+function renderGoalSequenceChart(game) {
+    const canvas = document.getElementById('histTorfolgeChart');
+    if (!canvas) return;
+
+    // Destroy existing chart if any
+    if (canvas.chart) {
+        canvas.chart.destroy();
+    }
+
+    // Calculate goal progression
+    const labels = [];
+    const heimData = [];
+    const gegnerData = [];
+
+    let heimScore = 0;
+    let gegnerScore = 0;
+
+    // Add starting point
+    labels.push('0:00');
+    heimData.push(0);
+    gegnerData.push(0);
+
+    // Process game log
+    // FAILSAFE: Sort Chronologically (00:00 -> 60:00)
+    const sortedLog = [...game.gameLog].sort((a, b) => {
+        const [minA, secA] = a.time.split(':').map(Number);
+        const [minB, secB] = b.time.split(':').map(Number);
+        return (minA * 60 + secA) - (minB * 60 + secB);
+    });
+
+    sortedLog.forEach(entry => {
+        const actionLower = entry.action.toLowerCase();
+        const isGoal = actionLower.includes('tor');
+        if (!isGoal) return;
+
+        // Correct Logic: "Tor" is Us (Heim), "Gegner" is Them (Gegner)
+        // (Assuming standard Home Game recording)
+        const isGegnerGoal = entry.action.startsWith('Gegner');
+
+        if (isGegnerGoal) {
+            gegnerScore++;
+        } else {
+            heimScore++;
+        }
+
+        labels.push(entry.time);
+        heimData.push(heimScore);
+        gegnerData.push(gegnerScore);
+    });
+
+    // Create chart
+    const ctx = canvas.getContext('2d');
+
+    canvas.chart = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: labels,
+            datasets: [
+                {
+                    label: game.teams.heim,
+                    data: heimData,
+                    borderColor: '#dc3545',
+                    backgroundColor: 'rgba(220, 53, 69, 0.1)',
+                    borderWidth: 3,
+                    tension: 0.1,
+                    fill: true
+                },
+                {
+                    label: game.teams.gegner,
+                    data: gegnerData,
+                    borderColor: '#0d6efd',
+                    backgroundColor: 'rgba(13, 110, 253, 0.1)',
+                    borderWidth: 3,
+                    tension: 0.1,
+                    fill: true
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: true,
+            aspectRatio: 2.5,
+            plugins: {
+                legend: {
+                    display: true,
+                    position: 'top',
+                    labels: {
+                        font: {
+                            size: 14,
+                            weight: 'bold'
+                        },
+                        color: '#e0e0e0'
+                    }
+                },
+                title: {
+                    display: true,
+                    text: 'Torverlauf',
+                    font: {
+                        size: 18,
+                        weight: 'bold'
+                    },
+                    color: '#ffffff'
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    ticks: {
+                        stepSize: 1,
+                        color: '#e0e0e0'
+                    },
+                    grid: {
+                        color: 'rgba(255, 255, 255, 0.1)'
+                    },
+                    title: {
+                        display: true,
+                        text: 'Tore',
+                        color: '#e0e0e0'
+                    }
+                },
+                x: {
+                    ticks: {
+                        maxRotation: 45,
+                        minRotation: 45,
+                        color: '#e0e0e0'
+                    },
+                    grid: {
+                        color: 'rgba(255, 255, 255, 0.1)'
+                    },
+                    title: {
+                        display: true,
+                        text: 'Spielzeit',
+                        color: '#e0e0e0'
+                    }
+                }
+            }
+        }
+    });
+}
+
+// --- Render History Protocol ---
+function renderHistoryProtocol(game) {
+    const container = document.getElementById('histProtokollAusgabe');
+    if (!container) return;
+
+    container.innerHTML = '';
+
+    if (!game.gameLog || game.gameLog.length === 0) {
+        container.innerHTML = '<p style="text-align:center; padding:20px; color: var(--text-muted);">Kein Protokoll vorhanden.</p>';
+        return;
+    }
+
+    // Reverse to show newest first
+    const reversedLog = [...game.gameLog].reverse();
+
+    reversedLog.forEach((eintrag, idxReverse) => {
+        const div = document.createElement('div');
+        div.className = 'log-entry';
+
+        // Add specific classes based on action type
+        if (eintrag.action.toLowerCase().includes('tor') && !eintrag.action.toLowerCase().includes('gegner')) {
+            div.classList.add('tor');
+        } else if (eintrag.action.toLowerCase().includes('gegner tor') || (eintrag.gegnerNummer && eintrag.action.toLowerCase().includes('tor'))) {
+            div.classList.add('gegner-tor');
+        } else if (eintrag.action.toLowerCase().includes('gelb') || eintrag.action.toLowerCase().includes('2 min') || eintrag.action.toLowerCase().includes('rot')) {
+            div.classList.add('strafe');
+        } else if (eintrag.action.toLowerCase().includes('gehalten') || eintrag.action.toLowerCase().includes('parade') || (eintrag.wurfbild && eintrag.wurfbild.isSave)) {
+            div.classList.add('gehalten');
+        }
+
+        const spielstandText = eintrag.spielstand ? ` (${eintrag.spielstand})` : '';
+
+        let contentHtml = `<span class="log-time">${eintrag.time}</span>`;
+        let text = '';
+
+        if (eintrag.playerId) {
+            const player = game.roster.find(p => p.number === eintrag.playerId);
+            const playerName = player ? player.name : '';
+            text = `#${eintrag.playerId}${playerName ? ` (${playerName})` : ''}: ${eintrag.action}`;
+        } else if (eintrag.gegnerNummer) {
+            text = `Gegner #${eintrag.gegnerNummer}: ${eintrag.action}`;
+        } else {
+            text = `${eintrag.action.toUpperCase()}`;
+        }
+
+        if (eintrag.kommentar) {
+            text += ` - ${eintrag.kommentar}`;
+        }
+
+        contentHtml += `<span class="log-text"><strong>${text}</strong><span style="opacity: 0.6; margin-left:8px;">${spielstandText}</span></span>`;
+
+        div.innerHTML = contentHtml;
+        container.appendChild(div);
+    });
+}
+
 export function openHistoryDetail(game) {
     historieBereich.classList.add('versteckt');
     historieDetailBereich.classList.remove('versteckt');
@@ -652,6 +898,10 @@ export function openHistoryDetail(game) {
     histSubTabTor.classList.add('active');
     histSubTabFeld.classList.remove('active');
     histSubTabKombi.classList.remove('active');
+
+    // Render Protocol and Goal Sequence Chart
+    renderHistoryProtocol(game);
+    renderGoalSequenceChart(game);
 
     renderBound();
 }

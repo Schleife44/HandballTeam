@@ -87,7 +87,7 @@ export const drawGoalHeatmap = (pts, yOffset = 0, prefix = 'gen', isHistory = fa
     `;
 
     pts.forEach(p => {
-        if (p.isMiss) return;
+        if (p.isMiss || p.isBlocked) return;
         let x = 25 + (p.x / 100) * 250;
         let y = 10 + (p.y / 100) * 180;
         x = Math.max(-10, Math.min(310, x));
@@ -106,12 +106,23 @@ export const drawGoalHeatmap = (pts, yOffset = 0, prefix = 'gen', isHistory = fa
         let fillColor;
         if (p.isSave) {
             fillColor = '#ffc107';
-        } else if (p.isMiss) {
+        } else if (p.isMiss || p.isBlocked || (p.action && p.action.toLowerCase().includes('block'))) {
             fillColor = '#6c757d';
         } else if (p.isOpponent) {
             fillColor = colors.them;
         } else {
             fillColor = colors.us;
+        }
+
+        // DEBUG LOGGING
+        if (p.isBlocked || (p.action && p.action.toLowerCase().includes('block'))) {
+            console.log("[DEBUG] Heatmap Color:", {
+                action: p.action,
+                isMiss: p.isMiss,
+                isBlocked: p.isBlocked,
+                fillColor: fillColor,
+                isOp: p.isOpponent
+            });
         }
 
         let glowStyle = '';
@@ -155,7 +166,7 @@ export const drawFieldHeatmap = (pts, yOffset = 0, prefix = 'gen', isHistory = f
     `;
 
     pts.forEach(p => {
-        if (p.isMiss) return;
+        if (p.isMiss || p.isBlocked) return;
         const x = 10 + (p.x / 100) * 280;
         const y = 10 + (p.y / 100) * 380;
         const gradient = p.isOpponent ? `url(#heatGradientBlueF${prefix}${isHistory ? 'H' : ''}${yOffset})` : `url(#heatGradientF${prefix}${isHistory ? 'H' : ''}${yOffset})`;
@@ -171,7 +182,7 @@ export const drawFieldHeatmap = (pts, yOffset = 0, prefix = 'gen', isHistory = f
         let fillColor;
         if (p.isSave) {
             fillColor = '#ffc107';
-        } else if (p.isMiss) {
+        } else if (p.isMiss || p.isBlocked || (p.action && p.action.toLowerCase().includes('block'))) {
             fillColor = '#6c757d';
         } else if (p.isOpponent) {
             fillColor = colors.them;
@@ -354,10 +365,13 @@ export function renderHeatmap(svgElement, logSource, isHistory = false, filterOv
         const actionLower = (entry.action || "").toLowerCase();
         const isGoal = actionLower === 'tor' || actionLower === 'gegner tor' || actionLower.includes('7m tor');
         const isMiss = actionLower.includes('fehlwurf') || actionLower.includes('vorbei') ||
-            actionLower.includes('verworfen') || actionLower.includes('gehalten');
+            actionLower.includes('verworfen') || actionLower.includes('gehalten') || actionLower.includes('parade') ||
+            actionLower.includes('block'); // Includes "Block" and "Gegner Block"
 
         // Robust Save Detection
         const isSave = actionLower.includes('gehalten') || actionLower.includes('parade');
+        // Explicitly check for Block if we want special coloring later, but for now treat as Miss/Blocked
+        const isBlocked = actionLower.includes('block');
 
         if (isGoal && !is7m && !showTore) return;
         // Feld-Fehlwürfe nur dann verstecken, wenn 7m aktiv ist (Fokus auf 7m) 
@@ -450,7 +464,8 @@ export function renderHeatmap(svgElement, logSource, isHistory = false, filterOv
             const is7m = entry.action?.includes('7m');
             if (is7m && !show7m) visible = false;
             const isGoal = entry.action === 'Tor' || entry.action === 'Gegner Tor' || entry.action?.includes('7m Tor');
-            const isMiss = entry.action?.includes('Fehlwurf') || entry.action?.includes('Vorbei') || entry.action?.includes('Verworfen') || entry.action?.includes('Gehalten');
+            const isSave = entry.action?.toLowerCase().includes('parade') || entry.action?.toLowerCase().includes('gehalten');
+            const isMiss = entry.action?.includes('Fehlwurf') || entry.action?.includes('Vorbei') || entry.action?.includes('Verworfen') || isSave;
             if (isGoal && !is7m && !showTore) visible = false;
             if (isMiss && !is7m && !showTore && show7m) visible = false;
             if (isMiss && !showMissed) visible = false;
@@ -472,9 +487,10 @@ export function renderHeatmap(svgElement, logSource, isHistory = false, filterOv
                 const fx = 10 + (parseFloat(pos.x) / 100) * 280;
                 const fy = 10 + (parseFloat(pos.y) / 100) * 380 + yOffsetField;
 
-                let c = isMiss ? 'rgba(108, 117, 125, 0.5)' :
-                    (isOpponent ? `rgba(${rgbThem.r}, ${rgbThem.g}, ${rgbThem.b}, 0.5)`
-                        : `rgba(${rgbUs.r}, ${rgbUs.g}, ${rgbUs.b}, 0.5)`);
+                let c = isSave ? 'rgba(255, 193, 7, 0.5)' :
+                    (isMiss ? 'rgba(108, 117, 125, 0.5)' :
+                        (isOpponent ? `rgba(${rgbThem.r}, ${rgbThem.g}, ${rgbThem.b}, 0.5)`
+                            : `rgba(${rgbUs.r}, ${rgbUs.g}, ${rgbUs.b}, 0.5)`));
 
                 linesContent += `<line x1="${fx}" y1="${fy}" x2="${gx}" y2="${gy}" stroke="${c}" stroke-width="2" />`;
             }

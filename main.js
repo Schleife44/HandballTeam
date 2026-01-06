@@ -232,21 +232,49 @@ function navigateToView(view) {
             showDashboardInline();
             break;
         case 'roster':
-            rosterBereich.classList.remove('versteckt');
-            zeichneRosterListe();
+            if (rosterBereich) rosterBereich.classList.remove('versteckt');
+
+            // Fix: Check toggle state before rendering
+            const isOpponent = teamToggle && teamToggle.getAttribute('aria-checked') === 'true';
+            zeichneRosterListe(isOpponent);
+
             // Update roster input locks based on validation state
             updateRosterInputsForValidation();
             break;
         case 'game':
-            // Always show game view
-            spielBereich.classList.remove('versteckt');
-            if (globalAktionen) globalAktionen.classList.remove('versteckt');
-            scoreWrapper.classList.remove('versteckt');
+            if (spielBereich) spielBereich.classList.remove('versteckt');
 
-            // Ensure UI is updated
-            updateScoreDisplay();
-            import('./modules/game.js').then(game => game.updateGameControls());
-            zeichneSpielerRaster();
+            // In-page selection logic
+            const modeSelection = document.getElementById('gameModeSelection');
+            const gameContent = document.getElementById('gameContent');
+
+            console.log("DEBUG: navigateToView('game')", {
+                phase: spielstand.timer.gamePhase,
+                modeSelected: spielstand.modeSelected,
+                check: (spielstand.timer.gamePhase === 1 && !spielstand.modeSelected)
+            });
+
+            // Determine if we need selection or game content
+            if (spielstand.timer.gamePhase === 1 && !spielstand.modeSelected) {
+                console.log("DEBUG: Showing Selection");
+                // Show Selection
+                if (modeSelection) modeSelection.style.display = 'flex';
+                if (gameContent) gameContent.style.display = 'none';
+
+                // Hide specific controls during selection for cleaner look
+                if (globalAktionen) globalAktionen.classList.add('versteckt');
+                if (scoreWrapper) scoreWrapper.classList.add('versteckt');
+
+            } else {
+                console.log("DEBUG: Showing Content");
+                // Show Content
+                if (modeSelection) modeSelection.style.display = 'none';
+                if (gameContent) gameContent.style.display = 'block';
+
+                renderGameViewFull();
+            }
+            break;
+
 
             if (spielBeendenButton) spielBeendenButton.classList.remove('versteckt');
             break;
@@ -277,8 +305,13 @@ function navigateToView(view) {
             showTeamDiagrammView();
             break;
         case 'protocol':
-            protokollBereich.classList.remove('versteckt');
+            if (protokollBereich) protokollBereich.classList.remove('versteckt');
             updateProtokollAnzeige();
+            break;
+        case 'videoanalyse':
+            const vaBereich = document.getElementById('videoAnalyseBereich');
+            if (vaBereich) vaBereich.classList.remove('versteckt');
+            import('./modules/videoAnalysis.js').then(mod => mod.handleVideoAnalysisView());
             break;
     }
 
@@ -326,7 +359,7 @@ export function showLiveOverviewInline() {
                 import('./modules/heatmap.js').then(heatmap => {
                     // Get current game data
                     const homeStats = stats.berechneStatistiken(spielstand.gameLog, spielstand.roster);
-                    const opponentStats = stats.berechneGegnerStatistiken(spielstand.gameLog);
+                    const opponentStats = stats.berechneGegnerStatistiken(spielstand.gameLog, spielstand.knownOpponents);
 
                     const isAuswaerts = spielstand.settings?.isAuswaertsspiel || false;
 
@@ -368,6 +401,11 @@ export function showLiveOverviewInline() {
                         </div>
                     `;
 
+                    const infoIcon = `<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="tooltip-icon"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>`;
+
+
+                    const showTime = spielstand.gameMode !== 'simple';
+
                     // Generate Stats Cards HTML
                     const homeCardHtml = `
                         <div class="stats-card">
@@ -377,16 +415,22 @@ export function showLiveOverviewInline() {
                                     <thead>
                                         <tr>
                                             <th>Spieler</th>
-                                            <th>Tore</th>
-                                            <th>Feldtore</th>
-                                            <th>7m</th>
-                                            <th>FehlwÃ¼rfe</th>
-                                            <th>Quote</th>
-                                            <th>Gute Aktion</th>
-                                            <th>Tech. Fehler</th>
-                                            <th>Gelb</th>
-                                            <th>2 Min</th>
-                                            <th>Rot</th>
+                                            ${showTime ? '<th title="Spielzeit">Zeit</th>' : ''}
+                                            <th title="Tore">Tore</th>
+                                            <th title="Feldtore">Feldtore</th>
+                                            <th title="7-Meter Tore/Versuche">7m</th>
+                                            <th title="Fehlwürfe (Gehalten/Vorbei)">Fehlw</th>
+                                            <th title="Wurfquote">Quote</th>
+                                            <th title="Ballverlust">BV ${infoIcon}</th>
+                                            <th title="Stürmerfoul">SF ${infoIcon}</th>
+                                            <th title="Block">Blk ${infoIcon}</th>
+                                            <th title="1 gegen 1 Gewonnen">1v1 ${infoIcon}</th>
+                                            <th title="1 gegen 1 Verloren">1v1- ${infoIcon}</th>
+                                            <th title="7m herausgeholt">7m+ ${infoIcon}</th>
+                                            <th title="2 Minuten herausgeholt">2m+ ${infoIcon}</th>
+                                            <th title="Gelbe Karte">G ${infoIcon}</th>
+                                            <th title="2 Minuten Zeitstrafe">2' ${infoIcon}</th>
+                                            <th title="Rote Karte">R ${infoIcon}</th>
                                         </tr>
                                     </thead>
                                     <tbody id="liveStatsHome"></tbody>
@@ -403,16 +447,22 @@ export function showLiveOverviewInline() {
                                     <thead>
                                         <tr>
                                             <th>Spieler</th>
-                                            <th>Tore</th>
-                                            <th>Feldtore</th>
-                                            <th>7m</th>
-                                            <th>FehlwÃ¼rfe</th>
-                                            <th>Quote</th>
-                                            <th>Gute Aktion</th>
-                                            <th>Tech. Fehler</th>
-                                            <th>Gelb</th>
-                                            <th>2 Min</th>
-                                            <th>Rot</th>
+                                            ${showTime ? '<th title="Spielzeit">Zeit</th>' : ''}
+                                            <th title="Tore">Tore</th>
+                                            <th title="Feldtore">Feldtore</th>
+                                            <th title="7-Meter Tore/Versuche">7m</th>
+                                            <th title="Fehlwürfe (Gehalten/Vorbei)">Fehlw</th>
+                                            <th title="Wurfquote">Quote</th>
+                                            <th title="Ballverlust">BV ${infoIcon}</th>
+                                            <th title="Stürmerfoul">SF ${infoIcon}</th>
+                                            <th title="Block">Blk ${infoIcon}</th>
+                                            <th title="1 gegen 1 Gewonnen">1v1 ${infoIcon}</th>
+                                            <th title="1 gegen 1 Verloren">1v1- ${infoIcon}</th>
+                                            <th title="7m verursacht">7m+ ${infoIcon}</th>
+                                            <th title="2 Minuten verursacht">2m+ ${infoIcon}</th>
+                                            <th title="Gelbe Karte">G ${infoIcon}</th>
+                                            <th title="2 Minuten Zeitstrafe">2' ${infoIcon}</th>
+                                            <th title="Rote Karte">R ${infoIcon}</th>
                                         </tr>
                                     </thead>
                                     <tbody id="liveStatsOpp"></tbody>
@@ -420,6 +470,7 @@ export function showLiveOverviewInline() {
                             </div>
                         </div>
                     `;
+
 
                     // Append in correct order
                     if (isAuswaerts) {
@@ -947,7 +998,7 @@ function showShotsInline() {
                 playerData.wuerfe.forEach(w => {
                     const act = (w.action || "").toLowerCase();
                     const isSave = act.includes('gehalten') || act.includes('parade') || (w.isSave === true) || (w.color === 'yellow');
-                    const isMiss = act.includes('vorbei') || act.includes('verworfen') || act.includes('fehlwurf') || (w.color === 'gray');
+                    const isMiss = act.includes('vorbei') || act.includes('verworfen') || act.includes('fehlwurf') || act.includes('block') || (w.color === 'gray');
 
                     if (isSave) {
                         gehalten++;
@@ -972,7 +1023,8 @@ function showShotsInline() {
                 const mapWurfToPoint = (w) => {
                     const act = (w.action || "").toLowerCase();
                     const isSave = act.includes('gehalten') || act.includes('parade') || (w.isSave === true) || (w.color === 'yellow');
-                    const isMiss = act.includes('vorbei') || act.includes('verworfen') || act.includes('fehlwurf') || (w.color === 'gray');
+                    const isMiss = act.includes('vorbei') || act.includes('verworfen') || act.includes('fehlwurf') || act.includes('block') || (w.color === 'gray');
+                    const isBlocked = act.includes('block');
                     const isGoal = !isSave && !isMiss && act.includes('tor');
 
                     return {
@@ -981,7 +1033,9 @@ function showShotsInline() {
                         isOpponent: isOpponent,
                         isGoal: isGoal,
                         isMiss: isMiss || isSave,
-                        isSave: isSave
+                        isSave: isSave,
+                        isBlocked: isBlocked,
+                        action: act
                     };
                 };
 
@@ -1026,7 +1080,7 @@ function showShotsInline() {
                             const fy = 10 + (parseFloat(w.wurfposition.y) / 100) * 380 + yOffsetField;
 
                             const act = (w.action || "").toLowerCase();
-                            const isMiss = w.color === 'gray' || act.includes('vorbei') || act.includes('verworfen') || act.includes('fehlwurf') || act.includes('gehalten') || act.includes('parade') || w.isSave;
+                            const isMiss = w.color === 'gray' || act.includes('vorbei') || act.includes('verworfen') || act.includes('fehlwurf') || act.includes('gehalten') || act.includes('parade') || act.includes('block') || w.isSave;
                             const color = isMiss ? 'rgba(108, 117, 125, 0.5)' : (isOpponent ? 'rgba(13, 110, 253, 0.5)' : 'rgba(220, 53, 69, 0.5)');
                             linesContent += `<line x1="${fx}" y1="${fy}" x2="${gx}" y2="${gy}" stroke="${color}" stroke-width="2" />`;
                         }
@@ -1189,25 +1243,27 @@ function showSettingsInline() {
 }
 
 function hideAllSections() {
-    rosterBereich.classList.add('versteckt');
-    spielBereich.classList.add('versteckt');
-    liveOverviewBereich.classList.add('versteckt');
-    seasonBereich.classList.add('versteckt');
-    shotsBereich.classList.add('versteckt');
-    exportBereich.classList.add('versteckt');
+    if (rosterBereich) rosterBereich.classList.add('versteckt');
+    if (spielBereich) spielBereich.classList.add('versteckt');
+    if (liveOverviewBereich) liveOverviewBereich.classList.add('versteckt');
+    if (seasonBereich) seasonBereich.classList.add('versteckt');
+    if (shotsBereich) shotsBereich.classList.add('versteckt');
+    if (exportBereich) exportBereich.classList.add('versteckt');
     const dashboardBereich = document.getElementById('dashboardBereich');
     if (dashboardBereich) dashboardBereich.classList.add('versteckt');
-    settingsBereich.classList.add('versteckt');
-    liveHeatmapBereich.classList.add('versteckt');
+    if (settingsBereich) settingsBereich.classList.add('versteckt');
+    if (liveHeatmapBereich) liveHeatmapBereich.classList.add('versteckt');
     if (historieBereich) historieBereich.classList.add('versteckt');
     if (historieDetailBereich) historieDetailBereich.classList.add('versteckt');
     const seasonHeatmapBereich = document.getElementById('seasonHeatmapBereich');
     if (seasonHeatmapBereich) seasonHeatmapBereich.classList.add('versteckt');
     if (teamDiagrammBereich) teamDiagrammBereich.classList.add('versteckt');
     if (globalAktionen) globalAktionen.classList.add('versteckt');
-    scoreWrapper.classList.add('versteckt');
-    statistikWrapper.classList.add('versteckt');
+    if (scoreWrapper) scoreWrapper.classList.add('versteckt');
+    if (statistikWrapper) statistikWrapper.classList.add('versteckt');
     if (protokollBereich) protokollBereich.classList.add('versteckt');
+    const vaBereich = document.getElementById('videoAnalyseBereich');
+    if (vaBereich) vaBereich.classList.add('versteckt');
 }
 
 function showTeamDiagrammView() {
@@ -1263,4 +1319,52 @@ navItems.forEach(i => {
 navigateToView(initialView);
 updateSidebarTimerVisibility(initialView);
 
+function renderGameViewFull() {
+    if (spielBereich) spielBereich.classList.remove('versteckt');
+    if (globalAktionen) globalAktionen.classList.remove('versteckt');
+    if (scoreWrapper) scoreWrapper.classList.remove('versteckt');
 
+    // Ensure UI is updated
+    updateScoreDisplay();
+    import('./modules/game.js').then(game => {
+        if (game.applyGameMode) game.applyGameMode();
+        game.updateGameControls();
+    });
+    zeichneSpielerRaster();
+    updateProtokollAnzeige();
+}
+
+function setupGameModeListeners() {
+    const btnComplex = document.getElementById('btnSelectComplex');
+    const btnSimple = document.getElementById('btnSelectSimple');
+
+    const applyMode = (mode) => {
+        spielstand.gameMode = mode;
+        spielstand.modeSelected = true;
+        import('./modules/state.js').then(s => s.speichereSpielstand());
+
+        // Refresh View
+        navigateToView('game');
+    };
+
+    if (btnComplex) {
+        // Clone/Replace to ensure no duplicate listeners if run multiple times (hot reload)
+        const newBtn = btnComplex.cloneNode(true);
+        btnComplex.parentNode.replaceChild(newBtn, btnComplex);
+        newBtn.addEventListener('click', () => applyMode('complex'));
+    }
+
+    if (btnSimple) {
+        const newBtn = btnSimple.cloneNode(true);
+        btnSimple.parentNode.replaceChild(newBtn, btnSimple);
+        newBtn.addEventListener('click', () => applyMode('simple'));
+    }
+}
+
+// Init listeners immediately
+setupGameModeListeners();
+
+// Listen for Game Reset
+document.addEventListener('gameStateReset', () => {
+    navigateToView('game');
+});

@@ -1,4 +1,4 @@
-/* 
+﻿/* 
   SHADCN/UI THEME REFACTOR 
   Based on Zinc color palette
 */
@@ -340,8 +340,16 @@ textarea {
     padding: 0.5rem 0.75rem;
     font-size: 0.875rem;
     color: hsl(var(--foreground));
-    transition: box-shadow 0.1s;
-    outline: none;
+}
+
+/* Player Time Display */
+.player-time-display {
+    font-size: 0.6rem;
+    line-height: 1;
+    font-weight: normal;
+    opacity: 0.7;
+    margin-bottom: 1px;
+    font-family: monospace;
 }
 
 input:focus,
@@ -711,6 +719,38 @@ textarea:focus {
     /* Default Colors (Us) */
     background-color: var(--team-primary-color, #d81b1b);
     color: var(--our-text-color, white);
+    position: relative;
+    /* For the remove button */
+}
+
+/* Remove button inside lineup slot */
+.remove-player-btn {
+    position: absolute;
+    top: 2px;
+    right: 2px;
+    width: 20px;
+    height: 20px;
+    background: rgba(0, 0, 0, 0.3);
+    color: white;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+    font-weight: bold;
+    cursor: pointer;
+    z-index: 5;
+    transition: background 0.2s, transform 0.1s;
+}
+
+.remove-player-btn:hover {
+    background: rgba(255, 0, 0, 0.7);
+    transform: scale(1.1);
+}
+
+.bench-player .remove-player-btn {
+    display: none;
+    /* Only show in lineup slots */
 }
 
 .spieler-button.gegner-button {
@@ -754,6 +794,33 @@ textarea:focus {
 .gegner-button {
     background-color: var(--team-opponent-color, #2563eb);
     color: var(--opponent-text-color, #fff);
+}
+
+/* Lineup Slots (Empty & Suspended) */
+.lineup-slot.empty,
+.lineup-slot.suspended {
+    background-color: hsl(var(--muted) / 0.3) !important;
+    border: 2px dashed hsl(var(--border)) !important;
+    color: hsl(var(--muted-foreground)) !important;
+    box-shadow: none;
+}
+
+.lineup-slot.suspended {
+    cursor: not-allowed;
+    pointer-events: none;
+    opacity: 0.8;
+}
+
+.empty-slot-icon {
+    font-size: 1.5rem;
+    font-weight: 300;
+    color: hsl(var(--muted-foreground) / 0.5);
+}
+
+.lineup-slot.suspended .empty-slot-icon {
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: hsl(var(--muted-foreground));
 }
 
 /* TABLES */
@@ -1326,7 +1393,7 @@ body.dark-mode #wurfpositionFeld svg circle {
 }
 
 .shadcn-select-trigger::after {
-    content: "▼";
+    content: "â–¼";
     font-size: 0.6rem;
     opacity: 0.5;
     margin-left: 8px;
@@ -1501,6 +1568,400 @@ select.shadcn-select-native option {
     overflow: hidden;
     margin-top: auto;
 }
+
+/* Game Mode Selection Buttons */
+.mode-selection-card {
+    border: 2px solid rgba(255, 255, 255, 0.2);
+    /* Explicit visible border */
+    background-color: rgba(255, 255, 255, 0.03);
+    /* Slight background tint */
+    color: hsl(var(--card-foreground));
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3);
+    border-radius: var(--radius);
+}
+
+.mode-selection-card:hover {
+    border-color: hsl(var(--primary));
+    transform: translateY(-4px);
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.4);
+    background-color: rgba(255, 255, 255, 0.08);
+}
+
+.mode-selection-card:active {
+    transform: translateY(-2px);
+    box-shadow: 0 5px 10px -2px rgba(0, 0, 0, 0.2);
+}
+
+.mode-selection-card h3 {
+    color: hsl(var(--foreground));
+}
+
+.mode-selection-card p {
+    color: hsl(var(--muted-foreground));
+}
+
+/* === SIMPLE MODE ADJUSTMENTS === */
+.simple-mode .roster-section-title {
+    display: none !important;
+}
+
+/* Dashboard as Modal in Simple Mode */
+.simple-mode #actionDashboard {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 95%;
+    max-width: 700px;
+    /* Widened */
+    height: auto;
+    max-height: 90vh;
+    background: rgb(9, 9, 11);
+    border: 1px solid #333;
+    border-radius: 12px;
+    z-index: 2000;
+    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.8);
+    padding: 20px;
+    flex-direction: column;
+    gap: 15px;
+    overflow-y: auto;
+}
+
+.simple-mode #actionDashboard.disabled {
+    display: none !important;
+}
+
+.simple-mode #actionDashboard:not(.disabled) {
+    display: flex !important;
+}
+
+/* Modal Header Update */
+.simple-mode .action-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    width: 100%;
+}
+
+.close-modal-x {
+    display: none;
+    /* Hidden normally */
+}
+
+.simple-mode .close-modal-x {
+    display: block;
+    background: transparent;
+    border: none;
+    color: hsl(var(--muted-foreground));
+    font-size: 1.5rem;
+    cursor: pointer;
+    line-height: 1;
+    padding: 5px;
+    transition: color 0.2s;
+}
+
+.simple-mode .close-modal-x:hover {
+    color: hsl(var(--destructive));
+}
+
+/* Fix Overflow in Modal */
+.simple-mode .action-buttons-row {
+    display: flex;
+    flex-wrap: wrap;
+    /* Enable wrapping */
+    justify-content: center;
+    gap: 10px;
+}
+
+.simple-mode .action-btn {
+    flex: 1 1 auto;
+    /* flexible width */
+    min-width: 120px;
+    /* ensure content fits */
+    white-space: normal;
+    /* Allow text wrap inside button if needed */
+    height: auto;
+    padding: 10px;
+}
+
+/* End Dashboard Modal */
+
+.simple-mode .game-split-view {
+    display: grid !important;
+    grid-template-columns: min-content min-content !important;
+    /* Pack content tightly */
+    grid-template-areas:
+        "timer timer"
+        "heim gast";
+    gap: 10px;
+    /* Minimal gap between panels */
+    justify-content: center;
+    /* Center everything */
+    align-items: start;
+    width: 100%;
+    margin-top: 10px;
+}
+
+.simple-mode .game-roster-column,
+.simple-mode .dual-team-roster {
+    display: contents !important;
+    /* Unwrap nested containers */
+}
+
+/* Specific Order for Simple Mode */
+.simple-mode #heimTeamPanel {
+    grid-area: heim;
+    width: auto;
+    /* Shrink to fit grid */
+    order: unset;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    border: none;
+    /* Remove panel borders if desired, or keep */
+    background: transparent;
+    /* Cleaner look */
+    padding: 0;
+}
+
+.simple-mode .game-controls-column {
+    grid-area: timer;
+    order: unset;
+    /* Timer in Middle Top */
+    width: 100%;
+    max-width: 600px;
+    /* Wider to span both teams? OR keep compact card */
+    margin: 0 auto;
+}
+
+.simple-mode #gastTeamPanel {
+    grid-area: gast;
+    width: auto;
+    order: unset;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    border: none;
+    background: transparent;
+    padding: 0;
+}
+
+/* Compact Grid Overrides */
+.simple-mode .game-player-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 70px);
+    /* Fixed 4 columns of small buttons */
+    gap: 6px;
+    /* Tight gap */
+    width: auto;
+    max-width: none;
+}
+
+/* Button sizing */
+.simple-mode .spieler-button {
+    height: 70px !important;
+    width: 70px !important;
+    /* Enforce square */
+    min-width: 0 !important;
+    padding: 2px !important;
+    font-size: 0.8rem !important;
+}
+
+.simple-mode .spieler-nummer-display {
+    font-size: 1.2rem;
+    font-weight: bold;
+}
+
+.simple-mode .spieler-name-display {
+    font-size: 0.7rem;
+    line-height: 1.1;
+    white-space: normal;
+    /* Allow wrap */
+}
+
+/* Hide wrappers/panels padding */
+.simple-mode .roster-section {
+    padding: 0 !important;
+    background: transparent !important;
+    border: none !important;
+}
+
+.simple-mode .team-roster-panel {
+    border: none !important;
+    /* Remove colored borders in simple mode */
+    padding: 0 !important;
+    background: transparent !important;
+}
+
+/* === SIMPLE MODE SCOREBOARD (Center Piece) === */
+
+/* The Card Container */
+.simple-mode .game-top-bar {
+    background-color: #000;
+    /* As visible in screenshot */
+    border: 1px solid #333;
+    border-radius: 12px;
+    padding: 10px 20px;
+    /* Reduced Padding */
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+    /* Reduced Gap */
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+    margin: 0 auto;
+    width: 100%;
+    /* Let grid control width */
+}
+
+/* Timer */
+.simple-mode .compact-timer {
+    font-size: 3rem;
+    /* Reduced from 4rem */
+    font-weight: 700;
+    margin-bottom: 5px;
+    /* Reduced margin */
+}
+
+/* Score Display Container */
+.simple-mode .compact-score-display {
+    display: flex;
+    align-items: center;
+    /* Center vertically */
+    gap: 30px;
+    /* Reduced gap */
+    /* Space between teams */
+    width: 100%;
+    justify-content: center;
+}
+
+/* Team Wrapper */
+.simple-mode .score-team-wrapper {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 5px;
+}
+
+.simple-mode .compact-team-name {
+    font-size: 0.9rem;
+    /* Slightly smaller */
+    color: #aaa;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+/* Score Group: Buttons and Number */
+.simple-mode .score-control-group {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+    /* Tighter controls */
+}
+
+.simple-mode .compact-score {
+    font-size: 2.5rem;
+    /* Reduced from 3rem */
+    font-weight: bold;
+    line-height: 1;
+}
+
+/* Buttons (+/-) */
+.score-adjust-btn {
+    display: none;
+    /* Hidden by default */
+}
+
+.simple-mode .score-adjust-btn {
+    display: flex;
+    width: 24px;
+    /* Smaller buttons */
+    height: 24px;
+    align-items: center;
+    justify-content: center;
+    background: #222;
+    border: 1px solid #444;
+    color: #fff;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 1rem;
+    line-height: 1;
+}
+
+.simple-mode .score-adjust-btn:hover {
+    background: #333;
+}
+
+.simple-mode .compact-divider {
+    font-size: 2rem;
+    color: #666;
+    margin-top: 15px;
+    /* Align with numbers roughly */
+}
+
+/* Controls (Start/Pause, +/- 30s) */
+.simple-mode .game-phase-controls {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    margin-top: 5px;
+    /* Reduced margin */
+}
+
+/* Order Controls: -30s, +30s, Start below?Screenshot shows -30s +30s separate from Start? 
+   No, screenshot has: 
+   Row: -30s  +30s
+   Row: Spielstart 
+   My HTML structure has them in one div. I can flex-wrap or grid them.
+*/
+.simple-mode .game-phase-controls {
+    display: grid;
+    grid-template-areas:
+        "sub add"
+        "start start";
+    gap: 10px;
+    /* Reduced gap */
+    justify-items: center;
+}
+
+.simple-mode #zurueckButton {
+    grid-area: sub;
+    padding: 2px 8px !important;
+    /* Smaller text buttons */
+    font-size: 0.75rem !important;
+}
+
+.simple-mode #vorButton {
+    grid-area: add;
+    padding: 2px 8px !important;
+    font-size: 0.75rem !important;
+}
+
+.simple-mode #gamePhaseButton,
+.simple-mode #pauseButton {
+    grid-area: start;
+    width: 100%;
+    min-width: 120px;
+    /* Smaller button width */
+    font-size: 1rem;
+    padding: 8px;
+    /* Smaller padding */
+}
+
+/* Hide Unused */
+.simple-mode .hidden.score-adjust-btn {
+    /* Only if I used class="hidden" in HTML, I simply used display:none via CSS selector above for non-simple */
+}
+
+/* Ensure regular mode layout is preserved */
+.compact-scoreboard {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
 
 /* History Card Modern */
 .history-card-modern {
@@ -2112,4 +2573,711 @@ body.dark-mode .heatmap-tab.white-style:not(.active) {
 .log-entry.strafe,
 .log-entry.gehalten {
     border-left: none;
+}
+
+/* --- GAME SPLIT LAYOUT --- */
+.game-split-view {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    /* 50/50 Split */
+    gap: 20px;
+    height: calc(100vh - 80px);
+    /* Full height minus available header space */
+    overflow: hidden;
+    padding: 10px;
+}
+
+/* Left Column: Roster */
+.game-roster-column {
+    display: flex;
+    flex-direction: column;
+    overflow-y: auto;
+    padding-right: 5px;
+    max-height: 100%;
+}
+
+/* Dual Team Roster - Side by Side */
+.dual-team-roster {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    flex: 1;
+}
+
+.team-roster-panel {
+    background: var(--bg-container);
+    border-radius: 8px;
+    padding: 10px;
+    border: 1px solid var(--border-color);
+    overflow-y: auto;
+}
+
+.team-roster-panel#heimTeamPanel {
+    border-left: 3px solid var(--team-primary-color, #2563eb);
+}
+
+.team-roster-panel#gastTeamPanel {
+    border-left: 3px solid var(--team-opponent-color, #16a085);
+}
+
+.team-panel-title {
+    font-size: 0.9rem;
+    font-weight: 700;
+    margin: 0 0 10px 0;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.team-roster-panel#heimTeamPanel .team-panel-title {
+    color: var(--team-primary-color, #2563eb);
+}
+
+.team-roster-panel#gastTeamPanel .team-panel-title {
+    color: var(--team-opponent-color, #16a085);
+}
+
+.roster-section {
+    border-radius: 12px;
+    padding: 15px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.roster-section-title {
+    margin: 0;
+    font-size: 0.9rem;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    letter-spacing: 0.05em;
+    border-bottom: 1px solid var(--border-color);
+    padding-bottom: 8px;
+}
+
+.game-player-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(65px, 1fr));
+    gap: 8px;
+}
+
+.game-player-grid.single-slot-grid {
+    grid-template-columns: 75px;
+    justify-content: center;
+}
+
+.gk-area-wrapper {
+    display: flex;
+    flex-direction: row;
+    /* Force side-by-side */
+    justify-content: flex-start;
+    align-items: flex-start;
+    /* Headers will be at the same top position */
+    padding: 5px 15px;
+    gap: 30px;
+}
+
+.gk-slot-box,
+.empty-goal-box {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    min-width: 80px;
+}
+
+.empty-goal-box {
+    text-align: left;
+    align-items: flex-start;
+}
+
+
+/* Selected state for players */
+.spieler-button.selected {
+    outline: 3px solid var(--foreground);
+    outline-offset: 2px;
+    transform: scale(1.05);
+    z-index: 10;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+}
+
+/* Empty Lineup Slot */
+.lineup-slot.empty {
+    background: #0a0a0a !important;
+    border: 2px dashed rgba(80, 80, 80, 0.6) !important;
+    min-height: 55px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.lineup-slot.empty:hover {
+    background: rgba(40, 40, 40, 0.8) !important;
+    border-color: rgba(120, 120, 120, 0.6) !important;
+}
+
+.empty-slot-icon {
+    font-size: 1.5rem;
+    color: rgba(80, 80, 80, 0.6);
+}
+
+/* Bench Player Styling */
+.bench-player {
+    opacity: 0.7;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.bench-player:hover {
+    opacity: 1;
+}
+
+/* Substitution Selection State */
+.lineup-slot.sub-source,
+.bench-player.sub-source {
+    outline: 4px solid var(--foreground);
+    outline-offset: 2px;
+    z-index: 10;
+}
+
+/* Right Column: Controls */
+.game-controls-column {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+    overflow-y: auto;
+    max-height: 100%;
+}
+
+/* Top Bar: Compact Score & Timer */
+.game-top-bar {
+    display: flex;
+    gap: 10px;
+    align-items: stretch;
+}
+
+.compact-scoreboard {
+    flex: 1;
+    background: var(--bg-container);
+    border-radius: 12px;
+    padding: 10px 20px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    border: 1px solid var(--border-color);
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.compact-timer {
+    font-family: monospace;
+    font-size: 2.5rem;
+    font-weight: 700;
+    color: var(--primary);
+    line-height: 1;
+}
+
+.compact-score-display {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+}
+
+.compact-score {
+    font-size: 2rem;
+    font-weight: 700;
+    color: var(--foreground);
+}
+
+.compact-divider {
+    font-size: 1.5rem;
+    color: var(--text-muted);
+}
+
+.compact-team-name {
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--text-muted);
+    text-transform: uppercase;
+}
+
+.compact-suspensions {
+    display: flex;
+    gap: 5px;
+}
+
+.game-phase-controls {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    justify-content: center;
+    min-width: 80px;
+}
+
+/* Action Dashboard */
+.action-dashboard-card {
+    background: var(--bg-container);
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    padding: 20px;
+    flex: 1;
+    /* Take remaining height */
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+    transition: opacity 0.2s, filter 0.2s;
+}
+
+.action-dashboard-card.disabled {
+    opacity: 0.5;
+    pointer-events: none;
+    filter: grayscale(1);
+}
+
+.action-header {
+    text-align: center;
+    font-size: 1.2rem;
+    font-weight: 600;
+    padding-bottom: 10px;
+    border-bottom: 1px solid var(--border-color);
+    min-height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.action-buttons-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    flex: 1;
+}
+
+.action-btn {
+    border-radius: 8px;
+    font-weight: 700;
+    font-size: 1rem;
+    text-transform: uppercase;
+    border: none;
+    cursor: pointer;
+    transition: transform 0.1s, box-shadow 0.1s;
+    height: 50px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.action-btn:active {
+    transform: scale(0.98);
+}
+
+.btn-goal {
+    background: #16a34a;
+    color: white;
+}
+
+.btn-save {
+    background: #6b7c3f;
+    color: white;
+}
+
+.btn-post {
+    background: #2563eb;
+    color: white;
+}
+
+.btn-lost {
+    background: #b45309;
+    color: white;
+}
+
+.btn-outline {
+    background: var(--bg-container);
+    color: var(--foreground);
+    border: 1px solid var(--border-color);
+}
+
+.btn-outline:hover {
+    background: var(--bg-hover);
+}
+
+.btn-2min {
+    background: var(--bg-container);
+    color: var(--foreground);
+    border: 1px solid var(--border-color);
+}
+
+.btn-yellow {
+    background: #facc15;
+    color: black;
+    border: 1px solid #eab308;
+}
+
+.btn-red {
+    background: #dc2626;
+    color: white;
+}
+
+.btn-blue {
+    background: #2563eb;
+    color: white;
+}
+
+/* Action Sections */
+.action-section {
+    margin-bottom: 15px;
+}
+
+.action-section-title {
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin: 0 0 8px 0;
+}
+
+.action-buttons-row {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 8px;
+}
+
+.action-buttons-row .action-btn {
+    flex: 1;
+    height: 45px;
+    font-size: 0.75rem;
+    font-weight: 600;
+}
+
+/* Bottom Controls */
+.game-bottom-controls {
+    display: flex;
+    gap: 10px;
+    justify-content: flex-end;
+}
+
+/* Suspension Styles */
+.lineup-slot.suspended {
+    background: #1a1a1a !important;
+    border: 2px dashed #444 !important;
+    opacity: 0.8;
+}
+
+.lineup-slot.suspended .empty-slot-icon {
+    color: #ef4444;
+    font-weight: 800;
+    font-size: 0.9rem;
+}
+
+.bench-player.suspended {
+    opacity: 0.4;
+    filter: grayscale(0.8);
+    cursor: not-allowed;
+    pointer-events: none;
+    /* Prevent selection/substitution */
+    border: 1px dashed #666;
+}
+
+/* Tooltip Icon Utility */
+.tooltip-icon {
+    display: inline-block;
+    width: 14px;
+    height: 14px;
+    margin-left: 4px;
+    vertical-align: middle;
+    color: hsl(var(--muted-foreground));
+    cursor: help;
+    opacity: 0.7;
+}
+
+.tooltip-icon:hover {
+    color: hsl(var(--foreground));
+    opacity: 1;
+}
+
+/* Ensure table headers align items correctly */
+th {
+    white-space: nowrap;
+}
+
+/* Disqualified Player (Red Card) */
+.spieler-button.disqualified {
+    filter: grayscale(100%);
+    opacity: 0.5;
+    pointer-events: none;
+    cursor: not-allowed;
+    background-color: #333 !important;
+    color: #888 !important;
+    border: 1px solid #555;
+    position: relative;
+    box-shadow: none;
+}
+
+.spieler-button.disqualified::after {
+    content: "ROT";
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%) rotate(-15deg);
+    font-size: 1.2rem;
+    font-weight: 800;
+    color: #ef4444;
+    border: 3px solid #ef4444;
+    padding: 2px 8px;
+    border-radius: 4px;
+    opacity: 0.9;
+    background: rgba(0, 0, 0, 0.8);
+    z-index: 10;
+}
+
+/* 2-Minute Suspension Indicators (Yellow Dots) */
+.two-min-indicators {
+    position: absolute;
+    top: 4px;
+    right: 4px;
+    display: flex;
+    gap: 2px;
+    z-index: 15;
+}
+
+.two-min-dot {
+    width: 6px;
+    height: 6px;
+    background-color: #facc15;
+    border-radius: 50%;
+    box-shadow: 0 0 2px rgba(0, 0, 0, 0.5);
+    border: 1px solid rgba(0, 0, 0, 0.2);
+}
+
+/* Selected Player Highlighting */
+.spieler-button.selected {
+    transform: none;
+    /* No scaling */
+    outline: 3px solid #ffffff;
+    outline-offset: 2px;
+    z-index: 20;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+    transition: all 0.2s;
+}
+
+.modern-stats-table th {
+    text-transform: uppercase;
+    letter-spacing: 0.02em;
+}
+
+.modern-stats-table td:first-child,
+.modern-stats-table th:first-child {
+    max-width: 80px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.modern-stats-table th svg.tooltip-icon {
+    width: 8px;
+    height: 8px;
+}
+
+#liveGameOverviewModal .table-container {
+    overflow-x: auto;
+}
+
+/* Live Overview Final Styles */
+
+/* 1. Score Card - Full width but compact height */
+.live-overview-container .score-card {
+    flex: 1 1 100% !important;
+    max-width: 100% !important;
+    min-width: 100% !important;
+    margin-bottom: 20px;
+    height: auto !important;
+}
+
+/* 2. Stats Cards Container */
+.live-overview-container {
+    display: flex;
+    gap: 20px;
+    flex-wrap: wrap;
+    justify-content: center;
+    width: 100%;
+    align-items: flex-start;
+}
+
+/* 3. Stats Card Sizing */
+.live-overview-container .stats-card:not(.score-card) {
+    flex: 1 1 500px;
+    min-width: 350px;
+    padding: 1.5rem;
+}
+
+/* 4. Table Styles - Larger and Left Aligned */
+.modern-stats-table th,
+.modern-stats-table td {
+    padding: 4px 8px !important;
+    font-size: 0.8rem !important;
+    text-align: center;
+}
+
+.modern-stats-table th {
+    font-size: 0.7rem !important;
+}
+
+/* Left Align Player Column */
+.modern-stats-table td:first-child,
+.modern-stats-table th:first-child {
+    text-align: left !important;
+    padding-left: 10px !important;
+    max-width: 140px;
+}
+
+#liveGameOverviewModal .table-container {
+    overflow-x: auto;
+    max-height: 75vh;
+}
+
+/* Live Overview - Just Bigger/Standard Size */
+.modern-stats-table th,
+.modern-stats-table td {
+    padding: 8px 12px !important;
+    font-size: 0.9rem !important;
+}
+
+.modern-stats-table th {
+    font-size: 0.8rem !important;
+}
+
+.modern-stats-table th svg.tooltip-icon {
+    width: 14px;
+    height: 14px;
+}
+
+/* Override inline button tiny styles */
+.modern-stats-table button.heatmap-btn {
+    height: 26px !important;
+    min-width: 26px !important;
+    font-size: 0.8rem !important;
+    padding: 0 6px !important;
+}
+
+.modern-stats-table button.heatmap-btn svg {
+    width: 14px !important;
+    height: 14px !important;
+}
+
+/* UNIFY TABLE COLUMN WIDTHS */
+.modern-stats-table {
+    table-layout: fixed;
+    /* Force fixed layout */
+    width: 100%;
+}
+
+.modern-stats-table th:first-child,
+.modern-stats-table td:first-child {
+    width: 140px !important;
+    /* Fixed width for names */
+    max-width: 140px !important;
+}
+
+/* All other columns get equal width implicitly or can be forced */
+.modern-stats-table th:not(:first-child),
+.modern-stats-table td:not(:first-child) {
+    width: auto;
+    /* Allow browser to distribute, but since table-layout is fixed, it will be even for remaining space usually */
+    /* Or better: set a min-width to prevent squishing */
+    min-width: 35px;
+}
+
+/* GAME TOP BAR / SCOREBOARD FIX */
+.compact-scoreboard {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    width: 100%;
+    padding: 10px;
+}
+
+.compact-timer {
+    font-size: 3rem;
+    font-weight: 800;
+    font-family: monospace, sans-serif;
+    text-align: center;
+    margin-bottom: 15px;
+    width: 100%;
+    line-height: 1;
+}
+
+.compact-score-display {
+    display: flex;
+    justify-content: center;
+    align-items: flex-end;
+    /* Align to bottom so scores/divider line up */
+    gap: 20px;
+    width: 100%;
+}
+
+.score-team-wrapper {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 5px;
+}
+
+.compact-team-name {
+    font-size: 1.2rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    margin-bottom: 5px;
+    text-align: center;
+}
+
+.score-control-group {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    height: 50px;
+    /* Fixed height for stability */
+}
+
+/* Score Number */
+.compact-score {
+    font-size: 2.5rem;
+    font-weight: 800;
+    min-width: 50px;
+    text-align: center;
+    font-variant-numeric: tabular-nums;
+    line-height: 1;
+}
+
+/* Divider : */
+.compact-divider {
+    font-size: 2.5rem;
+    font-weight: 800;
+    line-height: 1;
+    margin-bottom: 5px;
+    /* Optical alignment with score */
+}
+
+/* Buttons (Only visible in Complex) */
+.score-adjust-btn {
+    width: 32px;
+    height: 32px;
+    border-radius: 6px;
+    border: 1px solid hsl(var(--border));
+    background: hsl(var(--secondary));
+    color: hsl(var(--foreground));
+    cursor: pointer;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-size: 1.2rem;
+    line-height: 1;
+    padding: 0;
+    transition: all 0.2s;
+}
+
+.score-adjust-btn:hover {
+    background: hsl(var(--primary));
+    color: hsl(var(--primary-foreground));
+}
+
+.score-adjust-btn.hidden {
+    display: none !important;
 }

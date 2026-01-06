@@ -63,6 +63,10 @@
                 <span class="nav-icon"><i data-lucide="history"></i></span>
                 <span class="nav-label">Historie</span>
             </div>
+            <div class="nav-item" data-view="videoanalyse">
+                <span class="nav-icon"><i data-lucide="video"></i></span>
+                <span class="nav-label">Video Analyse</span>
+            </div>
             <div class="nav-item" data-view="season">
                 <span class="nav-icon"><i data-lucide="trophy"></i></span>
                 <span class="nav-label">Saison</span>
@@ -434,130 +438,235 @@
             </div>
         </div>
 
-        <div id="spielBereich" class="content-section versteckt">
-            <div class="game-layout">
-                <!-- Top Row: Admin Controls -->
-                <div
-                    style="display: flex; flex-direction: column; align-items: center; gap: 15px; margin-top: 30px; margin-bottom: 20px;">
-                    <div
-                        style="display: flex; justify-content: center; align-items: center; width: 100%; max-width: 800px; padding: 0 20px;">
-                        <button id="neuesSpielButton"
-                            style="width: 100%; margin: 0; padding: 18px; font-size: 1.1rem; font-weight: 700; color: white; background: linear-gradient(135deg, #ef4444 0%, #991b1b 100%); border: 1px solid rgba(255,255,255,0.1); border-radius: 12px; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 10px; transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); box-shadow: 0 4px 15px rgba(239,68,68,0.2), inset 0 1px 1px rgba(255,255,255,0.05);">
-                            <i data-lucide="plus-circle" style="width: 20px; height: 20px;"></i>
-                            Neues Spiel
-                        </button>
-                    </div>
-                    <!-- Sidebar is still here but layout changed a bit, let's keep it functional -->
-                    <aside id="statistikSidebar" class="versteckt"
-                        style="position: static; flex-basis: auto; width: auto; box-shadow: none; padding: 0;">
-                        <!-- Content moved to a more central place or integrated into cards? 
-                             Actually, let's keep the tracker logic as is but style it as a card if visible. -->
-                        <div id="statistikWrapper" class="protocol-card versteckt" style="margin: 0; min-width: 300px;">
-                            <h3 class="player-card-title">Live Statistik</h3>
-                            <div class="table-container" style="max-height: 200px; overflow-y: auto;">
-                                <table id="statistikTabelle" class="modern-stats-table">
-                                    <thead>
-                                        <tr>
-                                            <th>Spieler</th>
-                                            <th>7m</th>
-                                            <th>Gut</th>
-                                            <th>Fehl</th>
-                                            <th>TF</th>
-                                            <th>G</th>
-                                            <th>2'</th>
-                                            <th>R</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody id="statistikTabelleBody"></tbody>
-                                </table>
-                            </div>
-                        </div>
-                    </aside>
+        <div id="spielBereich" class="content-section versteckt"
+            style="padding: 0; background: transparent; border: none; box-shadow: none;">
+            <!-- Mode Selection UI -->
+            <div id="gameModeSelection"
+                style="display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; min-height: 400px; gap: 30px;">
+                <div style="text-align: center;">
+                    <h2 style="font-size: 1.8rem; margin-bottom: 10px;">Spiel starten</h2>
+                    <p style="color: var(--text-muted);">Wähle deine Ansicht für dieses Spiel</p>
                 </div>
 
-                <!-- Main Scoreboard -->
-                <div id="timerContainer" class="game-scoreboard">
-                    <div id="timerAnzeige" class="scoreboard-timer">00:00</div>
-
-                    <div id="suspensionContainer"></div>
-
-                    <div id="scoreWrapper" class="scoreboard-main versteckt">
-                        <div class="scoreboard-team home">
-                            <span id="teamNameHeimDisplay" class="scoreboard-team-name">HEIM</span>
-                            <div style="display: flex; align-items: center; gap: 15px;">
-                                <div class="score-team-control"
-                                    style="display: flex; flex-direction: column; gap: 4px;">
-                                    <button id="heimScoreUp" class="shadcn-btn-outline shadcn-btn-xs"
-                                        style="padding: 0; min-width: 24px;" disabled>+</button>
-                                    <button id="heimScoreDown" class="shadcn-btn-outline shadcn-btn-xs"
-                                        style="padding: 0; min-width: 24px;" disabled>-</button>
-                                </div>
-                                <span id="scoreAnzeige" class="scoreboard-score">0</span>
-                            </div>
+                <div style="display: flex; gap: 20px; flex-wrap: wrap; justify-content: center;">
+                    <!-- Complex Option -->
+                    <div id="btnSelectComplex" class="mode-selection-card"
+                        style="width: 250px; padding: 25px; display: flex; flex-direction: column; align-items: center; gap: 15px; cursor: pointer;">
+                        <div
+                            style="width: 60px; height: 60px; background: rgba(var(--primary-rgb), 0.1); border-radius: 50%; display: flex; align-items: center; justify-content: center;">
+                            <i data-lucide="layout-dashboard"
+                                style="width: 32px; height: 32px; color: var(--primary);"></i>
                         </div>
-
-                        <div class="scoreboard-divider">:</div>
-
-                        <div class="scoreboard-team away">
-                            <span id="teamNameGegnerDisplay" class="scoreboard-team-name">GAST</span>
-                            <div style="display: flex; align-items: center; gap: 15px;">
-                                <span id="scoreAnzeigeGegner" class="scoreboard-score">0</span>
-                                <div class="score-team-control"
-                                    style="display: flex; flex-direction: column; gap: 4px;">
-                                    <button id="gegnerScoreUp" class="shadcn-btn-outline shadcn-btn-xs"
-                                        style="padding: 0; min-width: 24px;" disabled>+</button>
-                                    <button id="gegnerScoreDown" class="shadcn-btn-outline shadcn-btn-xs"
-                                        style="padding: 0; min-width: 24px;" disabled>-</button>
-                                </div>
-                            </div>
+                        <div style="text-align: center;">
+                            <h3 style="margin: 0; margin-bottom: 5px;">Komplex</h3>
+                            <p style="margin: 0; font-size: 0.9rem; color: var(--text-muted);">Dashboard & Bank</p>
                         </div>
+                        <ul
+                            style="text-align: left; font-size: 0.8rem; color: var(--text-muted); padding-left: 20px; margin: 0;">
+                            <li>Vollständige Kontrolle</li>
+                            <li>Bank verwalten</li>
+                            <li>Inline-Aktionen</li>
+                        </ul>
                     </div>
 
-                    <div class="scoreboard-controls">
-                        <div id="zeitSprung">
-                            <button id="zurueckButton" class="shadcn-btn-outline shadcn-btn-sm">-30s</button>
-                            <button id="pauseButton" class="shadcn-btn-outline shadcn-btn-sm versteckt"
-                                disabled>Pause</button>
-                            <button id="vorButton" class="shadcn-btn-outline shadcn-btn-sm">+30s</button>
+                    <!-- Simple Option -->
+                    <div id="btnSelectSimple" class="mode-selection-card"
+                        style="width: 250px; padding: 25px; display: flex; flex-direction: column; align-items: center; gap: 15px; cursor: pointer;">
+                        <div
+                            style="width: 60px; height: 60px; background: rgba(var(--primary-rgb), 0.1); border-radius: 50%; display: flex; align-items: center; justify-content: center;">
+                            <i data-lucide="mouse-pointer-2"
+                                style="width: 32px; height: 32px; color: var(--primary);"></i>
                         </div>
-                        <button id="gamePhaseButton" class="shadcn-btn-red">Spielstart</button>
-                    </div>
-                </div>
-
-                <!-- Player Selection Cards -->
-                <div id="spielerAuswahlContainer" class="player-grid-container">
-                    <div class="player-card">
-                        <div class="player-card-header">
-                            <h4 id="labelSpielerHeimRaster" class="player-card-title">Heim</h4>
+                        <div style="text-align: center;">
+                            <h3 style="margin: 0; margin-bottom: 5px;">Einfach</h3>
+                            <p style="margin: 0; font-size: 0.9rem; color: var(--text-muted);">Klassisch (Popups)</p>
                         </div>
-                        <div id="heimSpielerRaster" class="spieler-raster"></div>
+                        <ul
+                            style="text-align: left; font-size: 0.8rem; color: var(--text-muted); padding-left: 20px; margin: 0;">
+                            <li>Fokus auf Spieler</li>
+                            <li>Keine Bank</li>
+                            <li>Modal-Fenster</li>
+                        </ul>
                     </div>
-
-                    <div class="player-card">
-                        <div class="player-card-header">
-                            <h4 id="labelSpielerGegnerRaster" class="player-card-title">Gast</h4>
-                        </div>
-                        <div id="gegnerSpielerRaster" class="spieler-raster"></div>
-                    </div>
-                </div>
-
-                <!-- Protocol and Finish -->
-                <div style="max-width: 1100px; margin: 0 auto; display: flex; flex-direction: column; gap: 20px;">
-                    <!-- Trackers and Finish Button -->
-                    <div style="display: flex; flex-direction: column; gap: 20px;">
-
-                        <button id="spielBeendenButton"
-                            style="width: 100%; margin: 10px 0; padding: 18px; font-size: 1.1rem; font-weight: 700; color: white; background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%); border: 1px solid rgba(255,255,255,0.1); border-radius: 12px; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 10px; transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); box-shadow: 0 4px 15px rgba(0,0,0,0.2), inset 0 1px 1px rgba(255,255,255,0.05);">
-                            <i data-lucide="save" style="width: 20px; height: 20px;"></i>
-                            Spiel beenden & speichern
-                        </button>
-                    </div>
-
-
                 </div>
             </div>
-        </div>
 
+            <!-- Actual Game Content (Hidden initially) -->
+            <div id="gameContent" style="display: none;">
+                <div class="game-split-view">
+                    <!-- LEFT COLUMN: PLAYER ROSTER (Both Teams Side by Side) -->
+                    <div class="game-roster-column">
+                        <div class="dual-team-roster">
+                            <!-- HEIM TEAM -->
+                            <div class="team-roster-panel" id="heimTeamPanel">
+                                <h3 class="team-panel-title" id="heimPanelTitle">HEIM</h3>
+
+                                <!-- Goalkeeper -->
+                                <div class="roster-section">
+                                    <h4 class="roster-section-title">TORWART</h4>
+                                    <div id="heimGoalkeeperRoster" class="game-player-grid compact-grid">
+                                        <!-- GK injected by JS -->
+                                    </div>
+                                </div>
+
+                                <!-- Field Players -->
+                                <div class="roster-section">
+                                    <h4 class="roster-section-title">FELDSPIELER</h4>
+                                    <div id="heimActiveRoster" class="game-player-grid compact-grid">
+                                        <!-- Players injected by JS -->
+                                    </div>
+                                </div>
+
+                                <!-- Bench Players -->
+                                <div class="roster-section">
+                                    <h4 class="roster-section-title">BANK</h4>
+                                    <div id="heimBenchRoster" class="game-player-grid compact-grid">
+                                        <!-- Bench injected by JS -->
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- GAST TEAM -->
+                            <div class="team-roster-panel" id="gastTeamPanel">
+                                <h3 class="team-panel-title" id="gastPanelTitle">GAST</h3>
+
+                                <!-- Goalkeeper -->
+                                <div class="roster-section">
+                                    <h4 class="roster-section-title">TORWART</h4>
+                                    <div id="gastGoalkeeperRoster" class="game-player-grid compact-grid">
+                                        <!-- GK injected by JS -->
+                                    </div>
+                                </div>
+
+                                <!-- Field Players -->
+                                <div class="roster-section">
+                                    <h4 class="roster-section-title">FELDSPIELER</h4>
+                                    <div id="gastActiveRoster" class="game-player-grid compact-grid">
+                                        <!-- Players injected by JS -->
+                                    </div>
+                                </div>
+
+                                <!-- Bench Players -->
+                                <div class="roster-section">
+                                    <h4 class="roster-section-title">BANK</h4>
+                                    <div id="gastBenchRoster" class="game-player-grid compact-grid">
+                                        <!-- Bench injected by JS -->
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- RIGHT COLUMN: CONTROLS & ACTIONS -->
+                    <div class="game-controls-column">
+                        <!-- 1. Top Bar: Score & Timer (Reduced size) -->
+                        <div class="game-top-bar">
+                            <div id="timerContainer" class="compact-scoreboard">
+                                <div id="timerAnzeige" class="compact-timer">00:00</div>
+
+                                <div class="compact-score-display">
+                                    <!-- HEIM WRAPPER -->
+                                    <div class="score-team-wrapper heim">
+                                        <span id="teamNameHeimDisplay" class="compact-team-name">HEIM</span>
+                                        <div class="score-control-group">
+                                            <button class="score-adjust-btn plus hidden" data-team="heim"
+                                                data-delta="1">+</button>
+                                            <span id="scoreAnzeige" class="compact-score">0</span>
+                                            <button class="score-adjust-btn minus hidden" data-team="heim"
+                                                data-delta="-1">-</button>
+                                        </div>
+                                    </div>
+
+                                    <span class="compact-divider">:</span>
+
+                                    <!-- GAST WRAPPER -->
+                                    <div class="score-team-wrapper gast">
+                                        <span id="teamNameGegnerDisplay" class="compact-team-name">GAST</span>
+                                        <div class="score-control-group">
+                                            <button class="score-adjust-btn plus hidden" data-team="gegner"
+                                                data-delta="1">+</button>
+                                            <span id="scoreAnzeigeGegner" class="compact-score">0</span>
+                                            <button class="score-adjust-btn minus hidden" data-team="gegner"
+                                                data-delta="-1">-</button>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div id="suspensionContainer" class="compact-suspensions"></div>
+                            </div>
+                            <div class="game-phase-controls">
+                                <button id="zurueckButton" class="shadcn-btn-ghost compact-btn" title="-30s"
+                                    style="padding: 4px 8px; font-size: 0.8rem;">-30s</button>
+                                <button id="gamePhaseButton" class="shadcn-btn-red">Start</button>
+                                <button id="pauseButton" class="shadcn-btn-outline versteckt">Pause</button>
+                                <button id="vorButton" class="shadcn-btn-ghost compact-btn" title="+30s"
+                                    style="padding: 4px 8px; font-size: 0.8rem;">+30s</button>
+                            </div>
+                        </div>
+
+                        <!-- 2. Action Dashboard -->
+                        <div id="actionDashboard" class="action-dashboard-card disabled">
+                            <div class="action-header">
+                                <span id="selectedPlayerName">Wähle einen Spieler...</span>
+                                <button id="closeActionDashboard" class="close-modal-x"
+                                    title="Schließen">&times;</button>
+                            </div>
+
+                            <!-- RESULT Section -->
+                            <div class="action-section">
+                                <h4 class="action-section-title">ERGEBNIS</h4>
+                                <div class="action-buttons-row">
+                                    <button class="action-btn btn-goal" data-action="Tor">TOR</button>
+                                    <button class="action-btn btn-save" data-action="Gehalten"
+                                        id="actionParadeBtn">GEHALTEN</button>
+                                    <button class="action-btn btn-post" data-action="Fehlwurf">FEHLWURF</button>
+                                    <button class="action-btn btn-lost" data-action="Block">GEBLOCKT</button>
+                                </div>
+                            </div>
+
+                            <!-- ACTIONS Section -->
+                            <div class="action-section">
+                                <h4 class="action-section-title">AKTIONEN</h4>
+                                <div class="action-buttons-row">
+                                    <button class="action-btn btn-outline" data-action="Foul">STÜRMERFOUL</button>
+                                    <button class="action-btn btn-outline"
+                                        data-action="Ballverlust">BALLVERLUST</button>
+                                </div>
+                                <div class="action-buttons-row">
+                                    <button class="action-btn btn-outline" data-action="2min Provoziert">2 MIN
+                                        HERAUSGEHOLT</button>
+                                    <button class="action-btn btn-outline" data-action="7m Provoziert">7m
+                                        HERAUSGEHOLT</button>
+                                    <button class="action-btn btn-outline" data-action="1und1">1 v 1 GEWONNEN</button>
+                                    <button class="action-btn btn-outline" data-action="7m+2min">7m + 2 MIN</button>
+                                </div>
+                            </div>
+
+                            <!-- SUSPENSIONS Section -->
+                            <div class="action-section">
+                                <h4 class="action-section-title">STRAFEN</h4>
+                                <div class="action-buttons-row">
+                                    <button class="action-btn btn-2min" data-action="2 Minuten">2 MIN</button>
+                                    <button class="action-btn btn-yellow" data-action="Gelbe Karte">GELBE KARTE</button>
+                                    <button class="action-btn btn-red" data-action="Rote Karte">ROTE KARTE</button>
+                                    <button class="action-btn btn-blue" data-action="Blaue Karte">BLAUE KARTE</button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- 3. Bottom Controls -->
+                        <div class="game-bottom-controls">
+                            <button id="undoButton" class="shadcn-btn-outline" title="Letzte Aktion rückgängig"
+                                onclick="undoLastAction()">
+                                <i data-lucide="undo-2" style="width: 16px; height: 16px; margin-right: 5px;"></i>
+                                Rückgängig
+                            </button>
+                            <button id="spielBeendenButton" class="shadcn-btn-outline">Spiel beenden</button>
+                        </div>
+
+                    </div>
+                </div> <!-- End game-split-view -->
+            </div> <!-- End gameContent -->
+        </div> <!-- End spielBereich -->
 
         <!-- Vergangene Spiele -->
         <div id="historieBereich" class="versteckt">
@@ -573,7 +682,8 @@
             <div style="margin-top: 20px; display: flex; gap: 10px; flex-wrap: wrap;">
                 <button id="importSpielButton" class="shadcn-btn-primary">Spiel importieren</button>
                 <input type="file" id="importSpielInput" class="versteckt" accept=".json">
-                <button id="exportHistorieButton" class="shadcn-btn-outline">Alle Spiele exportieren (Backup)</button>
+                <button id="exportHistorieButton" class="shadcn-btn-outline">Alle Spiele exportieren
+                    (Backup)</button>
             </div>
         </div>
 
@@ -587,6 +697,8 @@
             <div class="heatmap-tabs">
                 <button class="heatmap-tab shadcn-btn-outline active" id="histTabStats">Statistik</button>
                 <button class="heatmap-tab shadcn-btn-outline" id="histTabHeatmap">Heatmap</button>
+                <button class="heatmap-tab shadcn-btn-outline" id="histTabProtokoll">Protokoll</button>
+                <button class="heatmap-tab shadcn-btn-outline" id="histTabTorfolge">Torfolge</button>
             </div>
 
             <!-- Detail: Stats -->
@@ -601,8 +713,13 @@
                                 <th>7m</th>
                                 <th>Fehlwurf</th>
                                 <th>Quote</th>
-                                <th>Gut</th>
-                                <th>TF</th>
+                                <th>BV</th>
+                                <th>SF</th>
+                                <th>Blk</th>
+                                <th>1v1</th>
+                                <th title="1 gegen 1 Verloren">1v1-</th>
+                                <th>7m+</th>
+                                <th>2m+</th>
                                 <th>G</th>
                                 <th>2'</th>
                                 <th>R</th>
@@ -616,13 +733,19 @@
                         <thead>
                             <tr>
                                 <th>Name</th>
+                                <th title="Spielzeit">Zeit</th>
                                 <th>Tor</th>
                                 <th>Feldtore</th>
                                 <th>7m</th>
                                 <th>Fehlwurf</th>
                                 <th>Quote</th>
-                                <th>Gut</th>
-                                <th>TF</th>
+                                <th>BV</th>
+                                <th>SF</th>
+                                <th>Blk</th>
+                                <th title="1 gegen 1 Gewonnen">1v1</th>
+                                <th title="1 gegen 1 Verloren">1v1-</th>
+                                <th>7m+</th>
+                                <th>2m+</th>
                                 <th>G</th>
                                 <th>2'</th>
                                 <th>R</th>
@@ -700,13 +823,19 @@
                                 <thead>
                                     <tr style="text-align: left; color: var(--text-muted); font-size: 0.8rem;">
                                         <th style="padding: 10px;">Spieler</th>
+                                        <th style="padding: 10px;" title="Spielzeit">Zeit</th>
                                         <th style="padding: 10px;">Tore</th>
                                         <th style="padding: 10px;">Feld</th>
                                         <th style="padding: 10px;">7m</th>
                                         <th style="padding: 10px;">Fehl</th>
                                         <th style="padding: 10px;">Quote</th>
                                         <th style="padding: 10px;">Gut</th>
-                                        <th style="padding: 10px;">TF</th>
+                                        <th style="padding: 10px;">BV</th>
+                                        <th style="padding: 10px;">SF</th>
+                                        <th style="padding: 10px;">Blk</th>
+                                        <th style="padding: 10px;">1v1</th>
+                                        <th style="padding: 10px;">7m+</th>
+                                        <th style="padding: 10px;">2m+</th>
                                         <th style="padding: 10px;">G</th>
                                         <th style="padding: 10px;">2'</th>
                                         <th style="padding: 10px;">R</th>
@@ -728,13 +857,19 @@
                                 <thead>
                                     <tr style="text-align: left; color: var(--text-muted); font-size: 0.8rem;">
                                         <th style="padding: 10px;">Name</th>
+                                        <th style="padding: 10px;" title="Spielzeit">Zeit</th>
                                         <th style="padding: 10px;">Tore</th>
                                         <th style="padding: 10px;">Feld</th>
                                         <th style="padding: 10px;">7m</th>
                                         <th style="padding: 10px;">Fehl</th>
                                         <th style="padding: 10px;">Quote</th>
                                         <th style="padding: 10px;">Gut</th>
-                                        <th style="padding: 10px;">TF</th>
+                                        <th style="padding: 10px;">BV</th>
+                                        <th style="padding: 10px;">SF</th>
+                                        <th style="padding: 10px;">Blk</th>
+                                        <th style="padding: 10px;">1v1</th>
+                                        <th style="padding: 10px;">7m+</th>
+                                        <th style="padding: 10px;">2m+</th>
                                         <th style="padding: 10px;">G</th>
                                         <th style="padding: 10px;">2'</th>
                                         <th style="padding: 10px;">R</th>
@@ -747,8 +882,89 @@
                     </div>
                 </div>
             </div>
+
+            <!-- Detail: Protokoll -->
+            <div id="histContentProtokoll" class="versteckt">
+                <div id="histProtokollAusgabe"
+                    style="max-height: 80vh; overflow-y: auto; padding: 15px; background: var(--bg-card); border-radius: 8px; border: 1px solid var(--border-color);">
+                    <!-- Protocol entries will be rendered here -->
+                </div>
+            </div>
+
+            <!-- Detail: Torfolge -->
+            <div id="histContentTorfolge" class="versteckt">
+                <div
+                    style="max-width: 1200px; margin: 0 auto; padding: 20px; background: var(--bg-card); border-radius: 8px; border: 1px solid var(--border-color);">
+                    <canvas id="histTorfolgeChart"></canvas>
+                </div>
+            </div>
         </div>
 
+
+        <!-- Video Analyse Bereich -->
+        <div id="videoAnalyseBereich" class="versteckt">
+            <h2 style="margin-bottom: 20px;">Video Analyse</h2>
+            <div style="display: flex; gap: 20px; height: calc(100vh - 120px);">
+                <!-- Left: Game List -->
+                <div style="width: 320px; display: flex; flex-direction: column; gap: 10px;">
+                    <div class="stats-card" style="flex: 1; overflow-y: auto; padding: 15px;">
+                        <h3 class="card-title">Spiele</h3>
+                        <div id="videoGameListContent" style="display: flex; flex-direction: column; gap: 8px;">
+                            <!-- Items injected via JS -->
+                            <p style="color: var(--text-muted); font-size: 0.9rem;">Lade Spiele...</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Right: Video Player -->
+                <div class="stats-card"
+                    style="flex: 1; display: flex; flex-direction: column; gap: 15px; padding: 20px;">
+                    <div
+                        style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-color); padding-bottom: 10px;">
+                        <h3 id="videoAnalyseTitle" class="card-title" style="margin: 0; border: none;">Kein Spiel
+                            gewählt</h3>
+                        <div style="display: flex; gap: 10px;">
+                            <button id="setGameStartBtn" class="shadcn-btn-outline compact-btn"
+                                title="Aktuelle Video-Position als Spielstart wÃ¤hlen">
+                                <i data-lucide="clock" style="width: 14px; height: 14px; margin-right: 5px;"></i>
+                                Spielstart setzen
+                            </button>
+                            <label class="shadcn-btn-primary" style="cursor: pointer;">
+                                <i data-lucide="upload" style="width: 16px; height: 16px; margin-right: 8px;"></i>
+                                Video laden
+                                <input type="file" id="videoFileInput" accept="video/*" style="display: none;">
+                            </label>
+                        </div>
+                    </div>
+
+                    <div style="flex: 1; display: flex; flex-direction: row; gap: 15px; min-height: 0;">
+                        <!-- Video Container -->
+                        <div
+                            style="flex: 2; min-height: 0; background: #000; border-radius: 8px; overflow: hidden; display: flex; align-items: center; justify-content: center; position: relative;">
+                            <video id="analysisVideoPlayer" controls
+                                style="width: 100%; height: 100%; max-height: 100%;">
+                            </video>
+                            <div id="videoPlaceholder"
+                                style="position: absolute; color: #fff; display: flex; flex-direction: column; align-items: center; gap: 10px; pointer-events: none;">
+                                <i data-lucide="film" style="width: 48px; height: 48px; opacity: 0.5;"></i>
+                                <span style="opacity: 0.8;">Bitte Video auswählen</span>
+                            </div>
+                        </div>
+
+                        <!-- Protocol Container -->
+                        <div id="videoAnalysisProtocol"
+                            style="flex: 1; min-height: 0; overflow-y: auto; background: var(--bg-secondary); border-radius: 8px; padding: 10px; border: 1px solid var(--border-color); display: none; flex-direction: column;">
+                            <h3
+                                style="font-size: 0.9rem; margin-top: 0; margin-bottom: 8px; position: sticky; top: 0; background: var(--bg-secondary); padding-bottom: 5px; border-bottom: 1px solid var(--border-color); z-index: 5;">
+                                Protokoll</h3>
+                            <div id="videoAnalysisProtocolList"
+                                style="display: flex; flex-direction: column; gap: 4px;">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
 
         <div id="aktionsMenue" class="modal-overlay versteckt">
             <div class="shadcn-modal-content">
@@ -1079,7 +1295,8 @@
                         <div style="display: flex; justify-content: space-around; align-items: center; gap: 20px;">
                             <div style="flex: 1;">
                                 <div id="liveOverviewTeamHeim"
-                                    style="font-size: 1.1rem; font-weight: 600; color: hsl(var(--primary));">HEIM</div>
+                                    style="font-size: 1.1rem; font-weight: 600; color: hsl(var(--primary));">HEIM
+                                </div>
                             </div>
                             <div
                                 style="font-size: 2.5rem; font-weight: 800; letter-spacing: -1px; min-width: 120px; display: flex; justify-content: center; align-items: center; gap: 8px;">
@@ -1111,17 +1328,135 @@
                                 <thead>
                                     <tr>
                                         <th>Spieler</th>
-                                        <th>Tor</th>
-                                        <th>Feldtore</th>
-                                        <th>7m</th>
-                                        <th>Fehlwurf</th>
-                                        <th>Quote</th>
-                                        <th>Gut</th>
-                                        <th>TF</th>
-                                        <th>G</th>
-                                        <th>2'</th>
-                                        <th>R</th>
-                                        <th>WB</th>
+                                        <th title="Spielzeit">Zeit</th>
+                                        <th title="Tore">Tor <svg xmlns="http://www.w3.org/2000/svg" width="12"
+                                                height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                                stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                                                class="tooltip-icon">
+                                                <circle cx="12" cy="12" r="10" />
+                                                <path d="M12 16v-4" />
+                                                <path d="M12 8h.01" />
+                                            </svg></th>
+                                        <th title="Feldtore">Feldtore <svg xmlns="http://www.w3.org/2000/svg" width="12"
+                                                height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                                stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                                                class="tooltip-icon">
+                                                <circle cx="12" cy="12" r="10" />
+                                                <path d="M12 16v-4" />
+                                                <path d="M12 8h.01" />
+                                            </svg></th>
+                                        <th title="7-Meter Tore/Versuche">7m <svg xmlns="http://www.w3.org/2000/svg"
+                                                width="12" height="12" viewBox="0 0 24 24" fill="none"
+                                                stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                                                stroke-linejoin="round" class="tooltip-icon">
+                                                <circle cx="12" cy="12" r="10" />
+                                                <path d="M12 16v-4" />
+                                                <path d="M12 8h.01" />
+                                            </svg></th>
+                                        <th title="Fehlwürfe">Fehlwurf <svg xmlns="http://www.w3.org/2000/svg"
+                                                width="12" height="12" viewBox="0 0 24 24" fill="none"
+                                                stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                                                stroke-linejoin="round" class="tooltip-icon">
+                                                <circle cx="12" cy="12" r="10" />
+                                                <path d="M12 16v-4" />
+                                                <path d="M12 8h.01" />
+                                            </svg></th>
+                                        <th title="Wurfquote">Quote <svg xmlns="http://www.w3.org/2000/svg" width="12"
+                                                height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                                stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                                                class="tooltip-icon">
+                                                <circle cx="12" cy="12" r="10" />
+                                                <path d="M12 16v-4" />
+                                                <path d="M12 8h.01" />
+                                            </svg></th>
+                                        <th title="Ballverlust">BV <svg xmlns="http://www.w3.org/2000/svg" width="12"
+                                                height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                                stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                                                class="tooltip-icon">
+                                                <circle cx="12" cy="12" r="10" />
+                                                <path d="M12 16v-4" />
+                                                <path d="M12 8h.01" />
+                                            </svg></th>
+                                        <th title="Stürmerfoul">SF <svg xmlns="http://www.w3.org/2000/svg" width="12"
+                                                height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                                stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                                                class="tooltip-icon">
+                                                <circle cx="12" cy="12" r="10" />
+                                                <path d="M12 16v-4" />
+                                                <path d="M12 8h.01" />
+                                            </svg></th>
+                                        <th title="Block">Blk <svg xmlns="http://www.w3.org/2000/svg" width="12"
+                                                height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                                stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                                                class="tooltip-icon">
+                                                <circle cx="12" cy="12" r="10" />
+                                                <path d="M12 16v-4" />
+                                                <path d="M12 8h.01" />
+                                            </svg></th>
+                                        <th title="1 gegen 1 Gewonnen">1v1 <svg xmlns="http://www.w3.org/2000/svg"
+                                                width="12" height="12" viewBox="0 0 24 24" fill="none"
+                                                stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                                                stroke-linejoin="round" class="tooltip-icon">
+                                                <circle cx="12" cy="12" r="10" />
+                                                <path d="M12 16v-4" />
+                                                <path d="M12 8h.01" />
+                                            </svg></th>
+                                        <th title="1 gegen 1 Verloren">1v1- <svg xmlns="http://www.w3.org/2000/svg"
+                                                width="12" height="12" viewBox="0 0 24 24" fill="none"
+                                                stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                                                stroke-linejoin="round" class="tooltip-icon">
+                                                <circle cx="12" cy="12" r="10" />
+                                                <path d="M12 16v-4" />
+                                                <path d="M12 8h.01" />
+                                            </svg></th>
+                                        <th title="7m herausgeholt">7m+ <svg xmlns="http://www.w3.org/2000/svg"
+                                                width="12" height="12" viewBox="0 0 24 24" fill="none"
+                                                stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                                                stroke-linejoin="round" class="tooltip-icon">
+                                                <circle cx="12" cy="12" r="10" />
+                                                <path d="M12 16v-4" />
+                                                <path d="M12 8h.01" />
+                                            </svg></th>
+                                        <th title="2 Minuten herausgeholt">2m+ <svg xmlns="http://www.w3.org/2000/svg"
+                                                width="12" height="12" viewBox="0 0 24 24" fill="none"
+                                                stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                                                stroke-linejoin="round" class="tooltip-icon">
+                                                <circle cx="12" cy="12" r="10" />
+                                                <path d="M12 16v-4" />
+                                                <path d="M12 8h.01" />
+                                            </svg></th>
+                                        <th title="Gelbe Karte">G <svg xmlns="http://www.w3.org/2000/svg" width="12"
+                                                height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                                stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                                                class="tooltip-icon">
+                                                <circle cx="12" cy="12" r="10" />
+                                                <path d="M12 16v-4" />
+                                                <path d="M12 8h.01" />
+                                            </svg></th>
+                                        <th title="2 Minuten Zeitstrafe">2' <svg xmlns="http://www.w3.org/2000/svg"
+                                                width="12" height="12" viewBox="0 0 24 24" fill="none"
+                                                stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                                                stroke-linejoin="round" class="tooltip-icon">
+                                                <circle cx="12" cy="12" r="10" />
+                                                <path d="M12 16v-4" />
+                                                <path d="M12 8h.01" />
+                                            </svg></th>
+                                        <th title="Rote Karte">R <svg xmlns="http://www.w3.org/2000/svg" width="12"
+                                                height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                                stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                                                class="tooltip-icon">
+                                                <circle cx="12" cy="12" r="10" />
+                                                <path d="M12 16v-4" />
+                                                <path d="M12 8h.01" />
+                                            </svg></th>
+                                        <th title="Wurfbild">WB <svg xmlns="http://www.w3.org/2000/svg" width="12"
+                                                height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                                stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                                                class="tooltip-icon">
+                                                <circle cx="12" cy="12" r="10" />
+                                                <path d="M12 16v-4" />
+                                                <path d="M12 8h.01" />
+                                            </svg></th>
                                     </tr>
                                 </thead>
                                 <tbody id="liveOverviewStatsBody"></tbody>
@@ -1132,17 +1467,126 @@
                                 <thead>
                                     <tr>
                                         <th>Name</th>
-                                        <th>Tor</th>
-                                        <th>Feldtore</th>
-                                        <th>7m</th>
-                                        <th>Fehlwurf</th>
-                                        <th>Quote</th>
-                                        <th>Gut</th>
-                                        <th>TF</th>
-                                        <th>G</th>
-                                        <th>2'</th>
-                                        <th>R</th>
-                                        <th>WB</th>
+                                        <th title="Tore">Tor <svg xmlns="http://www.w3.org/2000/svg" width="12"
+                                                height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                                stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                                                class="tooltip-icon">
+                                                <circle cx="12" cy="12" r="10" />
+                                                <path d="M12 16v-4" />
+                                                <path d="M12 8h.01" />
+                                            </svg></th>
+                                        <th title="Feldtore">Feldtore <svg xmlns="http://www.w3.org/2000/svg" width="12"
+                                                height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                                stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                                                class="tooltip-icon">
+                                                <circle cx="12" cy="12" r="10" />
+                                                <path d="M12 16v-4" />
+                                                <path d="M12 8h.01" />
+                                            </svg></th>
+                                        <th title="7-Meter Tore/Versuche">7m <svg xmlns="http://www.w3.org/2000/svg"
+                                                width="12" height="12" viewBox="0 0 24 24" fill="none"
+                                                stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                                                stroke-linejoin="round" class="tooltip-icon">
+                                                <circle cx="12" cy="12" r="10" />
+                                                <path d="M12 16v-4" />
+                                                <path d="M12 8h.01" />
+                                            </svg></th>
+                                        <th title="Fehlwürfe">Fehlwurf <svg xmlns="http://www.w3.org/2000/svg"
+                                                width="12" height="12" viewBox="0 0 24 24" fill="none"
+                                                stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                                                stroke-linejoin="round" class="tooltip-icon">
+                                                <circle cx="12" cy="12" r="10" />
+                                                <path d="M12 16v-4" />
+                                                <path d="M12 8h.01" />
+                                            </svg></th>
+                                        <th title="Wurfquote">Quote <svg xmlns="http://www.w3.org/2000/svg" width="12"
+                                                height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                                stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                                                class="tooltip-icon">
+                                                <circle cx="12" cy="12" r="10" />
+                                                <path d="M12 16v-4" />
+                                                <path d="M12 8h.01" />
+                                            </svg></th>
+                                        <th title="Ballverlust">BV <svg xmlns="http://www.w3.org/2000/svg" width="12"
+                                                height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                                stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                                                class="tooltip-icon">
+                                                <circle cx="12" cy="12" r="10" />
+                                                <path d="M12 16v-4" />
+                                                <path d="M12 8h.01" />
+                                            </svg></th>
+                                        <th title="Stürmerfoul">SF <svg xmlns="http://www.w3.org/2000/svg" width="12"
+                                                height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                                stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                                                class="tooltip-icon">
+                                                <circle cx="12" cy="12" r="10" />
+                                                <path d="M12 16v-4" />
+                                                <path d="M12 8h.01" />
+                                            </svg></th>
+                                        <th title="Block">Blk <svg xmlns="http://www.w3.org/2000/svg" width="12"
+                                                height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                                stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                                                class="tooltip-icon">
+                                                <circle cx="12" cy="12" r="10" />
+                                                <path d="M12 16v-4" />
+                                                <path d="M12 8h.01" />
+                                            </svg></th>
+                                        <th title="1 gegen 1 Verloren">1v1 V <svg xmlns="http://www.w3.org/2000/svg"
+                                                width="12" height="12" viewBox="0 0 24 24" fill="none"
+                                                stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                                                stroke-linejoin="round" class="tooltip-icon">
+                                                <circle cx="12" cy="12" r="10" />
+                                                <path d="M12 16v-4" />
+                                                <path d="M12 8h.01" />
+                                            </svg></th>
+                                        <th title="7m verursacht">7m+ <svg xmlns="http://www.w3.org/2000/svg" width="12"
+                                                height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                                stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                                                class="tooltip-icon">
+                                                <circle cx="12" cy="12" r="10" />
+                                                <path d="M12 16v-4" />
+                                                <path d="M12 8h.01" />
+                                            </svg></th>
+                                        <th title="2 Minuten verursacht">2m+ <svg xmlns="http://www.w3.org/2000/svg"
+                                                width="12" height="12" viewBox="0 0 24 24" fill="none"
+                                                stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                                                stroke-linejoin="round" class="tooltip-icon">
+                                                <circle cx="12" cy="12" r="10" />
+                                                <path d="M12 16v-4" />
+                                                <path d="M12 8h.01" />
+                                            </svg></th>
+                                        <th title="Gelbe Karte">G <svg xmlns="http://www.w3.org/2000/svg" width="12"
+                                                height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                                stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                                                class="tooltip-icon">
+                                                <circle cx="12" cy="12" r="10" />
+                                                <path d="M12 16v-4" />
+                                                <path d="M12 8h.01" />
+                                            </svg></th>
+                                        <th title="2 Minuten Zeitstrafe">2' <svg xmlns="http://www.w3.org/2000/svg"
+                                                width="12" height="12" viewBox="0 0 24 24" fill="none"
+                                                stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                                                stroke-linejoin="round" class="tooltip-icon">
+                                                <circle cx="12" cy="12" r="10" />
+                                                <path d="M12 16v-4" />
+                                                <path d="M12 8h.01" />
+                                            </svg></th>
+                                        <th title="Rote Karte">R <svg xmlns="http://www.w3.org/2000/svg" width="12"
+                                                height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                                stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                                                class="tooltip-icon">
+                                                <circle cx="12" cy="12" r="10" />
+                                                <path d="M12 16v-4" />
+                                                <path d="M12 8h.01" />
+                                            </svg></th>
+                                        <th title="Wurfbild">WB <svg xmlns="http://www.w3.org/2000/svg" width="12"
+                                                height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                                stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                                                class="tooltip-icon">
+                                                <circle cx="12" cy="12" r="10" />
+                                                <path d="M12 16v-4" />
+                                                <path d="M12 8h.01" />
+                                            </svg></th>
                                     </tr>
                                 </thead>
                                 <tbody id="liveOverviewStatsGegnerBody"></tbody>
@@ -1219,6 +1663,25 @@
         </div>
 
     </div> <!-- End of main-content -->
+
+    <!-- Attributed Player Modal (for Blocked Shot / Provoked fouls) -->
+    <div id="attributedPlayerModal" class="modal-overlay versteckt">
+        <div class="shadcn-modal-content" style="max-width: 600px;">
+            <div class="shadcn-modal-header">
+                <h3 id="attributedPlayerTitle">Spieler auswählen</h3>
+                <p id="attributedPlayerSubtitle">Wer war beteiligt?</p>
+            </div>
+            <div class="shadcn-modal-body" style="margin-top: 1rem;">
+                <div id="attributedPlayerList"
+                    style="display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 10px; max-height: 400px; overflow-y: auto; padding: 5px;">
+                    <!-- Players of the other team will be rendered here -->
+                </div>
+            </div>
+            <div class="shadcn-modal-footer">
+                <button class="shadcn-btn-outline" id="attributedPlayerCancel">Überspringen / Abbrechen</button>
+            </div>
+        </div>
+    </div>
 
     <script type="module" src="main.js"></script>
     <script>

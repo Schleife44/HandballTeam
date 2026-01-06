@@ -75,7 +75,7 @@ export const pauseButton = document.getElementById('pauseButton');
 export const zurueckButton = document.getElementById('zurueckButton');
 export const vorButton = document.getElementById('vorButton');
 export const suspensionContainer = document.getElementById('suspensionContainer');
-export const scoreWrapper = document.getElementById('scoreWrapper');
+export const scoreWrapper = document.getElementById('scoreWrapper'); // Legacy Scoreboard wrapper (might be unused now)
 export const scoreAnzeige = document.getElementById('scoreAnzeige');
 export const scoreAnzeigeGegner = document.getElementById('scoreAnzeigeGegner');
 export const teamNameHeimDisplay = document.getElementById('teamNameHeimDisplay');
@@ -88,18 +88,38 @@ export const neuesSpielButton = document.getElementById('neuesSpielButton');
 export const exportButton = document.getElementById('exportButton');
 export const exportCsvButton = document.getElementById('exportCsvButton');
 export const exportPdfButton = document.getElementById('exportPdfButton');
-export const heimSpielerRaster = document.getElementById('heimSpielerRaster');
-export const gegnerSpielerRaster = document.getElementById('gegnerSpielerRaster');
-export const labelSpielerHeimRaster = document.getElementById('labelSpielerHeimRaster');
-export const labelSpielerGegnerRaster = document.getElementById('labelSpielerGegnerRaster');
-export const spielerAuswahlContainer = document.getElementById('spielerAuswahlContainer');
+
+// NEW GAME VIEW ELEMENTS - Dual Team Layout
+export const heimGoalkeeperRoster = document.getElementById('heimGoalkeeperRoster');
+export const heimActiveRoster = document.getElementById('heimActiveRoster');
+export const heimBenchRoster = document.getElementById('heimBenchRoster');
+export const gastGoalkeeperRoster = document.getElementById('gastGoalkeeperRoster');
+export const gastActiveRoster = document.getElementById('gastActiveRoster');
+export const gastBenchRoster = document.getElementById('gastBenchRoster');
+export const heimPanelTitle = document.getElementById('heimPanelTitle');
+export const gastPanelTitle = document.getElementById('gastPanelTitle');
+export const actionDashboard = document.getElementById('actionDashboard');
+export const selectedPlayerName = document.getElementById('selectedPlayerName');
+export const undoButton = document.getElementById('undoButton');
+export const actionParadeBtn = document.getElementById('actionParadeBtn');
+export const moreActionsBtn = document.getElementById('moreActionsBtn');
+
+// Removed Old Elements (kept as null for safety during transition if needed, or just removed)
+export const heimSpielerRaster = null;
+export const gegnerSpielerRaster = null;
+export const labelSpielerHeimRaster = null;
+export const labelSpielerGegnerRaster = null;
+export const spielerAuswahlContainer = null;
+
 export const protokollAusgabe = document.getElementById('protokollAusgabe');
+
+// Modal Elements (kept if used for other things, but game actions moved to dashboard)
 export const aktionsMenue = document.getElementById('aktionsMenue');
 export const aktionsMenueTitel = document.getElementById('aktionsMenueTitel');
-export const aktionAbbrechen = document.getElementById('aktionAbbrechen');
-export const guteAktionModalButton = document.getElementById('guteAktionModalButton');
-export const aktionVorauswahl = document.getElementById('aktionVorauswahl');
-export const aktionVorauswahlAbbrechen = document.getElementById('aktionVorauswahlAbbrechen');
+export const aktionAbbrechen = null;
+export const guteAktionModalButton = null;
+export const aktionVorauswahl = document.getElementById('aktionVorauswahl'); // Still might be used for 'Other' actions? Or moved to popup?
+export const aktionVorauswahlAbbrechen = null;
 export const kommentarBereich = document.getElementById('kommentarBereich');
 export const kommentarTitel = document.getElementById('kommentarTitel');
 export const kommentarInput = document.getElementById('kommentarInput');
@@ -190,8 +210,14 @@ export const histDetailDate = document.getElementById('histDetailDate');
 
 export const histTabStats = document.getElementById('histTabStats');
 export const histTabHeatmap = document.getElementById('histTabHeatmap');
+export const histTabProtokoll = document.getElementById('histTabProtokoll');
+export const histTabTorfolge = document.getElementById('histTabTorfolge');
 export const histContentStats = document.getElementById('histContentStats');
 export const histContentHeatmap = document.getElementById('histContentHeatmap');
+export const histContentProtokoll = document.getElementById('histContentProtokoll');
+export const histContentTorfolge = document.getElementById('histContentTorfolge');
+export const histProtokollAusgabe = document.getElementById('histProtokollAusgabe');
+export const histTorfolgeChart = document.getElementById('histTorfolgeChart');
 
 export const histStatsTable = document.getElementById('histStatsTable');
 export const histStatsBody = document.getElementById('histStatsBody');

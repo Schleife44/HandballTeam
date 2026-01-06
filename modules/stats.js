@@ -33,7 +33,13 @@ export function berechneStatistiken(overrideGameLog, overrideRoster) {
             name: player.name,
             number: player.number,
             fehlwurf: 0,
-            techFehler: 0,
+            ballverlust: 0, // Renamed from techFehler
+            stuermerfoul: 0, // NEW
+            block: 0, // NEW
+            rausgeholt2min: 0, // NEW
+            gewonnen1v1: 0, // NEW
+            oneOnOneLost: 0, // NEW - 1v1 Verloren
+            rausgeholt7m: 0, // NEW
             siebenMeter: 0,
             siebenMeterTore: 0,
             siebenMeterVersuche: 0,
@@ -41,11 +47,23 @@ export function berechneStatistiken(overrideGameLog, overrideRoster) {
             gelb: 0,
             zweiMinuten: 0,
             rot: 0,
-            tore: 0
+            tore: 0,
+            timeOnField: player.timeOnField || 0 // NEW
         });
     });
 
     for (const eintrag of log) {
+        // --- CHECK ATTRIBUTION for 1v1 Lost (even if playerId is null or opponent) ---
+        if ((eintrag.action === "Gegner 1und1" || eintrag.action === "Gegner 1v1") &&
+            eintrag.attributedPlayer &&
+            (eintrag.attributedPlayer.teamKey === 'myteam' || !eintrag.attributedPlayer.isOpponent)) {
+
+            const targetId = eintrag.attributedPlayer.number;
+            if (statsMap.has(targetId)) {
+                statsMap.get(targetId).oneOnOneLost++;
+            }
+        }
+
         if (!eintrag.playerId || !statsMap.has(eintrag.playerId)) {
             continue;
         }
@@ -55,13 +73,42 @@ export function berechneStatistiken(overrideGameLog, overrideRoster) {
         if (eintrag.action === "Steal" || eintrag.action === "Assist" ||
             eintrag.action === "Abwehr" || eintrag.action === "Guter Pass" ||
             eintrag.action === "Parade" || eintrag.action === "Gegner Parade" ||
-            eintrag.action === "7M Rausgeholt" || eintrag.action === "TG Pass" ||
+            eintrag.action === "TG Pass" ||
             eintrag.action.startsWith("Gute Aktion")) {
             stats.guteAktion++;
-        } else if (eintrag.action === "Fehlwurf" || eintrag.action === "Wurf Gehalten") {
+        } else if (eintrag.action === "Fehlwurf" || eintrag.action === "Wurf Gehalten" || eintrag.action === "Post Out") {
             stats.fehlwurf++;
-        } else if (eintrag.action === "Technischer Fehler") {
-            stats.techFehler++;
+        } else if (eintrag.action === "Technischer Fehler" || eintrag.action === "Ballverlust") {
+            stats.ballverlust++;
+        } else if (eintrag.action === "Foul") {
+            stats.stuermerfoul++;
+        } else if (eintrag.action === "Block") {
+            // "Block" clicked on Home Player -> Home Player was blocked (Shooter)
+            // So Home Player gets Fehlwurf (Miss), Not Block.
+            stats.fehlwurf++;
+            // The blocker (Opponent) is handled in berechneGegnerStatistiken via attributedPlayer check
+        } else if (eintrag.action === "Gegner Block" &&
+            eintrag.attributedPlayer &&
+            eintrag.attributedPlayer.teamKey === 'myteam') {
+            // Opponent Shot blocked by Home Player (Attributed)
+            // The Home Player gets the Block stat
+            if (eintrag.attributedPlayer.number == player.number) {
+                stats.block++;
+                stats.guteAktion++;
+            }
+        } else if (eintrag.action === "2min Provoziert") {
+            stats.rausgeholt2min++;
+            stats.guteAktion++;
+        } else if (eintrag.action === "1und1") {
+            stats.gewonnen1v1++;
+            stats.guteAktion++;
+        } else if (eintrag.action === "7M Rausgeholt" || eintrag.action === "7m Provoziert") {
+            stats.rausgeholt7m++;
+            stats.guteAktion++;
+        } else if (eintrag.action === "7m+2min") {
+            stats.rausgeholt7m++;
+            stats.rausgeholt2min++;
+            stats.guteAktion++;
         } else if (eintrag.action === "Gelbe Karte") {
             stats.gelb++;
         } else if (eintrag.action === "2 Minuten") {
@@ -82,17 +129,62 @@ export function berechneStatistiken(overrideGameLog, overrideRoster) {
     return Array.from(statsMap.values());
 }
 
-export function berechneGegnerStatistiken(overrideGameLog) {
+export function berechneGegnerStatistiken(overrideGameLog, players = []) {
     const gegnerStatsMap = new Map();
     const log = getSource(overrideGameLog);
 
+    // Initialize from Players (Roster) first to catch those with time but no actions
+    if (players && Array.isArray(players)) {
+        players.forEach(p => {
+            const nummer = p.number;
+            const name = p.name || `Gegner #${nummer}`;
+            gegnerStatsMap.set(nummer, {
+                name: name,
+                number: nummer,
+                tore: 0,
+                fehlwurf: 0,
+                techFehler: 0,
+                siebenMeter: 0,
+                siebenMeterTore: 0,
+                siebenMeterVersuche: 0,
+                guteAktion: 0,
+                gelb: 0,
+                zweiMinuten: 0,
+                rot: 0,
+                block: 0,
+                rausgeholt2min: 0,
+                rausgeholt7m: 0,
+                gewonnen1v1: 0,
+                oneOnOneLost: 0,
+                timeOnField: p.timeOnField || 0 // Merge time directly
+            });
+        });
+    }
+
     for (const eintrag of log) {
-        const isGegner = eintrag.action.startsWith("Gegner") || eintrag.gegnerNummer;
+        // Determine if relevant for Opponent Stats
+        let nummer = null;
+        let isDirectAction = false;
+        let isAttribution = false;
 
-        if (!isGegner) continue;
+        if (eintrag.action.startsWith("Gegner") || eintrag.gegnerNummer) {
+            nummer = eintrag.gegnerNummer || "Team";
+            isDirectAction = true;
+        } else if ((eintrag.action === "1und1" || eintrag.action === "1v1") &&
+            eintrag.attributedPlayer &&
+            (eintrag.attributedPlayer.isOpponent || eintrag.attributedPlayer.teamKey === 'opponent')) {
+            nummer = eintrag.attributedPlayer.number;
+            isAttribution = true;
+        } else if (eintrag.action === "Block" &&
+            eintrag.attributedPlayer &&
+            (eintrag.attributedPlayer.isOpponent || eintrag.attributedPlayer.teamKey === 'opponent')) {
+            nummer = eintrag.attributedPlayer.number;
+            isAttribution = true;
+        }
 
-        const nummer = eintrag.gegnerNummer || "Team";
-        const name = eintrag.gegnerNummer ? `Gegner #${nummer}` : "Gegner (Team)";
+        if (!nummer) continue;
+
+        const name = (nummer === "Team") ? "Gegner (Team)" : `Gegner #${nummer}`;
 
         if (!gegnerStatsMap.has(nummer)) {
             gegnerStatsMap.set(nummer, {
@@ -107,37 +199,65 @@ export function berechneGegnerStatistiken(overrideGameLog) {
                 guteAktion: 0,
                 gelb: 0,
                 zweiMinuten: 0,
-                rot: 0
+                rot: 0,
+                block: 0,
+                rausgeholt2min: 0,
+                rausgeholt7m: 0,
+                gewonnen1v1: 0,
+                oneOnOneLost: 0,
+                timeOnField: 0
             });
         }
 
         const stats = gegnerStatsMap.get(nummer);
 
-        if (eintrag.action === "Gegner Tor") {
-            stats.tore++;
-        } else if (eintrag.action === "Gegner 7m Tor") {
-            stats.tore++;
-            stats.siebenMeterTore++;
-            stats.siebenMeterVersuche++;
-        } else if (eintrag.action === "Gegner Wurf Vorbei" ||
-            eintrag.action === "Gegner Wurf Gehalten" ||
-            eintrag.action === "Gehalten") {
-            stats.fehlwurf++;
-        } else if (eintrag.action === "Gegner 7m Verworfen" ||
-            eintrag.action === "Gegner 7m Gehalten") {
-            stats.fehlwurf++;
-            stats.siebenMeterVersuche++;
-        } else if (eintrag.action.startsWith("Gegner Gute Aktion") ||
-            (eintrag.action.startsWith("Gute Aktion") && eintrag.gegnerNummer)) {
-            stats.guteAktion++;
-        } else if (eintrag.action === "Gegner TF") {
-            stats.techFehler++;
-        } else if (eintrag.action === "Gegner Gelb") {
-            stats.gelb++;
-        } else if (eintrag.action === "Gegner 2 min") {
-            stats.zweiMinuten++;
-        } else if (eintrag.action === "Gegner Rot") {
-            stats.rot++;
+        if (isAttribution) {
+            // Handle Attributed Actions (Heim -> Opponent)
+            if (eintrag.action === "1und1" || eintrag.action === "1v1") {
+                stats.oneOnOneLost++;
+            } else if (eintrag.action === "Block") {
+                stats.block++;
+            }
+        } else {
+            // Handle Direct Actions
+            if (eintrag.action === "Gegner Tor") {
+                stats.tore++;
+            } else if (eintrag.action === "Gegner 7m Tor") {
+                stats.tore++;
+                stats.siebenMeterTore++;
+                stats.siebenMeterVersuche++;
+            } else if (eintrag.action === "Gegner Wurf Vorbei" ||
+                eintrag.action === "Gegner Wurf Gehalten" ||
+                eintrag.action === "Gehalten") {
+                stats.fehlwurf++;
+            } else if (eintrag.action === "Gegner 7m Verworfen" ||
+                eintrag.action === "Gegner 7m Gehalten") {
+                stats.fehlwurf++;
+                stats.siebenMeterVersuche++;
+            } else if (eintrag.action.startsWith("Gegner Gute Aktion")) {
+                stats.guteAktion++;
+            } else if (eintrag.action === "Gegner TF") {
+                stats.techFehler++; // BV
+            } else if (eintrag.action === "Gegner Gelb") {
+                stats.gelb++;
+            } else if (eintrag.action === "Gegner 2 min") {
+                stats.zweiMinuten++;
+            } else if (eintrag.action === "Gegner Rot") {
+                stats.rot++;
+            } else if (eintrag.action === "Gegner 1und1" || eintrag.action === "Gegner 1v1" || eintrag.action === "Gegner 1v1 Gewonnen") {
+                stats.gewonnen1v1++;
+            } else if (eintrag.action === "Gegner Block") {
+                // stats.block++; // Removed - Opponent SHOT was blocked
+                stats.fehlwurf++; // Count as miss for the shooter
+
+            } else if (eintrag.action === "Gegner 2min Provoziert") {
+                stats.rausgeholt2min++;
+            } else if (eintrag.action === "Gegner 7m Provoziert") {
+                stats.rausgeholt7m++;
+            } else if (eintrag.action === "Gegner 7m+2min") {
+                stats.rausgeholt7m++;
+                stats.rausgeholt2min++;
+            }
         }
     }
 
@@ -164,7 +284,7 @@ export function berechneWurfbilder(overrideGameLog) {
             action: eintrag.action
         };
 
-        if ((eintrag.action === "Tor" || eintrag.action === "Fehlwurf" || eintrag.action === "Wurf Gehalten" || eintrag.action === "7m Gehalten") && eintrag.playerId) {
+        if ((eintrag.action === "Tor" || eintrag.action === "Fehlwurf" || eintrag.action === "Wurf Gehalten" || eintrag.action === "Block") && eintrag.playerId) {
             if (!heimWuerfe[eintrag.playerId]) {
                 heimWuerfe[eintrag.playerId] = {
                     name: eintrag.playerName, number: eintrag.playerId, wuerfe: [], isOpponent: false
@@ -180,7 +300,7 @@ export function berechneWurfbilder(overrideGameLog) {
             }
             heim7mWuerfe[eintrag.playerId].wuerfe.push(wurfEntry);
         }
-        else if (eintrag.action === "Gegner Tor" || eintrag.action === "Gegner Wurf Vorbei" || eintrag.action === "Gegner Wurf Gehalten" || eintrag.action === "Gegner 7m Gehalten") {
+        else if (eintrag.action === "Gegner Tor" || eintrag.action === "Gegner Wurf Vorbei" || eintrag.action === "Gegner Wurf Gehalten" || eintrag.action === "Gegner Fehlwurf" || eintrag.action === "Gegner Parade" || eintrag.action === "Gegner Block") {
             const key = eintrag.gegnerNummer ? eintrag.gegnerNummer : "Unbekannt";
             if (!gegnerWuerfe[key]) {
                 gegnerWuerfe[key] = {

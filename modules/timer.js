@@ -1,7 +1,7 @@
 import { spielstand, speichereSpielstand } from './state.js';
 import { timerAnzeige, sidebarTimer } from './dom.js';
 import { formatiereZeit } from './utils.js';
-import { updateSuspensionDisplay } from './ui.js';
+import { updateSuspensionDisplay, zeichneSpielerRaster } from './ui.js';
 
 let timerInterval;
 
@@ -19,19 +19,67 @@ export function updateTimer() {
     }
 
     if (!spielstand.timer.istPausiert) {
-        // ... existing suspension logic ...
-        let hasChanged = false;
-        spielstand.activeSuspensions.forEach(s => {
-            if (s.remaining > 0) {
-                s.remaining--;
-                hasChanged = true;
-            }
-        });
-        const oldCount = spielstand.activeSuspensions.length;
-        spielstand.activeSuspensions = spielstand.activeSuspensions.filter(s => s.remaining > 0);
+        // Calculate precise second change to avoid drift
+        const currentSeconds = Math.floor(totalSekunden);
+        const previousSeconds = Math.floor(spielstand.timer.verstricheneSekundenBisher);
+        // Note: verstricheneSekundenBisher is not updated yet in the loop above (it's only read-only there usually, wait... let's check)
+        // wait, line 10: totalSekunden = spielstand.timer.verstricheneSekundenBisher + aktuelleSegmentSekunden;
+        // verstricheneSekundenBisher is constant during the segment.
 
-        if (hasChanged || spielstand.activeSuspensions.length !== oldCount) {
-            updateSuspensionDisplay();
+        // Better approach: We need to know if we crossed a second boundary since the last tick.
+        // But we don't store "last tick time" persistently.
+
+        // Alternative: Track "lastPlayerUpdateSeconds" in timer state.
+        if (typeof spielstand.timer.lastPlayerUpdateSeconds === 'undefined') {
+            spielstand.timer.lastPlayerUpdateSeconds = Math.floor(totalSekunden);
+        }
+
+        const delta = currentSeconds - spielstand.timer.lastPlayerUpdateSeconds;
+
+        if (delta > 0) {
+            spielstand.timer.lastPlayerUpdateSeconds = currentSeconds;
+
+            // ... suspensions logic ...
+            let hasChanged = false;
+            spielstand.activeSuspensions.forEach(s => {
+                if (s.remaining > 0) {
+                    s.remaining -= delta; // Subtract actual delta
+                    if (s.remaining < 0) s.remaining = 0;
+                    hasChanged = true;
+                }
+            });
+            const oldCount = spielstand.activeSuspensions.length;
+            spielstand.activeSuspensions = spielstand.activeSuspensions.filter(s => s.remaining > 0);
+
+            if (hasChanged || spielstand.activeSuspensions.length !== oldCount) {
+                updateSuspensionDisplay();
+            }
+
+            // --- NEW: Track Active Player Time ---
+            const trackAndDisplay = (players, teamKey) => {
+                players.forEach(p => {
+                    const hasSlot = p.lineupSlot !== null && p.lineupSlot !== undefined;
+                    if (hasSlot) {
+                        const isSuspended = spielstand.activeSuspensions.some(
+                            s => s.teamKey === teamKey && s.number === p.number
+                        );
+                        if (!isSuspended) {
+                            p.timeOnField = (p.timeOnField || 0) + delta; // Add precise delta
+
+                            // Direct DOM Update
+                            const timeEl = document.getElementById(`time-display-${teamKey}-${p.number}`);
+                            if (timeEl) {
+                                const m = Math.floor(p.timeOnField / 60);
+                                const s = p.timeOnField % 60;
+                                timeEl.textContent = `${m}:${s < 10 ? '0' + s : s}`;
+                            }
+                        }
+                    }
+                });
+            };
+
+            if (spielstand.roster) trackAndDisplay(spielstand.roster, 'myteam');
+            if (spielstand.knownOpponents) trackAndDisplay(spielstand.knownOpponents, 'opponent');
         }
     }
 }
@@ -40,6 +88,8 @@ export function startTimer() {
     if (spielstand.timer.istPausiert) {
         spielstand.timer.segmentStartZeit = Date.now();
         spielstand.timer.istPausiert = false;
+        // Initialize synchronization for player timer ONLY when resuming/starting
+        spielstand.timer.lastPlayerUpdateSeconds = Math.floor(spielstand.timer.verstricheneSekundenBisher);
     }
 
     // Safety: Clear existing interval to prevent double-speed if called multiple times
