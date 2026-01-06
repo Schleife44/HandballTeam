@@ -9,7 +9,7 @@ import {
     rosterBereich, spielBereich, globalAktionen, scoreWrapper, timerAnzeige,
     statistikWrapper, pauseButton, gamePhaseButton, spielBeendenButton,
     liveOverviewBereich, liveOverviewContent, seasonBereich, seasonContent,
-
+    calendarBereich, // Added
     shotsBereich, shotsContent, historieBereich, historieDetailBereich,
     settingsBereich, rosterTeamNameHeim, rosterTeamNameGegner,
     liveHeatmapBereich, teamDiagrammBereich, teamDiagrammContent, protokollBereich,
@@ -240,6 +240,10 @@ function navigateToView(view) {
 
             // Update roster input locks based on validation state
             updateRosterInputsForValidation();
+            break;
+        case 'calendar':
+            if (calendarBereich) calendarBereich.classList.remove('versteckt');
+            import('./modules/calendar.js').then(cal => cal.initCalendar());
             break;
         case 'game':
             if (spielBereich) spielBereich.classList.remove('versteckt');
@@ -1246,6 +1250,7 @@ function hideAllSections() {
     if (rosterBereich) rosterBereich.classList.add('versteckt');
     if (spielBereich) spielBereich.classList.add('versteckt');
     if (liveOverviewBereich) liveOverviewBereich.classList.add('versteckt');
+    if (calendarBereich) calendarBereich.classList.add('versteckt');
     if (seasonBereich) seasonBereich.classList.add('versteckt');
     if (shotsBereich) shotsBereich.classList.add('versteckt');
     if (exportBereich) exportBereich.classList.add('versteckt');

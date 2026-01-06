@@ -44,9 +44,49 @@ export const historieDetailBereich = document.getElementById('historieDetailBere
 export const liveHeatmapBereich = document.getElementById('liveHeatmapBereich');
 export const protokollBereich = document.getElementById('protokollBereich');
 
-// Removed inline settings buttons
 export const historyButtonInline = null;
 export const seasonOverviewButtonInline = null;
+
+// Calendar
+export const calendarBereich = document.getElementById('calendarBereich');
+export const calendarGrid = document.getElementById('calendarGrid');
+export const currentMonthLabel = document.getElementById('currentMonthLabel');
+export const prevMonthBtn = document.getElementById('prevMonthBtn');
+export const nextMonthBtn = document.getElementById('nextMonthBtn');
+export const addEventBtn = document.getElementById('addEventBtn');
+export const addEventModal = document.getElementById('addEventModal');
+export const addEventModalTitle = document.getElementById('addEventModalTitle'); // New
+export const closeEventModal = document.getElementById('closeEventModal');
+export const saveEventBtn = document.getElementById('saveEventBtn');
+export const cancelEventBtn = document.getElementById('cancelEventBtn');
+export const eventTitleInput = document.getElementById('eventTitleInput');
+export const eventDateInput = document.getElementById('eventDateInput');
+export const eventTimeInput = document.getElementById('eventTimeInput');
+export const eventLocationInput = document.getElementById('eventLocationInput');
+export const eventRepeatInput = document.getElementById('eventRepeatInput');
+export const eventRepeatEndInput = document.getElementById('eventRepeatEndInput');
+export const recurrenceOptions = document.getElementById('recurrenceOptions');
+
+// Event Details Modal
+export const eventDetailsModal = document.getElementById('eventDetailsModal');
+export const detailsTitle = document.getElementById('detailsTitle');
+export const detailsDate = document.getElementById('detailsDate');
+export const detailsTime = document.getElementById('detailsTime');
+export const detailsLocation = document.getElementById('detailsLocation');
+export const detailsLocationRow = document.getElementById('detailsLocationRow');
+export const closeDetailsModal = document.getElementById('closeDetailsModal');
+export const closeDetailsBtn = document.getElementById('closeDetailsBtn');
+export const deleteEventBtn = document.getElementById('deleteEventBtn');
+export const editEventBtn = document.getElementById('editEventBtn');
+
+// Manage UI
+export const manageCalendarBtn = document.getElementById('manageCalendarBtn');
+export const manageCalendarModal = document.getElementById('manageCalendarModal');
+export const closeManageBtn = document.getElementById('closeManageBtn');
+export const manageUrlInput = document.getElementById('manageUrlInput');
+export const addSubBtn = document.getElementById('addSubBtn');
+export const subsList = document.getElementById('subsList');
+export const seriesList = document.getElementById('seriesList');
 
 export const exportTeamButton = document.getElementById('exportTeamButton');
 export const importTeamButton = document.getElementById('importTeamButton');

@@ -39,6 +39,10 @@
                 <span class="nav-icon"><i data-lucide="users"></i></span>
                 <span class="nav-label">Kader</span>
             </div>
+            <div class="nav-item" data-view="calendar">
+                <span class="nav-icon"><i data-lucide="calendar"></i></span>
+                <span class="nav-label">Kalender</span>
+            </div>
 
             <div class="nav-group-label">Live Analyse</div>
             <div class="nav-item" data-view="overview">
@@ -91,6 +95,198 @@
 
     <!-- Main Content Area -->
     <div id="main-content">
+
+        <!-- SECTION: CALENDAR -->
+        <div id="calendarBereich" class="content-section versteckt">
+            <div class="calendar-header">
+                <div class="cal-nav">
+                    <button id="prevMonthBtn" class="shadcn-btn-ghost">&lt;</button>
+                    <h2 id="currentMonthLabel" style="min-width: 200px; text-align: center; margin: 0;">Januar 2026</h2>
+                    <button id="nextMonthBtn" class="shadcn-btn-ghost">&gt;</button>
+                </div>
+                <div class="cal-actions">
+                    <button id="manageCalendarBtn" class="shadcn-btn-outline" title="Kalender verwalten">
+                        <i data-lucide="settings"></i> <span class="mobile-hidden">Verwalten</span>
+                    </button>
+                    <button id="addEventBtn" class="shadcn-btn-primary">
+                        <i data-lucide="plus"></i> <span class="mobile-hidden">Termin</span>
+                    </button>
+                </div>
+            </div>
+
+            <div class="calendar-container">
+                <div class="calendar-header-days">
+                    <div>Mo</div>
+                    <div>Di</div>
+                    <div>Mi</div>
+                    <div>Do</div>
+                    <div>Fr</div>
+                    <div>Sa</div>
+                    <div>So</div>
+                </div>
+
+                <!-- MANAGE MODAL -->
+                <div id="manageCalendarModal" class="event-popover versteckt"
+                    style="width: 450px; height: auto; max-height: 80vh; overflow-y: auto;">
+                    <div class="modal-header">
+                        <h3>Kalender verwalten</h3>
+                        <button id="closeManageBtn" class="close-btn">X</button>
+                    </div>
+                    <div class="modal-body" style="padding: 1rem; gap: 1.5rem; display: flex; flex-direction: column;">
+
+                        <!-- SECTION: Add Subscription -->
+                        <div class="manage-section">
+                            <h4 style="font-size: 0.9rem; margin-bottom: 0.5rem; color: hsl(var(--foreground));">Neues
+                                Abo hinzufügen</h4>
+                            <div style="display: flex; gap: 8px;">
+                                <input type="text" id="manageUrlInput" placeholder="https://... (ICS/Webcal)"
+                                    class="shadcn-input" style="flex:1;" />
+                                <button id="addSubBtn" class="shadcn-btn-primary">Hinzufügen</button>
+                            </div>
+                        </div>
+
+                        <hr style="border: 0; border-top: 1px solid hsl(var(--border)); margin: 0;">
+
+                        <!-- SECTION: Subscriptions -->
+                        <div class="manage-section">
+                            <h4 style="font-size: 0.9rem; margin-bottom: 0.5rem; color: hsl(var(--foreground));">
+                                Abonnierte Kalender</h4>
+                            <div id="subsList" class="manage-list"
+                                style="font-size: 0.85rem; color: hsl(var(--muted-foreground));">
+                                <!-- JS fills this -->
+                                <div style="font-style: italic;">Keine Abos vorhanden.</div>
+                            </div>
+                        </div>
+
+                        <hr style="border: 0; border-top: 1px solid hsl(var(--border)); margin: 0;">
+
+                        <!-- SECTION: Series -->
+                        <div class="manage-section">
+                            <h4 style="font-size: 0.9rem; margin-bottom: 0.5rem; color: hsl(var(--foreground));">
+                                Wiederholende Termine (Serien)</h4>
+                            <div id="seriesList" class="manage-list"
+                                style="font-size: 0.85rem; color: hsl(var(--muted-foreground));">
+                                <!-- JS fills this -->
+                                <div style="font-style: italic;">Keine Serien vorhanden.</div>
+                            </div>
+                        </div>
+
+                    </div>
+                </div>
+                <div id="calendarGrid" class="calendar-grid">
+                    <!-- Javascript generated days -->
+                </div>
+            </div>
+        </div>
+
+        <!-- POPOVER: Add/Edit Event -->
+        <div id="addEventModal" class="event-popover versteckt" style="width: 350px;">
+            <div class="modal-header">
+                <h2 id="addEventModalTitle">Termin</h2>
+                <div class="header-actions">
+                    <button id="closeEventModal" class="icon-btn-ghost"><i data-lucide="x"></i></button>
+                </div>
+            </div>
+            <div class="modal-body">
+                <div class="form-section">
+                    <input type="text" id="eventTitleInput" class="shadcn-input" placeholder="Titel hinzufügen"
+                        style="font-size: 1.2rem; border:none; padding-left:0; border-bottom: 1px solidhsl(var(--border)); border-radius:0;">
+                </div>
+
+                <div class="form-section" style="margin-top: 10px;">
+                    <div class="radio-pill-group">
+                        <label class="radio-pill training">
+                            <input type="radio" name="eventType" value="training" checked>
+                            <span>Training</span>
+                        </label>
+                        <label class="radio-pill game">
+                            <input type="radio" name="eventType" value="game">
+                            <span>Spiel</span>
+                        </label>
+                        <label class="radio-pill other">
+                            <input type="radio" name="eventType" value="other">
+                            <span>Sonstiges</span>
+                        </label>
+                    </div>
+                </div>
+
+                <div class="form-section">
+                    <div class="form-row-2">
+                        <div class="input-group">
+                            <div class="details-row" style="border:none; padding:0;">
+                                <span class="details-icon"><i data-lucide="calendar"></i></span>
+                                <input type="date" id="eventDateInput" class="shadcn-input"
+                                    style="border:none; padding-left: 0;">
+                            </div>
+                        </div>
+                        <div class="input-group">
+                            <div class="details-row" style="border:none; padding:0;">
+                                <span class="details-icon"><i data-lucide="clock"></i></span>
+                                <input type="time" id="eventTimeInput" class="shadcn-input"
+                                    style="border:none; padding-left: 0;" step="900">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="form-section">
+                    <div class="details-row" style="border:none; padding:0;">
+                        <span class="details-icon"><i data-lucide="map-pin"></i></span>
+                        <input type="text" id="eventLocationInput" class="shadcn-input" placeholder="Ort hinzufügen"
+                            style="border:none;">
+                    </div>
+                </div>
+
+                <div class="form-section recurrence-section">
+                    <label class="checkbox-wrapper">
+                        <input type="checkbox" id="eventRepeatInput">
+                        <span class="checkbox-label">Wöchentlich</span>
+                    </label>
+
+                    <div id="recurrenceOptions" class="recurrence-options versteckt">
+                        <label style="font-size:0.8rem;">Bis:</label>
+                        <input type="date" id="eventRepeatEndInput" class="shadcn-input">
+                    </div>
+                </div>
+
+                <div class="modal-actions">
+                    <button id="saveEventBtn" class="shadcn-btn-primary" style="margin-left: auto;">Speichern</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- POPOVER: Event Details -->
+        <div id="eventDetailsModal" class="event-popover versteckt">
+            <div class="modal-header">
+                <h2 id="detailsTitle">Training</h2>
+                <div class="header-actions">
+                    <button id="editEventBtn" class="icon-btn-ghost" title="Bearbeiten"><i
+                            data-lucide="pencil"></i></button>
+                    <button id="closeDetailsModal" class="icon-btn-ghost" title="Schließen"><i
+                            data-lucide="x"></i></button>
+                </div>
+            </div>
+            <div class="modal-body">
+                <div class="details-row">
+                    <span class="details-icon"><i data-lucide="calendar"></i></span>
+                    <span id="detailsDate">Dienstag, 12.03.2024</span>
+                </div>
+                <div class="details-row">
+                    <span class="details-icon"><i data-lucide="clock"></i></span>
+                    <span id="detailsTime">19:00 Uhr</span>
+                </div>
+                <div class="details-row" id="detailsLocationRow">
+                    <span class="details-icon"><i data-lucide="map-pin"></i></span>
+                    <span id="detailsLocation">Halle Bösperde</span>
+                </div>
+
+                <div class="modal-actions">
+                    <button id="deleteEventBtn" class="shadcn-btn-destructive" title="Löschen"><i data-lucide="trash-2"
+                            style="width:16px;"></i></button>
+                    <!-- Close button in header is enough, or we keep a discrete close/edit here -->
+                </div>
+            </div>
+        </div>
 
         <div id="rosterBereich" class="content-section versteckt">
             <!-- Roster Top Section -->

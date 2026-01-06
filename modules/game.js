@@ -16,6 +16,7 @@ import { startTimer, stoppTimer, updateTimer } from './timer.js';
 import { formatiereZeit } from './utils.js';
 import { berechneStatistiken } from './stats.js';
 import { customConfirm, customAlert } from './customDialog.js';
+import { toast } from './toast.js';
 
 export let aktuellerSpielerIndex = null;
 export let aktuelleAktionTyp = '';
@@ -32,6 +33,9 @@ let selectedPlayerState = {
     team: null, // 'myteam' or 'opponent'
     name: null
 };
+
+// Mobile Substitution State - pending bench player for swap
+let pendingBenchSwap = null; // { index, team, name }
 
 export function setSteuerungAktiv(aktiv) {
     // Player buttons are always enabled - removed: spielerButtons.forEach(btn => btn.disabled = !aktiv);
@@ -298,6 +302,36 @@ export function selectPlayer(index, team, gegnerNummer, name, isOnBench = false)
     const selectedBtn = document.querySelector(selector);
     if (selectedBtn) selectedBtn.classList.add('selected');
 
+    // 3. Check if mobile screen (now includes tablets/laptops up to 1360px) - special handling for substitutions
+    if (window.innerWidth <= 1360) {
+        // CASE 1: Clicking bench player - store for pending swap, no popup
+        if (isOnBench) {
+            pendingBenchSwap = { index: parseInt(index, 10), team, name };
+            // Show visual feedback that bench player is selected for swap
+            if (selectedBtn) {
+                selectedBtn.classList.add('pending-swap');
+            }
+            // Show toast notification
+            // toast.info(`${name || 'Bank'} ausgewählt - tippe auf aktiven Spieler zum Wechseln`);
+            return; // Don't open popup
+        }
+
+        // CASE 2: Active player clicked while bench player is pending - perform swap
+        if (pendingBenchSwap && !isOnBench && pendingBenchSwap.team === team) {
+            performMobileSwap(pendingBenchSwap.index, parseInt(index, 10), team);
+            return;
+        }
+
+        // CASE 3: Normal player selection - show popup
+        pendingBenchSwap = null; // Clear any pending swap
+        document.querySelectorAll('.pending-swap').forEach(b => b.classList.remove('pending-swap'));
+        showMobileActionPopup(name, team, index, gegnerNummer, isOnBench);
+        return;
+    }
+
+    // Clear pending swap state on desktop
+    pendingBenchSwap = null;
+
     // 3. Update Dashboard UI
     const dashboard = document.getElementById('actionDashboard');
     const nameDisplay = document.getElementById('selectedPlayerName');
@@ -339,12 +373,236 @@ export function selectPlayer(index, team, gegnerNummer, name, isOnBench = false)
 
 }
 
+// Mobile Swap Function - swaps bench player with active player
+function performMobileSwap(benchIndex, activeIndex, team) {
+    // Clear pending state
+    pendingBenchSwap = null;
+    document.querySelectorAll('.pending-swap').forEach(b => b.classList.remove('pending-swap'));
+    document.querySelectorAll('.spieler-button.selected').forEach(b => b.classList.remove('selected'));
+
+    // Prevent swapping with self
+    if (benchIndex === activeIndex) {
+        // toast.info('Wechsel abgebrochen');
+        return;
+    }
+
+    // Get players list based on team
+    let playerList;
+    if (team === 'myteam') {
+        playerList = spielstand.roster;
+    } else {
+        playerList = spielstand.knownOpponents;
+    }
+
+    const benchPlayer = playerList[benchIndex];
+    const activePlayer = playerList[activeIndex];
+
+    if (!benchPlayer || !activePlayer) {
+        // toast.error('Wechsel fehlgeschlagen');
+        return;
+    }
+
+    // Swap lineup status
+    const tempLineupSlot = benchPlayer.lineupSlot;
+    benchPlayer.lineupSlot = activePlayer.lineupSlot;
+    activePlayer.lineupSlot = tempLineupSlot;
+
+    // Log the substitution
+    const time = formatiereZeit(spielstand.zeit);
+    spielstand.gameLog.push({
+        time,
+        action: 'Wechsel',
+        playerId: benchPlayer.number,
+        team: team, // Log team context if needed for display?
+        kommentar: `${benchPlayer.name || (team === 'myteam' ? 'Spieler' : 'Gegner') + ' #' + benchPlayer.number} rein für ${activePlayer.name || (team === 'myteam' ? 'Spieler' : 'Gegner') + ' #' + activePlayer.number}`
+    });
+
+    // Save and update UI
+    speichereSpielstand();
+    zeichneSpielerRaster();
+
+    // Fully clear selection state so next click works immediately
+    deselectPlayer();
+
+    // toast.success(`${benchPlayer.name} ↔ ${activePlayer.name}`);
+}
+
+// Mobile Action Popup for mobile screens
+function showMobileActionPopup(name, team, index, gegnerNummer, isOnBench) {
+    // Remove existing popup if any
+    const existingPopup = document.getElementById('mobileActionPopup');
+    if (existingPopup) existingPopup.remove();
+
+    const player = team === 'myteam' ? spielstand.roster[index] : null;
+    const playerNumber = player?.number || gegnerNummer;
+    const playerDisplay = name || (team === 'myteam' ? `#${playerNumber}` : `Gegner #${gegnerNummer}`);
+    const isOpponent = team !== 'myteam';
+
+    const popup = document.createElement('div');
+    popup.id = 'mobileActionPopup';
+    popup.style.cssText = `
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: linear-gradient(135deg, rgba(15, 23, 42, 0.98) 0%, rgba(30, 41, 59, 0.98) 100%);
+        z-index: 9999;
+        display: flex;
+        flex-direction: column;
+        padding: 16px;
+        overflow-y: auto;
+    `;
+
+    const allowedBenchActions = ["2 Minuten", "Gelbe Karte", "Rote Karte", "Blaue Karte"];
+
+    // All actions matching the dashboard
+    const resultActions = [
+        { name: 'Tor', class: 'btn-goal', color: '#16a34a' },
+        { name: 'Gehalten', class: 'btn-save', color: '#65a30d' },
+        { name: 'Fehlwurf', class: 'btn-post', color: '#dc2626' },
+        { name: 'Block', class: 'btn-lost', color: '#7c3aed' }
+    ];
+
+    const gameActions = [
+        { name: 'Foul', label: 'STÜRMERFOUL', color: '#475569' },
+        { name: 'Ballverlust', label: 'BALLVERLUST', color: '#475569' },
+        { name: '2min Provoziert', label: '2 MIN GEHOLT', color: '#0891b2' },
+        { name: '7m Provoziert', label: '7M GEHOLT', color: '#0891b2' },
+        { name: '1und1', label: '1v1 GEWONNEN', color: '#8b5cf6' },
+        { name: '7m+2min', label: '7M + 2 MIN', color: '#0891b2' }
+    ];
+
+    const penaltyActions = [
+        { name: '2 Minuten', label: '2 MIN', color: '#f59e0b' },
+        { name: 'Gelbe Karte', label: 'GELB', color: '#eab308' },
+        { name: 'Rote Karte', label: 'ROT', color: '#dc2626' },
+        { name: 'Blaue Karte', label: 'BLAU', color: '#3b82f6' }
+    ];
+
+    const createButton = (action, width = '1fr') => {
+        const disabled = isOnBench && !allowedBenchActions.includes(action.name);
+        return `<button class="mobile-action-btn" data-action="${action.name}" 
+            style="
+                padding: 8px 2px; /* Very tight padding */
+                font-size: 0.7rem; /* Smaller font */
+                font-weight: 600;
+                border-radius: 8px;
+                border: none;
+                background: ${action.color || '#475569'};
+                color: white;
+                cursor: pointer;
+                transition: transform 0.1s, opacity 0.1s;
+                text-transform: uppercase;
+                letter-spacing: 0.5px;
+                white-space: normal; /* Allow text wrap */
+                overflow-wrap: break-word; /* Standard property */
+                word-wrap: break-word; /* Legacy support */
+                hyphens: auto; /* Optional: hyphenation */
+                line-height: 1.1;
+                min-width: 0;
+                width: 100%; /* Ensure it fills grid cell */
+                ${disabled ? 'opacity: 0.25; pointer-events: none;' : ''}
+            "
+            ${disabled ? 'disabled' : ''}>${action.label || action.name.toUpperCase()}</button>`;
+    };
+
+    popup.innerHTML = `
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; padding-bottom: 12px; border-bottom: 1px solid rgba(255,255,255,0.1);">
+            <div style="display: flex; align-items: center; gap: 12px;">
+                <div style="
+                    width: 44px; height: 44px; 
+                    background: ${isOpponent ? 'var(--team-opponent-color, #dc2626)' : 'var(--team-primary-color, #2563eb)'};
+                    border-radius: 10px;
+                    display: flex; align-items: center; justify-content: center;
+                    font-weight: bold; font-size: 1.1rem; color: white;
+                ">${playerNumber}</div>
+                <div>
+                    <div style="font-size: 1.1rem; font-weight: 600; color: white;">${name || 'Spieler'}</div>
+                    <div style="font-size: 0.75rem; color: rgba(255,255,255,0.6);">${isOpponent ? 'Gegner' : 'Eigenes Team'}</div>
+                </div>
+            </div>
+            <button id="closeMobilePopup" style="
+                background: rgba(255,255,255,0.1);
+                border: none;
+                color: white;
+                font-size: 1.5rem;
+                width: 44px; height: 44px;
+                border-radius: 12px;
+                cursor: pointer;
+                display: flex; align-items: center; justify-content: center;
+            ">×</button>
+        </div>
+
+        <div style="flex: 1; display: flex; flex-direction: column; gap: 12px;">
+            <!-- Result Section -->
+            <div>
+                <div style="font-size: 0.7rem; color: rgba(255,255,255,0.5); margin-bottom: 6px; text-transform: uppercase; letter-spacing: 1px;">Ergebnis</div>
+                <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px;"> <!-- Changed to 2 columns -->
+                    ${resultActions.map(a => createButton(a)).join('')}
+                </div>
+            </div>
+
+            <!-- Actions Section -->
+            <div>
+                <div style="font-size: 0.7rem; color: rgba(255,255,255,0.5); margin-bottom: 6px; text-transform: uppercase; letter-spacing: 1px;">Aktionen</div>
+                <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px;">
+                    ${gameActions.map(a => createButton(a)).join('')}
+                </div>
+            </div>
+
+            <!-- Penalties Section -->
+            <div>
+                <div style="font-size: 0.7rem; color: rgba(255,255,255,0.5); margin-bottom: 6px; text-transform: uppercase; letter-spacing: 1px;">Strafen</div>
+                <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px;"> <!-- Changed to 2 columns -->
+                    ${penaltyActions.map(a => createButton(a)).join('')}
+                </div>
+            </div>
+        </div>
+
+        <button id="cancelMobileAction" style="
+            margin-top: 16px;
+            padding: 14px;
+            background: rgba(255,255,255,0.1);
+            border: 1px solid rgba(255,255,255,0.2);
+            color: white;
+            font-size: 0.9rem;
+            font-weight: 500;
+            border-radius: 10px;
+            cursor: pointer;
+        ">Abbrechen</button>
+    `;
+
+    document.body.appendChild(popup);
+
+    // Close buttons
+    const closePopup = () => {
+        popup.remove();
+        deselectPlayer();
+    };
+    document.getElementById('closeMobilePopup').onclick = closePopup;
+    document.getElementById('cancelMobileAction').onclick = closePopup;
+
+    // Action buttons
+    popup.querySelectorAll('.mobile-action-btn').forEach(btn => {
+        btn.onclick = () => {
+            const action = btn.dataset.action;
+            executeAction(action);
+            popup.remove();
+        };
+    });
+}
+
 export function deselectPlayer() {
     // Reset state
     selectedPlayerState = { index: null, team: null, gegnerNummer: null, name: null };
     aktuellerSpielerIndex = null;
     istGegnerAktion = false;
     aktuelleGegnernummer = null;
+
+    // Also clear pending bench swap state
+    pendingBenchSwap = null;
+    document.querySelectorAll('.pending-swap').forEach(b => b.classList.remove('pending-swap'));
 
     // Remove visual selection
     document.querySelectorAll('.spieler-button.selected').forEach(btn => btn.classList.remove('selected'));
@@ -1199,21 +1457,25 @@ export function handleLineupSlotClick(slotType, slotIndex, teamKey, playerIndex,
     }
 
     // Enter substitution mode (source) if not already active or if it was cancelled
-    if (!substitutionState.active || (substitutionState.sourceSlot.slotType !== slotType || substitutionState.sourceSlot.slotIndex !== slotIndex || substitutionState.sourceSlot.teamKey !== teamKey)) {
-        substitutionState = {
-            sourceSlot: { slotType, slotIndex, teamKey, playerIndex, isEmpty },
-            active: true
-        };
-
-        // Visual feedback for substitution
-        const selector = `[data-slot-type="${slotType}"][data-slot-index="${slotIndex}"][data-team-key="${teamKey}"]`;
-        const btn = document.querySelector(selector);
-        if (btn) btn.classList.add('sub-source');
+    // BUT SKIP ON MOBILE - allow only selectPlayer flow
+    if (window.innerWidth >= 770) {
+        if (!substitutionState.active || (substitutionState.sourceSlot.slotType !== slotType || substitutionState.sourceSlot.slotIndex !== slotIndex || substitutionState.sourceSlot.teamKey !== teamKey)) {
+            substitutionState = {
+                sourceSlot: { slotType, slotIndex, teamKey, playerIndex, isEmpty },
+                active: true
+            };
+        }
     }
+
+    // Visual feedback for substitution
+    const selector = `[data-slot-type="${slotType}"][data-slot-index="${slotIndex}"][data-team-key="${teamKey}"]`;
+    const btn = document.querySelector(selector);
+    if (btn) btn.classList.add('sub-source');
 }
 
 export function handleBenchPlayerClick(playerIndex, teamKey, gegnerNummer) {
     const isAway = spielstand.settings.isAuswaertsspiel;
+    const isMobile = window.innerWidth < 770;
 
     let playerList;
     if (teamKey === 'myteam') {
@@ -1223,6 +1485,15 @@ export function handleBenchPlayerClick(playerIndex, teamKey, gegnerNummer) {
     }
 
     const actualIndex = teamKey === 'myteam' ? playerIndex : playerList.findIndex(p => p.number == gegnerNummer);
+
+    // On mobile, skip substitutionState logic entirely - use bench-first flow only
+    if (isMobile) {
+        const player = playerList[actualIndex];
+        if (player) {
+            selectPlayer(actualIndex, teamKey, gegnerNummer, player.name || '', true); // isOnBench = true
+        }
+        return;
+    }
 
     if (substitutionState.active) {
         const source = substitutionState.sourceSlot;

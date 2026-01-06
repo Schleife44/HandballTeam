@@ -39,8 +39,10 @@ import {
     histHeatmapToreFilter, histHeatmapMissedFilter,
     liveOverviewHeatmapToreFilter, liveOverviewHeatmapMissedFilter, liveOverviewHeatmap7mFilter,
     liveOverviewHeatmapSvg,
-    mobileMenuBtn, sidebarOverlay, sidebar, navItems
+    mobileMenuBtn, sidebarOverlay, sidebar, navItems,
+    prevMonthBtn, nextMonthBtn, addEventBtn, closeEventModal, saveEventBtn, cancelEventBtn
 } from './dom.js';
+import { handlePrevMonth, handleNextMonth, openAddEventModal, closeAddEventModal, saveEvent } from './calendar.js';
 import { addPlayer, schliesseEditModus, oeffneEditModus, deletePlayer, deleteEntireTeam, deleteOpponent, oeffneOpponentEditModus, swapTeams } from './roster.js';
 import {
     switchToGame, switchToRoster, handleGamePhaseClick, handleRealPauseClick,
@@ -1007,6 +1009,14 @@ export function registerEventListeners() {
     if (rosterSwapTeamsBtn) {
         rosterSwapTeamsBtn.addEventListener('click', swapTeams);
     }
+
+    // === Calendar ===
+    if (prevMonthBtn) prevMonthBtn.addEventListener('click', handlePrevMonth);
+    if (nextMonthBtn) nextMonthBtn.addEventListener('click', handleNextMonth);
+    if (addEventBtn) addEventBtn.addEventListener('click', () => openAddEventModal());
+    if (closeEventModal) closeEventModal.addEventListener('click', closeAddEventModal);
+    if (cancelEventBtn) cancelEventBtn.addEventListener('click', closeAddEventModal);
+    if (saveEventBtn) saveEventBtn.addEventListener('click', saveEvent);
 }
 
 // Live Overview Filters

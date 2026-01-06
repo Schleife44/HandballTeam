@@ -34,7 +34,9 @@ export let spielstand = {
         myTeamName: '',
         myTeamColor: '#dc3545'
     },
-    knownOpponents: [] // { number: 7, name: 'Max' } - Name ist optional
+    knownOpponents: [], // { number: 7, name: 'Max' } - Name ist optional
+    calendarEvents: [], // { id, title, type, date, time, location }
+    calendarSubscriptions: [] // { id, url, title, lastUpdated }
 };
 
 export function speichereSpielstand() {

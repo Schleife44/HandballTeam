@@ -138,6 +138,15 @@ body {
     -webkit-font-smoothing: antialiased;
 }
 
+/* Standard scrolling for all devices */
+html,
+body {
+    overflow-x: hidden;
+    height: auto;
+    min-height: 100vh;
+}
+
+
 /* HEADINGS */
 h1,
 h2,
@@ -342,6 +351,13 @@ textarea {
     color: hsl(var(--foreground));
 }
 
+/* Hide native calendar picker indicator for custom look */
+input[type="date"]::-webkit-calendar-picker-indicator,
+input[type="time"]::-webkit-calendar-picker-indicator {
+    display: none;
+    -webkit-appearance: none;
+}
+
 /* Player Time Display */
 .player-time-display {
     font-size: 0.6rem;
@@ -414,7 +430,8 @@ textarea:focus {
 }
 
 .sidebar-header {
-    padding: 1.5rem 1rem;
+    padding: 1rem 1rem;
+    /* Reduced from 1.5rem */
     border-bottom: 1px solid #27272a;
 }
 
@@ -426,21 +443,22 @@ textarea:focus {
 }
 
 .sidebar-nav {
-    padding: 1rem 0;
+    padding: 0.5rem 0;
+    /* Reduced from 1rem */
     flex: 1;
 }
 
 .nav-item {
     display: flex;
     align-items: center;
-    padding: 0.5rem 1rem;
-    margin: 0.25rem 0.75rem;
+    padding: 0.4rem 1rem;
+    margin: 0.15rem 0.75rem;
     border-radius: 0.375rem;
     cursor: pointer;
     transition: background-color 0.2s, color 0.2s;
     color: #a1a1aa;
     /* Zinc 400 */
-    font-size: 0.875rem;
+    font-size: 0.8rem;
     font-weight: 500;
     border-left: none;
     /* remove legacy border */
@@ -448,14 +466,16 @@ textarea:focus {
 
 .nav-item:hover {
     background-color: #27272a;
-    /* Zinc 800 */
     color: #fff;
 }
 
 .nav-item.active {
     background-color: #27272a;
-    /* Zinc 800 */
     color: #fff;
+}
+
+.mobile-menu-btn {
+    display: none;
 }
 
 .nav-icon {
@@ -474,12 +494,12 @@ textarea:focus {
 }
 
 .nav-group-label {
-    padding: 1.5rem 1rem 0.5rem;
-    font-size: 0.75rem;
+    padding: 0.4rem 1rem 0.2rem;
+    /* Reduced from 1.5rem 1rem 0.5rem */
+    font-size: 0.7rem;
     font-weight: 600;
     text-transform: uppercase;
     color: #71717a;
-    /* Zinc 500 */
     letter-spacing: 0.05em;
 }
 
@@ -1067,30 +1087,39 @@ body.dark-mode #wurfpositionFeld svg circle {
     height: 200px;
 }
 
+/* Global Overflow Fix */
+html,
+body {
+    overflow-x: hidden;
+    width: 100%;
+}
+
 /* --- RESPONSIVE --- */
-@media (max-width: 768px) {
+@media (max-width: 1360px) {
     #sidebar {
         left: -200px;
-        transition: transform 0.3s;
+        transition: left 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     }
 
     #sidebar.active {
-        transform: translateX(200px);
         left: 0;
+        transform: none;
     }
 
     #main-content {
         margin-left: 0;
         padding: 1rem;
+        width: 100%;
     }
 
     .mobile-menu-btn {
-        display: block;
+        display: block !important;
         position: fixed;
         top: 1rem;
         left: 1rem;
         z-index: 1100;
         background: hsl(var(--card));
+        color: hsl(var(--foreground));
         border: 1px solid hsl(var(--border));
         border-radius: 8px;
         padding: 8px;
@@ -2757,7 +2786,8 @@ body.dark-mode .heatmap-tab.white-style:not(.active) {
     flex: 1;
     background: var(--bg-container);
     border-radius: 12px;
-    padding: 10px 20px;
+    padding: 8px 12px;
+    /* Reduced padding */
     display: flex;
     align-items: center;
     justify-content: space-between;
@@ -2807,7 +2837,14 @@ body.dark-mode .heatmap-tab.white-style:not(.active) {
     flex-direction: column;
     gap: 5px;
     justify-content: center;
-    min-width: 80px;
+    min-width: 70px;
+    /* Reduced min-width */
+}
+
+.game-phase-controls button {
+    padding: 4px 8px;
+    font-size: 0.8rem;
+    height: 32px;
 }
 
 /* Action Dashboard */
@@ -2852,12 +2889,14 @@ body.dark-mode .heatmap-tab.white-style:not(.active) {
 .action-btn {
     border-radius: 8px;
     font-weight: 700;
-    font-size: 1rem;
+    font-size: 0.9rem;
+    /* Reduced from 1rem */
     text-transform: uppercase;
     border: none;
     cursor: pointer;
     transition: transform 0.1s, box-shadow 0.1s;
-    height: 50px;
+    height: 42px;
+    /* Reduced from 50px */
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
     display: flex;
     align-items: center;
@@ -2942,7 +2981,8 @@ body.dark-mode .heatmap-tab.white-style:not(.active) {
 
 .action-buttons-row .action-btn {
     flex: 1;
-    height: 45px;
+    height: 38px;
+    /* Reduced from 45px */
     font-size: 0.75rem;
     font-weight: 600;
 }
@@ -3280,4 +3320,1371 @@ th {
 
 .score-adjust-btn.hidden {
     display: none !important;
+}
+
+/* --- CALENDAR --- */
+.calendar-container {
+    padding: 20px;
+}
+
+.calendar-header-days {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    text-align: center;
+    font-weight: bold;
+    margin-bottom: 10px;
+    color: hsl(var(--foreground));
+}
+
+.calendar-grid {
+    display: grid;
+    grid-template-columns: repeat(7, minmax(0, 1fr));
+    /* Force equal width ignoring content */
+    gap: 10px;
+    min-height: 500px;
+    width: 100%;
+    /* Ensure it spans container */
+}
+
+.calendar-day {
+    background: hsl(var(--card));
+    border: 1px solid hsl(var(--border));
+    border-radius: 8px;
+    min-height: 100px;
+    padding: 5px;
+    display: flex;
+    flex-direction: column;
+    cursor: pointer;
+    transition: background-color 0.2s;
+    overflow: hidden;
+    /* Prevent expansion */
+    width: 100%;
+    /* Ensure it fits cell */
+}
+
+.calendar-day:hover {
+    background: hsl(var(--accent));
+}
+
+.calendar-day.empty {
+    background: transparent;
+    border: none;
+    cursor: default;
+}
+
+.calendar-day.today {
+    border: 2px solid hsl(var(--primary));
+    background: hsl(var(--accent) / 0.2);
+}
+
+.day-number {
+    font-weight: bold;
+    margin-bottom: 5px;
+    font-size: 0.9rem;
+    align-self: flex-end;
+    color: hsl(var(--muted-foreground));
+}
+
+.day-events {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    flex: 1;
+}
+
+.event-pill {
+    font-size: 0.75rem;
+    padding: 2px 6px;
+    border-radius: 4px;
+    color: white;
+    cursor: pointer;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.event-training {
+    background-color: #10b981;
+    /* Green */
+}
+
+.event-game {
+    background-color: #3b82f6;
+    /* Blue */
+}
+
+.event-other {
+    background-color: #6b7280;
+    /* Gray */
+}
+
+.event-time {
+    font-weight: bold;
+    margin-right: 4px;
+}
+
+.calendar-controls {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+
+/* --- MODERN EVENT MODAL --- */
+.modern-modal .modal-body {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    padding: 10px 0;
+}
+
+.form-section {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.section-label {
+    font-size: 0.85rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    color: hsl(var(--muted-foreground));
+    letter-spacing: 0.5px;
+}
+
+/* Radio Pills */
+.radio-pill-group {
+    display: flex;
+    gap: 10px;
+}
+
+.radio-pill {
+    position: relative;
+    cursor: pointer;
+}
+
+.radio-pill input {
+    opacity: 0;
+    position: absolute;
+}
+
+.radio-pill span {
+    display: inline-block;
+    padding: 8px 16px;
+    background: hsl(var(--secondary));
+    border-radius: 20px;
+    font-size: 0.9rem;
+    font-weight: 500;
+    transition: all 0.2s;
+    border: 2px solid transparent;
+}
+
+.radio-pill input:checked+span {
+    color: white;
+    transform: scale(1.05);
+}
+
+.radio-pill.training input:checked+span {
+    background-color: #10b981;
+    border-color: #059669;
+}
+
+.radio-pill.game input:checked+span {
+    background-color: #3b82f6;
+    border-color: #2563eb;
+}
+
+.radio-pill.other input:checked+span {
+    background-color: #6b7280;
+    border-color: #4b5563;
+}
+
+/* Form Layouts */
+.form-row-2 {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 15px;
+}
+
+.input-group {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+}
+
+.input-group label {
+    font-size: 0.8rem;
+    color: hsl(var(--muted-foreground));
+}
+
+.full-width {
+    width: 100%;
+}
+
+.recurrence-section {
+    padding-top: 10px;
+    border-top: 1px solid hsl(var(--border));
+}
+
+.checkbox-wrapper {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    cursor: pointer;
+}
+
+.recurrence-options {
+    margin-top: 10px;
+    padding-left: 24px;
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    animation: fadeIn 0.3s ease;
+}
+
+
+/* --- EVENT DETAILS --- */
+.details-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 8px 0;
+    border-bottom: 1px solid hsl(var(--border) / 0.5);
+    font-size: 1rem;
+}
+
+.details-row:last-child {
+    border-bottom: none;
+}
+
+.details-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: hsl(var(--muted-foreground));
+    width: 24px;
+    height: 24px;
+}
+
+/* Destructive Button */
+.shadcn-btn-destructive {
+    background-color: hsl(var(--destructive));
+    color: hsl(var(--destructive-foreground));
+    border: none;
+    border-radius: 6px;
+    padding: 8px 16px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+.shadcn-btn-destructive:hover {
+    background-color: hsl(var(--destructive) / 0.9);
+}
+
+.shadcn-btn-primary.full-width {
+    width: 100%;
+}
+
+
+/* --- GOOGLE STYLE POPOVER --- */
+.event-popover {
+    position: absolute;
+    background: hsl(var(--card));
+    border: 1px solid hsl(var(--border));
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+    width: 300px;
+    z-index: 1000;
+    padding: 16px;
+    animation: fadeIn 0.1s ease-out;
+}
+
+.event-popover .modal-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 12px;
+    padding-bottom: 0;
+    border: none;
+}
+
+.event-popover .modal-header h2 {
+    font-size: 1.1rem;
+    margin: 0;
+    flex-grow: 1;
+    /* Ensure title takes available space */
+}
+
+/* --- SHADCN DATEPICKER --- */
+.shadcn-datepicker {
+    position: absolute;
+    background: hsl(var(--popover));
+    color: hsl(var(--popover-foreground));
+    border: 1px solid hsl(var(--border));
+    border-radius: var(--radius);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+    z-index: 2000;
+    /* Above modal */
+    width: 280px;
+    padding: 16px;
+    font-family: inherit;
+    animation: fadeIn 0.1s ease-out;
+}
+
+.shadcn-datepicker.hidden {
+    display: none;
+}
+
+.calendar-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
+.cal-nav {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.cal-actions {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+@media (max-width: 600px) {
+    .mobile-hidden {
+        display: none;
+    }
+}
+
+.dp-title {
+    font-weight: 600;
+    font-size: 0.9rem;
+}
+
+.dp-nav-btn {
+    background: transparent;
+    border: 1px solid hsl(var(--border));
+    color: hsl(var(--foreground));
+    border-radius: 4px;
+    width: 28px;
+    height: 28px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    font-size: 1rem;
+    padding: 0;
+}
+
+.dp-nav-btn:hover {
+    background: hsl(var(--accent));
+    color: hsl(var(--accent-foreground));
+}
+
+.dp-grid {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 4px;
+    text-align: center;
+}
+
+.dp-day-header {
+    font-size: 0.75rem;
+    color: hsl(var(--muted-foreground));
+    margin-bottom: 4px;
+}
+
+.dp-cell {
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.85rem;
+    border-radius: 4px;
+    cursor: pointer;
+    user-select: none;
+}
+
+.dp-cell.empty {
+    cursor: default;
+}
+
+.dp-day:hover {
+    background: hsl(var(--accent));
+    color: hsl(var(--accent-foreground));
+}
+
+.dp-today {
+    background: hsl(var(--secondary));
+    color: hsl(var(--secondary-foreground));
+    font-weight: bold;
+}
+
+.dp-selected {
+    background: hsl(var(--primary));
+    color: hsl(var(--primary-foreground));
+}
+
+.dp-selected:hover {
+    background: hsl(var(--primary) / 0.9);
+    color: hsl(var(--primary-foreground));
+}
+
+
+/* --- SHADCN TIMEPICKER --- */
+.shadcn-timepicker {
+    position: absolute;
+    background: hsl(var(--popover));
+    color: hsl(var(--popover-foreground));
+    border: 1px solid hsl(var(--border));
+    border-radius: var(--radius);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+    z-index: 2000;
+    width: 120px;
+    max-height: 200px;
+    overflow-y: auto;
+    font-size: 0.9rem;
+    animation: fadeIn 0.1s ease-out;
+}
+
+.shadcn-timepicker.hidden {
+    display: none;
+}
+
+.tp-list {
+    display: flex;
+    flex-direction: column;
+    padding: 4px;
+}
+
+.tp-item {
+    padding: 6px 10px;
+    cursor: pointer;
+    border-radius: 4px;
+    transition: background 0.1s;
+    display: flex;
+    align-items: center;
+}
+
+.tp-item:hover {
+    background: hsl(var(--accent));
+    color: hsl(var(--accent-foreground));
+}
+
+.tp-item.selected {
+    background: hsl(var(--primary));
+    color: hsl(var(--primary-foreground));
+    font-weight: 500;
+}
+
+/* --- SONNER TOAST --- */
+.sonner-toaster {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    z-index: 9999;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    pointer-events: none;
+    /* Let clicks pass through gaps */
+}
+
+.sonner-toast {
+    pointer-events: auto;
+    background: hsl(var(--card));
+    color: hsl(var(--card-foreground));
+    border: 1px solid hsl(var(--border));
+    border-radius: var(--radius);
+    padding: 16px;
+    width: 356px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    opacity: 0;
+    transform: translateY(100%);
+    transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.sonner-toast.visible {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+.sonner-toast.removing {
+    opacity: 0;
+    transform: scale(0.9) translateY(10px);
+}
+
+.toast-content {
+    display: flex;
+    gap: 12px;
+    align-items: start;
+}
+
+.toast-icon {
+    width: 20px;
+    height: 20px;
+    margin-top: 2px;
+}
+
+.toast-icon.success-icon {
+    color: #10b981;
+}
+
+.toast-icon.error-icon {
+    color: #ef4444;
+}
+
+.toast-icon.info-icon {
+    color: #3b82f6;
+}
+
+.toast-text {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.toast-title {
+    font-weight: 600;
+    font-size: 0.95rem;
+}
+
+.toast-desc {
+    font-size: 0.85rem;
+    color: hsl(var(--muted-foreground));
+}
+
+.toast-close {
+    background: transparent;
+    border: none;
+    font-size: 1.2rem;
+    line-height: 1;
+    color: hsl(var(--muted-foreground));
+    cursor: pointer;
+    padding: 0;
+    margin-left: 10px;
+}
+
+.toast-close:hover {
+    color: hsl(var(--foreground));
+}
+
+.event-popover .modal-body {
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.event-popover .modal-actions {
+    margin-top: 16px;
+    border-top: 1px solid hsl(var(--border) / 0.5);
+    padding-top: 12px;
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+}
+
+/* Adjust close button position */
+.event-popover .close-modal {
+    position: static;
+    color: hsl(var(--muted-foreground));
+}
+
+
+/* --- POPOVER HEADER ACTIONS --- */
+.header-actions {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.icon-btn-ghost {
+    background: transparent;
+    border: none;
+    color: hsl(var(--muted-foreground));
+    cursor: pointer;
+    padding: 6px;
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+}
+
+.icon-btn-ghost:hover {
+    background-color: hsl(var(--secondary));
+    color: hsl(var(--foreground));
+}
+
+.icon-btn-ghost svg {
+    width: 18px;
+    height: 18px;
+}
+
+/* ===========================
+   MOBILE RESPONSIVE STYLES
+   =========================== */
+
+@media screen and (max-width: 768px) {
+
+    /* --- CALENDAR MOBILE --- */
+    .calendar-header {
+        flex-direction: column;
+        gap: 12px;
+        align-items: stretch;
+    }
+
+    .calendar-header .cal-nav {
+        justify-content: center;
+    }
+
+    .calendar-header .cal-actions {
+        justify-content: center;
+    }
+
+    .calendar-grid {
+        grid-template-columns: repeat(7, minmax(0, 1fr));
+        gap: 4px;
+    }
+
+    .calendar-day {
+        min-height: 60px;
+        padding: 3px;
+        font-size: 0.75rem;
+    }
+
+    .calendar-day .day-header {
+        font-size: 0.7rem;
+    }
+
+    .event-pill {
+        font-size: 0.6rem;
+        padding: 2px 4px;
+    }
+
+    .event-pill .event-time {
+        display: none;
+    }
+
+    .calendar-header-days>div {
+        font-size: 0.7rem;
+        padding: 4px 0;
+    }
+
+    /* Hide text on mobile for buttons */
+    .mobile-hidden {
+        display: none !important;
+    }
+
+    /* Manage Modal Mobile */
+    #manageCalendarModal {
+        width: 95vw !important;
+        max-width: 400px !important;
+        left: 50% !important;
+        transform: translateX(-50%) !important;
+    }
+
+    /* Add Event Modal Mobile */
+    #addEventModal {
+        width: 95vw !important;
+        max-width: 350px !important;
+        left: 50% !important;
+        transform: translateX(-50%) !important;
+    }
+
+    /* --- GAME VIEW MOBILE --- */
+
+    /* Mode Selection */
+    #gameModeSelection {
+        min-height: 300px !important;
+        padding: 20px !important;
+    }
+
+    #gameModeSelection h2 {
+        font-size: 1.4rem !important;
+    }
+
+    .mode-selection-card {
+        width: 100% !important;
+        max-width: 280px !important;
+        padding: 15px !important;
+    }
+
+    /* Game Split View - Stack vertically, roster full width */
+    .game-split-view {
+        display: flex !important;
+        flex-direction: column !important;
+        gap: 8px !important;
+    }
+
+    .game-split-view {
+        flex-direction: column !important;
+        /* Ensure vertical sorting */
+    }
+
+    .game-roster-column {
+        width: 100% !important;
+        max-width: none !important;
+        flex: 1;
+        overflow-x: hidden !important;
+        order: 0 !important;
+    }
+
+    .game-controls-column {
+        display: contents !important;
+    }
+
+    .game-top-bar {
+        order: -2 !important;
+        width: 100% !important;
+    }
+
+    #actionDashboard {
+        order: -1 !important;
+        width: 100% !important;
+    }
+
+    /* Dual Team Roster - Side by side, FULL width */
+    .dual-team-roster {
+        display: flex !important;
+        flex-direction: row !important;
+        gap: 4px !important;
+        /* Reduced from 8px */
+        width: 100% !important;
+        box-sizing: border-box !important;
+    }
+
+    .team-roster-panel {
+        flex: 1 !important;
+        min-width: 0 !important;
+        min-height: 50vh !important;
+        /* Force panel to be taller */
+        gap: 15px;
+    }
+
+    /* Duplicate 100% width block removed */
+
+    /* Compact Player Grid - Always 2 columns minimum */
+
+    /* Pending Bench Swap Visual Feedback */
+    .spieler-button.pending-swap {
+        animation: pulse-swap 1s ease-in-out infinite;
+        box-shadow: 0 0 0 3px #22c55e, 0 0 15px rgba(34, 197, 94, 0.5) !important;
+    }
+
+    @keyframes pulse-swap {
+
+        0%,
+        100% {
+            transform: scale(1);
+        }
+
+        50% {
+            transform: scale(1.05);
+        }
+    }
+
+    .game-player-grid {
+        display: grid !important;
+        grid-template-columns: repeat(2, 1fr) !important;
+        gap: 4px !important;
+    }
+
+    .game-player-grid .player-btn {
+        padding: 6px 8px !important;
+        font-size: 0.75rem !important;
+        min-height: 40px !important;
+    }
+
+    /* Scoreboard */
+    .compact-scoreboard {
+        padding: 8px !important;
+    }
+
+    .compact-timer {
+        font-size: 1.5rem !important;
+    }
+
+    .compact-score {
+        font-size: 1.8rem !important;
+    }
+
+    .compact-team-name {
+        font-size: 0.7rem !important;
+    }
+
+    /* Action Dashboard - Hide on mobile (using popup instead) */
+    .action-dashboard-card,
+    #actionDashboard {
+        display: none !important;
+    }
+
+    .action-btn {
+        padding: 8px 10px !important;
+        font-size: 0.7rem !important;
+        min-height: 36px !important;
+    }
+
+    .action-buttons-row {
+        gap: 6px !important;
+        flex-wrap: wrap;
+    }
+
+    .action-section-title {
+        font-size: 0.7rem !important;
+    }
+
+    /* Game Phase Controls */
+    .game-phase-controls {
+        gap: 6px !important;
+        flex-wrap: wrap;
+        justify-content: center;
+    }
+
+    .game-phase-controls button {
+        padding: 4px 8px !important;
+        /* Reduced from 6px 12px */
+        font-size: 0.75rem !important;
+        /* Reduced from 0.8rem */
+        min-height: 32px;
+    }
+
+    .game-bottom-controls {
+        flex-direction: column !important;
+        gap: 8px !important;
+        width: 100% !important;
+        box-sizing: border-box !important;
+        overflow-x: hidden !important;
+        order: 2 !important;
+        /* Move below roster */
+    }
+
+    .game-bottom-controls button {
+        width: 100% !important;
+        padding: 8px !important;
+        /* Reduced from default */
+        font-size: 0.8rem !important;
+        /* Smaller text */
+        min-height: 36px;
+    }
+
+    /* Simple Mode Adjustments: Force Vertical Stack & Multi-Column on ALL mobile/tablet */
+    #spielBereich.simple-mode .dual-team-roster {
+        flex-direction: column !important;
+        overflow-x: hidden !important;
+    }
+
+    #spielBereich.simple-mode .team-roster-panel {
+        min-width: 100% !important;
+        width: 100% !important;
+        margin-bottom: 10px !important;
+    }
+
+    #spielBereich.simple-mode .game-player-grid {
+        display: grid !important;
+        grid-template-columns: repeat(auto-fill, minmax(60px, 1fr)) !important;
+        /* Allow multi-column */
+        gap: 6px !important;
+    }
+
+    /* Roster Section Titles */
+    .roster-section-title {
+        font-size: 0.7rem !important;
+        padding: 4px 0 !important;
+    }
+
+    .team-panel-title {
+        font-size: 0.9rem !important;
+        padding: 8px !important;
+    }
+}
+
+/* Even smaller screens */
+@media screen and (max-width: 480px) {
+
+    /* Prevent horizontal scroll */
+    body,
+    #main-content,
+    #spielBereich,
+    #gameContent {
+        overflow-x: hidden !important;
+        max-width: 100vw !important;
+    }
+
+    /* Game Content Full Stack */
+    #gameContent {
+        display: flex !important;
+        flex-direction: column !important;
+    }
+
+    .game-split-view {
+        display: flex !important;
+        flex-direction: column !important;
+        width: 100% !important;
+    }
+
+    .game-controls-column {
+        order: -1 !important;
+        width: 100% !important;
+        flex-shrink: 0;
+    }
+
+    .game-roster-column {
+        width: 100% !important;
+        overflow-x: hidden !important;
+    }
+
+    /* Dual Roster Side by Side but Scrollable */
+    .dual-team-roster {
+        display: flex !important;
+        flex-direction: row !important;
+        gap: 8px !important;
+        overflow-x: auto;
+        padding-bottom: 10px;
+    }
+
+    .team-roster-panel {
+        min-width: 48% !important;
+        flex-shrink: 0;
+        padding: 4px !important;
+        margin: 0 !important;
+        border-radius: 6px !important;
+    }
+
+    .team-panel-title {
+        font-size: 0.7rem !important;
+        padding: 4px 6px !important;
+        margin: 0 0 4px 0 !important;
+    }
+
+    .roster-section {
+        padding: 0 !important;
+        margin: 0 0 4px 0 !important;
+    }
+
+    .roster-section-title {
+        font-size: 0.55rem !important;
+        padding: 2px 4px !important;
+        margin: 0 0 2px 0 !important;
+    }
+
+    /* Very Compact Player Buttons - Force 2 columns */
+    .game-player-grid {
+        grid-template-columns: repeat(2, 1fr) !important;
+        gap: 3px !important;
+    }
+
+    .game-player-grid .player-btn {
+        padding: 3px 4px !important;
+        font-size: 0.6rem !important;
+        min-height: 32px !important;
+    }
+
+    .game-player-grid .player-btn .player-time {
+        font-size: 0.5rem !important;
+    }
+
+    /* Compact Top Bar */
+    .game-top-bar {
+        padding: 6px !important;
+        gap: 8px !important;
+        flex-wrap: wrap !important;
+        /* Allow wrapping */
+        justify-content: center;
+    }
+
+    .compact-timer {
+        font-size: 1rem !important;
+    }
+
+    /* Override specifically for simple mode on mobile to allow more columns */
+    #spielBereich.simple-mode .game-player-grid {
+        grid-template-columns: repeat(auto-fit, minmax(60px, 1fr)) !important;
+        gap: 4px !important;
+        display: grid !important;
+    }
+
+    /* Important: Stack panels in simple mode so they have full width for the grid */
+    #spielBereich.simple-mode .dual-team-roster {
+        flex-direction: column !important;
+        overflow-x: hidden !important;
+    }
+
+    #spielBereich.simple-mode .team-roster-panel {
+        min-width: 100% !important;
+        width: 100% !important;
+        margin-bottom: 10px !important;
+    }
+
+    .compact-score {
+        font-size: 1.2rem !important;
+    }
+
+    .compact-team-name {
+        font-size: 0.6rem !important;
+        max-width: 50px;
+        /* Reduced to safely fit */
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    .compact-score-display {
+        gap: 6px !important;
+        flex-wrap: wrap;
+        justify-content: center;
+    }
+
+    /* Game Phase Controls Compact */
+    .game-phase-controls {
+        gap: 4px !important;
+        flex-wrap: wrap !important;
+        justify-content: center;
+        width: 100%;
+        /* Ensure container fills width to wrap correctly */
+    }
+
+    .game-phase-controls button {
+        padding: 4px 6px !important;
+        /* Slightly reduced horizontal padding */
+        font-size: 0.7rem !important;
+        min-height: 32px;
+        box-sizing: border-box !important;
+        /* Critical for padding calculation */
+        max-width: 100%;
+    }
+
+    /* Action Dashboard Ultra Compact */
+    .action-dashboard-card {
+        padding: 8px !important;
+    }
+
+    .action-header {
+        padding: 6px 8px !important;
+        font-size: 0.8rem !important;
+    }
+
+    .action-section {
+        margin-bottom: 8px !important;
+    }
+
+    .action-section-title {
+        font-size: 0.6rem !important;
+        margin-bottom: 4px !important;
+    }
+
+    .action-buttons-row {
+        gap: 4px !important;
+        display: grid !important;
+        grid-template-columns: repeat(2, 1fr) !important;
+    }
+
+    .action-btn {
+        padding: 6px 4px !important;
+        font-size: 0.6rem !important;
+        /* Slightly larger than 0.55 */
+        min-height: 38px !important;
+        /* Taller for wrapping */
+        height: auto !important;
+        flex: 1 1 auto;
+        min-width: 0 !important;
+        /* Allow shrinking */
+        white-space: normal !important;
+        overflow-wrap: break-word !important;
+        word-break: break-word !important;
+        line-height: 1.1 !important;
+    }
+
+    /* Bottom Controls Compact */
+    .game-bottom-controls {
+        padding: 8px !important;
+        gap: 6px !important;
+    }
+
+    .game-bottom-controls button {
+        padding: 8px !important;
+        font-size: 0.75rem !important;
+    }
+
+    /* Roster Sections Compact */
+    .roster-section {
+        margin-bottom: 6px !important;
+    }
+
+    .roster-section-title {
+        font-size: 0.6rem !important;
+        padding: 2px 0 !important;
+    }
+
+    .team-panel-title {
+        font-size: 0.75rem !important;
+        padding: 6px !important;
+    }
+
+    /* Calendar Even Smaller */
+    .calendar-day {
+        min-height: 45px;
+        padding: 2px;
+    }
+
+    .event-pill {
+        font-size: 0.5rem;
+        padding: 1px 2px;
+    }
+
+    .calendar-header-days>div {
+        font-size: 0.6rem;
+    }
+}
+
+/* Ultra-small screens - Popup mode only */
+@media screen and (max-width: 400px) {
+
+    /* Hide the inline action dashboard completely */
+    .action-dashboard-card {
+        display: none !important;
+    }
+
+    /* Force simple/popup mode behavior */
+    #spielBereich {
+        --force-popup-mode: 1;
+    }
+
+    /* Controls super compact on top */
+    .game-controls-column {
+        order: -1 !important;
+        padding: 4px !important;
+    }
+
+    .game-top-bar {
+        padding: 4px !important;
+        gap: 4px !important;
+    }
+
+    .compact-timer {
+        font-size: 0.9rem !important;
+    }
+
+    .compact-score {
+        font-size: 1rem !important;
+    }
+
+    .compact-team-name {
+        font-size: 0.5rem !important;
+        max-width: 50px;
+    }
+
+    .game-phase-controls {
+        gap: 2px !important;
+    }
+
+    .game-phase-controls button {
+        padding: 3px 6px !important;
+        font-size: 0.6rem !important;
+    }
+
+    /* Bottom controls compact */
+    .game-bottom-controls {
+        padding: 4px !important;
+        gap: 4px !important;
+    }
+
+    .game-bottom-controls button {
+        padding: 6px !important;
+        font-size: 0.65rem !important;
+    }
+
+    /* Roster takes full remaining space */
+    .game-roster-column {
+        flex: 1;
+        overflow-y: auto;
+    }
+
+    .dual-team-roster {
+        gap: 4px !important;
+    }
+
+    .team-roster-panel {
+        min-width: 48% !important;
+        padding: 2px !important;
+    }
+
+    .team-panel-title {
+        font-size: 0.6rem !important;
+        padding: 3px !important;
+    }
+
+    .roster-section-title {
+        font-size: 0.5rem !important;
+        padding: 1px 2px !important;
+    }
+
+    /* Player buttons fill available space */
+    .game-player-grid {
+        grid-template-columns: repeat(2, 1fr) !important;
+        gap: 2px !important;
+    }
+
+    .game-player-grid .player-btn {
+        padding: 2px 3px !important;
+        font-size: 0.55rem !important;
+        min-height: 28px !important;
+    }
+
+    .game-player-grid .player-btn .player-time {
+        display: none !important;
+    }
+}
+
+/* Force 2 columns for 1360px and below, overriding any desktop styles */
+@media screen and (max-width: 1360px) {
+    .game-player-grid {
+        display: grid !important;
+        grid-template-columns: repeat(2, 1fr) !important;
+        gap: 4px !important;
+    }
+}
+
+/* Force action buttons to wrap earlier (under 1540px) */
+@media screen and (max-width: 1540px) {
+    .action-buttons-row {
+        gap: 4px !important;
+        display: grid !important;
+        grid-template-columns: repeat(2, 1fr) !important;
+    }
+}
+
+/* FINAL ROBUST OVERRIDE for Simple Mode (User wants side-by-side!) */
+@media screen and (max-width: 1360px) {
+
+    /* 1. Split View Stack: Scoreboard on top, Roster Area below */
+    #spielBereich.simple-mode .game-split-view {
+        display: flex !important;
+        flex-direction: column !important;
+        height: auto !important;
+        overflow: visible !important;
+    }
+
+    #spielBereich.simple-mode .game-controls-column {
+        width: 100% !important;
+        max-width: 600px !important;
+        /* Constrain width like in the screenshot */
+        margin: 0 auto !important;
+        /* Center the box */
+        order: -1 !important;
+        padding: 5px !important;
+        flex: none !important;
+    }
+
+    #spielBereich.simple-mode .game-roster-column {
+        width: 100% !important;
+        max-width: 100% !important;
+        order: 0 !important;
+        flex: none !important;
+        padding: 5px 0 !important;
+    }
+
+    /* 2. Teams: SIDE BY SIDE (Left/Right) - Using Flex for better mobile stability */
+    #spielBereich.simple-mode .dual-team-roster {
+        display: flex !important;
+        flex-direction: row !important;
+        flex-wrap: nowrap !important;
+        width: 100% !important;
+        gap: 8px !important;
+        align-items: flex-start !important;
+    }
+
+    #spielBereich.simple-mode .team-roster-panel {
+        flex: 1 1 50% !important;
+        width: 50% !important;
+        min-width: 0 !important;
+        /* Allow shrinking to 50% */
+        max-width: 50% !important;
+        margin: 0 !important;
+        padding: 4px !important;
+        background: transparent !important;
+        border: none !important;
+        display: block !important;
+    }
+
+    /* RIGHT ALIGN HOME TEAM */
+    #spielBereich.simple-mode #heimTeamPanel {
+        text-align: right !important;
+    }
+
+    #spielBereich.simple-mode #heimTeamPanel .game-player-grid {
+        margin-left: auto !important;
+    }
+
+    #spielBereich.simple-mode .roster-section {
+        width: 100% !important;
+        padding: 0 !important;
+        margin: 0 0 8px 0 !important;
+    }
+
+    /* 3. Player Grid - FORCE 4 COLUMNS & CLOSE TOGETHER */
+    #spielBereich.simple-mode .game-player-grid {
+        display: grid !important;
+        grid-template-columns: repeat(4, 65px) !important;
+        gap: 4px !important;
+        width: fit-content !important;
+        padding: 0 !important;
+    }
+
+    /* 4. Enforce button size strictly */
+    #spielBereich.simple-mode .spieler-button {
+        width: 100% !important;
+        max-width: 65px !important;
+        height: 60px !important;
+        margin: 0 !important;
+        padding: 2px !important;
+        display: flex !important;
+        flex-direction: column !important;
+        justify-content: center !important;
+        align-items: center !important;
+        border-radius: 4px !important;
+    }
+
+    #spielBereich.simple-mode .spieler-nummer-display {
+        font-size: 1rem !important;
+    }
+
+    #spielBereich.simple-mode .spieler-name-display {
+        font-size: 0.6rem !important;
+    }
+
+    /* 5. TOP BAR SCALING for smaller mobile */
+    @media screen and (max-width: 778px) {
+        #spielBereich.simple-mode .game-top-bar {
+            transform: scale(1.0) !important;
+            transform-origin: top center !important;
+            margin-bottom: 0 !important;
+        }
+
+        #spielBereich.simple-mode .compact-score {
+            font-size: 1rem !important;
+        }
+
+        #spielBereich.simple-mode .compact-timer-display {
+            font-size: 1.4rem !important;
+        }
+
+        #spielBereich.simple-mode .compact-team-name {
+            font-size: 0.75rem !important;
+            max-width: 80px !important;
+            overflow: hidden !important;
+            text-overflow: ellipsis !important;
+        }
+    }
 }

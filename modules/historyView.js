@@ -6,7 +6,7 @@ import {
     rosterBereich, historieBereich, historieDetailBereich,
     historieListe, histDetailTeams, histDetailScore, histDetailDate,
     histStatsBody, histStatsGegnerBody, heatmapSvg,
-    histHeatmapSvg, histContentHeatmap, histSubTabTor, histSubTabFeld, histSubTabKombi,
+    histHeatmapSvg, histContentHeatmap, histTabHeatmap, histSubTabTor, histSubTabFeld, histSubTabKombi,
     histHeatmapToreFilter, histHeatmapMissedFilter, histHeatmap7mFilter,
     histHeatmapStatsArea, histHeatmapStatsBodyHome, histHeatmapStatsBodyGegner,
     histHeatmapHomeTitle, histHeatmapGegnerTitle, histHeatmapPlayerSelect,
@@ -64,9 +64,12 @@ export async function handleSpielBeenden() {
             }
         };
 
-        speichereSpielInHistorie(gameData);
-
-        await customAlert("Spiel gespeichert!", "Erfolg ✓");
+        if (spielstand.gameLog && spielstand.gameLog.length > 0) {
+            speichereSpielInHistorie(gameData);
+            await customAlert("Spiel gespeichert!", "Erfolg ✓");
+        } else {
+            await customAlert("Spiel hat keine Einträge und wurde nicht gespeichert.", "Info");
+        }
 
         spielstand.gameLog = [];
         spielstand.score.heim = 0;
@@ -288,6 +291,8 @@ export function renderHomeStatsInHistory(tbody, statsData, gameLog, isLive = fal
                     // Update current heatmap context locally
                     openPlayerHistoryHeatmap(gameLog, stats.number, 'heim', stats.name, mode, false);
                     if (renderBound) renderBound();
+                    // Scroll to top of history detail
+                    if (historieDetailBereich) historieDetailBereich.scrollIntoView({ behavior: 'smooth', block: 'start' });
                 } else {
                     openPlayerHistoryHeatmap(gameLog, stats.number, 'heim', stats.name, mode);
                 }
@@ -377,6 +382,8 @@ export function renderOpponentStatsInHistory(tbody, statsData, gameLog, game = n
                     const teamName = (game && game.teams && game.teams.gegner) || stats.team || 'gegner';
                     openPlayerHistoryHeatmap(gameLog, num, teamName, stats.name, mode, false);
                     if (renderBound) renderBound();
+                    // Scroll to top of history detail
+                    if (historieDetailBereich) historieDetailBereich.scrollIntoView({ behavior: 'smooth', block: 'start' });
                 } else {
                     const num = (stats.number && stats.number !== '?') ? stats.number : null;
                     const mode = btn.dataset.mode;
@@ -423,7 +430,13 @@ export function openPlayerHistoryHeatmap(gameLog, identifier, team, playerName, 
 
     if (navigate) {
         // Switch to the heatmap tab in history detail
-        if (histTabHeatmap) histTabHeatmap.click();
+        if (histTabHeatmap) {
+            histTabHeatmap.click();
+            // Scroll to heatmap content to ensure visibility
+            if (histContentHeatmap) {
+                histContentHeatmap.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }
+        }
     }
 
     // Also update the player select if it exists
