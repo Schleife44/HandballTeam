@@ -1436,6 +1436,46 @@ export function handleLineupSlotClick(slotType, slotIndex, teamKey, playerIndex,
         }
     }
 
+    // NEW: Handle Mobile Substitution Flow (pendingBenchSwap -> empty slot)
+    if (window.innerWidth <= 1360 && pendingBenchSwap && pendingBenchSwap.team === teamKey) {
+        if (isEmpty) {
+            const benchPlayer = playerList[pendingBenchSwap.index];
+
+            // CHECK 7-PLAYER LIMIT
+            if (getActivePlayerCount(teamKey) >= 7) {
+                customAlert("Maximal 7 Personen (Spieler + Zeitstrafen) auf dem Feld erlaubt. Bitte zuerst einen Spieler vom Feld nehmen.");
+                pendingBenchSwap = null;
+                document.querySelectorAll('.pending-swap').forEach(b => b.classList.remove('pending-swap'));
+                return;
+            }
+
+            const targetSelector = `[data-slot-type="${slotType}"][data-slot-index="${slotIndex}"][data-team-key="${teamKey}"]`;
+            const targetBtn = document.querySelector(targetSelector);
+            startButtonAnimation(targetBtn);
+
+            setTimeout(() => {
+                benchPlayer.lineupSlot = slotType === 'gk' ? 'gk' : slotIndex;
+
+                // Log action
+                const time = formatiereZeit(spielstand.zeit);
+                spielstand.gameLog.push({
+                    time,
+                    action: 'Einwechslung',
+                    playerId: benchPlayer.number,
+                    team: teamKey,
+                    kommentar: `${benchPlayer.name || (teamKey === 'myteam' ? 'Spieler' : 'Gegner') + ' #' + benchPlayer.number} kommt ins Spiel`
+                });
+
+                speichereSpielstand();
+                pendingBenchSwap = null;
+                document.querySelectorAll('.pending-swap').forEach(b => b.classList.remove('pending-swap'));
+                deselectPlayer();
+                zeichneSpielerRaster();
+            }, 50);
+            return;
+        }
+    }
+
     // First click logic (or after cancellation/team switch/substitution)
     // Select player for actions
     if (!isEmpty && playerIndex !== null) {
