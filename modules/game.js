@@ -302,8 +302,8 @@ export function selectPlayer(index, team, gegnerNummer, name, isOnBench = false)
     const selectedBtn = document.querySelector(selector);
     if (selectedBtn) selectedBtn.classList.add('selected');
 
-    // 3. Check if mobile screen (now includes tablets/laptops up to 1360px) - special handling for substitutions
-    if (window.innerWidth <= 1360) {
+    // 3. Check if mobile screen (tablet/phone) - special handling for substitutions
+    if (window.innerWidth <= 768) {
         // CASE 1: Clicking bench player - store for pending swap, no popup
         if (isOnBench) {
             pendingBenchSwap = { index: parseInt(index, 10), team, name };
@@ -406,16 +406,6 @@ function performMobileSwap(benchIndex, activeIndex, team) {
     const tempLineupSlot = benchPlayer.lineupSlot;
     benchPlayer.lineupSlot = activePlayer.lineupSlot;
     activePlayer.lineupSlot = tempLineupSlot;
-
-    // Log the substitution
-    const time = formatiereZeit(spielstand.zeit);
-    spielstand.gameLog.push({
-        time,
-        action: 'Wechsel',
-        playerId: benchPlayer.number,
-        team: team, // Log team context if needed for display?
-        kommentar: `${benchPlayer.name || (team === 'myteam' ? 'Spieler' : 'Gegner') + ' #' + benchPlayer.number} rein für ${activePlayer.name || (team === 'myteam' ? 'Spieler' : 'Gegner') + ' #' + activePlayer.number}`
-    });
 
     // Save and update UI
     speichereSpielstand();
@@ -1437,7 +1427,7 @@ export function handleLineupSlotClick(slotType, slotIndex, teamKey, playerIndex,
     }
 
     // NEW: Handle Mobile Substitution Flow (pendingBenchSwap -> empty slot)
-    if (window.innerWidth <= 1360 && pendingBenchSwap && pendingBenchSwap.team === teamKey) {
+    if (window.innerWidth <= 768 && pendingBenchSwap && pendingBenchSwap.team === teamKey) {
         if (isEmpty) {
             const benchPlayer = playerList[pendingBenchSwap.index];
 
@@ -1455,16 +1445,6 @@ export function handleLineupSlotClick(slotType, slotIndex, teamKey, playerIndex,
 
             setTimeout(() => {
                 benchPlayer.lineupSlot = slotType === 'gk' ? 'gk' : slotIndex;
-
-                // Log action
-                const time = formatiereZeit(spielstand.zeit);
-                spielstand.gameLog.push({
-                    time,
-                    action: 'Einwechslung',
-                    playerId: benchPlayer.number,
-                    team: teamKey,
-                    kommentar: `${benchPlayer.name || (teamKey === 'myteam' ? 'Spieler' : 'Gegner') + ' #' + benchPlayer.number} kommt ins Spiel`
-                });
 
                 speichereSpielstand();
                 pendingBenchSwap = null;
