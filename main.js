@@ -252,15 +252,9 @@ function navigateToView(view) {
             const modeSelection = document.getElementById('gameModeSelection');
             const gameContent = document.getElementById('gameContent');
 
-            console.log("DEBUG: navigateToView('game')", {
-                phase: spielstand.timer.gamePhase,
-                modeSelected: spielstand.modeSelected,
-                check: (spielstand.timer.gamePhase === 1 && !spielstand.modeSelected)
-            });
-
             // Determine if we need selection or game content
             if (spielstand.timer.gamePhase === 1 && !spielstand.modeSelected) {
-                console.log("DEBUG: Showing Selection");
+
                 // Show Selection
                 if (modeSelection) modeSelection.style.display = 'flex';
                 if (gameContent) gameContent.style.display = 'none';
@@ -270,7 +264,7 @@ function navigateToView(view) {
                 if (scoreWrapper) scoreWrapper.classList.add('versteckt');
 
             } else {
-                console.log("DEBUG: Showing Content");
+
                 // Show Content
                 if (modeSelection) modeSelection.style.display = 'none';
                 if (gameContent) gameContent.style.display = 'block';

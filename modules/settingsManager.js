@@ -21,7 +21,7 @@ export function validateTeamSettings() {
     // Update UI
     updateSettingsUI();
 
-    console.log('Team settings validated:', { myTeamName, myTeamColor });
+
     return true;
 }
 

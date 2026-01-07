@@ -19,7 +19,7 @@ export function speichereSpielInHistorie(gameData) {
 
     // Zurückspeichern
     localStorage.setItem(HISTORY_KEY, JSON.stringify(history));
-    console.log("Spiel gespeichert:", newEntry);
+
     return newEntry;
 }
 

@@ -114,16 +114,6 @@ export const drawGoalHeatmap = (pts, yOffset = 0, prefix = 'gen', isHistory = fa
             fillColor = colors.us;
         }
 
-        // DEBUG LOGGING
-        if (p.isBlocked || (p.action && p.action.toLowerCase().includes('block'))) {
-            console.log("[DEBUG] Heatmap Color:", {
-                action: p.action,
-                isMiss: p.isMiss,
-                isBlocked: p.isBlocked,
-                fillColor: fillColor,
-                isOp: p.isOpponent
-            });
-        }
 
         let glowStyle = '';
         if (p.isSave) {
