@@ -11,73 +11,192 @@ const collapsedTeams = {};
 
 export { getSeasonSummary };
 
-// Öffnet Saison-Übersicht
+// Öffnet Saison-Übersicht (legacy name, now just ensures rendering)
 export function openSeasonOverview() {
-    const seasonOverviewModal = document.getElementById('seasonOverviewModal');
-    const settingsBereich = document.getElementById('settingsBereich');
-
-    if (!seasonOverviewModal) return;
-
-    // Schließe Settings Bereich
-    if (settingsBereich) {
-        settingsBereich.classList.add('versteckt');
-    }
-
-    // Rendere Saison-Daten
+    // Just render. The view switching is handled by main navigation (ui.js / app.js)
     renderSeasonStats();
-
-    // Öffne Modal
-    seasonOverviewModal.classList.remove('versteckt');
 }
 
-// Schließt Saison-Übersicht
+// Schließt Saison-Übersicht (Legacy - no op or hide section if needed)
 export function closeSeasonOverview() {
-    const seasonOverviewModal = document.getElementById('seasonOverviewModal');
-    if (seasonOverviewModal) {
-        seasonOverviewModal.classList.add('versteckt');
-    }
+    // No specific close action needed if it's a main view
 }
 
-// Rendert Saison-Statistiken
+// Rendert Saison-Statistiken (Team Focused)
 export function renderSeasonStats() {
     const summary = getSeasonSummary();
+    const historie = getHistorie();
     const seasonSummary = document.getElementById('seasonSummary');
     const seasonStatsContainer = document.getElementById('seasonStatsContainer');
 
     if (!seasonSummary || !seasonStatsContainer) return;
 
+    // --- 1. Calculate Team Metrics ---
+    let wins = 0, draws = 0, losses = 0;
+    let goalsFor = 0, goalsAgainst = 0;
+    let points = 0;
+
+    // Iterate through ALL historic games
+    historie.forEach(game => {
+        const homeGoals = game.score?.heim || 0;
+        const oppGoals = game.score?.gegner || 0;
+
+        // Assuming we are always "Heim" or context logic needs to handle Auswärts games if we track that
+        // But getHistorie() typically stores results. 
+        // Let's assume standard "My Team vs Opponent" logic where result.home is US.
+        // Actually, check if we track 'auswaerts' in history. Usually result.home/opponent.
+
+        let us, them;
+        // Simple logic: we are always home in the simple app context unless stated otherwise.
+        // But let's check game.teams.heim vs settings.
+        // For simplicity, let's assume result.home is US score and result.opponent is THEM.
+        // Ref: utils.js getGameResult might help, but let's do simple math.
+
+        // Better: Check win/loss based on scores
+        if (homeGoals > oppGoals) { wins++; points += 2; }
+        else if (homeGoals === oppGoals) { draws++; points += 1; }
+        else { losses++; }
+
+        goalsFor += homeGoals;
+        goalsAgainst += oppGoals;
+    });
+
+    const totalGames = wins + draws + losses;
+    const winRate = totalGames > 0 ? Math.round((wins / totalGames) * 100) : 0;
+    const goalDiff = goalsFor - goalsAgainst;
+    const diffSign = goalDiff > 0 ? '+' : '';
+
+    // Efficiency (Shot Conversion) - derived from players summary
+    let totalShots = 0;
+    let totalGoalsFromPlayers = 0; // Should match goalsFor roughly
+    summary.players.forEach(p => {
+        if (p.team === 'Heim') { // Only count our players
+            totalGoalsFromPlayers += (p.tore || 0);
+            const misses = (p.fehlwurf || 0) + ((p.siebenMeterVersuche || 0) - (p.siebenMeterTore || 0));
+            totalShots += (p.tore || 0) + misses;
+        }
+    });
+    const efficiency = totalShots > 0 ? Math.round((totalGoalsFromPlayers / totalShots) * 100) : 0;
+
+    // --- 2. Render KPI Cards ---
     seasonSummary.innerHTML = `
-        <div class="season-summary-grid">
+        <div class="season-summary-grid" style="grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));">
             <div class="season-summary-card">
-                <strong>${summary.totalGames}</strong>
-                <small>Spiele</small>
+                <strong>${points} : ${totalGames * 2 - points}</strong>
+                <small>Punkte (${wins}S / ${draws}U / ${losses}N)</small>
+            </div>
+             <div class="season-summary-card">
+                <strong style="color: ${winRate >= 50 ? '#4ade80' : '#f87171'}">${winRate}%</strong>
+                <small>Siegquote</small>
             </div>
             <div class="season-summary-card">
-                <strong>${summary.totalPlayers}</strong>
-                <small>Spieler</small>
+                <strong>${goalsFor} : ${goalsAgainst}</strong>
+                <small>Tore (${diffSign}${goalDiff})</small>
             </div>
-            <div class="season-summary-card">
-                <strong>${summary.totalTore}</strong>
-                <small>Tore gesamt</small>
+             <div class="season-summary-card">
+                <strong>${efficiency}%</strong>
+                <small>Wurfquote Team</small>
             </div>
-        </div>
-        <div class="season-sort-container">
-             <span style="font-size: 0.85rem; font-weight: 600; color: hsl(var(--muted-foreground));">Sortieren nach:</span>
-             <button id="sortByNumber" class="shadcn-btn-primary" style="height: 32px; font-size: 0.8rem; padding: 0 12px;">Nummer</button>
-             <button id="sortByGoals" class="shadcn-btn-outline" style="height: 32px; font-size: 0.8rem; padding: 0 12px;">Tore</button>
         </div>
     `;
 
+    // --- 3. Render Dashboard Content (Charts & Lists) ---
+    // Top Scorers logic
+    const topScorers = summary.players
+        .filter(p => p.team === 'Heim')
+        .sort((a, b) => b.tore - a.tore)
+        .slice(0, 5);
+
+    let scorersHtml = '<div class="season-card-modern"><h3><i data-lucide="medal"></i> Top Torschützen</h3><ul class="simple-list">';
+    topScorers.forEach((p, i) => {
+        scorersHtml += `
+            <li style="display:flex; justify-content:space-between; padding: 8px 0; border-bottom: 1px solid #333;">
+                <span>${i + 1}. <strong>${p.name || '#' + p.number}</strong></span>
+                <span>${p.tore} Tore (${p.wurfQuote})</span>
+            </li>`;
+    });
+    scorersHtml += '</ul></div>';
+
+    // Game History (Simple Bar Chars)
+    let historyHtml = '<div class="season-card-modern"><h3><i data-lucide="trending-up"></i> Saisonverlauf</h3><div style="display:flex; gap: 5px; height: 100px; align-items: flex-end; padding-top:10px;">';
+
+    // Normalize bars relative to max goals
+    const maxGoals = Math.max(40, ...historie.map(g => (g.score?.heim || 0)));
+
+    historie.forEach(game => {
+        const g = game.score?.heim || 0;
+        const isWin = (game.score?.heim || 0) > (game.score?.gegner || 0);
+        const isDraw = (game.score?.heim || 0) === (game.score?.gegner || 0);
+        const color = isWin ? '#4ade80' : (isDraw ? '#fbbf24' : '#f87171');
+        const height = Math.max(10, (g / maxGoals) * 100); // Min 10% height
+
+        historyHtml += `
+            <div style="flex:1; background:${color}; height:${height}%; border-radius: 4px 4px 0 0; position:relative; min-width: 10px;" title="${g} Tore vs ${game.teams?.gegner}">
+            </div>
+        `;
+    });
+    historyHtml += '</div><div style="text-align:center; font-size: 0.8rem; color: #888; margin-top:5px;">Spiele (Links = Ältestes)</div></div>';
+
+    // Build the grid
+    // Build the grid
+    seasonStatsContainer.innerHTML = `
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px;">
+            ${scorersHtml}
+            ${historyHtml}
+        </div>
+    `;
+
+    // Re-create Icons
+    if (typeof lucide !== 'undefined') lucide.createIcons();
+}
+
+// Rendert Saison-Statistiken (Player List - ORIGINAL LOGIC RENAMED)
+// Rendert Saison-Statistiken (Player List)
+export function renderPlayerSeasonStats(targetContainer = null) {
+    const summary = getSeasonSummary();
+    // Use passed container OR default to the submodule container
+    const seasonStatsContainer = targetContainer || document.getElementById('playerStatsListContainer');
+
+    if (!seasonStatsContainer) return;
+
+    // Remove sorting buttons container if it already exists (to avoid duplicates on re-render)
+    // Scope search to the *container* now, as we put the toolbar inside.
+    const existingSort = seasonStatsContainer.querySelector('.season-sort-container');
+    if (existingSort) existingSort.remove();
+
+    // Add Sort Buttons to Season Summary (temporarily, or maybe just inside the player container?)
+    // Originally they were in seasonSummary. Let's put them above the list in the new container for better isolation.
+    // Actually, following the original design, they were in seasonSummary. 
+    // But since seasonSummary is now used for Team KPIs, maybe we should put sorting controls inside playerStatsListContainer?
+    // Let's stick to putting them in playerStatsListContainer to keep "Team Stats" view clean.
+
+    // Correction: The new design puts team stats in seasonSummary. 
+    // So let's add a toolbar inside seasonStatsContainer (playerStatsListContainer).
+
     // Render Player Cards with Headers
     const renderList = (sortMode) => {
-        seasonStatsContainer.innerHTML = ''; // Revert to original container
+        seasonStatsContainer.innerHTML = '';
+
+        // Add Toolbar
+        const toolbar = document.createElement('div');
+        toolbar.className = 'season-sort-container';
+        toolbar.style.marginBottom = '15px';
+        toolbar.innerHTML = `
+             <span style="font-size: 0.85rem; font-weight: 600; color: hsl(var(--muted-foreground));">Sortieren nach:</span>
+             <button id="sortByNumber" class="${sortMode === 'number' ? 'shadcn-btn-primary' : 'shadcn-btn-outline'}" style="height: 32px; font-size: 0.8rem; padding: 0 12px;">Nummer</button>
+             <button id="sortByGoals" class="${sortMode === 'goals' ? 'shadcn-btn-primary' : 'shadcn-btn-outline'}" style="height: 32px; font-size: 0.8rem; padding: 0 12px;">Tore</button>
+        `;
+        seasonStatsContainer.appendChild(toolbar);
+
+        // Bind Toolbar Events
+        toolbar.querySelector('#sortByNumber').addEventListener('click', () => renderList('number'));
+        toolbar.querySelector('#sortByGoals').addEventListener('click', () => renderList('goals'));
 
         // Clone array to sort
         let players = [...summary.players];
 
         if (sortMode === 'goals') {
             players.sort((a, b) => {
-                // Heim vor Gegner, dann Alphabetisch nach Teamname, dann nach Toren
                 if (a.team !== b.team) {
                     if (a.team === 'Heim') return -1;
                     if (b.team === 'Heim') return 1;
@@ -87,7 +206,6 @@ export function renderSeasonStats() {
             });
         } else {
             players.sort((a, b) => {
-                // Heim vor Gegner, dann Alphabetisch nach Teamname, dann nach Nummer
                 if (a.team !== b.team) {
                     if (a.team === 'Heim') return -1;
                     if (b.team === 'Heim') return 1;
@@ -98,12 +216,14 @@ export function renderSeasonStats() {
         }
 
         if (players.length === 0) {
-            seasonStatsContainer.innerHTML = '<p style="text-align: center; color: #999; padding: 40px;">Keine Spieler-Daten vorhanden. Spiele zuerst einige Spiele und beende sie!</p>';
+            const msg = document.createElement('p');
+            msg.style.textAlign = 'center';
+            msg.style.color = '#999';
+            msg.style.padding = '40px';
+            msg.textContent = 'Keine Spieler-Daten vorhanden. Spiele zuerst einige Spiele und beende sie!';
+            seasonStatsContainer.appendChild(msg);
             return;
         }
-
-
-
 
         let currentTeam = null;
         let teamContainer = null;
@@ -140,12 +260,21 @@ export function renderSeasonStats() {
                 // Team Statistics Button
                 const teamStatsBtn = document.createElement('button');
                 teamStatsBtn.textContent = 'Team Grafik';
-                teamStatsBtn.className = 'show-team-heatmap-btn shadcn-btn-secondary'; // Changed class
-                teamStatsBtn.style.height = '32px'; // Changed height
+                teamStatsBtn.className = 'show-team-heatmap-btn shadcn-btn-secondary';
+                teamStatsBtn.style.height = '32px';
                 teamStatsBtn.style.fontSize = '0.75rem';
                 teamStatsBtn.style.padding = '0 10px';
-                teamStatsBtn.dataset.team = currentTeam; // Kept data-team attribute
-                // Removed addEventListener
+
+                // Capture team name in closure (prevent bug where all buttons reference last team)
+                const teamNameForButton = currentTeam;
+                teamStatsBtn.dataset.team = teamNameForButton;
+
+                // Add Listener locally since we are rendering fresh
+                teamStatsBtn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    import('./seasonView.js').then(mod => mod.showTeamHeatmap(teamNameForButton));
+                });
+
                 headerDiv.appendChild(teamStatsBtn);
 
                 // Create container for team players
@@ -201,26 +330,8 @@ export function renderSeasonStats() {
         });
     };
 
-    // Initial Render (Number sort is default)
+    // Initial Render
     renderList('number');
-
-    // Add Event Listeners for Sort Buttons
-    const btnNumber = seasonSummary.querySelector('#sortByNumber');
-    const btnGoals = seasonSummary.querySelector('#sortByGoals');
-
-    if (btnNumber && btnGoals) {
-        btnNumber.addEventListener('click', () => {
-            btnNumber.className = 'shadcn-btn-primary';
-            btnGoals.className = 'shadcn-btn-outline';
-            renderList('number');
-        });
-
-        btnGoals.addEventListener('click', () => {
-            btnNumber.className = 'shadcn-btn-outline';
-            btnGoals.className = 'shadcn-btn-primary';
-            renderList('goals');
-        });
-    }
 }
 
 // Erstellt Liste der Spiele für einen Spieler
@@ -425,14 +536,24 @@ function createPlayerCard(player, index) {
 
     details.innerHTML = statsTable + heatmapButtonsHtml;
 
-    // Render icons
-    if (typeof lucide !== 'undefined') lucide.createIcons({ root: details });
+    // FIX: Attach listeners immediately
+    const heatmapBtns = details.querySelectorAll('.show-heatmap-btn');
+    heatmapBtns.forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const mode = btn.dataset.mode;
+            showPlayerHeatmap(index, mode);
+        });
+    });
 
     // Add Game History List
     const historyList = renderGameHistoryList(player);
     if (historyList) {
         details.appendChild(historyList);
     }
+
+    // Render icons (Now includes history list icons)
+    if (typeof lucide !== 'undefined') lucide.createIcons({ root: details });
 
     // Toggle functionality
     header.addEventListener('click', () => {
@@ -494,13 +615,27 @@ export function showTeamHeatmap(teamName) {
 
     if (teamPlayers.length === 0) return;
 
+    // Check if we are viewing "My Team" (either literally 'Heim' or matching stored name)
+    const isMyTeam = teamName === 'Heim' || teamName === spielstand.settings.myTeamName || teamName === spielstand.settings.teamNameHeim;
+
+    // DEBUG: Log to console
+    console.log('[showTeamHeatmap] teamName:', teamName);
+    console.log('[showTeamHeatmap] spielstand.settings.myTeamName:', spielstand.settings.myTeamName);
+    console.log('[showTeamHeatmap] spielstand.settings.teamNameHeim:', spielstand.settings.teamNameHeim);
+    console.log('[showTeamHeatmap] isMyTeam:', isMyTeam);
+
+
     // Aggregiere alle seasonLog Einträge
     const allLogEntries = [];
     teamPlayers.forEach(player => {
         if (player.seasonLog) {
             allLogEntries.push(...player.seasonLog.map(e => ({
                 ...e,
-                number: e.playerId || player.number
+                number: e.playerId || player.number,
+                // FORCE identity based on the team container we are in.
+                // If it is my team -> isOpponent=false.
+                // If not my team -> isOpponent=true.
+                isOpponent: !isMyTeam
             })));
         }
     });
@@ -517,7 +652,7 @@ export function showTeamHeatmap(teamName) {
         log: allLogEntries,
         title: `Team Grafik - ${displayName} (${teamPlayers.length} Spieler)`,
         filter: {
-            team: teamName,
+            team: isMyTeam ? 'Heim' : teamName, // Normalize to 'Heim' for heatmap.js filter logic
             player: null // Team-wide
         },
         type: 'season-specific'

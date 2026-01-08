@@ -551,6 +551,13 @@ async function deleteEvent(id) {
 export async function addSubscription(url) {
     try {
         toast.info("Lade...", "Abo wird hinzugefügt...");
+
+        // Fix: Check for duplicates
+        if (spielstand.calendarSubscriptions && spielstand.calendarSubscriptions.some(sub => sub.url === url)) {
+            toast.warning("Info", "Dieser Kalender ist bereits abonniert.");
+            return;
+        }
+
         let fetchUrl = url.replace('webcal://', 'https://');
         const proxyUrl = 'https://corsproxy.io/?' + encodeURIComponent(fetchUrl);
 

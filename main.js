@@ -283,7 +283,10 @@ function navigateToView(view) {
             showHistoryView();
             break;
         case 'season':
-            showSeasonInline();
+            showSeasonInline(); // Now shows general season info
+            break;
+        case 'seasonStats':
+            showSeasonStatsInline(); // Shows the detailed stats
             break;
         case 'shots':
             showShotsInline();
@@ -502,35 +505,64 @@ export function showLiveOverviewInline() {
 
 // showDashboardInline moved to modules/dashboardView.js
 
+// General Season Overview (Player List "wie vorher")
 function showSeasonInline() {
     seasonBereich.classList.remove('versteckt');
 
-    // Create the required DOM structure directly in seasonContent
-    seasonContent.innerHTML = `
-        <div class="section-container" style="padding: 0;">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px;">
-                <h1>Saisonstatistiken</h1>
-            </div>
-            <div id="seasonSummary"></div>
-            <div id="seasonStatsContainer"></div>
-        </div>
-    `;
+    // Clear dynamic content logic if needed, but seasonContent exists.
+    // Import and render
+    import('./modules/seasonView.js').then(seasonView => {
+        const container = document.getElementById('seasonContent');
+        if (container) {
+            // Clean container first if needed to avoid stacking headers? 
+            // renderPlayerSeasonStats cleans innerHTML of the container.
+            // But seasonContent has <p> placeholder initially.
+            // Let's clear it once.
+            container.innerHTML = '';
 
+            // Add a title if missing
+            if (!container.querySelector('h3')) {
+                const title = document.createElement('h3');
+                title.textContent = 'Spieler Statistiken';
+                title.style.marginBottom = '1rem';
+                container.appendChild(title);
+
+                // Create a wrapper div for the list so we don't overwrite the title
+                const listWrapper = document.createElement('div');
+                container.appendChild(listWrapper);
+                seasonView.renderPlayerSeasonStats(listWrapper);
+            } else {
+                // Wrapper assumption
+                const listWrapper = container.querySelector('div') || container;
+                seasonView.renderPlayerSeasonStats(listWrapper);
+            }
+        }
+    });
+}
+
+function showSeasonStatsInline() {
+    const seasonStatsBereich = document.getElementById('seasonStatsBereich');
+    if (seasonStatsBereich) seasonStatsBereich.classList.remove('versteckt');
+
+    // Logic moved from previous showSeasonInline, now targeting seasonStatsBereich content
     import('./modules/seasonView.js').then(seasonView => {
         // Small delay to ensure DOM is ready
         setTimeout(() => {
-            // Verify elements exist
+            // Verify elements exist (they are now static in seasonStatsBereich, but we check IDs)
             const summary = document.getElementById('seasonSummary');
             const container = document.getElementById('seasonStatsContainer');
 
             if (summary && container) {
-                // Call renderSeasonStats which will now render into our inline elements
+                // Call renderSeasonStats
                 seasonView.renderSeasonStats();
 
                 // Wait for rendering to complete, then reattach event listeners
                 setTimeout(() => {
-                    // 1. Player heatmap buttons (Grafik and 7m Grafik)
-                    const heatmapButtons = seasonContent.querySelectorAll('.show-heatmap-btn');
+                    const contentArea = document.getElementById('seasonStatsContent'); // Limit scope
+                    if (!contentArea) return;
+
+                    // 1. Player heatmap buttons
+                    const heatmapButtons = contentArea.querySelectorAll('.show-heatmap-btn');
                     heatmapButtons.forEach(btn => {
                         btn.addEventListener('click', (e) => {
                             e.stopPropagation();
@@ -540,8 +572,8 @@ function showSeasonInline() {
                         });
                     });
 
-                    // 2. Team heatmap buttons (Team Grafik)
-                    const teamButtons = seasonContent.querySelectorAll('.show-team-heatmap-btn');
+                    // 2. Team heatmap buttons
+                    const teamButtons = contentArea.querySelectorAll('.show-team-heatmap-btn');
                     teamButtons.forEach(btn => {
                         btn.addEventListener('click', (e) => {
                             e.stopPropagation();
@@ -551,8 +583,7 @@ function showSeasonInline() {
                     });
                 }, 100);
             } else {
-                console.error('Season elements not found!', summary, container);
-                seasonContent.innerHTML = '<p style="padding: 20px;">Fehler beim Laden der Saisonstatistiken.</p>';
+                console.error('Season Stats elements not found!');
             }
         }, 50);
     });
@@ -1246,6 +1277,7 @@ function hideAllSections() {
     if (liveOverviewBereich) liveOverviewBereich.classList.add('versteckt');
     if (calendarBereich) calendarBereich.classList.add('versteckt');
     if (seasonBereich) seasonBereich.classList.add('versteckt');
+    if (seasonStatsBereich) seasonStatsBereich.classList.add('versteckt'); // Added
     if (shotsBereich) shotsBereich.classList.add('versteckt');
     if (exportBereich) exportBereich.classList.add('versteckt');
     const dashboardBereich = document.getElementById('dashboardBereich');

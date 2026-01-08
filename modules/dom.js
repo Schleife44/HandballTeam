@@ -31,6 +31,7 @@ export const spielBereich = document.getElementById('spielBereich');
 export const liveOverviewBereich = document.getElementById('liveOverviewBereich');
 export const liveOverviewContent = document.getElementById('liveOverviewContent');
 export const seasonBereich = document.getElementById('seasonBereich');
+export const seasonStatsBereich = document.getElementById('seasonStatsBereich'); // New
 export const seasonContent = document.getElementById('seasonContent');
 export const teamDiagrammBereich = document.getElementById('teamDiagrammBereich');
 export const teamDiagrammContent = document.getElementById('teamDiagrammContent');

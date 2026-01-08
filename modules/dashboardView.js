@@ -38,7 +38,20 @@ export function showDashboardInline() {
         </div>
 
         <div class="season-grid-panels" style="margin-bottom: 0;">
-                <!-- 1. Last Results List -->
+    
+            <!-- 0. Next Event Panel (NEW) -->
+            <div class="season-panel" style="min-height: 140px; box-shadow: none; border: 1px solid var(--border-color); background: linear-gradient(to bottom right, var(--bg-card), var(--bg-secondary));">
+                <div class="season-panel-title" style="display:flex; justify-content:space-between; align-items:center;">
+                    <span>Nächster Termin</span>
+                    <i data-lucide="calendar" style="width:16px; height:16px; opacity:0.7;"></i>
+                </div>
+                <div id="dashNextEvent" style="flex: 1; display: flex; flex-direction: column; justify-content: center; padding: 10px 0;">
+                    <!-- JS Injected Content -->
+                    <div style="text-align:center; color: var(--text-muted); font-style:italic;">Keine anstehenden Termine</div>
+                </div>
+            </div>
+
+            <!-- 1. Last Results List -->
             <div class="season-panel" style="min-height: 200px; box-shadow: none; border: 1px solid var(--border-color);">
                 <div class="season-panel-title">Letzte Ergebnisse</div>
                 <div class="last-results-list" id="dashLastResults"></div>
@@ -283,6 +296,51 @@ export function showDashboardInline() {
         // List of last 5 games (reversed for list view)
         const lastGames = [...history].sort((a, b) => new Date(b.date) - new Date(a.date)).slice(0, 5);
 
+        // --- POPULATE DASHBOARD ---
+
+        // 0. Next Event Logic
+        const nextEventContainer = document.getElementById('dashNextEvent');
+        if (nextEventContainer && spielstand.calendarEvents) {
+            const now = new Date();
+            const todayStr = now.toISOString().slice(0, 10);
+
+            // Filter events: Date >= Today
+            // Note: This matches today's events even if time passed, which is usually desired "Today's Event"
+            let futureEvents = spielstand.calendarEvents.filter(e => e.date >= todayStr);
+
+            // Sort by Date then Time
+            futureEvents.sort((a, b) => {
+                if (a.date !== b.date) return a.date.localeCompare(b.date);
+                return (a.time || '00:00').localeCompare(b.time || '00:00');
+            });
+
+            if (futureEvents.length > 0) {
+                const nextEv = futureEvents[0];
+                const dateObj = new Date(nextEv.date);
+                const dateFmt = dateObj.toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric' });
+                const dayName = dateObj.toLocaleDateString('de-DE', { weekday: 'long' });
+
+                let typeColor = 'var(--text-main)';
+                let typeLabel = 'Termin';
+                if (nextEv.type === 'game') { typeColor = '#ef4444'; typeLabel = 'Spiel'; } // Red
+                else if (nextEv.type === 'training') { typeColor = '#3b82f6'; typeLabel = 'Training'; } // Blue
+
+                nextEventContainer.innerHTML = `
+                <div style="font-size: 1.1rem; font-weight: 700; margin-bottom: 4px;">${nextEv.title}</div>
+                <div style="display:flex; align-items:center; gap:8px; justify-content:center; color: var(--text-muted); font-size: 0.9rem; margin-bottom: 6px;">
+                    <span style="font-weight:600; color:${typeColor}; background: ${typeColor}20; padding: 2px 8px; border-radius: 4px; font-size: 0.75rem;">${typeLabel}</span>
+                </div>
+                <div style="font-size: 0.95rem; font-weight: 500;">
+                    ${dayName}, ${dateFmt} <span style="margin: 0 4px; opacity:0.5;">|</span> ${nextEv.time} Uhr
+                </div>
+                ${nextEv.location ? `<div style="font-size: 0.85rem; color: var(--text-muted); margin-top: 4px;"><i data-lucide="map-pin" style="width:12px; height:12px; vertical-align:text-top;"></i> ${nextEv.location}</div>` : ''}
+            `;
+            } else {
+                nextEventContainer.innerHTML = `<div style="text-align:center; color: var(--text-muted); font-style:italic;">Keine anstehenden Termine</div>`;
+            }
+        }
+
+        // 1. Last Results Logic
         const listContainer = document.getElementById('dashLastResults');
         if (listContainer) {
             listContainer.innerHTML = lastGames.map(g => {

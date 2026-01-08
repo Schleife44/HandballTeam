@@ -72,8 +72,12 @@
                 <span class="nav-label">Video Analyse</span>
             </div>
             <div class="nav-item" data-view="season">
-                <span class="nav-icon"><i data-lucide="trophy"></i></span>
+                <span class="nav-icon"><i data-lucide="calendar-days"></i></span>
                 <span class="nav-label">Saison</span>
+            </div>
+            <div class="nav-item" data-view="seasonStats">
+                <span class="nav-icon"><i data-lucide="bar-chart-2"></i></span>
+                <span class="nav-label">Saison Statistiken</span>
             </div>
             <div class="nav-item" data-view="seasonheatmap">
                 <span class="nav-icon"><i data-lucide="activity"></i></span>
@@ -430,10 +434,27 @@
             <div id="liveOverviewContent"></div>
         </div>
 
-        <!-- Season Overview Page Section -->
+        <!-- Season Overview Page Section (Legacy/Table) -->
         <div id="seasonBereich" class="content-section versteckt">
-            <h2>Saisonstatistiken</h2>
-            <div id="seasonContent"></div>
+            <h2>Saison</h2>
+            <div id="seasonContent">
+                <p>Hier könnte die Spielplan-Übersicht oder Tabelle stehen.</p>
+            </div>
+        </div>
+
+        <!-- Season Stats Page Section (New) -->
+        <div id="seasonStatsBereich" class="content-section versteckt">
+            <h2>Saison Statistiken</h2>
+
+            <div id="seasonStatsContent">
+                <div id="seasonSummary" class="season-summary-grid-container" style="margin-bottom: 2rem;">
+                    <!-- JS Populated -->
+                </div>
+
+                <div id="seasonStatsContainer" class="season-stats-main-container">
+                    <!-- JS Populated (Player Cards) -->
+                </div>
+            </div>
         </div>
 
         <!-- Team Diagramm Page Section (New) -->
@@ -878,8 +899,7 @@
             <div style="margin-top: 20px; display: flex; gap: 10px; flex-wrap: wrap;">
                 <button id="importSpielButton" class="shadcn-btn-primary">Spiel importieren</button>
                 <input type="file" id="importSpielInput" class="versteckt" accept=".json">
-                <button id="exportHistorieButton" class="shadcn-btn-outline">Alle Spiele exportieren
-                    (Backup)</button>
+                <button id="exportHistorieButton" class="shadcn-btn-outline">Alle Spiele exportieren (Backup)</button>
             </div>
         </div>
 
@@ -1519,274 +1539,78 @@
 
                     <!-- Content: Stats -->
                     <div id="liveOverviewContentStats">
-                        <div class="statistik-container">
-                            <table id="liveOverviewStatsTable">
-                                <thead>
-                                    <tr>
-                                        <th>Spieler</th>
-                                        <th title="Spielzeit">Zeit</th>
-                                        <th title="Tore">Tor <svg xmlns="http://www.w3.org/2000/svg" width="12"
-                                                height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                                                stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
-                                                class="tooltip-icon">
-                                                <circle cx="12" cy="12" r="10" />
-                                                <path d="M12 16v-4" />
-                                                <path d="M12 8h.01" />
-                                            </svg></th>
-                                        <th title="Feldtore">Feldtore <svg xmlns="http://www.w3.org/2000/svg" width="12"
-                                                height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                                                stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
-                                                class="tooltip-icon">
-                                                <circle cx="12" cy="12" r="10" />
-                                                <path d="M12 16v-4" />
-                                                <path d="M12 8h.01" />
-                                            </svg></th>
-                                        <th title="7-Meter Tore/Versuche">7m <svg xmlns="http://www.w3.org/2000/svg"
-                                                width="12" height="12" viewBox="0 0 24 24" fill="none"
-                                                stroke="currentColor" stroke-width="2" stroke-linecap="round"
-                                                stroke-linejoin="round" class="tooltip-icon">
-                                                <circle cx="12" cy="12" r="10" />
-                                                <path d="M12 16v-4" />
-                                                <path d="M12 8h.01" />
-                                            </svg></th>
-                                        <th title="Fehlwürfe">Fehlwurf <svg xmlns="http://www.w3.org/2000/svg"
-                                                width="12" height="12" viewBox="0 0 24 24" fill="none"
-                                                stroke="currentColor" stroke-width="2" stroke-linecap="round"
-                                                stroke-linejoin="round" class="tooltip-icon">
-                                                <circle cx="12" cy="12" r="10" />
-                                                <path d="M12 16v-4" />
-                                                <path d="M12 8h.01" />
-                                            </svg></th>
-                                        <th title="Wurfquote">Quote <svg xmlns="http://www.w3.org/2000/svg" width="12"
-                                                height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                                                stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
-                                                class="tooltip-icon">
-                                                <circle cx="12" cy="12" r="10" />
-                                                <path d="M12 16v-4" />
-                                                <path d="M12 8h.01" />
-                                            </svg></th>
-                                        <th title="Ballverlust">BV <svg xmlns="http://www.w3.org/2000/svg" width="12"
-                                                height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                                                stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
-                                                class="tooltip-icon">
-                                                <circle cx="12" cy="12" r="10" />
-                                                <path d="M12 16v-4" />
-                                                <path d="M12 8h.01" />
-                                            </svg></th>
-                                        <th title="Stürmerfoul">SF <svg xmlns="http://www.w3.org/2000/svg" width="12"
-                                                height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                                                stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
-                                                class="tooltip-icon">
-                                                <circle cx="12" cy="12" r="10" />
-                                                <path d="M12 16v-4" />
-                                                <path d="M12 8h.01" />
-                                            </svg></th>
-                                        <th title="Block">Blk <svg xmlns="http://www.w3.org/2000/svg" width="12"
-                                                height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                                                stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
-                                                class="tooltip-icon">
-                                                <circle cx="12" cy="12" r="10" />
-                                                <path d="M12 16v-4" />
-                                                <path d="M12 8h.01" />
-                                            </svg></th>
-                                        <th title="1 gegen 1 Gewonnen">1v1 <svg xmlns="http://www.w3.org/2000/svg"
-                                                width="12" height="12" viewBox="0 0 24 24" fill="none"
-                                                stroke="currentColor" stroke-width="2" stroke-linecap="round"
-                                                stroke-linejoin="round" class="tooltip-icon">
-                                                <circle cx="12" cy="12" r="10" />
-                                                <path d="M12 16v-4" />
-                                                <path d="M12 8h.01" />
-                                            </svg></th>
-                                        <th title="1 gegen 1 Verloren">1v1- <svg xmlns="http://www.w3.org/2000/svg"
-                                                width="12" height="12" viewBox="0 0 24 24" fill="none"
-                                                stroke="currentColor" stroke-width="2" stroke-linecap="round"
-                                                stroke-linejoin="round" class="tooltip-icon">
-                                                <circle cx="12" cy="12" r="10" />
-                                                <path d="M12 16v-4" />
-                                                <path d="M12 8h.01" />
-                                            </svg></th>
-                                        <th title="7m herausgeholt">7m+ <svg xmlns="http://www.w3.org/2000/svg"
-                                                width="12" height="12" viewBox="0 0 24 24" fill="none"
-                                                stroke="currentColor" stroke-width="2" stroke-linecap="round"
-                                                stroke-linejoin="round" class="tooltip-icon">
-                                                <circle cx="12" cy="12" r="10" />
-                                                <path d="M12 16v-4" />
-                                                <path d="M12 8h.01" />
-                                            </svg></th>
-                                        <th title="2 Minuten herausgeholt">2m+ <svg xmlns="http://www.w3.org/2000/svg"
-                                                width="12" height="12" viewBox="0 0 24 24" fill="none"
-                                                stroke="currentColor" stroke-width="2" stroke-linecap="round"
-                                                stroke-linejoin="round" class="tooltip-icon">
-                                                <circle cx="12" cy="12" r="10" />
-                                                <path d="M12 16v-4" />
-                                                <path d="M12 8h.01" />
-                                            </svg></th>
-                                        <th title="Gelbe Karte">G <svg xmlns="http://www.w3.org/2000/svg" width="12"
-                                                height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                                                stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
-                                                class="tooltip-icon">
-                                                <circle cx="12" cy="12" r="10" />
-                                                <path d="M12 16v-4" />
-                                                <path d="M12 8h.01" />
-                                            </svg></th>
-                                        <th title="2 Minuten Zeitstrafe">2' <svg xmlns="http://www.w3.org/2000/svg"
-                                                width="12" height="12" viewBox="0 0 24 24" fill="none"
-                                                stroke="currentColor" stroke-width="2" stroke-linecap="round"
-                                                stroke-linejoin="round" class="tooltip-icon">
-                                                <circle cx="12" cy="12" r="10" />
-                                                <path d="M12 16v-4" />
-                                                <path d="M12 8h.01" />
-                                            </svg></th>
-                                        <th title="Rote Karte">R <svg xmlns="http://www.w3.org/2000/svg" width="12"
-                                                height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                                                stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
-                                                class="tooltip-icon">
-                                                <circle cx="12" cy="12" r="10" />
-                                                <path d="M12 16v-4" />
-                                                <path d="M12 8h.01" />
-                                            </svg></th>
-                                        <th title="Wurfbild">WB <svg xmlns="http://www.w3.org/2000/svg" width="12"
-                                                height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                                                stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
-                                                class="tooltip-icon">
-                                                <circle cx="12" cy="12" r="10" />
-                                                <path d="M12 16v-4" />
-                                                <path d="M12 8h.01" />
-                                            </svg></th>
-                                    </tr>
-                                </thead>
-                                <tbody id="liveOverviewStatsBody"></tbody>
-                            </table>
+                        <!-- Heim Stats Card -->
+                        <div
+                            style="background: var(--bg-container); border-radius: 12px; padding: 15px; border: 1px solid var(--border-color); margin-bottom: 20px; min-width: 0;">
+                            <div
+                                style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; border-bottom: 1px solid var(--border-color); padding-bottom: 10px;">
+                                <h4 id="liveOverviewTeamHeimTitle"
+                                    style="margin: 0; font-size: 1.1rem; color: var(--team-primary-color);">Heim</h4>
+                            </div>
+                            <div style="overflow-x: auto; display: block; width: 100%; max-width: 100%;">
+                                <table class="modern-stats-table"
+                                    style="display: block; width: max-content !important; min-width: 800px !important; border-collapse: collapse;">
+                                    <thead>
+                                        <tr style="text-align: left; color: var(--text-muted); font-size: 0.75rem;">
+                                            <th style="padding: 8px;">SPIELER</th>
+                                            <th style="padding: 8px;">ZEIT</th>
+                                            <th style="padding: 8px;">TORE</th>
+                                            <th style="padding: 8px;">FELD</th>
+                                            <th style="padding: 8px;">7m</th>
+                                            <th style="padding: 8px;">FEHL</th>
+                                            <th style="padding: 8px;">QUOTE</th>
+                                            <th style="padding: 8px;">BALL</th>
+                                            <th style="padding: 8px;">FOUL</th>
+                                            <th style="padding: 8px;">BLK</th>
+                                            <th style="padding: 8px;">1v1+</th>
+                                            <th style="padding: 8px;">1v1-</th>
+                                            <th style="padding: 8px;">7m+</th>
+                                            <th style="padding: 8px;">2m+</th>
+                                            <th style="padding: 8px;">G</th>
+                                            <th style="padding: 8px;">2'</th>
+                                            <th style="padding: 8px;">R</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="liveOverviewStatsBody" style="font-size: 0.85rem;"></tbody>
+                                </table>
+                            </div>
+                        </div>
 
-                            <h3 style="margin-top: 20px;">Gegner</h3>
-                            <table id="liveOverviewStatsGegnerTable">
-                                <thead>
-                                    <tr>
-                                        <th>Name</th>
-                                        <th title="Tore">Tor <svg xmlns="http://www.w3.org/2000/svg" width="12"
-                                                height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                                                stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
-                                                class="tooltip-icon">
-                                                <circle cx="12" cy="12" r="10" />
-                                                <path d="M12 16v-4" />
-                                                <path d="M12 8h.01" />
-                                            </svg></th>
-                                        <th title="Feldtore">Feldtore <svg xmlns="http://www.w3.org/2000/svg" width="12"
-                                                height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                                                stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
-                                                class="tooltip-icon">
-                                                <circle cx="12" cy="12" r="10" />
-                                                <path d="M12 16v-4" />
-                                                <path d="M12 8h.01" />
-                                            </svg></th>
-                                        <th title="7-Meter Tore/Versuche">7m <svg xmlns="http://www.w3.org/2000/svg"
-                                                width="12" height="12" viewBox="0 0 24 24" fill="none"
-                                                stroke="currentColor" stroke-width="2" stroke-linecap="round"
-                                                stroke-linejoin="round" class="tooltip-icon">
-                                                <circle cx="12" cy="12" r="10" />
-                                                <path d="M12 16v-4" />
-                                                <path d="M12 8h.01" />
-                                            </svg></th>
-                                        <th title="Fehlwürfe">Fehlwurf <svg xmlns="http://www.w3.org/2000/svg"
-                                                width="12" height="12" viewBox="0 0 24 24" fill="none"
-                                                stroke="currentColor" stroke-width="2" stroke-linecap="round"
-                                                stroke-linejoin="round" class="tooltip-icon">
-                                                <circle cx="12" cy="12" r="10" />
-                                                <path d="M12 16v-4" />
-                                                <path d="M12 8h.01" />
-                                            </svg></th>
-                                        <th title="Wurfquote">Quote <svg xmlns="http://www.w3.org/2000/svg" width="12"
-                                                height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                                                stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
-                                                class="tooltip-icon">
-                                                <circle cx="12" cy="12" r="10" />
-                                                <path d="M12 16v-4" />
-                                                <path d="M12 8h.01" />
-                                            </svg></th>
-                                        <th title="Ballverlust">BV <svg xmlns="http://www.w3.org/2000/svg" width="12"
-                                                height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                                                stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
-                                                class="tooltip-icon">
-                                                <circle cx="12" cy="12" r="10" />
-                                                <path d="M12 16v-4" />
-                                                <path d="M12 8h.01" />
-                                            </svg></th>
-                                        <th title="Stürmerfoul">SF <svg xmlns="http://www.w3.org/2000/svg" width="12"
-                                                height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                                                stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
-                                                class="tooltip-icon">
-                                                <circle cx="12" cy="12" r="10" />
-                                                <path d="M12 16v-4" />
-                                                <path d="M12 8h.01" />
-                                            </svg></th>
-                                        <th title="Block">Blk <svg xmlns="http://www.w3.org/2000/svg" width="12"
-                                                height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                                                stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
-                                                class="tooltip-icon">
-                                                <circle cx="12" cy="12" r="10" />
-                                                <path d="M12 16v-4" />
-                                                <path d="M12 8h.01" />
-                                            </svg></th>
-                                        <th title="1 gegen 1 Verloren">1v1 V <svg xmlns="http://www.w3.org/2000/svg"
-                                                width="12" height="12" viewBox="0 0 24 24" fill="none"
-                                                stroke="currentColor" stroke-width="2" stroke-linecap="round"
-                                                stroke-linejoin="round" class="tooltip-icon">
-                                                <circle cx="12" cy="12" r="10" />
-                                                <path d="M12 16v-4" />
-                                                <path d="M12 8h.01" />
-                                            </svg></th>
-                                        <th title="7m verursacht">7m+ <svg xmlns="http://www.w3.org/2000/svg" width="12"
-                                                height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                                                stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
-                                                class="tooltip-icon">
-                                                <circle cx="12" cy="12" r="10" />
-                                                <path d="M12 16v-4" />
-                                                <path d="M12 8h.01" />
-                                            </svg></th>
-                                        <th title="2 Minuten verursacht">2m+ <svg xmlns="http://www.w3.org/2000/svg"
-                                                width="12" height="12" viewBox="0 0 24 24" fill="none"
-                                                stroke="currentColor" stroke-width="2" stroke-linecap="round"
-                                                stroke-linejoin="round" class="tooltip-icon">
-                                                <circle cx="12" cy="12" r="10" />
-                                                <path d="M12 16v-4" />
-                                                <path d="M12 8h.01" />
-                                            </svg></th>
-                                        <th title="Gelbe Karte">G <svg xmlns="http://www.w3.org/2000/svg" width="12"
-                                                height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                                                stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
-                                                class="tooltip-icon">
-                                                <circle cx="12" cy="12" r="10" />
-                                                <path d="M12 16v-4" />
-                                                <path d="M12 8h.01" />
-                                            </svg></th>
-                                        <th title="2 Minuten Zeitstrafe">2' <svg xmlns="http://www.w3.org/2000/svg"
-                                                width="12" height="12" viewBox="0 0 24 24" fill="none"
-                                                stroke="currentColor" stroke-width="2" stroke-linecap="round"
-                                                stroke-linejoin="round" class="tooltip-icon">
-                                                <circle cx="12" cy="12" r="10" />
-                                                <path d="M12 16v-4" />
-                                                <path d="M12 8h.01" />
-                                            </svg></th>
-                                        <th title="Rote Karte">R <svg xmlns="http://www.w3.org/2000/svg" width="12"
-                                                height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                                                stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
-                                                class="tooltip-icon">
-                                                <circle cx="12" cy="12" r="10" />
-                                                <path d="M12 16v-4" />
-                                                <path d="M12 8h.01" />
-                                            </svg></th>
-                                        <th title="Wurfbild">WB <svg xmlns="http://www.w3.org/2000/svg" width="12"
-                                                height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                                                stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
-                                                class="tooltip-icon">
-                                                <circle cx="12" cy="12" r="10" />
-                                                <path d="M12 16v-4" />
-                                                <path d="M12 8h.01" />
-                                            </svg></th>
-                                    </tr>
-                                </thead>
-                                <tbody id="liveOverviewStatsGegnerBody"></tbody>
-                            </table>
+                        <!-- Gegner Stats Card -->
+                        <div
+                            style="background: var(--bg-container); border-radius: 12px; padding: 15px; border: 1px solid var(--border-color); min-width: 0;">
+                            <div
+                                style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; border-bottom: 1px solid var(--border-color); padding-bottom: 10px;">
+                                <h4 id="liveOverviewTeamGegnerTitle"
+                                    style="margin: 0; font-size: 1.1rem; color: var(--team-opponent-color);">Gegner</h4>
+                            </div>
+                            <div style="overflow-x: auto; display: block; width: 100%; max-width: 100%;">
+                                <table class="modern-stats-table"
+                                    style="display: block; width: max-content !important; min-width: 800px !important; border-collapse: collapse;">
+                                    <thead>
+                                        <tr style="text-align: left; color: var(--text-muted); font-size: 0.75rem;">
+                                            <th style="padding: 8px;">SPIELER</th>
+                                            <th style="padding: 8px;">ZEIT</th>
+                                            <th style="padding: 8px;">TORE</th>
+                                            <th style="padding: 8px;">FELD</th>
+                                            <th style="padding: 8px;">7m</th>
+                                            <th style="padding: 8px;">FEHL</th>
+                                            <th style="padding: 8px;">QUOTE</th>
+                                            <th style="padding: 8px;">BALL</th>
+                                            <th style="padding: 8px;">FOUL</th>
+                                            <th style="padding: 8px;">BLK</th>
+                                            <th style="padding: 8px;">1v1+</th>
+                                            <th style="padding: 8px;">1v1-</th>
+                                            <th style="padding: 8px;">7m+</th>
+                                            <th style="padding: 8px;">2m+</th>
+                                            <th style="padding: 8px;">G</th>
+                                            <th style="padding: 8px;">2'</th>
+                                            <th style="padding: 8px;">R</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="liveOverviewStatsGegnerBody" style="font-size: 0.85rem;"></tbody>
+                                </table>
+                            </div>
                         </div>
                     </div>
 

@@ -1794,7 +1794,7 @@ function applySuspensionToPlayer(player, teamKey, playerIndex, actionType) {
             // Inject automatic Red Card log
             const isOpponent = teamKey === 'opponent';
             const logActionName = isOpponent ? "Gegner Rot" : "Rote Karte";
-            customAlert("3. Zeitstrafe -> Automatisch Rot!", "Disqualifikation");
+            toast.error("3. Zeitstrafe -> Automatisch Rot!", (player.name || (isOpponent ? "Gegner" : "Spieler")) + " #" + player.number);
 
             // We need to add this to the log, but logAktion might act weird if we recurse. 
             // Just push to log directly since it's a consequence.

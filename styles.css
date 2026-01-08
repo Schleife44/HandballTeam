@@ -876,6 +876,20 @@ tr:hover td {
     margin-bottom: 2rem;
 }
 
+.chart-container {
+    position: relative;
+    width: 100%;
+    overflow: hidden;
+    /* Prevent spillover */
+}
+
+.chart-container canvas {
+    width: 100% !important;
+    height: 100% !important;
+    display: block;
+    /* Remove inline spacing */
+}
+
 .season-panel-title {
     font-size: 1rem;
     font-weight: 600;
@@ -1522,7 +1536,6 @@ select.shadcn-select-native option {
 }
 
 .modern-stats-table {
-    width: 100%;
     border-collapse: collapse;
     font-size: 0.875rem;
 }
@@ -1534,12 +1547,14 @@ select.shadcn-select-native option {
     color: hsl(var(--muted-foreground));
     font-weight: 500;
     background: hsl(var(--muted) / 0.5);
+    white-space: nowrap !important;
 }
 
 .modern-stats-table td {
     padding: 0.75rem;
     border-bottom: 1px solid hsl(var(--border) / 0.5);
     color: hsl(var(--foreground));
+    white-space: nowrap !important;
 }
 
 .modern-stats-table tr:last-child td {
@@ -2387,18 +2402,19 @@ body.dark-mode .heatmap-tab.white-style:not(.active) {
 
     /* 2. Dashboard Grid Optimization */
     .season-grid-panels {
-        display: flex;
-        flex-direction: column;
-        gap: 20px;
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+        gap: 15px;
     }
 
     /* Force Cards to full width */
     .season-panel,
     .stats-card {
-        grid-column: span 1 !important;
-        /* Override inline styles */
-        width: 100% !important;
+        /* grid-column: span 1 !important;  -- REMOVED to let grid handle flow */
+        /* width: 100% !important; -- REMOVED to let grid handle width */
         margin-bottom: 0;
+        min-height: auto !important;
+        /* Allow height to shrink if content allows */
     }
 
     /* Live Overview Columns */
@@ -4279,33 +4295,52 @@ th {
         margin: 0 0 2px 0 !important;
     }
 
-    /* Very Compact Player Buttons - Force 2 columns */
+    /* Very Compact Player Buttons - Force 3 columns */
     .game-player-grid {
-        grid-template-columns: repeat(2, 1fr) !important;
-        gap: 3px !important;
+        grid-template-columns: repeat(3, 1fr) !important;
+        gap: 2px !important;
     }
 
+    .game-player-grid .spieler-button,
     .game-player-grid .player-btn {
-        padding: 3px 4px !important;
-        font-size: 0.6rem !important;
-        min-height: 32px !important;
+        padding: 2px 3px !important;
+        font-size: 0.55rem !important;
+        min-height: 35px !important;
+        height: auto !important;
     }
 
-    .game-player-grid .player-btn .player-time {
+    .game-player-grid .spieler-button .spieler-nummer-display,
+    .game-player-grid .player-btn .spieler-nummer-display {
+        font-size: 0.9rem !important;
+    }
+
+    .game-player-grid .spieler-button .spieler-name-display,
+    .game-player-grid .player-btn .spieler-name-display {
         font-size: 0.5rem !important;
+        line-height: 1 !important;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        width: 100%;
+        display: block;
+    }
+
+    .game-player-grid .player-btn .player-time,
+    .game-player-grid .spieler-button .player-time-display {
+        font-size: 0.45rem !important;
     }
 
     /* Compact Top Bar */
     .game-top-bar {
-        padding: 6px !important;
-        gap: 8px !important;
+        padding: 4px !important;
+        gap: 6px !important;
         flex-wrap: wrap !important;
         /* Allow wrapping */
         justify-content: center;
     }
 
     .compact-timer {
-        font-size: 1rem !important;
+        font-size: 0.9rem !important;
     }
 
     /* Override specifically for simple mode on mobile to allow more columns */
@@ -4530,31 +4565,26 @@ th {
         padding: 1px 2px !important;
     }
 
-    /* Player buttons fill available space */
+    /* Player buttons fill available space - FORCE 3 columns */
     .game-player-grid {
-        grid-template-columns: repeat(2, 1fr) !important;
+        grid-template-columns: repeat(3, 1fr) !important;
         gap: 2px !important;
     }
 
+    .game-player-grid .spieler-button,
     .game-player-grid .player-btn {
         padding: 2px 3px !important;
-        font-size: 0.55rem !important;
-        min-height: 28px !important;
+        font-size: 0.5rem !important;
+        min-height: 32px !important;
     }
 
+    .game-player-grid .spieler-button .player-time-display,
     .game-player-grid .player-btn .player-time {
         display: none !important;
     }
 }
 
-/* Force 2 columns for 1360px and below, overriding any desktop styles */
-@media screen and (max-width: 1360px) {
-    .game-player-grid {
-        display: grid !important;
-        grid-template-columns: repeat(2, 1fr) !important;
-        gap: 4px !important;
-    }
-}
+/* Force 2 columns/rows logic was here, removed or replaced by 768px logic below */
 
 /* Force action buttons to wrap earlier (under 1540px) */
 @media screen and (max-width: 1540px) {
@@ -4566,7 +4596,8 @@ th {
 }
 
 /* FINAL ROBUST OVERRIDE for Simple Mode (User wants side-by-side!) */
-@media screen and (max-width: 1360px) {
+/* FINAL ROBUST OVERRIDE for Simple Mode (User wants side-by-side!) */
+@media screen and (max-width: 768px) {
 
     /* 1. Split View Stack: Scoreboard on top, Roster Area below */
     #spielBereich.simple-mode .game-split-view {
@@ -4633,20 +4664,20 @@ th {
         margin: 0 0 8px 0 !important;
     }
 
-    /* 3. Player Grid - FORCE 4 COLUMNS & CLOSE TOGETHER */
+    /* 3. Player Grid - FORCE 3 COLUMNS ON MOBILE & COMPACT */
     #spielBereich.simple-mode .game-player-grid {
         display: grid !important;
-        grid-template-columns: repeat(4, 65px) !important;
-        gap: 4px !important;
-        width: fit-content !important;
+        grid-template-columns: repeat(3, 1fr) !important;
+        gap: 3px !important;
+        width: 100% !important;
         padding: 0 !important;
     }
 
-    /* 4. Enforce button size strictly */
+    /* 4. Enforce smaller button size strictly */
     #spielBereich.simple-mode .spieler-button {
         width: 100% !important;
-        max-width: 65px !important;
-        height: 60px !important;
+        max-width: none !important;
+        height: 52px !important;
         margin: 0 !important;
         padding: 2px !important;
         display: flex !important;
@@ -4657,34 +4688,52 @@ th {
     }
 
     #spielBereich.simple-mode .spieler-nummer-display {
-        font-size: 1rem !important;
+        font-size: 0.95rem !important;
     }
 
     #spielBereich.simple-mode .spieler-name-display {
-        font-size: 0.6rem !important;
+        font-size: 0.55rem !important;
+        line-height: 1 !important;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        width: 100%;
+        display: block;
     }
 
-    /* 5. TOP BAR SCALING for smaller mobile */
-    @media screen and (max-width: 778px) {
-        #spielBereich.simple-mode .game-top-bar {
-            transform: scale(1.0) !important;
-            transform-origin: top center !important;
-            margin-bottom: 0 !important;
-        }
-
-        #spielBereich.simple-mode .compact-score {
-            font-size: 1rem !important;
-        }
-
-        #spielBereich.simple-mode .compact-timer-display {
-            font-size: 1.4rem !important;
-        }
-
-        #spielBereich.simple-mode .compact-team-name {
-            font-size: 0.75rem !important;
-            max-width: 80px !important;
-            overflow: hidden !important;
-            text-overflow: ellipsis !important;
-        }
+    #spielBereich.simple-mode .game-top-bar {
+        transform: scale(1.0) !important;
+        transform-origin: top center !important;
+        margin-bottom: 0 !important;
     }
+
+    #spielBereich.simple-mode .compact-score {
+        font-size: 1rem !important;
+    }
+
+    #spielBereich.simple-mode .compact-timer-display {
+        font-size: 1.4rem !important;
+    }
+
+    #spielBereich.simple-mode .compact-team-name {
+        font-size: 0.75rem !important;
+        max-width: 80px !important;
+        overflow: hidden !important;
+        text-overflow: ellipsis !important;
+    }
+}
+
+/* FIX for Live Overview Horizontal Scrolling */
+#liveOverviewBereich:not(.versteckt),
+#liveOverviewContent:not(.versteckt),
+#liveGameOverviewModal .shadcn-modal-body:not(.versteckt) {
+    overflow-x: auto !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    display: block !important;
+}
+
+#liveOverviewBereich>div,
+#liveOverviewContent>div {
+    max-width: 100% !important;
 }

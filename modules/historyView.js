@@ -213,6 +213,15 @@ export function renderHistoryList() {
 // --- Render Home Stats in History ---
 export function renderHomeStatsInHistory(tbody, statsData, gameLog, isLive = false, stayInHeatmap = false, renderBound = null) {
     tbody.innerHTML = '';
+    // Force styles on parent table to be sure
+    if (tbody.parentElement) {
+        tbody.parentElement.style.cssText = "display: block !important; width: max-content !important; min-width: 800px !important; border-collapse: collapse !important;";
+        tbody.parentElement.style.tableLayout = "auto";
+        // Force parent scroll container
+        if (tbody.parentElement.parentElement) {
+            tbody.parentElement.parentElement.style.cssText = "overflow-x: auto !important; display: block !important; width: 100% !important; max-width: 100% !important;";
+        }
+    }
     const toreMap = berechneTore(gameLog);
 
     statsData.forEach(stats => {
@@ -307,6 +316,15 @@ export function renderHomeStatsInHistory(tbody, statsData, gameLog, isLive = fal
 // --- Render Opponent Stats in History ---
 export function renderOpponentStatsInHistory(tbody, statsData, gameLog, game = null, isLive = false, stayInHeatmap = false, renderBound = null) {
     tbody.innerHTML = '';
+    // Force styles on parent table to be sure
+    if (tbody.parentElement) {
+        tbody.parentElement.style.cssText = "display: block !important; width: max-content !important; min-width: 800px !important; border-collapse: collapse !important;";
+        tbody.parentElement.style.tableLayout = "auto";
+        // Force parent scroll container
+        if (tbody.parentElement.parentElement) {
+            tbody.parentElement.parentElement.style.cssText = "overflow-x: auto !important; display: block !important; width: 100% !important; max-width: 100% !important;";
+        }
+    }
     const toreMap = berechneTore(gameLog); // Needed if not already in statsData
 
     statsData.forEach(stats => {
