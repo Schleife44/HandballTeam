@@ -4783,3 +4783,97 @@ th {
 #histContentHeatmap .heatmap-tab:hover:not(.active) {
     background: hsl(var(--primary) / 0.1) !important;
 }
+
+/* --- Mobile Dashboard Optimization --- */
+@media (max-width: 640px) {
+
+    /* Force 2-column grid instead of stacking */
+    .season-grid-panels {
+        grid-template-columns: repeat(2, 1fr) !important;
+        gap: 8px !important;
+    }
+
+    /* Wrap charts to push them top */
+    .season-chart-wrapper {
+        justify-content: flex-start !important;
+        padding-top: 5px !important;
+    }
+
+    /* Make panels more compact */
+    .season-panel {
+        min-height: auto !important;
+        /* Allow shrinking */
+        padding: 10px !important;
+        margin-bottom: 0 !important;
+    }
+
+    /* Smaller Title */
+    .season-panel-title {
+        font-size: 0.85rem !important;
+        margin-bottom: 8px !important;
+        padding-bottom: 4px !important;
+    }
+
+    /* Smaller Text in Cards */
+    .season-panel,
+    .season-panel div {
+        font-size: 0.8rem !important;
+    }
+
+    /* Charts scaling */
+    .chart-container {
+        height: 120px !important;
+        /* Smaller charts */
+    }
+
+    /* Adjust Last Results specific layout */
+    .last-result-item {
+        padding: 4px 0 !important;
+        font-size: 0.75rem !important;
+    }
+
+    .result-badge-square {
+        width: 18px !important;
+        height: 18px !important;
+        font-size: 0.7rem !important;
+        margin-right: 6px !important;
+    }
+
+    /* Adjust spanned panels to remain full width or span 2 */
+    .season-panel[style*="grid-column: span 2"] {
+        grid-column: span 2 !important;
+    }
+}
+
+/* --- Mobile Game Controls Layout (<768px) --- */
+@media (max-width: 768px) {
+
+    /* Push bottom controls down to give roster more space */
+    .game-dashboard-column {
+        display: flex !important;
+        flex-direction: column !important;
+        height: auto !important;
+        min-height: 100vh !important;
+    }
+
+    /* Give roster priority space */
+    .dual-team-roster {
+        flex: 1 !important;
+        overflow-y: auto !important;
+        max-height: none !important;
+        min-height: 70vh !important;
+        /* Ensure at least 70% viewport height */
+    }
+
+    /* Push bottom controls to end, requiring scroll */
+    .game-bottom-controls {
+        margin-top: auto !important;
+        padding-top: 20px !important;
+        position: relative !important;
+        /* Ensure in document flow */
+        z-index: 1 !important;
+        /* Normal stacking */
+        order: 999 !important;
+        /* Force to bottom in flex */
+    }
+}

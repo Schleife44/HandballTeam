@@ -60,20 +60,17 @@ export function showDashboardInline() {
             <!-- 2. Matches Doughnut -->
             <div class="season-panel" style="min-height: 200px; box-shadow: none; border: 1px solid var(--border-color);">
                 <div class="season-panel-title">Spiele</div>
-                <div style="display: flex; flex-direction: column; height: 100%;">
-                    <div style="flex: 1; display: flex; flex-direction: column; justify-content: center;">
+                <div class="season-chart-wrapper">
                         <div class="chart-container" style="height: 160px;">
                             <canvas id="dashMatchesChart"></canvas>
                         </div>
-                    </div>
                 </div>
             </div>
 
             <!-- 3. Goals Doughnut -->
             <div class="season-panel" style="min-height: 200px; box-shadow: none; border: 1px solid var(--border-color);">
                 <div class="season-panel-title">Tore</div>
-                <div style="display: flex; flex-direction: column; height: 100%;">
-                    <div style="flex: 1; display: flex; flex-direction: column; justify-content: center;">
+                <div class="season-chart-wrapper">
                         <div class="chart-container" style="height: 160px;">
                             <canvas id="dashGoalsChart"></canvas>
                         </div>
@@ -84,8 +81,7 @@ export function showDashboardInline() {
             <!-- 4. Scorers Pie -->
             <div class="season-panel" style="min-height: 200px; box-shadow: none; border: 1px solid var(--border-color);">
                 <div class="season-panel-title">Torschützen</div>
-                <div style="display: flex; flex-direction: column; height: 100%;">
-                    <div style="flex: 1; display: flex; flex-direction: column; justify-content: center;">
+                <div class="season-chart-wrapper">
                         <div class="chart-container" style="height: 160px;">
                             <canvas id="dashScorersChart"></canvas>
                         </div>
@@ -104,7 +100,7 @@ export function showDashboardInline() {
             <!-- 6. Combined Efficiency Panel -->
             <div class="season-panel" style="grid-column: span 2; min-height: 220px; box-shadow: none; border: 1px solid var(--border-color);">
                 <div class="season-panel-title">Wurfstatistiken</div>
-                <div style="display: flex; flex-wrap: wrap; gap: 15px; align-items: start;">
+                <div class="season-chart-wrapper-flex">
                     <div style="flex: 1; min-width: 250px; display: flex; flex-direction: column;">
                         <div class="chart-container" style="height: 180px;">
                             <canvas id="dashEffTotalChart"></canvas>

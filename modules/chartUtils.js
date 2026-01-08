@@ -57,7 +57,7 @@ export const commonCenterTextPlugin = {
         const text = pluginData.text || '';
 
         // Draw Number (slightly raised)
-        ctx.fillText(text, width / 2, height / 2 - 10);
+        ctx.fillText(text, width / 2, height / 2 - 18); // Moved up (was -10)
 
         // Draw Label (slightly lowered)
         const labelFontSize = (height / 280).toFixed(2);
@@ -65,7 +65,7 @@ export const commonCenterTextPlugin = {
 
         const mutedVar = getComputedStyle(document.body).getPropertyValue('--muted-foreground').trim();
         ctx.fillStyle = mutedVar ? `hsl(${mutedVar})` : '#94a3b8';
-        ctx.fillText(pluginData.subText || '', width / 2, height / 2 + 15);
+        ctx.fillText(pluginData.subText || '', width / 2, height / 2 + 8); // Moved up (was +15)
         ctx.restore();
     }
 };
