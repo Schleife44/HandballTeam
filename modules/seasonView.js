@@ -913,9 +913,9 @@ export function renderTeamScatterPlot(players) {
         const xData = metrics[xKey];
         const yData = metrics[yKey];
 
-        const width = 650;
-        const height = 400; // Increased height
-        const padding = { top: 30, right: 40, bottom: 50, left: 60 };
+        const width = window.innerWidth < 640 ? 400 : 650; // Mobile: 400, Desktop: 650 (Original)
+        const height = window.innerWidth < 640 ? 500 : 400; // Mobile: Tall, Desktop: 400 (Original)
+        const padding = { top: 40, right: 30, bottom: 60, left: 70 }; // More space for labels
 
         // Filter Data based on Team Selection
         const selectedTeamFilter = filterSelect.value;
@@ -950,11 +950,19 @@ export function renderTeamScatterPlot(players) {
         if (xData.label.includes('%')) xMax = Math.min(xMax, 100);
         if (yData.label.includes('%')) yMax = Math.min(yMax, 100);
 
+        // Dynamic Font Sizes
+        const isMobile = window.innerWidth < 640;
+        const mainFontSize = isMobile ? '16px' : '11px';  // Desktop: 11px (Original)
+        const axisLabelSize = isMobile ? '18px' : '12px'; // Desktop: 12px (Small)
+        const titleFontSize = isMobile ? '20px' : '14px'; // Desktop: 14px (Standard)
+
+        // ... SVG Setup ...
         const svgNs = "http://www.w3.org/2000/svg";
         const svg = document.createElementNS(svgNs, "svg");
         svg.setAttribute("viewBox", `0 0 ${width} ${height}`);
         svg.style.width = "100%";
         svg.style.height = "auto";
+        svg.style.maxWidth = "100%";
         svg.style.overflow = "visible";
         svg.style.fontFamily = "'Segoe UI', Roboto, Helvetica, Arial, sans-serif";
 
@@ -988,7 +996,7 @@ export function renderTeamScatterPlot(players) {
         xAxisLine.setAttribute("x1", padding.left); xAxisLine.setAttribute("y1", height - padding.bottom);
         xAxisLine.setAttribute("x2", width - padding.right); xAxisLine.setAttribute("y2", height - padding.bottom);
         xAxisLine.setAttribute("stroke", "#777");
-        xAxisLine.setAttribute("stroke-width", "2");
+        xAxisLine.setAttribute("stroke-width", isMobile ? "3" : "2"); // Thicker on mobile
         xAxisLine.setAttribute("stroke-linecap", "round");
         svg.appendChild(xAxisLine);
 
@@ -996,7 +1004,7 @@ export function renderTeamScatterPlot(players) {
         yAxisLine.setAttribute("x1", padding.left); yAxisLine.setAttribute("y1", padding.top);
         yAxisLine.setAttribute("x2", padding.left); yAxisLine.setAttribute("y2", height - padding.bottom);
         yAxisLine.setAttribute("stroke", "#777");
-        yAxisLine.setAttribute("stroke-width", "2");
+        yAxisLine.setAttribute("stroke-width", isMobile ? "3" : "2");
         yAxisLine.setAttribute("stroke-linecap", "round");
         svg.appendChild(yAxisLine);
 
@@ -1005,7 +1013,7 @@ export function renderTeamScatterPlot(players) {
         xLabel.setAttribute("x", width / 2); xLabel.setAttribute("y", height - 10);
         xLabel.setAttribute("text-anchor", "middle");
         xLabel.setAttribute("fill", "#ddd");
-        xLabel.setAttribute("font-size", "14");
+        xLabel.setAttribute("font-size", titleFontSize); // Use variable
         xLabel.setAttribute("font-weight", "500");
         xLabel.textContent = xData.label;
         svg.appendChild(xLabel);
@@ -1014,7 +1022,7 @@ export function renderTeamScatterPlot(players) {
         yLabel.setAttribute("x", 20); yLabel.setAttribute("y", height / 2);
         yLabel.setAttribute("text-anchor", "middle");
         yLabel.setAttribute("fill", "#ddd");
-        yLabel.setAttribute("font-size", "14");
+        yLabel.setAttribute("font-size", titleFontSize); // Use variable
         yLabel.setAttribute("font-weight", "500");
         yLabel.setAttribute("transform", `rotate(-90, 20, ${height / 2})`);
         yLabel.textContent = yData.label;
@@ -1064,7 +1072,7 @@ export function renderTeamScatterPlot(players) {
             yText.setAttribute("x", padding.left - 10); yText.setAttribute("y", yPos + 4);
             yText.setAttribute("text-anchor", "end");
             yText.setAttribute("fill", "#999");
-            yText.setAttribute("font-size", "11");
+            yText.setAttribute("font-size", axisLabelSize);
             yText.textContent = yVal;
             svg.appendChild(yText);
 
@@ -1088,7 +1096,7 @@ export function renderTeamScatterPlot(players) {
                 xText.setAttribute("x", xPos); xText.setAttribute("y", height - padding.bottom + 18);
                 xText.setAttribute("text-anchor", "middle");
                 xText.setAttribute("fill", "#999");
-                xText.setAttribute("font-size", "11");
+                xText.setAttribute("font-size", axisLabelSize);
                 xText.textContent = xVal;
                 svg.appendChild(xText);
 
@@ -1163,7 +1171,7 @@ export function renderTeamScatterPlot(players) {
             text.setAttribute("y", cy - 12);
             text.setAttribute("text-anchor", "middle");
             text.setAttribute("fill", "#fff");
-            text.setAttribute("font-size", "11");
+            text.setAttribute("font-size", mainFontSize);
             text.setAttribute("font-weight", "bold");
             text.style.pointerEvents = "none";
             text.style.textShadow = "0px 1px 3px rgba(0,0,0,0.8)";

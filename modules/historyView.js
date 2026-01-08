@@ -213,15 +213,7 @@ export function renderHistoryList() {
 // --- Render Home Stats in History ---
 export function renderHomeStatsInHistory(tbody, statsData, gameLog, isLive = false, stayInHeatmap = false, renderBound = null) {
     tbody.innerHTML = '';
-    // Force styles on parent table to be sure
-    if (tbody.parentElement) {
-        tbody.parentElement.style.cssText = "display: block !important; width: max-content !important; min-width: 800px !important; border-collapse: collapse !important;";
-        tbody.parentElement.style.tableLayout = "auto";
-        // Force parent scroll container
-        if (tbody.parentElement.parentElement) {
-            tbody.parentElement.parentElement.style.cssText = "overflow-x: auto !important; display: block !important; width: 100% !important; max-width: 100% !important;";
-        }
-    }
+
     const toreMap = berechneTore(gameLog);
 
     statsData.forEach(stats => {
@@ -316,15 +308,7 @@ export function renderHomeStatsInHistory(tbody, statsData, gameLog, isLive = fal
 // --- Render Opponent Stats in History ---
 export function renderOpponentStatsInHistory(tbody, statsData, gameLog, game = null, isLive = false, stayInHeatmap = false, renderBound = null) {
     tbody.innerHTML = '';
-    // Force styles on parent table to be sure
-    if (tbody.parentElement) {
-        tbody.parentElement.style.cssText = "display: block !important; width: max-content !important; min-width: 800px !important; border-collapse: collapse !important;";
-        tbody.parentElement.style.tableLayout = "auto";
-        // Force parent scroll container
-        if (tbody.parentElement.parentElement) {
-            tbody.parentElement.parentElement.style.cssText = "overflow-x: auto !important; display: block !important; width: 100% !important; max-width: 100% !important;";
-        }
-    }
+
     const toreMap = berechneTore(gameLog); // Needed if not already in statsData
 
     statsData.forEach(stats => {
@@ -556,8 +540,7 @@ function renderGoalSequenceChart(game) {
         },
         options: {
             responsive: true,
-            maintainAspectRatio: true,
-            aspectRatio: 2.5,
+            maintainAspectRatio: false,
             plugins: {
                 legend: {
                     display: true,
@@ -599,7 +582,9 @@ function renderGoalSequenceChart(game) {
                 x: {
                     ticks: {
                         maxRotation: 45,
-                        minRotation: 45,
+                        minRotation: 0,
+                        autoSkip: true,
+                        maxTicksLimit: 20,
                         color: '#e0e0e0'
                     },
                     grid: {
@@ -679,12 +664,27 @@ export function openHistoryDetail(game) {
     // Header info is now handled dynamically in the Score Card below
 
     // --- REPLICATE LIVE OVERVIEW LAYOUT ---
+    // (Old content generation removed in favor of unified heatmap view)
+
+    // Reset Tabs
+    histTabStats.classList.add('active');
+    histTabHeatmap.classList.remove('active');
+    histTabProtokoll.classList.remove('active');
+    histTabTorfolge.classList.remove('active');
+
+    // unified view: Show Heatmap Content but HIDE visuals
+    histContentHeatmap.classList.remove('versteckt');
+    histContentHeatmap.classList.add('hide-heatmap-visuals');
+
+    // Hide others
+    histContentStats.classList.add('versteckt');
+    histContentProtokoll.classList.add('versteckt');
+    histContentTorfolge.classList.add('versteckt');
+
+    /* Old generation logic skipped */
+    /*
     const histContentStats = document.getElementById('histContentStats');
-
-    // Determine winner/loser for coloring
-    const isAuswaerts = false; // History doesn't track "isAuswaerts" explicitly in view logic usually, but we could check settings if stored. 
-    // Usually history view just shows Heim vs Gegner as stored.
-
+    */
     const homeName = game.teams.heim;
     const oppName = game.teams.gegner;
     const homeScore = game.score.heim;
@@ -712,21 +712,21 @@ export function openHistoryDetail(game) {
             <div class="stats-card" style="background: var(--bg-card); border-radius: 12px; padding: 15px; border: 1px solid var(--border-color);">
                 <h2 class="card-title" style="margin: 0 0 15px 0; font-size: 1.1rem; border-bottom: 1px solid var(--border-color); padding-bottom: 10px;">${homeName}</h2>
                 <div class="table-container" style="overflow-x: auto;">
-                    <table class="modern-stats-table" style="width: 100%; border-collapse: collapse;">
+                    <table class="modern-stats-table" style="width: max-content; min-width: 100%; border-collapse: collapse;">
                         <thead>
                             <tr style="text-align: left; color: var(--text-muted); font-size: 0.8rem;">
-                                <th style="padding: 10px;">Spieler</th>
-                                <th style="padding: 10px;">Tore</th>
-                                <th style="padding: 10px;">Feld</th>
-                                <th style="padding: 10px;">7m</th>
-                                <th style="padding: 10px;">Fehl</th>
-                                <th style="padding: 10px;">Quote</th>
-                                <th style="padding: 10px;">Gut</th>
-                                <th style="padding: 10px;">TF</th>
-                                <th style="padding: 10px;">G</th>
-                                <th style="padding: 10px;">2'</th>
-                                <th style="padding: 10px;">R</th>
-                                <th style="padding: 10px;"></th>
+                                <th style="padding: 10px; white-space: nowrap;">Spieler</th>
+                                <th style="padding: 10px; white-space: nowrap;">Tore</th>
+                                <th style="padding: 10px; white-space: nowrap;">Feld</th>
+                                <th style="padding: 10px; white-space: nowrap;">7m</th>
+                                <th style="padding: 10px; white-space: nowrap;">Fehl</th>
+                                <th style="padding: 10px; white-space: nowrap;">Quote</th>
+                                <th style="padding: 10px; white-space: nowrap;">Gut</th>
+                                <th style="padding: 10px; white-space: nowrap;">TF</th>
+                                <th style="padding: 10px; white-space: nowrap;">G</th>
+                                <th style="padding: 10px; white-space: nowrap;">2'</th>
+                                <th style="padding: 10px; white-space: nowrap;">R</th>
+                                <th style="padding: 10px; white-space: nowrap;"></th>
                             </tr>
                         </thead>
                         <tbody id="histStatsBodyNew"></tbody>
@@ -738,21 +738,21 @@ export function openHistoryDetail(game) {
             <div class="stats-card" style="background: var(--bg-card); border-radius: 12px; padding: 15px; border: 1px solid var(--border-color);">
                 <h2 class="card-title" style="margin: 0 0 15px 0; font-size: 1.1rem; border-bottom: 1px solid var(--border-color); padding-bottom: 10px;">${oppName}</h2>
                 <div class="table-container" style="overflow-x: auto;">
-                    <table class="modern-stats-table" style="width: 100%; border-collapse: collapse;">
+                    <table class="modern-stats-table" style="width: max-content; min-width: 100%; border-collapse: collapse;">
                         <thead>
                             <tr style="text-align: left; color: var(--text-muted); font-size: 0.8rem;">
-                                <th style="padding: 10px;">Name</th>
-                                <th style="padding: 10px;">Tore</th>
-                                <th style="padding: 10px;">Feld</th>
-                                <th style="padding: 10px;">7m</th>
-                                <th style="padding: 10px;">Fehl</th>
-                                <th style="padding: 10px;">Quote</th>
-                                <th style="padding: 10px;">Gut</th>
-                                <th style="padding: 10px;">TF</th>
-                                <th style="padding: 10px;">G</th>
-                                <th style="padding: 10px;">2'</th>
-                                <th style="padding: 10px;">R</th>
-                                <th style="padding: 10px;"></th>
+                                <th style="padding: 10px; white-space: nowrap;">Name</th>
+                                <th style="padding: 10px; white-space: nowrap;">Tore</th>
+                                <th style="padding: 10px; white-space: nowrap;">Feld</th>
+                                <th style="padding: 10px; white-space: nowrap;">7m</th>
+                                <th style="padding: 10px; white-space: nowrap;">Fehl</th>
+                                <th style="padding: 10px; white-space: nowrap;">Quote</th>
+                                <th style="padding: 10px; white-space: nowrap;">Gut</th>
+                                <th style="padding: 10px; white-space: nowrap;">TF</th>
+                                <th style="padding: 10px; white-space: nowrap;">G</th>
+                                <th style="padding: 10px; white-space: nowrap;">2'</th>
+                                <th style="padding: 10px; white-space: nowrap;">R</th>
+                                <th style="padding: 10px; white-space: nowrap;"></th>
                             </tr>
                         </thead>
                         <tbody id="histStatsGegnerBodyNew"></tbody>

@@ -1532,12 +1532,18 @@ select.shadcn-select-native option {
 
 .table-container {
     overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
     width: 100%;
+    max-width: 100%;
+    display: block;
 }
 
 .modern-stats-table {
     border-collapse: collapse;
     font-size: 0.875rem;
+    width: max-content;
+    min-width: 100%;
+    display: block;
 }
 
 .modern-stats-table th {
@@ -4736,4 +4742,44 @@ th {
 #liveOverviewBereich>div,
 #liveOverviewContent>div {
     max-width: 100% !important;
+}
+
+/* Helper to hide heatmap visuals in Statistik-Mode */
+.hide-heatmap-visuals .heatmap-tabs,
+.hide-heatmap-visuals .heatmap-controls-card,
+.hide-heatmap-visuals #histHeatmapContainer {
+    display: none !important;
+}
+
+/* Mobile: Compact History Tabs */
+@media (max-width: 640px) {
+    .heatmap-tabs {
+        display: grid !important;
+        grid-template-columns: repeat(2, 1fr) !important;
+        gap: 8px !important;
+        margin-bottom: 10px !important;
+    }
+
+    .heatmap-tab {
+        width: 100% !important;
+        font-size: 0.75rem !important;
+        padding: 8px 4px !important;
+        height: auto !important;
+    }
+}
+
+/* Distinct style for Heatmap Sub-Tabs (Tor/Feld/Kombiniert) */
+#histContentHeatmap .heatmap-tab {
+    border-color: hsl(var(--primary)) !important;
+    color: hsl(var(--primary)) !important;
+    background: transparent;
+}
+
+#histContentHeatmap .heatmap-tab.active {
+    background: hsl(var(--primary)) !important;
+    color: hsl(var(--primary-foreground)) !important;
+}
+
+#histContentHeatmap .heatmap-tab:hover:not(.active) {
+    background: hsl(var(--primary) / 0.1) !important;
 }

@@ -264,8 +264,13 @@ export function registerEventListeners() {
             histTabHeatmap.classList.remove('active');
             histTabProtokoll.classList.remove('active');
             histTabTorfolge.classList.remove('active');
-            histContentStats.classList.remove('versteckt');
-            histContentHeatmap.classList.add('versteckt');
+
+            // Unified View: Show Heatmap Content but HIDE visuals
+            histContentHeatmap.classList.remove('versteckt');
+            histContentHeatmap.classList.add('hide-heatmap-visuals');
+
+            // Hide others
+            histContentStats.classList.add('versteckt'); // Old stats container (can be removed later)
             histContentProtokoll.classList.add('versteckt');
             histContentTorfolge.classList.add('versteckt');
         });
@@ -274,7 +279,12 @@ export function registerEventListeners() {
             histTabStats.classList.remove('active');
             histTabProtokoll.classList.remove('active');
             histTabTorfolge.classList.remove('active');
+
+            // Unified View: Show Heatmap Content and SHOW visuals
             histContentHeatmap.classList.remove('versteckt');
+            histContentHeatmap.classList.remove('hide-heatmap-visuals');
+
+            // Hide others
             histContentStats.classList.add('versteckt');
             histContentProtokoll.classList.add('versteckt');
             histContentTorfolge.classList.add('versteckt');
@@ -285,8 +295,10 @@ export function registerEventListeners() {
             histTabHeatmap.classList.remove('active');
             histTabTorfolge.classList.remove('active');
             histContentProtokoll.classList.remove('versteckt');
+
             histContentStats.classList.add('versteckt');
             histContentHeatmap.classList.add('versteckt');
+            histContentHeatmap.classList.remove('hide-heatmap-visuals'); // Reset class
             histContentTorfolge.classList.add('versteckt');
         });
         histTabTorfolge.addEventListener('click', () => {
@@ -295,8 +307,10 @@ export function registerEventListeners() {
             histTabHeatmap.classList.remove('active');
             histTabProtokoll.classList.remove('active');
             histContentTorfolge.classList.remove('versteckt');
+
             histContentStats.classList.add('versteckt');
             histContentHeatmap.classList.add('versteckt');
+            histContentHeatmap.classList.remove('hide-heatmap-visuals'); // Reset class
             histContentProtokoll.classList.add('versteckt');
         });
     }
