@@ -295,6 +295,9 @@ function navigateToView(view) {
         case 'shots':
             showShotsInline();
             break;
+        case 'heatmap':
+            showLiveHeatmapInline();
+            break;
         case 'settings':
             showSettingsInline();
             // Initialize settings page UI (set values and validation state)

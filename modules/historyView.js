@@ -43,6 +43,10 @@ export async function handleSpielBeenden() {
     );
 
     if (confirmed) {
+        // Stop video timer when game ends
+        const { stopVideoTimer } = await import('./timer.js');
+        stopVideoTimer();
+
         // Determine which team name is "ours" based on perspective
         const myTeamName = spielstand.settings.isAuswaertsspiel
             ? spielstand.settings.teamNameGegner
@@ -81,6 +85,7 @@ export async function handleSpielBeenden() {
             istPausiert: true,
             segmentStartZeit: 0,
             verstricheneSekundenBisher: 0,
+            videoStartTime: null,
             history: []
         };
 

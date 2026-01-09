@@ -14,6 +14,7 @@ export let spielstand = {
         istPausiert: true,
         segmentStartZeit: 0,
         verstricheneSekundenBisher: 0,
+        videoStartTime: null // Continuous timer for video analysis
     },
     activeSuspensions: [],
     settings: {

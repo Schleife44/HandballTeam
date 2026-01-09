@@ -108,6 +108,31 @@ export function stoppTimer() {
     spielstand.timer.istPausiert = true;
 }
 
+// === VIDEO TIMER (Continuous for Video Analysis) ===
+
+export function startVideoTimer() {
+    if (spielstand.timer.videoStartTime) {
+        return;
+    }
+
+    spielstand.timer.videoStartTime = Date.now();
+}
+
+export function stopVideoTimer() {
+    if (!spielstand.timer.videoStartTime) {
+        return;
+    }
+
+    spielstand.timer.videoStartTime = null;
+}
+
+export function getVideoTimeSeconds() {
+    if (!spielstand.timer.videoStartTime) return 0;
+
+    const elapsedMs = Date.now() - spielstand.timer.videoStartTime;
+    return Math.floor(elapsedMs / 1000);
+}
+
 export function handleZeitSprung(sekunden) {
     if (spielstand.timer.istPausiert) {
         spielstand.timer.verstricheneSekundenBisher += sekunden;

@@ -1987,9 +1987,9 @@ select.shadcn-select-native option {
     display: grid;
     grid-template-areas:
         "sub add"
-        "start start";
-    gap: 10px;
-    /* Reduced gap */
+        "start start"
+        "pause pause";
+    gap: 12px;
     justify-items: center;
 }
 
@@ -2006,15 +2006,20 @@ select.shadcn-select-native option {
     font-size: 0.75rem !important;
 }
 
-.simple-mode #gamePhaseButton,
-.simple-mode #pauseButton {
+.simple-mode #gamePhaseButton {
     grid-area: start;
     width: 100%;
-    min-width: 120px;
-    /* Smaller button width */
+    min-width: 140px;
     font-size: 1rem;
-    padding: 8px;
-    /* Smaller padding */
+    padding: 10px;
+}
+
+.simple-mode #pauseButton {
+    grid-area: pause;
+    width: 100%;
+    min-width: 140px;
+    font-size: 1rem;
+    padding: 10px;
 }
 
 /* Hide Unused */

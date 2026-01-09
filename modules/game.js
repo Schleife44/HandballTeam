@@ -13,6 +13,7 @@ import {
     zeichneRosterListe, startButtonAnimation
 } from './ui.js';
 import { startTimer, stoppTimer, updateTimer } from './timer.js';
+import { startVideoTimer } from './timer.js';
 import { formatiereZeit } from './utils.js';
 import { berechneStatistiken } from './stats.js';
 import { customConfirm, customAlert } from './customDialog.js';
@@ -188,10 +189,8 @@ export function handleGamePhaseClick() {
         spielstand.timer.gamePhase = 2;
         gamePhaseButton.textContent = 'Halbzeit';
 
-        // Start Video Timer (Hidden Time) if not already running
-        if (!spielstand.timer.videoStartTime) {
-            spielstand.timer.videoStartTime = Date.now();
-        }
+        // Start video analysis timer (continuous, uninterrupted)
+        startVideoTimer();
 
         startTimer();
         setSteuerungAktiv(true);
@@ -210,6 +209,10 @@ export function handleGamePhaseClick() {
     } else if (phase === 1.5) {
         spielstand.timer.gamePhase = 2;
         gamePhaseButton.textContent = 'Halbzeit';
+
+        // Start video analysis timer (simple mode start)
+        startVideoTimer();
+
         startTimer();
         setSteuerungAktiv(true);
         pauseButton.classList.remove('versteckt');

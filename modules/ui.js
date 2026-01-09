@@ -1,5 +1,5 @@
 import { berechneTore, berechneWurfbilder, berechneStatistiken, berechneGegnerStatistiken } from './stats.js';
-import { drawGoalHeatmap, drawFieldHeatmap } from './heatmap.js';
+import { drawGoalHeatmap, drawFieldHeatmap, renderHeatmap, setCurrentHeatmapTab, setCurrentHeatmapContext } from './heatmap.js';
 import { spielstand, speichereSpielstand } from './state.js';
 import {
     statistikSidebar, scoreAnzeige, scoreAnzeigeGegner,
@@ -30,7 +30,6 @@ import {
     toggleWurfbildHeim, toggleWurfbildGegner, inputTeamNameHeim, inputTeamNameGegner
 } from './dom.js';
 import { renderHomeStatsInHistory, renderOpponentStatsInHistory, openPlayerHistoryHeatmap } from './historyView.js';
-import { renderHeatmap, setCurrentHeatmapContext, setCurrentHeatmapTab } from './heatmap.js';
 
 // We need to be careful with circular dependencies. 
 // We need to be careful with circular dependencies. 
