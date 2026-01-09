@@ -17,10 +17,10 @@ import {
     playerNameInput, playerNumberInput, playerTorwartInput, editPlayerIndex, addPlayerForm, cancelEditButton,
     spielBeendenButton, historieBereich, historieListe, backToStartFromHistory, historyButton,
     historieDetailBereich, backToHistoryList, histDetailTeams, histDetailScore, histDetailDate,
-    histStatsTable, histStatsBody, histStatsGegnerTable, histStatsGegnerBody,
-    histHeatmapSvg, histTabStats, histTabHeatmap, histSubTabTor, histSubTabFeld,
+    histStatsBody, histStatsGegnerBody,
+    histHeatmapSvg, histTabHeatmap, histSubTabTor, histSubTabFeld,
 
-    histContentStats, histContentHeatmap, exportHistorieButton,
+    histContentHeatmap, exportHistorieButton,
     liveGameOverviewModal, liveOverviewStatsBody, liveOverviewStatsGegnerBody,
     liveOverviewHeatmapSvg, liveOverviewTabStats, liveOverviewTabHeatmap,
     liveOverviewContentStats, liveOverviewContentHeatmap, closeLiveGameOverview,

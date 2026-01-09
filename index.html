@@ -30,6 +30,16 @@
                 <span class="nav-icon"><i data-lucide="layout-dashboard"></i></span>
                 <span class="nav-label">Überblick</span>
             </div>
+            <div class="nav-item" data-view="calendar">
+                <span class="nav-icon"><i data-lucide="calendar"></i></span>
+                <span class="nav-label">Kalender</span>
+            </div>
+            <div class="nav-item" data-view="tacticalboard">
+                <span class="nav-icon"><i data-lucide="clipboard-list"></i></span>
+                <span class="nav-label">Taktikboard</span>
+            </div>
+
+            <div class="nav-group-label">Spieltag</div>
             <div class="nav-item" data-view="game">
                 <span class="nav-icon"><i data-lucide="play-circle"></i></span>
                 <span class="nav-label">Spiel</span>
@@ -38,10 +48,6 @@
             <div class="nav-item" data-view="roster">
                 <span class="nav-icon"><i data-lucide="users"></i></span>
                 <span class="nav-label">Kader</span>
-            </div>
-            <div class="nav-item" data-view="calendar">
-                <span class="nav-icon"><i data-lucide="calendar"></i></span>
-                <span class="nav-label">Kalender</span>
             </div>
 
             <div class="nav-group-label">Live Analyse</div>
@@ -71,21 +77,9 @@
                 <span class="nav-icon"><i data-lucide="video"></i></span>
                 <span class="nav-label">Video Analyse</span>
             </div>
-            <div class="nav-item" data-view="season">
-                <span class="nav-icon"><i data-lucide="calendar-days"></i></span>
-                <span class="nav-label">Saison</span>
-            </div>
             <div class="nav-item" data-view="seasonStats">
                 <span class="nav-icon"><i data-lucide="bar-chart-2"></i></span>
                 <span class="nav-label">Saison Statistiken</span>
-            </div>
-            <div class="nav-item" data-view="seasonheatmap">
-                <span class="nav-icon"><i data-lucide="activity"></i></span>
-                <span class="nav-label">Saison-Heatmap</span>
-            </div>
-            <div class="nav-item" data-view="teamdiagramm">
-                <span class="nav-icon"><i data-lucide="trending-up"></i></span>
-                <span class="nav-label">Team Diagramm</span>
             </div>
 
             <div class="nav-group-label">System</div>
@@ -180,6 +174,17 @@
                 <div id="calendarGrid" class="calendar-grid">
                     <!-- Javascript generated days -->
                 </div>
+            </div>
+        </div>
+
+        <!-- SECTION: TACTICAL BOARD -->
+        <div id="tacticalBoardBereich" class="content-section versteckt">
+            <div class="section-header">
+                <h1>Taktikboard</h1>
+                <p class="text-muted">Entwirf und animiere deine Spielzüge</p>
+            </div>
+            <div id="tacticalBoardContainer" class="tactical-board-main">
+                <!-- Content will be injected by tacticalBoardView.js -->
             </div>
         </div>
 
@@ -446,7 +451,16 @@
         <div id="seasonStatsBereich" class="content-section versteckt">
             <h2>Saison Statistiken</h2>
 
-            <div id="seasonStatsContent">
+            <!-- 4-Button Sub-Tab Navigation -->
+            <div class="season-subtab-nav" style="display: flex; gap: 10px; margin-bottom: 20px; flex-wrap: wrap;">
+                <button class="season-subtab-btn shadcn-btn-primary" data-subtab="stats">Saison Statistiken</button>
+                <button class="season-subtab-btn shadcn-btn-outline" data-subtab="players">Spieler Statistiken</button>
+                <button class="season-subtab-btn shadcn-btn-outline" data-subtab="heatmap">Saison Heatmap</button>
+                <button class="season-subtab-btn shadcn-btn-outline" data-subtab="diagramm">Saison Diagramm</button>
+            </div>
+
+            <!-- Sub-Tab 1: Saison Statistiken (Current Team Stats) -->
+            <div id="seasonStatsTab" class="season-subtab-content">
                 <div id="seasonSummary" class="season-summary-grid-container" style="margin-bottom: 2rem;">
                     <!-- JS Populated -->
                 </div>
@@ -455,12 +469,28 @@
                     <!-- JS Populated (Player Cards) -->
                 </div>
             </div>
-        </div>
 
-        <!-- Team Diagramm Page Section (New) -->
-        <div id="teamDiagrammBereich" class="content-section versteckt">
-            <h2>Team Vergleich</h2>
-            <div id="teamDiagrammContent"></div>
+            <!-- Sub-Tab 2: Spieler Statistiken (Player Roster Table) -->
+            <div id="seasonPlayersTab" class="season-subtab-content versteckt">
+                <div id="playerStatsListContainer">
+                    <!-- JS Populated (will be moved from seasonView.js) -->
+                </div>
+            </div>
+
+            <!-- Sub-Tab 3: Saison Heatmap -->
+            <div id="seasonHeatmapTab" class="season-subtab-content versteckt">
+                <!-- Content will be populated by heatmap.js when this tab is selected -->
+                <div id="subtabSeasonHeatmapContainer">
+                    <!-- Heatmap content -->
+                </div>
+            </div>
+
+            <!-- Sub-Tab 4: Saison Diagramm (Team Comparison) -->
+            <div id="seasonDiagrammTab" class="season-subtab-content versteckt">
+                <div id="subtabSeasonDiagrammContent">
+                    <!-- Team diagram content -->
+                </div>
+            </div>
         </div>
 
         <!-- Shot Charts Page Section -->
@@ -911,66 +941,11 @@
             <div id="historieHeader" class="versteckt"></div>
 
             <div class="heatmap-tabs">
-                <button class="heatmap-tab shadcn-btn-outline active" id="histTabStats">Statistik</button>
-                <button class="heatmap-tab shadcn-btn-outline" id="histTabHeatmap">Heatmap</button>
+                <button class="heatmap-tab shadcn-btn-outline active" id="histTabHeatmap">Heatmap</button>
                 <button class="heatmap-tab shadcn-btn-outline" id="histTabProtokoll">Protokoll</button>
                 <button class="heatmap-tab shadcn-btn-outline" id="histTabTorfolge">Torfolge</button>
             </div>
 
-            <!-- Detail: Stats -->
-            <div id="histContentStats">
-                <div class="statistik-container">
-                    <table id="histStatsTable">
-                        <thead>
-                            <tr>
-                                <th>Spieler</th>
-                                <th>Tor</th>
-                                <th>Feldtore</th>
-                                <th>7m</th>
-                                <th>Fehlwurf</th>
-                                <th>Quote</th>
-                                <th>BV</th>
-                                <th>SF</th>
-                                <th>Blk</th>
-                                <th>1v1</th>
-                                <th title="1 gegen 1 Verloren">1v1-</th>
-                                <th>7m+</th>
-                                <th>2m+</th>
-                                <th>G</th>
-                                <th>2'</th>
-                                <th>R</th>
-                            </tr>
-                        </thead>
-                        <tbody id="histStatsBody"></tbody>
-                    </table>
-
-                    <h3 style="margin-top: 20px;">Gast</h3>
-                    <table id="histStatsGegnerTable">
-                        <thead>
-                            <tr>
-                                <th>Name</th>
-                                <th title="Spielzeit">Zeit</th>
-                                <th>Tor</th>
-                                <th>Feldtore</th>
-                                <th>7m</th>
-                                <th>Fehlwurf</th>
-                                <th>Quote</th>
-                                <th>BV</th>
-                                <th>SF</th>
-                                <th>Blk</th>
-                                <th title="1 gegen 1 Gewonnen">1v1</th>
-                                <th title="1 gegen 1 Verloren">1v1-</th>
-                                <th>7m+</th>
-                                <th>2m+</th>
-                                <th>G</th>
-                                <th>2'</th>
-                                <th>R</th>
-                            </tr>
-                        </thead>
-                        <tbody id="histStatsGegnerBody"></tbody>
-                    </table>
-                </div>
-            </div>
 
             <!-- Detail: Heatmap -->
             <div id="histContentHeatmap" class="versteckt" style="text-align: center;">
@@ -1678,6 +1653,40 @@
                 <div class="shadcn-modal-footer">
                     <button id="customAlertOk" class="shadcn-btn-primary"
                         style="width: 100%; max-width: 100px;">OK</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Custom Prompt Modal (Input) -->
+        <div id="customPromptModal" class="modal-overlay versteckt">
+            <div class="shadcn-modal-content">
+                <div class="shadcn-modal-header">
+                    <h3 id="customPromptTitle">Eingabe</h3>
+                    <p id="customPromptMessage"></p>
+                </div>
+                <div class="shadcn-modal-body">
+                    <input type="text" id="customPromptInput" class="shadcn-input" placeholder="Text eingeben..."
+                        style="width: 100%; box-sizing: border-box;">
+                </div>
+                <div class="shadcn-modal-footer">
+                    <button id="customPromptCancel" class="shadcn-btn-secondary">Abbrechen</button>
+                    <button id="customPromptConfirm" class="shadcn-btn-primary">Bestätigen</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Load Play Modal -->
+        <div id="loadPlayModal" class="modal-overlay versteckt">
+            <div class="shadcn-modal-content">
+                <div class="shadcn-modal-header">
+                    <h3>Spielzug laden</h3>
+                    <button id="closeLoadPlayModal" class="close-modal-btn">&times;</button>
+                </div>
+                <div class="shadcn-modal-body">
+                    <div id="loadPlayList" class="play-list-container"
+                        style="display: flex; flex-direction: column; gap: 0.5rem; max-height: 300px; overflow-y: auto;">
+                        <!-- Plays will be populated here -->
+                    </div>
                 </div>
             </div>
         </div>

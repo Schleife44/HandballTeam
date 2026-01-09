@@ -249,20 +249,16 @@ export const histDetailTeams = document.getElementById('histDetailTeams');
 export const histDetailScore = document.getElementById('histDetailScore');
 export const histDetailDate = document.getElementById('histDetailDate');
 
-export const histTabStats = document.getElementById('histTabStats');
 export const histTabHeatmap = document.getElementById('histTabHeatmap');
 export const histTabProtokoll = document.getElementById('histTabProtokoll');
 export const histTabTorfolge = document.getElementById('histTabTorfolge');
-export const histContentStats = document.getElementById('histContentStats');
 export const histContentHeatmap = document.getElementById('histContentHeatmap');
 export const histContentProtokoll = document.getElementById('histContentProtokoll');
 export const histContentTorfolge = document.getElementById('histContentTorfolge');
 export const histProtokollAusgabe = document.getElementById('histProtokollAusgabe');
 export const histTorfolgeChart = document.getElementById('histTorfolgeChart');
 
-export const histStatsTable = document.getElementById('histStatsTable');
 export const histStatsBody = document.getElementById('histStatsBody');
-export const histStatsGegnerTable = document.getElementById('histStatsGegnerTable');
 export const histStatsGegnerBody = document.getElementById('histStatsGegnerBody');
 
 export const histSubTabTor = document.getElementById('histSubTabTor');
@@ -292,6 +288,19 @@ export const customAlertModal = document.getElementById('customAlertModal');
 export const customAlertTitle = document.getElementById('customAlertTitle');
 export const customAlertMessage = document.getElementById('customAlertMessage');
 export const customAlertOk = document.getElementById('customAlertOk');
+
+// Custom Prompt Modal
+export const customPromptModal = document.getElementById('customPromptModal');
+export const customPromptTitle = document.getElementById('customPromptTitle');
+export const customPromptMessage = document.getElementById('customPromptMessage');
+export const customPromptInput = document.getElementById('customPromptInput');
+export const customPromptConfirm = document.getElementById('customPromptConfirm');
+export const customPromptCancel = document.getElementById('customPromptCancel');
+
+// Load Play Modal
+export const loadPlayModal = document.getElementById('loadPlayModal');
+export const loadPlayList = document.getElementById('loadPlayList');
+export const closeLoadPlayModal = document.getElementById('closeLoadPlayModal');
 
 // Live Game Overview
 export const showLiveGameOverviewButton = document.getElementById('showLiveGameOverviewButton');

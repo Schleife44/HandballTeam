@@ -431,13 +431,24 @@ export function openPlayerHistoryHeatmap(gameLog, identifier, team, playerName, 
     setCurrentHeatmapTab('tor');
 
     if (navigate) {
+        // Force Tab UI update (redundant but safe)
+        if (histTabProtokoll) histTabProtokoll.classList.remove('active');
+        if (histTabTorfolge) histTabTorfolge.classList.remove('active');
+
         // Switch to the heatmap tab in history detail
         if (histTabHeatmap) {
+            histTabHeatmap.classList.add('active');
             histTabHeatmap.click();
-            // Scroll to heatmap content to ensure visibility
+
+            // Explicitly force visibility of heatmap
             if (histContentHeatmap) {
+                histContentHeatmap.classList.remove('versteckt');
+                histContentHeatmap.classList.remove('hide-heatmap-visuals');
+                // Scroll to heatmap content to ensure visibility
                 histContentHeatmap.scrollIntoView({ behavior: 'smooth', block: 'start' });
             }
+            if (histContentProtokoll) histContentProtokoll.classList.add('versteckt');
+            if (histContentTorfolge) histContentTorfolge.classList.add('versteckt');
         }
     }
 
@@ -661,39 +672,29 @@ export function openHistoryDetail(game) {
     historieBereich.classList.add('versteckt');
     historieDetailBereich.classList.remove('versteckt');
 
-    // Header info is now handled dynamically in the Score Card below
+    // Set Heatmap as active tab
+    if (histTabHeatmap) histTabHeatmap.classList.add('active');
+    if (histTabProtokoll) histTabProtokoll.classList.remove('active');
+    if (histTabTorfolge) histTabTorfolge.classList.remove('active');
 
-    // --- REPLICATE LIVE OVERVIEW LAYOUT ---
-    // (Old content generation removed in favor of unified heatmap view)
+    // Show Heatmap content directly
+    if (histContentHeatmap) {
+        histContentHeatmap.classList.remove('versteckt');
+        histContentHeatmap.classList.remove('hide-heatmap-visuals');
+    }
+    if (histContentProtokoll) histContentProtokoll.classList.add('versteckt');
+    if (histContentTorfolge) histContentTorfolge.classList.add('versteckt');
 
-    // Reset Tabs
-    histTabStats.classList.add('active');
-    histTabHeatmap.classList.remove('active');
-    histTabProtokoll.classList.remove('active');
-    histTabTorfolge.classList.remove('active');
-
-    // unified view: Show Heatmap Content but HIDE visuals
-    histContentHeatmap.classList.remove('versteckt');
-    histContentHeatmap.classList.add('hide-heatmap-visuals');
-
-    // Hide others
-    histContentStats.classList.add('versteckt');
-    histContentProtokoll.classList.add('versteckt');
-    histContentTorfolge.classList.add('versteckt');
-
-    /* Old generation logic skipped */
-    /*
-    const histContentStats = document.getElementById('histContentStats');
-    */
     const homeName = game.teams.heim;
     const oppName = game.teams.gegner;
     const homeScore = game.score.heim;
     const oppScore = game.score.gegner;
 
-    const html = `
-        <div class="live-overview-container" style="display: flex; flex-direction: column; gap: 20px;">
-            <!-- Score Card -->
-            <div class="stats-card score-card" style="background: var(--bg-card); border-radius: 12px; padding: 20px; text-align: center; border: 1px solid var(--border-color);">
+    // Render Score Card into Header
+    if (historieHeader) {
+        historieHeader.classList.remove('versteckt');
+        historieHeader.innerHTML = `
+            <div class="stats-card score-card" style="background: var(--bg-card); border-radius: 12px; padding: 20px; text-align: center; border: 1px solid var(--border-color); margin-bottom: 20px;">
                 <h2 class="card-title" style="margin: 0 0 15px 0; color: var(--text-muted); font-size: 0.9rem; text-transform: uppercase;">Endergebnis</h2>
                 <div class="score-display" style="display: flex; justify-content: center; align-items: center; gap: 30px;">
                     <div class="score-team" style="text-align: right;">
@@ -707,76 +708,12 @@ export function openHistoryDetail(game) {
                     </div>
                 </div>
             </div>
-
-            <!-- Home Stats Card -->
-            <div class="stats-card" style="background: var(--bg-card); border-radius: 12px; padding: 15px; border: 1px solid var(--border-color);">
-                <h2 class="card-title" style="margin: 0 0 15px 0; font-size: 1.1rem; border-bottom: 1px solid var(--border-color); padding-bottom: 10px;">${homeName}</h2>
-                <div class="table-container" style="overflow-x: auto;">
-                    <table class="modern-stats-table" style="width: max-content; min-width: 100%; border-collapse: collapse;">
-                        <thead>
-                            <tr style="text-align: left; color: var(--text-muted); font-size: 0.8rem;">
-                                <th style="padding: 10px; white-space: nowrap;">Spieler</th>
-                                <th style="padding: 10px; white-space: nowrap;">Tore</th>
-                                <th style="padding: 10px; white-space: nowrap;">Feld</th>
-                                <th style="padding: 10px; white-space: nowrap;">7m</th>
-                                <th style="padding: 10px; white-space: nowrap;">Fehl</th>
-                                <th style="padding: 10px; white-space: nowrap;">Quote</th>
-                                <th style="padding: 10px; white-space: nowrap;">Gut</th>
-                                <th style="padding: 10px; white-space: nowrap;">TF</th>
-                                <th style="padding: 10px; white-space: nowrap;">G</th>
-                                <th style="padding: 10px; white-space: nowrap;">2'</th>
-                                <th style="padding: 10px; white-space: nowrap;">R</th>
-                                <th style="padding: 10px; white-space: nowrap;"></th>
-                            </tr>
-                        </thead>
-                        <tbody id="histStatsBodyNew"></tbody>
-                    </table>
-                </div>
-            </div>
-
-            <!-- Opponent Stats Card -->
-            <div class="stats-card" style="background: var(--bg-card); border-radius: 12px; padding: 15px; border: 1px solid var(--border-color);">
-                <h2 class="card-title" style="margin: 0 0 15px 0; font-size: 1.1rem; border-bottom: 1px solid var(--border-color); padding-bottom: 10px;">${oppName}</h2>
-                <div class="table-container" style="overflow-x: auto;">
-                    <table class="modern-stats-table" style="width: max-content; min-width: 100%; border-collapse: collapse;">
-                        <thead>
-                            <tr style="text-align: left; color: var(--text-muted); font-size: 0.8rem;">
-                                <th style="padding: 10px; white-space: nowrap;">Name</th>
-                                <th style="padding: 10px; white-space: nowrap;">Tore</th>
-                                <th style="padding: 10px; white-space: nowrap;">Feld</th>
-                                <th style="padding: 10px; white-space: nowrap;">7m</th>
-                                <th style="padding: 10px; white-space: nowrap;">Fehl</th>
-                                <th style="padding: 10px; white-space: nowrap;">Quote</th>
-                                <th style="padding: 10px; white-space: nowrap;">Gut</th>
-                                <th style="padding: 10px; white-space: nowrap;">TF</th>
-                                <th style="padding: 10px; white-space: nowrap;">G</th>
-                                <th style="padding: 10px; white-space: nowrap;">2'</th>
-                                <th style="padding: 10px; white-space: nowrap;">R</th>
-                                <th style="padding: 10px; white-space: nowrap;"></th>
-                            </tr>
-                        </thead>
-                        <tbody id="histStatsGegnerBodyNew"></tbody>
-                    </table>
-                </div>
-            </div>
-        </div>
-    `;
-
-    histContentStats.innerHTML = html;
-
-    // Clean up or hide manual detail header items if they overlap
-    const histHeader = document.getElementById('historieHeader');
-    if (histHeader) histHeader.style.display = 'none';
+        `;
+    }
 
     // Populate data
     const homeStats = berechneStatistiken(game.gameLog, game.roster);
     const opponentStats = berechneGegnerStatistiken(game.gameLog);
-
-    const histStatsBodyNew = document.getElementById('histStatsBodyNew');
-    const histStatsGegnerBodyNew = document.getElementById('histStatsGegnerBodyNew');
-
-    renderHomeStatsInHistory(histStatsBodyNew, homeStats, game.gameLog);
-    renderOpponentStatsInHistory(histStatsGegnerBodyNew, opponentStats, game.gameLog, game);
 
     // Simplified Perspective Detection for Heatmap
     // Just map based on identity: "Gegner" actions or gegnerNummer = Opponent, playerId = Us

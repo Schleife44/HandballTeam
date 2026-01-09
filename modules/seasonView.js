@@ -11,6 +11,265 @@ const collapsedTeams = {};
 
 export { getSeasonSummary };
 
+// Initialize season sub-tab navigation
+export function initSeasonSubTabs() {
+    const buttons = document.querySelectorAll('.season-subtab-btn');
+    const tabs = document.querySelectorAll('.season-subtab-content');
+
+    buttons.forEach(button => {
+        button.addEventListener('click', () => {
+            const targetTab = button.dataset.subtab;
+
+            // Update button states
+            buttons.forEach(btn => {
+                if (btn.dataset.subtab === targetTab) {
+                    btn.classList.remove('shadcn-btn-outline');
+                    btn.classList.add('shadcn-btn-primary');
+                } else {
+                    btn.classList.remove('shadcn-btn-primary');
+                    btn.classList.add('shadcn-btn-outline');
+                }
+            });
+
+            // Update tab visibility
+            tabs.forEach(tab => {
+                const tabId = `season${targetTab.charAt(0).toUpperCase() + targetTab.slice(1)}Tab`;
+                if (tab.id === tabId) {
+                    tab.classList.remove('versteckt');
+
+                    // Trigger rendering for specific tabs
+                    switch (targetTab) {
+                        case 'stats':
+                            renderSeasonStats();
+                            break;
+                        case 'players':
+                            renderPlayerSeasonStats();
+                            break;
+                        case 'heatmap':
+                            // Render season heatmap
+                            renderSeasonHeatmapView();
+                            break;
+                        case 'diagramm':
+                            // Render team diagram
+                            renderTeamDiagramView();
+                            break;
+                    }
+                } else {
+                    tab.classList.add('versteckt');
+                }
+            });
+        });
+    });
+}
+
+// Render Season Heatmap View
+function renderSeasonHeatmapView() {
+    const container = document.getElementById('subtabSeasonHeatmapContainer');
+    if (!container) return;
+
+    // Create the heatmap interface with controls
+    container.innerHTML = `
+        <div class="heatmap-controls-card">
+            <!-- Row 1: Selects -->
+            <div class="heatmap-row">
+                <div class="roster-input-group">
+                    <label>Team</label>
+                    <select id="subtabSeasonHeatmapTeamSelect" class="shadcn-input shadcn-select-native">
+                        <option value="all">Alle Teams</option>
+                    </select>
+                </div>
+                <div class="roster-input-group">
+                    <label>Spieler</label>
+                    <select id="subtabSeasonHeatmapPlayerSelect" class="shadcn-input shadcn-select-native">
+                        <option value="all">Alle Spieler</option>
+                    </select>
+                </div>
+            </div>
+
+            <!-- Row 2: Tabs -->
+            <div class="heatmap-tabs-row">
+                <button class="heatmap-tab white-style active" data-tab="tor">Tor-Ansicht</button>
+                <button class="heatmap-tab white-style" data-tab="feld">Wurf-Positionen</button>
+                <button class="heatmap-tab white-style" data-tab="kombiniert">Kombiniert</button>
+            </div>
+
+            <!-- Row 3: Filters -->
+            <div class="heatmap-filters-row">
+                <label class="heatmap-filter-item">
+                    <input type="checkbox" id="subtabSeasonHeatmapToreFilter" checked> Feldtore
+                </label>
+                <label class="heatmap-filter-item">
+                    <input type="checkbox" id="subtabSeasonHeatmap7mFilter"> 7m
+                </label>
+                <label class="heatmap-filter-item">
+                    <input type="checkbox" id="subtabSeasonHeatmapMissedFilter" checked> Fehlwürfe
+                </label>
+            </div>
+        </div>
+        
+        <div class="heatmap-visual-container">
+           <svg id="subtabSeasonHeatmapSvg" width="300" height="500"></svg>
+        </div>
+    `;
+
+    // Add event listeners
+    const tabButtons = container.querySelectorAll('.heatmap-tab');
+    tabButtons.forEach(btn => {
+        btn.addEventListener('click', () => {
+            tabButtons.forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+
+            // Use already-imported function
+            setCurrentHeatmapTab(btn.dataset.tab);
+            renderSeasonHeatmapData();
+        });
+    });
+
+    const filters = container.querySelectorAll('input[type="checkbox"]');
+    filters.forEach(filter => {
+        filter.addEventListener('change', () => renderSeasonHeatmapData());
+    });
+
+    const teamSelect = container.querySelector('#subtabSeasonHeatmapTeamSelect');
+    const playerSelect = container.querySelector('#subtabSeasonHeatmapPlayerSelect');
+
+    if (teamSelect) {
+        teamSelect.addEventListener('change', () => {
+            populateSeasonHeatmapDropdowns(true); // Populate only players
+            renderSeasonHeatmapData();
+        });
+    }
+    if (playerSelect) {
+        playerSelect.addEventListener('change', () => renderSeasonHeatmapData());
+    }
+
+    // Initial render
+    populateSeasonHeatmapDropdowns();
+    renderSeasonHeatmapData();
+}
+
+// Helper to populate dropdowns for season heatmap
+function populateSeasonHeatmapDropdowns(playersOnly = false) {
+    const summary = getSeasonSummary();
+    const teamSelect = document.getElementById('subtabSeasonHeatmapTeamSelect');
+    const playerSelect = document.getElementById('subtabSeasonHeatmapPlayerSelect');
+
+    if (!teamSelect || !playerSelect) return;
+
+    const myTeamName = spielstand.settings.myTeamName || spielstand.settings.teamNameHeim || 'Heim';
+
+    // 1. Populate Teams (only if not playersOnly)
+    if (!playersOnly) {
+        const uniqueOpponents = [...new Set(summary.players.map(p => p.team).filter(t => t && t !== 'Heim'))];
+        const teams = ['all', 'Heim', 'all_opponents', ...uniqueOpponents];
+
+        teamSelect.innerHTML = teams.map(t => {
+            let label = t;
+            if (t === 'all') label = 'Alle Teams';
+            else if (t === 'Heim') label = myTeamName;
+            else if (t === 'all_opponents') label = 'Alle Gegner';
+            return `<option value="${t}">${label}</option>`;
+        }).join('');
+    }
+
+    // 2. Populate Players based on selected team
+    const selectedTeam = teamSelect.value;
+    const filteredPlayers = summary.players.filter(p => {
+        if (selectedTeam === 'all') return true;
+        if (selectedTeam === 'all_opponents') return p.team !== 'Heim';
+        return p.team === selectedTeam;
+    });
+
+    playerSelect.innerHTML = '<option value="all">Alle Spieler</option>' +
+        filteredPlayers.map(p => {
+            const name = p.name || '#' + p.number;
+            const teamLabel = p.team === 'Heim' ? myTeamName : p.team;
+            return `<option value="${p.number}-${p.team}">${name} (${teamLabel})</option>`;
+        }).join('');
+}
+
+// Helper to render heatmap data
+function renderSeasonHeatmapData() {
+    const svg = document.getElementById('subtabSeasonHeatmapSvg');
+    if (!svg) return;
+
+    const teamSelect = document.getElementById('subtabSeasonHeatmapTeamSelect');
+    const playerSelect = document.getElementById('subtabSeasonHeatmapPlayerSelect');
+
+    const summary = getSeasonSummary();
+    let logEntries = [];
+
+    const selectedTeam = teamSelect?.value || 'all';
+    const selectedPlayerVal = playerSelect?.value || 'all';
+
+    // Filter log entries based on selection
+    summary.players.forEach(player => {
+        // Team Filter
+        if (selectedTeam === 'all_opponents') {
+            if (player.team === 'Heim') return;
+        } else if (selectedTeam !== 'all' && player.team !== selectedTeam) {
+            return;
+        }
+
+        // Player Filter
+        if (selectedPlayerVal !== 'all' && `${player.number}-${player.team}` !== selectedPlayerVal) return;
+
+        if (player.seasonLog) {
+            logEntries.push(...player.seasonLog);
+        }
+    });
+
+    // Set context for UI/Internal logic
+    setCurrentHeatmapContext({
+        log: logEntries,
+        title: 'Saison-Heatmap',
+        filter: {
+            team: selectedTeam,
+            player: selectedPlayerVal === 'all' ? null : selectedPlayerVal.split('-')[0]
+        },
+        type: 'season-specific' // Match heatmap.js condition
+    });
+
+    // Pass the filtered logEntries directly as the second argument
+    renderHeatmap(svg, logEntries);
+}
+
+// Render Team Diagram View
+function renderTeamDiagramView() {
+    const container = document.getElementById('subtabSeasonDiagrammContent');
+    if (!container) return;
+
+    const summary = getSeasonSummary();
+    const allPlayers = summary.players;
+
+    // Clear container first
+    container.innerHTML = '';
+
+    // Check if we have any players at all
+    if (!allPlayers || allPlayers.length === 0) {
+        container.innerHTML = '<p style="text-align: center; padding: 40px; color: hsl(var(--muted-foreground));">Noch keine Daten vorhanden. Bitte erfasse zuerst Spiele.</p>';
+        return;
+    }
+
+    // We pass ALL players because the scatter plot has its own filters
+    const scatterPlot = renderTeamScatterPlot(allPlayers);
+    if (scatterPlot) {
+        container.appendChild(scatterPlot);
+
+        // Reinitialize Lucide icons if needed
+        if (typeof lucide !== 'undefined') {
+            lucide.createIcons({ root: container });
+        }
+    } else {
+        container.innerHTML = `
+            <div style="text-align: center; padding: 40px;">
+                <p style="color: hsl(var(--muted-foreground)); margin-bottom: 1rem;">Nicht genügend aktive Spieldaten für Team-Vergleich.</p>
+                <p style="font-size: 0.9rem; color: hsl(var(--muted-foreground)/0.7);">Mindestens 2 Spieler mit Toren oder Fehlwürfen benötigt.</p>
+            </div>
+        `;
+    }
+}
+
 // Öffnet Saison-Übersicht (legacy name, now just ensures rendering)
 export function openSeasonOverview() {
     // Just render. The view switching is handled by main navigation (ui.js / app.js)
@@ -601,9 +860,24 @@ export function showPlayerHeatmap(playerIndex, mode = 'field') {
         type: 'season-specific'
     });
 
-    // Simulate navigation
-    const navItem = document.querySelector('.nav-item[data-view="seasonheatmap"]');
-    if (navItem) navItem.click();
+    // Navigate to Season Stats view
+    const mainNavItem = document.querySelector('.nav-item[data-view="seasonStats"]');
+    if (mainNavItem) mainNavItem.click();
+
+    // Small delay to ensure view is active, then switch sub-tab and set values
+    setTimeout(() => {
+        const heatmapSubtabBtn = document.querySelector('.season-subtab-btn[data-subtab="heatmap"]');
+        if (heatmapSubtabBtn) heatmapSubtabBtn.click();
+
+        const ts = document.getElementById('subtabSeasonHeatmapTeamSelect');
+        const ps = document.getElementById('subtabSeasonHeatmapPlayerSelect');
+        if (ts && ps) {
+            ts.value = player.team || 'Heim';
+            populateSeasonHeatmapDropdowns(true);
+            ps.value = `${player.number}-${player.team || 'Heim'}`;
+            renderSeasonHeatmapData();
+        }
+    }, 50);
 }
 
 // Zeigt kombinierte Heatmap für alle Spieler eines Teams
@@ -647,7 +921,6 @@ export function showTeamHeatmap(teamName) {
         ? (spielstand.settings.myTeamName || spielstand.settings.teamNameHeim || 'Unser Team')
         : teamName;
 
-    // Set Context
     setCurrentHeatmapContext({
         log: allLogEntries,
         title: `Team Grafik - ${displayName} (${teamPlayers.length} Spieler)`,
@@ -658,9 +931,24 @@ export function showTeamHeatmap(teamName) {
         type: 'season-specific'
     });
 
-    // Simulate navigation
-    const navItem = document.querySelector('.nav-item[data-view="seasonheatmap"]');
-    if (navItem) navItem.click();
+    // Navigate to Season Stats view
+    const mainNavItem = document.querySelector('.nav-item[data-view="seasonStats"]');
+    if (mainNavItem) mainNavItem.click();
+
+    // Small delay to ensure view is active, then switch sub-tab and set values
+    setTimeout(() => {
+        const heatmapSubtabBtn = document.querySelector('.season-subtab-btn[data-subtab="heatmap"]');
+        if (heatmapSubtabBtn) heatmapSubtabBtn.click();
+
+        const ts = document.getElementById('subtabSeasonHeatmapTeamSelect');
+        const ps = document.getElementById('subtabSeasonHeatmapPlayerSelect');
+        if (ts && ps) {
+            ts.value = isMyTeam ? 'Heim' : teamName;
+            populateSeasonHeatmapDropdowns(true);
+            ps.value = 'all';
+            renderSeasonHeatmapData();
+        }
+    }, 50);
 }
 
 // Generiert SVG Scatter Plot für Team-Performance

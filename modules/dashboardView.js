@@ -76,7 +76,6 @@ export function showDashboardInline() {
                         </div>
                     </div>
                 </div>
-            </div>
             
             <!-- 4. Scorers Pie -->
             <div class="season-panel" style="min-height: 200px; box-shadow: none; border: 1px solid var(--border-color);">
@@ -87,10 +86,9 @@ export function showDashboardInline() {
                         </div>
                     </div>
                 </div>
-            </div>
 
              <!-- 5. Last Scores Line -->
-            <div class="season-panel" style="grid-column: span 2; min-height: 200px; box-shadow: none; border: 1px solid var(--border-color);">
+            <div class="season-panel" style="min-height: 200px; box-shadow: none; border: 1px solid var(--border-color);">
                 <div class="season-panel-title">Spielverlauf</div>
                 <div class="chart-container" style="height: 200px;">
                     <canvas id="dashScoresChart"></canvas>
@@ -98,15 +96,15 @@ export function showDashboardInline() {
             </div>
 
             <!-- 6. Combined Efficiency Panel -->
-            <div class="season-panel" style="grid-column: span 2; min-height: 220px; box-shadow: none; border: 1px solid var(--border-color);">
+            <div class="season-panel wurf-stats-panel" style="min-height: 220px; box-shadow: none; border: 1px solid var(--border-color);">
                 <div class="season-panel-title">Wurfstatistiken</div>
                 <div class="season-chart-wrapper-flex">
-                    <div style="flex: 1; min-width: 250px; display: flex; flex-direction: column;">
+                    <div style="flex: 1; display: flex; flex-direction: column;">
                         <div class="chart-container" style="height: 180px;">
                             <canvas id="dashEffTotalChart"></canvas>
                         </div>
                     </div>
-                    <div style="flex: 1; min-width: 250px; display: flex; flex-direction: column;">
+                    <div style="flex: 1; display: flex; flex-direction: column;">
                          <span style="font-size: 0.7rem; color: var(--text-muted); margin-bottom: 5px; text-align: center;">Pro Spiel (%)</span>
                          <div class="chart-container" style="height: 180px;">
                             <canvas id="dashEffGameChart"></canvas>

@@ -871,7 +871,8 @@ tr:hover td {
 /* DASHBOARD GRID */
 .season-grid-panels {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    grid-template-columns: repeat(2, 1fr);
+    /* Default for mobile/small screens */
     gap: 1.5rem;
     margin-bottom: 2rem;
 }
@@ -888,6 +889,22 @@ tr:hover td {
     height: 100% !important;
     display: block;
     /* Remove inline spacing */
+}
+
+/* Flex wrapper for side-by-side charts */
+.season-chart-wrapper-flex {
+    display: flex;
+    gap: 15px;
+    flex-wrap: wrap;
+    /* Wrap on small screens */
+    align-items: center;
+}
+
+/* On larger screens, force side-by-side */
+@media (min-width: 641px) {
+    .season-chart-wrapper-flex {
+        flex-wrap: nowrap;
+    }
 }
 
 .season-panel-title {
@@ -2407,11 +2424,12 @@ body.dark-mode .heatmap-tab.white-style:not(.active) {
     }
 
     /* 2. Dashboard Grid Optimization */
-    .season-grid-panels {
+    /* COMMENTED OUT - Moved to dedicated mobile query at end of file */
+    /* .season-grid-panels {
         display: grid;
         grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
         gap: 15px;
-    }
+    } */
 
     /* Force Cards to full width */
     .season-panel,
@@ -2475,6 +2493,22 @@ body.dark-mode .heatmap-tab.white-style:not(.active) {
 
 /* --- COMPACT GAME VIEW (TABLET & DESKTOP) --- */
 @media (min-width: 769px) {
+
+    /* Use 4 columns for everything above tablet */
+    .season-grid-panels {
+        grid-template-columns: repeat(4, 1fr);
+        gap: 1.5rem;
+    }
+
+    /* Wurfstatistiken should span 2 columns for side-by-side charts */
+    .season-panel.wurf-stats-panel {
+        grid-column: span 2 !important;
+    }
+
+    /* Force all panels to single column (override inline styles) */
+    .season-panel[style*="grid-column"] {
+        grid-column: span 1 !important;
+    }
 
     /* Main Content Padding reduction for game view */
     #spielBereich {
@@ -4784,52 +4818,65 @@ th {
     background: hsl(var(--primary) / 0.1) !important;
 }
 
-/* --- Mobile Dashboard Optimization --- */
+/* --- Desktop Dashboard Grid (> 1024px) --- */
+@media (min-width: 1025px) {
+    .season-grid-panels {
+        grid-template-columns: repeat(4, 1fr);
+        gap: 1.5rem;
+    }
+
+    /* Wurfstatistiken should span 2 columns for side-by-side charts */
+    .season-panel.wurf-stats-panel {
+        grid-column: span 2 !important;
+    }
+}
+
+/* --- Mobile Dashboard Optimization (only 640px and below) --- */
 @media (max-width: 640px) {
 
-    /* Force 2-column grid instead of stacking */
+    /* Reduce container padding on mobile to save space */
+    .content-section {
+        padding: 12px !important;
+    }
+
+    /* 2-column grid is already default, just adjust gap */
     .season-grid-panels {
-        grid-template-columns: repeat(2, 1fr) !important;
-        gap: 8px !important;
+        gap: 10px;
     }
 
-    /* Wrap charts to push them top */
-    .season-chart-wrapper {
-        justify-content: flex-start !important;
-        padding-top: 5px !important;
-    }
-
-    /* Make panels more compact */
+    /* Make panels slightly more compact but keep readable */
     .season-panel {
         min-height: auto !important;
-        /* Allow shrinking */
-        padding: 10px !important;
+        padding: 12px !important;
+        /* Reduced */
         margin-bottom: 0 !important;
+        min-width: 0;
+        /* Allow shrinking */
+        overflow-wrap: break-word;
+        word-break: break-word;
     }
 
-    /* Smaller Title */
+    /* Readable Title */
     .season-panel-title {
-        font-size: 0.85rem !important;
-        margin-bottom: 8px !important;
-        padding-bottom: 4px !important;
+        font-size: 0.95rem !important;
+        margin-bottom: 12px !important;
     }
 
-    /* Smaller Text in Cards */
+    /* Readable Text in Cards */
     .season-panel,
     .season-panel div {
-        font-size: 0.8rem !important;
+        font-size: 0.9rem !important;
     }
 
-    /* Charts scaling */
+    /* Charts scaling - keep them large enough to see */
     .chart-container {
-        height: 120px !important;
-        /* Smaller charts */
+        height: 140px !important;
     }
 
     /* Adjust Last Results specific layout */
     .last-result-item {
-        padding: 4px 0 !important;
-        font-size: 0.75rem !important;
+        padding: 8px 0 !important;
+        font-size: 0.85rem !important;
     }
 
     .result-badge-square {
@@ -4876,4 +4923,437 @@ th {
         order: 999 !important;
         /* Force to bottom in flex */
     }
+}
+
+/* --- TACTICAL BOARD STYLES --- */
+.tactical-board-main {
+    background: hsl(var(--card));
+    border: 1px solid hsl(var(--border));
+    border-radius: var(--radius);
+    padding: 1.5rem;
+    min-height: 600px;
+    display: flex;
+    flex-direction: column;
+}
+
+.tactical-board-wrapper {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+    height: 100%;
+}
+
+.tactical-toolbar {
+    display: flex;
+    gap: 2rem;
+    padding: 1rem;
+    background: hsl(var(--muted) / 0.5);
+    border-radius: 8px;
+    align-items: center;
+    flex-wrap: wrap;
+}
+
+.tool-group {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding-right: 1.5rem;
+    border-right: 1px solid hsl(var(--border));
+}
+
+.tool-group:last-child {
+    border-right: none;
+}
+
+.tool-label {
+    font-size: 0.7rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    color: hsl(var(--muted-foreground));
+    margin-right: 0.5rem;
+}
+
+.draggable-source {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: grab;
+    font-weight: bold;
+    color: white;
+    user-select: none;
+}
+
+.draggable-source.home-team {
+    background-color: var(--team-primary-color, #dc3545);
+}
+
+.draggable-source.away-team {
+    background-color: var(--team-opponent-color, #2563eb);
+}
+
+.draggable-source.ball {
+    background-color: #facc15;
+    font-size: 1.2rem;
+}
+
+.tool-btn {
+    width: 36px;
+    height: 36px;
+    border-radius: 6px;
+    border: 1px solid hsl(var(--border));
+    background: hsl(var(--card));
+    color: hsl(var(--foreground));
+    padding: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.tool-btn.active {
+    background: hsl(var(--primary));
+    color: hsl(var(--primary-foreground));
+    border-color: hsl(var(--primary));
+}
+
+.tactical-stage-container {
+    position: relative;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.tactical-court {
+    width: 100%;
+    height: auto;
+    max-height: 70vh;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+    border-radius: 4px;
+    background-color: #2c3e50;
+    cursor: crosshair;
+}
+
+.timeline-container {
+    height: 100px;
+    background: hsl(var(--muted) / 0.3);
+    border-radius: 8px;
+    padding: 10px;
+    overflow-x: auto;
+}
+
+.timeline-track {
+    display: flex;
+    gap: 10px;
+}
+
+.timeline-thumb {
+    width: 80px;
+    height: 60px;
+    background: hsl(var(--card));
+    border: 1px solid hsl(var(--border));
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    cursor: pointer;
+    font-size: 0.7rem;
+    font-weight: 600;
+}
+
+.timeline-thumb:hover {
+    border-color: hsl(var(--primary));
+}
+
+.delete-frame-btn {
+    position: absolute;
+    top: -5px;
+    right: -5px;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background: hsl(var(--destructive));
+    color: white;
+    border: none;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    padding: 0;
+}
+
+.timeline-thumb:hover .delete-frame-btn {
+    display: flex;
+}
+
+.timeline-thumb {
+    position: relative;
+}
+
+/* Arrowhead Marker */
+#arrowhead {
+    fill: currentColor;
+}
+
+.tactical-object.selected {
+    filter: drop-shadow(0 0 5px hsl(var(--primary)));
+}
+
+.tactical-object.selected circle {
+    stroke: hsl(var(--primary));
+    stroke-width: 3;
+}
+
+.tactical-object:hover {
+    cursor: grab;
+    filter: brightness(1.1);
+}
+
+.tactical-object.dragging {
+    cursor: grabbing;
+    opacity: 0.8;
+}
+
+/* Play Loader Styles */
+.play-list-container {
+    padding: 0.5rem;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.play-item-row {
+    display: flex;
+    align-items: stretch;
+    background-color: hsl(var(--card));
+    border: 1px solid hsl(var(--border));
+    border-radius: var(--radius);
+    overflow: hidden;
+    transition: all 0.2s;
+}
+
+.play-item-row:hover {
+    border-color: hsl(var(--primary));
+}
+
+.play-item-info {
+    flex-grow: 1;
+    text-align: left;
+    padding: 12px 15px;
+    background: none;
+    border: none;
+    color: hsl(var(--foreground));
+    cursor: pointer;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    transition: background-color 0.2s;
+}
+
+.play-item-info:hover {
+    background-color: hsl(var(--muted)/0.5);
+}
+
+.play-item-delete {
+    background: none;
+    border: none;
+    border-left: 1px solid hsl(var(--border));
+    color: hsl(var(--destructive));
+    width: 50px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.play-item-delete:hover {
+    background-color: hsl(var(--destructive));
+    color: white;
+}
+
+/* Modal Header & Close Button Styling */
+.shadcn-modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid hsl(var(--border));
+    padding-bottom: 1rem;
+    margin-bottom: 1rem;
+    position: relative;
+    /* For safe measure */
+}
+
+.shadcn-modal-header h3 {
+    margin: 0;
+    font-size: 1.25rem;
+    font-weight: 600;
+}
+
+.close-modal-btn {
+    background: transparent;
+    border: none;
+    color: hsl(var(--muted-foreground));
+    font-size: 1.5rem;
+    line-height: 1;
+    cursor: pointer;
+    padding: 0.2rem 0.5rem;
+    border-radius: var(--radius);
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.close-modal-btn:hover {
+    background-color: hsl(var(--destructive) / 0.1);
+    color: hsl(var(--destructive));
+}
+
+/* Context Menu */
+.context-menu {
+    position: absolute;
+    background-color: hsl(var(--card));
+    border: 1px solid hsl(var(--border));
+    border-radius: var(--radius);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+    padding: 5px 0;
+    z-index: 10000;
+    min-width: 160px;
+    display: flex;
+    flex-direction: column;
+}
+
+.context-menu.versteckt {
+    display: none;
+}
+
+.context-menu-item {
+    padding: 8px 12px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: hsl(var(--foreground));
+    font-size: 0.9rem;
+    transition: background-color 0.2s;
+}
+
+.context-menu-item:hover {
+    background-color: hsl(var(--primary) / 0.1);
+}
+
+#customConfirmModal {
+    z-index: 9999 !important;
+}
+
+.draggable-source.active-spawn {
+    border: 2px solid white !important;
+    box-shadow: 0 0 10px rgba(255, 255, 255, 0.5) !important;
+    transform: translateY(-2px);
+    background-color: hsl(var(--primary) / 0.2);
+}
+
+/* Prevent text selection on tactical objects */
+.tactical-object,
+.tactical-object text,
+.player,
+.player text,
+.ball,
+.ball text {
+    user-select: none;
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+    cursor: grab;
+}
+
+.tactical-object.dragging,
+.player.dragging,
+.ball.dragging {
+    cursor: grabbing;
+}
+
+/* Modal Header Layout Fix */
+.shadcn-modal-content {
+    position: relative !important;
+    /* Context for absolute positioning */
+}
+
+.shadcn-modal-header {
+    display: flex !important;
+    justify-content: center !important;
+    /* Center title */
+    align-items: center !important;
+    padding: 10px 0;
+}
+
+.close-modal-btn {
+    position: absolute !important;
+    top: 4px !important;
+    right: 4px !important;
+    font-size: 1.5rem;
+    background: none;
+    border: none;
+    cursor: pointer;
+    line-height: 1;
+    padding: 4px;
+    color: hsl(var(--foreground));
+    opacity: 0.6;
+    transition: all 0.2s;
+}
+
+.close-modal-btn:hover {
+    opacity: 1;
+    background: hsl(var(--muted)/0.5);
+    color: hsl(var(--destructive));
+}
+
+/* Context Menu Inputs */
+.context-menu-form {
+    padding: 8px 12px;
+    border-bottom: 1px solid hsl(var(--border));
+}
+
+.context-input-group {
+    display: flex;
+    flex-direction: column;
+    margin-bottom: 8px;
+}
+
+.context-input-group label {
+    font-size: 0.75rem;
+    color: hsl(var(--muted-foreground));
+    margin-bottom: 2px;
+}
+
+.context-input-group input {
+    background: hsl(var(--background));
+    border: 1px solid hsl(var(--input));
+    color: hsl(var(--foreground));
+    padding: 4px 6px;
+    border-radius: 4px;
+    font-size: 0.9rem;
+}
+
+.context-input-group input:focus {
+    outline: none;
+    border-color: hsl(var(--primary));
+}
+
+.context-menu-item.delete-item {
+    color: hsl(var(--destructive));
+    padding-top: 8px;
+    border-top: 1px solid transparent;
+}
+
+.context-menu-item.delete-item:hover {
+    background-color: hsl(var(--destructive) / 0.1);
+}
+
+#customConfirmModal {
+    z-index: 9999 !important;
 }

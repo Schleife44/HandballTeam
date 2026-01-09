@@ -287,6 +287,10 @@ function navigateToView(view) {
             break;
         case 'seasonStats':
             showSeasonStatsInline(); // Shows the detailed stats
+            // Initialize season sub-tabs
+            import('./modules/seasonView.js').then(mod => {
+                if (mod.initSeasonSubTabs) mod.initSeasonSubTabs();
+            });
             break;
         case 'shots':
             showShotsInline();
@@ -296,14 +300,10 @@ function navigateToView(view) {
             // Initialize settings page UI (set values and validation state)
             initSettingsPage();
             break;
-        case 'heatmap':
-            showLiveHeatmapInline();
-            break;
         case 'seasonheatmap':
-            showSeasonHeatmapInline();
-            break;
         case 'teamdiagramm':
-            showTeamDiagrammView();
+            // Redirect to the new consolidated season stats view
+            switchView('seasonStats');
             break;
         case 'protocol':
             if (protokollBereich) protokollBereich.classList.remove('versteckt');
@@ -313,6 +313,11 @@ function navigateToView(view) {
             const vaBereich = document.getElementById('videoAnalyseBereich');
             if (vaBereich) vaBereich.classList.remove('versteckt');
             import('./modules/videoAnalysis.js').then(mod => mod.handleVideoAnalysisView());
+            break;
+        case 'tacticalboard':
+            const tbBereich = document.getElementById('tacticalBoardBereich');
+            if (tbBereich) tbBereich.classList.remove('versteckt');
+            import('./modules/tacticalBoardView.js').then(mod => mod.initTacticalBoard());
             break;
     }
 
@@ -589,424 +594,9 @@ function showSeasonStatsInline() {
     });
 }
 
-function showSeasonHeatmapInline() {
-    // Create inline section if it doesn't exist
-    let seasonHeatmapBereich = document.getElementById('seasonHeatmapBereich');
-    if (!seasonHeatmapBereich) {
-        seasonHeatmapBereich = document.createElement('div');
-        seasonHeatmapBereich.id = 'seasonHeatmapBereich';
-        seasonHeatmapBereich.className = 'content-section';
-        seasonHeatmapBereich.innerHTML = `
-            <div class="heatmap-view-container">
-                <div class="heatmap-view-header">
-                    <h1>Saison-Heatmap</h1>
-                </div>
-                
-                <div class="heatmap-controls-card">
-                    <!-- Row 1: Selects -->
-                    <div class="heatmap-row">
-                        <div class="roster-input-group">
-                            <label>Team</label>
-                            <select id="seasonHeatmapTeamSelect" class="shadcn-input shadcn-select-native">
-                                <option value="all">Alle Teams</option>
-                            </select>
-                        </div>
-                        <div class="roster-input-group">
-                            <label>Spieler</label>
-                            <select id="seasonHeatmapPlayerSelect" class="shadcn-input shadcn-select-native">
-                                <option value="all">Alle Spieler</option>
-                            </select>
-                        </div>
-                    </div>
+// Redundant legacy functions removed. Logic is now handled by modules/seasonView.js
 
-                    <!-- Row 2: Tabs -->
-                    <div class="heatmap-tabs-row">
-                        <button class="heatmap-tab white-style active" data-tab="tor">Tor-Ansicht</button>
-                        <button class="heatmap-tab white-style" data-tab="feld">Wurf-Positionen</button>
-                        <button class="heatmap-tab white-style" data-tab="kombiniert">Kombiniert</button>
-                    </div>
-
-                    <!-- Row 3: Filters -->
-                    <div class="heatmap-filters-row">
-                        <label class="heatmap-filter-item">
-                            <input type="checkbox" id="seasonHeatmapToreFilter" checked> Feldtore
-                        </label>
-                        <label class="heatmap-filter-item">
-                            <input type="checkbox" id="seasonHeatmap7mFilter"> 7m
-                        </label>
-                        <label class="heatmap-filter-item">
-                            <input type="checkbox" id="seasonHeatmapMissedFilter" checked> Fehlwürfe
-                        </label>
-                    </div>
-                </div>
-                
-                <div class="heatmap-visual-container">
-                   <svg id="seasonHeatmapSvg" width="300" height="500"></svg>
-                </div>
-            </div>
-        `;
-        document.getElementById('main-content').appendChild(seasonHeatmapBereich);
-
-        // Add event listeners (attached once)
-        const tabButtons = seasonHeatmapBereich.querySelectorAll('.heatmap-tab');
-        tabButtons.forEach(btn => {
-            btn.addEventListener('click', () => {
-                tabButtons.forEach(b => b.classList.remove('active'));
-                btn.classList.add('active');
-
-                import('./modules/heatmap.js').then(heatmap => {
-                    heatmap.setCurrentHeatmapTab(btn.dataset.tab);
-                    renderSeasonHeatmap();
-                });
-            });
-        });
-
-        const filters = seasonHeatmapBereich.querySelectorAll('input[type="checkbox"]');
-        filters.forEach(filter => {
-            filter.addEventListener('change', () => renderSeasonHeatmap());
-        });
-
-        const teamSelect = seasonHeatmapBereich.querySelector('#seasonHeatmapTeamSelect');
-        const playerSelect = seasonHeatmapBereich.querySelector('#seasonHeatmapPlayerSelect');
-
-        if (teamSelect) {
-            teamSelect.addEventListener('change', (e) => {
-                // Reset player selection when team changes
-                if (playerSelect) playerSelect.value = 'all';
-                // Always reset context on manual user change
-                import('./modules/heatmap.js').then(heatmap => {
-                    heatmap.setCurrentHeatmapContext('season');
-                    // Reset title (only for Season Heatmap)
-                    const seasonBereich = document.getElementById('seasonHeatmapBereich');
-                    if (seasonBereich) {
-                        const h1 = seasonBereich.querySelector('.heatmap-view-header h1');
-                        if (h1) h1.textContent = 'Saison-Heatmap';
-                    }
-                    renderSeasonHeatmap();
-                });
-            });
-        }
-        if (playerSelect) {
-            playerSelect.addEventListener('change', () => {
-                // Always reset context on manual user change
-                import('./modules/heatmap.js').then(heatmap => {
-                    heatmap.setCurrentHeatmapContext('season');
-                    // Reset title (only for Season Heatmap)
-                    const seasonBereich = document.getElementById('seasonHeatmapBereich');
-                    if (seasonBereich) {
-                        const h1 = seasonBereich.querySelector('.heatmap-view-header h1');
-                        if (h1) h1.textContent = 'Saison-Heatmap';
-                    }
-                    renderSeasonHeatmap();
-                });
-            });
-        }
-    }
-
-    seasonHeatmapBereich.classList.remove('versteckt');
-
-    // Set initial context and state
-    import('./modules/seasonView.js').then(seasonView => {
-        import('./modules/heatmap.js').then(heatmap => {
-            const existingContext = heatmap.getCurrentHeatmapContext();
-            let useSeasonDefault = true;
-
-            if (existingContext && typeof existingContext === 'object' && (existingContext.type === 'season-specific' || existingContext.type === 'history-specific')) {
-                useSeasonDefault = false;
-
-                // Set dropdowns and filters based on context
-                const teamSelect = seasonHeatmapBereich.querySelector('#seasonHeatmapTeamSelect');
-                const playerSelect = seasonHeatmapBereich.querySelector('#seasonHeatmapPlayerSelect');
-
-                // Set filter checkboxes based on context
-                if (existingContext.initialFilters) {
-                    const toreFilter = seasonHeatmapBereich.querySelector('#seasonHeatmapToreFilter');
-                    const sevenMFilter = seasonHeatmapBereich.querySelector('#seasonHeatmap7mFilter');
-                    const missedFilter = seasonHeatmapBereich.querySelector('#seasonHeatmapMissedFilter');
-
-                    if (toreFilter) toreFilter.checked = existingContext.initialFilters.tore;
-                    if (sevenMFilter) sevenMFilter.checked = existingContext.initialFilters.seven_m;
-                    if (missedFilter) missedFilter.checked = existingContext.initialFilters.missed;
-                }
-
-                // Set dropdowns immediately (no setTimeout needed)
-                if (teamSelect && playerSelect && existingContext.filter) {
-                    const requestedTeam = existingContext.filter.team;
-                    let team = requestedTeam === 'heim' ? 'Heim' : requestedTeam;
-
-                    // Match normalized team name to existing summary data
-                    const summary = seasonView.getSeasonSummary();
-
-                    const normalize = (name) => {
-                        if (!name) return '';
-                        return name.toLowerCase().trim().replace(/^(tv|sg|hsg|tsv|sv|tus|sc)\b\s*/, '');
-                    };
-                    const normRequested = normalize(team);
-
-                    if (summary && team !== 'Heim') {
-                        const match = summary.players.find(p => p.team !== 'Heim' && normalize(p.team) === normRequested);
-                        if (match) {
-                            team = match.team;
-                        }
-                    }
-
-
-
-                    // Set team dropdown (even if option doesn't exist yet, renderSeasonHeatmap will populate)
-                    // But we need to populate it first if it's empty
-
-                    if (summary && teamSelect.options.length <= 1) {
-                        const teams = new Set();
-                        summary.players.forEach(p => teams.add(p.team || 'Heim'));
-
-                        const optOpp = document.createElement('option');
-                        optOpp.value = 'all_opponents';
-                        optOpp.textContent = 'Alle Gegner';
-                        teamSelect.appendChild(optOpp);
-
-                        const sortedTeams = Array.from(teams).sort((a, b) => {
-                            if (a === 'Heim') return -1;
-                            if (b === 'Heim') return 1;
-                            return a.localeCompare(b);
-                        });
-
-                        const myLabel = spielstand.settings.myTeamName || spielstand.settings.teamNameHeim || 'Heim';
-
-                        sortedTeams.forEach(t => {
-                            const opt = document.createElement('option');
-                            opt.value = t;
-                            opt.textContent = t === 'Heim' ? myLabel : t;
-                            teamSelect.appendChild(opt);
-                        });
-                    } else if (summary && team !== 'Heim' && team !== 'all' && team !== 'all_opponents') {
-                        // Dropdown already has options, but check if this specific team exists
-                        const teamOption = teamSelect.querySelector(`option[value="${team}"]`);
-                        if (!teamOption) {
-                            // Add the missing team option
-                            const opt = document.createElement('option');
-                            opt.value = team;
-                            opt.textContent = team;
-                            teamSelect.appendChild(opt);
-                        }
-                    }
-
-                    teamSelect.value = team;
-
-                    // Manually populate player dropdown (dispatchEvent doesn't work)
-
-                    if (summary) {
-                        const filteredPlayers = summary.players.filter(p => {
-                            if (team === 'all') return true;
-                            if (team === 'all_opponents') return p.team !== 'Heim';
-                            return p.team === team;
-                        });
-
-                        filteredPlayers.sort((a, b) => (a.number || 0) - (b.number || 0));
-
-                        playerSelect.innerHTML = '<option value="all">Alle Spieler</option>';
-                        filteredPlayers.forEach(p => {
-                            const opt = document.createElement('option');
-                            opt.value = `${p.team}|${p.number}`;
-                            let labelName = p.name || '';
-                            if (p.team !== 'Heim' && (!labelName || labelName.toLowerCase().startsWith('gegner'))) {
-                                labelName = labelName ? `${labelName} (${p.team})` : `(${p.team})`;
-                            }
-                            opt.textContent = `#${p.number} ${labelName}`;
-                            playerSelect.appendChild(opt);
-                        });
-
-
-                        // Set the selected player after DOM update
-                        setTimeout(() => {
-                            if (existingContext.filter.player) {
-                                const playerValue = `${team}|${existingContext.filter.player}`;
-                                const playerOption = playerSelect.querySelector(`option[value="${playerValue}"]`);
-                                if (playerOption) {
-                                    playerSelect.value = playerValue;
-                                } else {
-                                    // Player not found in list - reset to 'all'
-                                    playerSelect.value = 'all';
-                                    console.warn(`Player ${playerValue} not found in dropdown`);
-                                }
-                            } else {
-                                playerSelect.value = 'all';
-                            }
-
-                            // Set lastContext to sync with renderSeasonHeatmap logic
-                            playerSelect.dataset.lastContext = `team:${team}`;
-                        }, 50);
-                    }
-                }
-            }
-
-            if (useSeasonDefault) {
-                heatmap.setCurrentHeatmapContext('season');
-                heatmap.setCurrentHeatmapTab('tor');
-
-                // Reset dropdowns
-                const teamSelect = seasonHeatmapBereich.querySelector('#seasonHeatmapTeamSelect');
-                const playerSelect = seasonHeatmapBereich.querySelector('#seasonHeatmapPlayerSelect');
-                if (teamSelect) teamSelect.value = 'all';
-                if (playerSelect) playerSelect.value = 'all';
-
-                // Reset Tabs UI
-                const tabButtons = seasonHeatmapBereich.querySelectorAll('.heatmap-tab');
-                if (tabButtons.length > 0) {
-                    tabButtons.forEach(b => b.classList.remove('active'));
-                    const torTab = seasonHeatmapBereich.querySelector('[data-tab="tor"]');
-                    if (torTab) torTab.classList.add('active');
-                }
-            }
-
-            renderSeasonHeatmap();
-        });
-    });
-}
-
-function renderSeasonHeatmap() {
-    import('./modules/seasonView.js').then(seasonView => {
-        import('./modules/heatmap.js').then(heatmap => {
-            const context = heatmap.getCurrentHeatmapContext();
-            const svg = document.getElementById('seasonHeatmapSvg');
-            if (!svg) return;
-
-            // Toggle controls visibility based on context
-            const controls = document.querySelector('.heatmap-controls');
-            const isSpecificContext = context && typeof context === 'object' && (context.type === 'season-specific' || context.type === 'history-specific') && context.log;
-
-            if (controls) {
-                // Keep controls visible so users see the selection, but maybe style it?
-                // For now, let's just make sure they are flex.
-                controls.style.display = 'flex';
-            }
-
-            // If specific context provided (from Team/Player Grafik click), render it directly
-            if (isSpecificContext) {
-                // Pass filter if available in context
-                heatmap.renderHeatmap(svg, context.log, true, context.filter);
-
-                if (context.title) {
-                    const seasonBereich = document.getElementById('seasonHeatmapBereich');
-                    const h1 = seasonBereich?.querySelector('.heatmap-view-header h1');
-                    if (h1) h1.textContent = context.title;
-                }
-
-                return;
-            }
-
-            // Default: Aggregate all season data
-            const teamSelect = document.getElementById('seasonHeatmapTeamSelect');
-            const playerSelect = document.getElementById('seasonHeatmapPlayerSelect');
-
-            const selectedTeam = teamSelect ? teamSelect.value : 'all';
-            const selectedPlayerVal = playerSelect ? playerSelect.value : 'all';
-
-            // Title remains static as "Saison-Heatmap" (not dynamically updated)
-
-            const summary = seasonView.getSeasonSummary();
-            if (!summary) return;
-
-            // --- FILTER POPULATION ---
-            if (teamSelect && playerSelect) {
-                // 1. Populate Teams if empty
-                if (teamSelect.options.length <= 1) {
-                    const teams = new Set();
-                    summary.players.forEach(p => teams.add(p.team || 'Heim'));
-
-                    // Add "Alle Gegner" option
-                    const optOpp = document.createElement('option');
-                    optOpp.value = 'all_opponents';
-                    optOpp.textContent = 'Alle Gegner';
-                    teamSelect.appendChild(optOpp);
-
-                    // Sort teams: Heim first, then others
-                    const sortedTeams = Array.from(teams).sort((a, b) => {
-                        if (a === 'Heim') return -1;
-                        if (b === 'Heim') return 1;
-                        return a.localeCompare(b);
-                    });
-
-                    const myLabel = spielstand.settings.myTeamName || spielstand.settings.teamNameHeim || 'Heim';
-
-                    sortedTeams.forEach(team => {
-                        const opt = document.createElement('option');
-                        opt.value = team;
-                        opt.textContent = team === 'Heim' ? myLabel : team;
-                        teamSelect.appendChild(opt);
-                    });
-                }
-
-                // 2. Populate Players based on Team Selection
-                const contextKey = `team:${selectedTeam}`;
-
-                // Only repopulate if context changed (optimization)
-                if (playerSelect.dataset.lastContext !== contextKey) {
-                    const oldVal = playerSelect.value;
-                    playerSelect.innerHTML = '<option value="all">Alle Spieler</option>';
-
-                    const filteredPlayers = summary.players.filter(p => {
-                        if (selectedTeam === 'all') return true;
-                        if (selectedTeam === 'all_opponents') return p.team !== 'Heim';
-                        return p.team === selectedTeam;
-                    });
-
-                    // Sort: Heim players by number, opponents by number
-                    filteredPlayers.sort((a, b) => (a.number || 0) - (b.number || 0));
-
-                    filteredPlayers.forEach(p => {
-                        const opt = document.createElement('option');
-                        // Use compound ID for uniqueness across teams
-                        opt.value = `${p.team}|${p.number}`;
-
-                        let labelName = p.name || '';
-                        // If unnamed or generic 'Gegner' name (e.g. "Gegner", "Gegner #5"), append Team Name
-                        if (p.team !== 'Heim' && (!labelName || labelName.toLowerCase().startsWith('gegner'))) {
-                            labelName = labelName ? `${labelName} (${p.team})` : `(${p.team})`;
-                        }
-
-                        opt.textContent = `#${p.number} ${labelName}`;
-                        playerSelect.appendChild(opt);
-                    });
-
-                    playerSelect.dataset.lastContext = contextKey;
-
-                    // Restore selection if valid
-                    // (But usually team change implies reset, handled by listener. This handles initial load or refresh)
-                }
-            }
-
-            // --- DATA FILTERING & AGGREGATION ---
-
-            const allSeasonLogs = [];
-            summary.players.forEach(player => {
-                // Team Filter
-                if (selectedTeam === 'all_opponents') {
-                    if (player.team === 'Heim') return;
-                } else if (selectedTeam !== 'all' && player.team !== selectedTeam) {
-                    return;
-                }
-
-                // Player Filter
-                // player.number vs selected "team|number"
-                if (selectedPlayerVal !== 'all') {
-                    const [pTeam, pNum] = selectedPlayerVal.split('|');
-                    if (player.team !== pTeam || String(player.number) !== String(pNum)) return;
-                }
-
-                if (player.seasonLog && player.seasonLog.length > 0) {
-                    allSeasonLogs.push(...player.seasonLog.map(entry => ({
-                        ...entry,
-                        number: entry.playerId || player.number,
-                        team: player.team
-                    })));
-                }
-            });
-
-            // Render heatmap
-            heatmap.renderHeatmap(svg, allSeasonLogs);
-        });
-    });
-}
+// End of legacy cleanup
 
 
 function showShotsInline() {
@@ -1295,6 +885,8 @@ function hideAllSections() {
     if (protokollBereich) protokollBereich.classList.add('versteckt');
     const vaBereich = document.getElementById('videoAnalyseBereich');
     if (vaBereich) vaBereich.classList.add('versteckt');
+    const tbBereich = document.getElementById('tacticalBoardBereich');
+    if (tbBereich) tbBereich.classList.add('versteckt');
 }
 
 function showTeamDiagrammView() {

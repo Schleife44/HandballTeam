@@ -32,9 +32,9 @@ import {
 
 
     historieDetailBereich, backToHistoryList, histDetailTeams, histDetailScore, histDetailDate,
-    histStatsTable, histStatsBody, histStatsGegnerTable, histStatsGegnerBody,
-    histHeatmapSvg, histTabStats, histTabHeatmap, histTabProtokoll, histTabTorfolge, histSubTabTor, histSubTabFeld,
-    histContentStats, histContentHeatmap, histContentProtokoll, histContentTorfolge, histProtokollAusgabe, histTorfolgeChart, exportHistorieButton,
+    histStatsBody, histStatsGegnerBody,
+    histHeatmapSvg, histTabHeatmap, histTabProtokoll, histTabTorfolge, histSubTabTor, histSubTabFeld,
+    histContentHeatmap, histContentProtokoll, histContentTorfolge, histProtokollAusgabe, histTorfolgeChart, exportHistorieButton,
     importSpielButton, importSpielInput,
     histHeatmapToreFilter, histHeatmapMissedFilter,
     liveOverviewHeatmapToreFilter, liveOverviewHeatmapMissedFilter, liveOverviewHeatmap7mFilter,
@@ -258,25 +258,9 @@ export function registerEventListeners() {
     }
 
     // === History Detail Tabs ===
-    if (histTabStats && histTabHeatmap && histTabProtokoll && histTabTorfolge) {
-        histTabStats.addEventListener('click', () => {
-            histTabStats.classList.add('active');
-            histTabHeatmap.classList.remove('active');
-            histTabProtokoll.classList.remove('active');
-            histTabTorfolge.classList.remove('active');
-
-            // Unified View: Show Heatmap Content but HIDE visuals
-            histContentHeatmap.classList.remove('versteckt');
-            histContentHeatmap.classList.add('hide-heatmap-visuals');
-
-            // Hide others
-            histContentStats.classList.add('versteckt'); // Old stats container (can be removed later)
-            histContentProtokoll.classList.add('versteckt');
-            histContentTorfolge.classList.add('versteckt');
-        });
+    if (histTabHeatmap && histTabProtokoll && histTabTorfolge) {
         histTabHeatmap.addEventListener('click', () => {
             histTabHeatmap.classList.add('active');
-            histTabStats.classList.remove('active');
             histTabProtokoll.classList.remove('active');
             histTabTorfolge.classList.remove('active');
 
@@ -285,30 +269,25 @@ export function registerEventListeners() {
             histContentHeatmap.classList.remove('hide-heatmap-visuals');
 
             // Hide others
-            histContentStats.classList.add('versteckt');
             histContentProtokoll.classList.add('versteckt');
             histContentTorfolge.classList.add('versteckt');
         });
         histTabProtokoll.addEventListener('click', () => {
             histTabProtokoll.classList.add('active');
-            histTabStats.classList.remove('active');
             histTabHeatmap.classList.remove('active');
             histTabTorfolge.classList.remove('active');
             histContentProtokoll.classList.remove('versteckt');
 
-            histContentStats.classList.add('versteckt');
             histContentHeatmap.classList.add('versteckt');
             histContentHeatmap.classList.remove('hide-heatmap-visuals'); // Reset class
             histContentTorfolge.classList.add('versteckt');
         });
         histTabTorfolge.addEventListener('click', () => {
             histTabTorfolge.classList.add('active');
-            histTabStats.classList.remove('active');
             histTabHeatmap.classList.remove('active');
             histTabProtokoll.classList.remove('active');
             histContentTorfolge.classList.remove('versteckt');
 
-            histContentStats.classList.add('versteckt');
             histContentHeatmap.classList.add('versteckt');
             histContentHeatmap.classList.remove('hide-heatmap-visuals'); // Reset class
             histContentProtokoll.classList.add('versteckt');
