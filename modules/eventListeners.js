@@ -57,7 +57,7 @@ import {
 import { handleZeitSprung } from './timer.js';
 import { exportTeam, handleFileImport, exportiereAlsPdf } from './export.js';
 import {
-    applyTheme, applyViewSettings, updateScoreDisplay,
+    applyTheme, applyViewSettings, updateScoreDisplay, updateProtokollAnzeige,
     schliesseWurfbildModal, zeigeWurfstatistik, zeichneSpielerRaster, oeffneWurfbildModal,
     zeichneRosterListe, showLiveGameOverview
 } from './ui.js';
@@ -865,18 +865,29 @@ export function registerEventListeners() {
         // 2. Hide Assist for Non-Goal actions (Fehlwurf, Gehalten, Block)
         const isGoal = currentAction === "Tor" || currentAction === "Gegner Tor" || currentAction === "7m Tor" || currentAction === "Gegner 7m Tor";
 
-        if (!isGoal) {
+        const isBlock = currentAction.toLowerCase().includes('block');
+
+        if (!isGoal && !isBlock) {
             if (assistSection) assistSection.style.display = 'none';
             return;
         }
-        if (assistSection) assistSection.style.display = 'block';
+        if (assistSection) {
+            assistSection.style.display = 'block';
+            const title = assistSection.querySelector('h4');
+            if (title) title.textContent = isBlock ? 'Geblockt von' : 'Assist';
+        }
 
         const isAway = spielstand.settings.isAuswaertsspiel;
         let playersToShow = [];
         let scorerNumber = null;
         const lastEntry = spielstand.gameLog[0];
 
-        if (isOpponentAction) {
+        // Determine if we need opponent roster or home roster
+        // Goal -> Same Team Assist. Block -> Other Team Block.
+        // Goal -> Same Team Assist. Block -> Other Team Block.
+        const useOpponentRoster = isOpponentAction ? !isBlock : isBlock;
+
+        if (useOpponentRoster) {
             scorerNumber = lastEntry?.gegnerNummer;
             if (isComplexMode) {
                 // Opponent lineup side
@@ -981,14 +992,25 @@ export function registerEventListeners() {
                 if (tempCombinedGoal) {
                     lastEntry.wurfbild = { x: tempCombinedGoal.x, y: tempCombinedGoal.y, color: null };
                 }
-                // Save assist if selected
+                // Save assist or attribution if selected
                 if (selectedAssistPlayer) {
-                    lastEntry.assist = { nummer: selectedAssistPlayer.number, name: selectedAssistPlayer.name || '' };
+                    const isBlock = lastEntry.action.toLowerCase().includes('block');
+                    const playerObj = { number: selectedAssistPlayer.number, nummer: selectedAssistPlayer.number, name: selectedAssistPlayer.name || '' };
+
+                    if (isBlock) {
+                        const isOpponentAction = lastEntry.action.startsWith('Gegner') || lastEntry.gegnerNummer;
+                        playerObj.teamKey = isOpponentAction ? 'myteam' : 'opponent';
+                        lastEntry.attributedPlayer = playerObj;
+                    } else {
+                        lastEntry.assist = playerObj;
+                    }
                 }
                 // Save play type
                 if (selectedPlayType) {
                     lastEntry.playType = selectedPlayType;
                 }
+                updateProtokollAnzeige();
+                updateScoreDisplay(); // Refresh stats table immediately
                 speichereSpielstand();
             }
 

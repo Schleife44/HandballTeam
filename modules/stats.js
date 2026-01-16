@@ -82,6 +82,21 @@ export function berechneStatistiken(overrideGameLog, overrideRoster) {
             }
         }
 
+        // --- CHECK ATTRIBUTION for Block ---
+        if (eintrag.action.includes("Block") &&
+            eintrag.attributedPlayer) {
+
+            const p = eintrag.attributedPlayer;
+            const target = p.number !== undefined ? p.number : p.nummer;
+            // Robust lookup for player stats
+            const s = statsMap.get(target) || statsMap.get(parseInt(target)) || statsMap.get(String(target));
+
+            if (s) {
+                s.block++;
+                s.guteAktion++;
+            }
+        }
+
         if (!eintrag.playerId || !statsMap.has(eintrag.playerId)) {
             continue;
         }
@@ -107,11 +122,6 @@ export function berechneStatistiken(overrideGameLog, overrideRoster) {
             stats.stuermerfoul++;
         } else if (eintrag.action === "Block") {
             stats.fehlwurf++;
-        } else if (eintrag.action === "Gegner Block" &&
-            eintrag.attributedPlayer &&
-            eintrag.attributedPlayer.teamKey === 'myteam') {
-            stats.block++;
-            stats.guteAktion++;
         } else if (eintrag.action === "2min Provoziert") {
             stats.rausgeholt2min++;
             stats.guteAktion++;
@@ -165,6 +175,8 @@ export function berechneGegnerStatistiken(overrideGameLog, players = []) {
                 tore: 0,
                 fehlwurf: 0,
                 techFehler: 0,
+                ballverlust: 0,
+                stuermerfoul: 0,
                 siebenMeter: 0,
                 siebenMeterTore: 0,
                 siebenMeterVersuche: 0,
@@ -185,7 +197,7 @@ export function berechneGegnerStatistiken(overrideGameLog, players = []) {
     for (const eintrag of log) {
         // --- ASSIST AGGREGATION ---
         if (eintrag.assist && eintrag.assist.nummer) {
-            const assistNum = eintrag.assist.nummer;
+            const assistNum = parseInt(eintrag.assist.nummer);
             if (gegnerStatsMap.has(assistNum)) {
                 gegnerStatsMap.get(assistNum).assist++;
                 gegnerStatsMap.get(assistNum).guteAktion++;
@@ -198,17 +210,19 @@ export function berechneGegnerStatistiken(overrideGameLog, players = []) {
         let isAttribution = false;
 
         if (eintrag.action.startsWith("Gegner") || eintrag.gegnerNummer) {
-            nummer = eintrag.gegnerNummer || "Team";
+            const val = eintrag.gegnerNummer;
+            nummer = (val !== undefined && val !== null) ? parseInt(val) : "Team";
             isDirectAction = true;
         } else if ((eintrag.action === "1und1" || eintrag.action === "1v1") &&
             eintrag.attributedPlayer &&
             (eintrag.attributedPlayer.isOpponent || eintrag.attributedPlayer.teamKey === 'opponent')) {
-            nummer = eintrag.attributedPlayer.number;
+            nummer = parseInt(eintrag.attributedPlayer.number);
             isAttribution = true;
-        } else if (eintrag.action === "Block" &&
+        } else if (eintrag.action.includes("Block") &&
             eintrag.attributedPlayer &&
             (eintrag.attributedPlayer.isOpponent || eintrag.attributedPlayer.teamKey === 'opponent')) {
-            nummer = eintrag.attributedPlayer.number;
+            const val = eintrag.attributedPlayer.number !== undefined ? eintrag.attributedPlayer.number : eintrag.attributedPlayer.nummer;
+            nummer = parseInt(val);
             isAttribution = true;
         }
 
@@ -223,6 +237,8 @@ export function berechneGegnerStatistiken(overrideGameLog, players = []) {
                 tore: 0,
                 fehlwurf: 0,
                 techFehler: 0,
+                ballverlust: 0,
+                stuermerfoul: 0,
                 siebenMeter: 0,
                 siebenMeterTore: 0,
                 siebenMeterVersuche: 0,
@@ -246,7 +262,7 @@ export function berechneGegnerStatistiken(overrideGameLog, players = []) {
             // Handle Attributed Actions (Heim -> Opponent)
             if (eintrag.action === "1und1" || eintrag.action === "1v1") {
                 stats.oneOnOneLost++;
-            } else if (eintrag.action === "Block") {
+            } else if (eintrag.action.includes("Block")) {
                 stats.block++;
             }
         } else {
@@ -267,8 +283,11 @@ export function berechneGegnerStatistiken(overrideGameLog, players = []) {
                 stats.siebenMeterVersuche++;
             } else if (eintrag.action.startsWith("Gegner Gute Aktion")) {
                 stats.guteAktion++;
-            } else if (eintrag.action === "Gegner TF") {
-                stats.techFehler++; // BV
+            } else if (eintrag.action === "Gegner TF" || eintrag.action === "Gegner Technischer Fehler" || eintrag.action === "Gegner Ballverlust") {
+                stats.techFehler++;
+                stats.ballverlust++;
+            } else if (eintrag.action === "Gegner Stürmerfoul" || eintrag.action === "Gegner Foul") {
+                stats.stuermerfoul++;
             } else if (eintrag.action === "Gegner Gelb") {
                 stats.gelb++;
             } else if (eintrag.action === "Gegner 2 min") {
@@ -278,7 +297,7 @@ export function berechneGegnerStatistiken(overrideGameLog, players = []) {
             } else if (eintrag.action === "Gegner 1und1" || eintrag.action === "Gegner 1v1" || eintrag.action === "Gegner 1v1 Gewonnen") {
                 stats.gewonnen1v1++;
             } else if (eintrag.action === "Gegner Block") {
-                // stats.block++; // Removed - Opponent SHOT was blocked
+                // stats.block++; // Removed
                 stats.fehlwurf++; // Count as miss for the shooter
 
             } else if (eintrag.action === "Gegner 2min Provoziert") {

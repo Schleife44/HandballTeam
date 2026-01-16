@@ -1764,6 +1764,7 @@ function handleAttributedPlayerClick(attrPlayer, teamKey, playerIndex) {
     }
 
     updateProtokollAnzeige();
+    updateScoreDisplay(); // Refresh stats table immediately
     speichereSpielstand();
 
     // Trigger step 2 if needed (only for our team's benefit)
