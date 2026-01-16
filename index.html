@@ -680,6 +680,18 @@
                                 <span class="slider round"></span>
                             </label>
                         </div>
+                        <div style="height: 1px; background: var(--border-color); margin: 5px 0;"></div>
+                        <div class="setting-row"
+                            style="display: flex; justify-content: space-between; align-items: center;">
+                            <label for="toggleCombinedThrow" style="cursor: pointer;">Kombinierte Ansicht</label>
+                            <label class="switch">
+                                <input type="checkbox" id="toggleCombinedThrow">
+                                <span class="slider round"></span>
+                            </label>
+                        </div>
+                        <p style="font-size: 0.75rem; color: var(--text-muted); margin: 5px 0 0 0;">
+                            Zeigt Feld und Tor nebeneinander statt hintereinander
+                        </p>
                     </div>
                 </div>
             </div>
@@ -1015,9 +1027,10 @@
                                     <tr style="text-align: left; color: var(--text-muted); font-size: 0.8rem;">
                                         <th style="padding: 10px;">Spieler</th>
                                         <th style="padding: 10px;" title="Spielzeit">Zeit</th>
-                                        <th style="padding: 10px;">Tore</th>
-                                        <th style="padding: 10px;">Feld</th>
-                                        <th style="padding: 10px;">7m</th>
+                                        <th style="padding: 10px;" title="Tore Gesamt">T</th>
+                                        <th style="padding: 10px;" title="Feldtore">F</th>
+                                        <th style="padding: 10px;" title="Assists">A</th>
+                                        <th style="padding: 10px;" title="7 Meter">7m</th>
                                         <th style="padding: 10px;">Fehl</th>
                                         <th style="padding: 10px;">Quote</th>
                                         <th style="padding: 10px;">Gut</th>
@@ -1049,9 +1062,10 @@
                                     <tr style="text-align: left; color: var(--text-muted); font-size: 0.8rem;">
                                         <th style="padding: 10px;">Name</th>
                                         <th style="padding: 10px;" title="Spielzeit">Zeit</th>
-                                        <th style="padding: 10px;">Tore</th>
-                                        <th style="padding: 10px;">Feld</th>
-                                        <th style="padding: 10px;">7m</th>
+                                        <th style="padding: 10px;" title="Tore Gesamt">T</th>
+                                        <th style="padding: 10px;" title="Feldtore">F</th>
+                                        <th style="padding: 10px;" title="Assists">A</th>
+                                        <th style="padding: 10px;" title="7 Meter">7m</th>
                                         <th style="padding: 10px;">Fehl</th>
                                         <th style="padding: 10px;">Quote</th>
                                         <th style="padding: 10px;">Gut</th>
@@ -1097,8 +1111,9 @@
             <h2 style="margin-bottom: 20px;">Video Analyse</h2>
             <div style="display: flex; gap: 20px; height: calc(100vh - 120px);">
                 <!-- Left: Game List -->
-                <div style="width: 320px; display: flex; flex-direction: column; gap: 10px;">
-                    <div class="stats-card" style="flex: 1; overflow-y: auto; padding: 15px;">
+                <div
+                    style="width: 420px; min-width: 420px; flex-shrink: 0; display: flex; flex-direction: column; gap: 10px;">
+                    <div class="stats-card" style="flex: 1; overflow-y: auto; padding: 15px; width: 100%;">
                         <h3 class="card-title">Spiele</h3>
                         <div id="videoGameListContent" style="display: flex; flex-direction: column; gap: 8px;">
                             <!-- Items injected via JS -->
@@ -1131,9 +1146,9 @@
                     <div style="flex: 1; display: flex; flex-direction: row; gap: 15px; min-height: 0;">
                         <!-- Video Container -->
                         <div
-                            style="flex: 2; min-height: 0; background: #000; border-radius: 8px; overflow: hidden; display: flex; align-items: center; justify-content: center; position: relative;">
+                            style="flex: 2; align-self: flex-start; background: #000; border-radius: 8px; overflow: hidden; display: flex; align-items: center; justify-content: center; position: relative; width: 100%;">
                             <video id="analysisVideoPlayer" controls
-                                style="width: 100%; height: 100%; max-height: 100%;">
+                                style="width: 100%; height: auto; max-height: 80vh;">
                             </video>
                             <div id="videoPlaceholder"
                                 style="position: absolute; color: #fff; display: flex; flex-direction: column; align-items: center; gap: 10px; pointer-events: none;">
@@ -1274,6 +1289,85 @@
                 </div>
                 <div class="shadcn-modal-footer">
                     <button class="shadcn-btn-outline" id="wurfpositionUeberspringen">Überspringen</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Combined Throw Modal (Wurfposition + Wurfbild nebeneinander) -->
+        <div id="combinedThrowModal" class="modal-overlay versteckt">
+            <div class="shadcn-modal-content" style="max-width: 850px; width: 95%;">
+                <div class="shadcn-modal-header">
+                    <h3>Wurf aufzeichnen</h3>
+                </div>
+                <div class="combined-throw-container">
+                    <!-- Linke Seite: Wurfposition (Feld) -->
+                    <div class="throw-section">
+                        <h4 style="margin-bottom: 10px; font-size: 0.9rem; color: var(--text-muted);">Von wo geworfen?
+                        </h4>
+                        <div id="combinedWurfpositionFeld" class="throw-svg-container">
+                            <svg viewBox="0 0 300 400" style="width: 100%; max-height: 45vh;">
+                                <rect x="10" y="10" width="280" height="380" fill="#f5f5f5" stroke="#333"
+                                    stroke-width="2" />
+                                <rect x="112" y="10" width="76" height="8" fill="#333" />
+                                <path d="M 75 18 Q 75 90 150 90 Q 225 90 225 18" fill="none" stroke="#333"
+                                    stroke-width="2" />
+                                <path d="M 37 18 Q 37 150 150 150 Q 263 150 263 18" fill="none" stroke="#333"
+                                    stroke-width="1" stroke-dasharray="6,3" />
+                                <circle cx="150" cy="65" r="4" fill="#333" />
+                                <line x1="10" y1="388" x2="290" y2="388" stroke="#333" stroke-width="2" />
+                                <!-- Marker wird per JS hinzugefügt -->
+                                <circle id="combinedFieldMarker" cx="0" cy="0" r="8" fill="#2563eb" stroke="white"
+                                    stroke-width="2" style="display: none;" />
+                            </svg>
+                        </div>
+                    </div>
+                    <!-- Rechte Seite: Wurfbild (Tor) -->
+                    <div class="throw-section">
+                        <h4 style="margin-bottom: 10px; font-size: 0.9rem; color: var(--text-muted);">Wohin ging der
+                            Ball?</h4>
+                        <div id="combinedWurfbildUmgebung" class="throw-svg-container">
+                            <svg id="combinedGoalSvg" viewBox="0 0 300 200" style="width: 100%; max-height: 30vh;">
+                                <rect x="25" y="10" width="250" height="180" fill="none" stroke="#888"
+                                    stroke-width="3" />
+                                <line x1="100" y1="10" x2="100" y2="190" stroke="#bbb" stroke-width="1"
+                                    stroke-dasharray="5,5" />
+                                <line x1="200" y1="10" x2="200" y2="190" stroke="#bbb" stroke-width="1"
+                                    stroke-dasharray="5,5" />
+                                <line x1="25" y1="70" x2="275" y2="70" stroke="#bbb" stroke-width="1"
+                                    stroke-dasharray="5,5" />
+                                <line x1="25" y1="130" x2="275" y2="130" stroke="#bbb" stroke-width="1"
+                                    stroke-dasharray="5,5" />
+                                <!-- Marker wird per JS hinzugefügt -->
+                                <circle id="combinedGoalMarker" cx="0" cy="0" r="8" fill="#16a34a" stroke="white"
+                                    stroke-width="2" style="display: none;" />
+                            </svg>
+                        </div>
+                        <!-- Spielart-Auswahl -->
+                        <div class="playtype-selection" style="margin-top: 10px;">
+                            <div id="combinedPlayTypeList" class="playtype-buttons">
+                                <button type="button" class="playtype-btn" data-playtype="schnelle_mitte">Schnelle
+                                    Mitte</button>
+                                <button type="button" class="playtype-btn" data-playtype="tempo_gegenstoss">Tempo
+                                    Gegenstoß</button>
+                                <button type="button" class="playtype-btn" data-playtype="spielzug">Spielzug</button>
+                                <button type="button" class="playtype-btn" data-playtype="freies_spiel">Freies
+                                    Spiel</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <!-- Assist-Auswahl -->
+                <div class="assist-selection-section">
+                    <h4 style="font-size: 0.9rem; color: var(--text-muted); margin-bottom: 8px;">Assist von:</h4>
+                    <div id="combinedAssistPlayerList" class="assist-player-grid">
+                        <!-- Spieler-Buttons werden per JS hinzugefügt -->
+                    </div>
+                    <button type="button" id="combinedAssistNone" class="shadcn-btn-outline shadcn-btn-sm"
+                        style="margin-top: 8px;">Kein Assist</button>
+                </div>
+                <div class="shadcn-modal-footer" style="margin-top: 1rem;">
+                    <button class="shadcn-btn-outline" id="combinedThrowSkip">Überspringen</button>
+                    <button class="shadcn-btn-primary" id="combinedThrowSave">Weiter</button>
                 </div>
             </div>
         </div>
@@ -1529,10 +1623,11 @@
                                         <tr style="text-align: left; color: var(--text-muted); font-size: 0.75rem;">
                                             <th style="padding: 8px;">SPIELER</th>
                                             <th style="padding: 8px;">ZEIT</th>
-                                            <th style="padding: 8px;">TORE</th>
-                                            <th style="padding: 8px;">FELD</th>
-                                            <th style="padding: 8px;">7m</th>
+                                            <th style="padding: 8px;" title="Tore Gesamt">T</th>
+                                            <th style="padding: 8px;" title="Feldtore">F</th>
+                                            <th style="padding: 8px;" title="7 Meter">7m</th>
                                             <th style="padding: 8px;">FEHL</th>
+                                            <th style="padding: 8px;" title="Assists">A</th>
                                             <th style="padding: 8px;">QUOTE</th>
                                             <th style="padding: 8px;">BALL</th>
                                             <th style="padding: 8px;">FOUL</th>
@@ -1566,10 +1661,11 @@
                                         <tr style="text-align: left; color: var(--text-muted); font-size: 0.75rem;">
                                             <th style="padding: 8px;">SPIELER</th>
                                             <th style="padding: 8px;">ZEIT</th>
-                                            <th style="padding: 8px;">TORE</th>
-                                            <th style="padding: 8px;">FELD</th>
-                                            <th style="padding: 8px;">7m</th>
+                                            <th style="padding: 8px;" title="Tore Gesamt">T</th>
+                                            <th style="padding: 8px;" title="Feldtore">F</th>
+                                            <th style="padding: 8px;" title="7 Meter">7m</th>
                                             <th style="padding: 8px;">FEHL</th>
+                                            <th style="padding: 8px;" title="Assists">A</th>
                                             <th style="padding: 8px;">QUOTE</th>
                                             <th style="padding: 8px;">BALL</th>
                                             <th style="padding: 8px;">FOUL</th>

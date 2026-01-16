@@ -744,6 +744,7 @@ function createPlayerCard(player, index) {
                         <th>Feld</th>
                         <th>7m</th>
                         <th>Fehl</th>
+                        <th title="Assist">Assist</th>
                         <th>%</th>
                         <th>Gut</th>
                         <th>TF</th>
@@ -758,6 +759,7 @@ function createPlayerCard(player, index) {
                         <td>${feldtore}</td>
                         <td>${player.siebenMeterTore}/${player.siebenMeterVersuche}</td>
                         <td>${player.fehlwurf}</td>
+                        <td>${player.assist || 0}</td>
                         <td>${player.wurfQuote}</td>
                         <td>${player.guteAktion}</td>
                         <td>${player.techFehler}</td>
@@ -769,6 +771,54 @@ function createPlayerCard(player, index) {
             </table>
         </div>
     `;
+
+    // --- PlayType Stats Table ---
+    let playTypeStatsHtml = '';
+    if (player.playStats) {
+        const types = [
+            { key: 'tempo_gegenstoss', label: 'Tempo Gegenstoß' },
+            { key: 'schnelle_mitte', label: 'Schnelle Mitte' },
+            { key: 'spielzug', label: 'Spielzug' },
+            { key: 'freies_spiel', label: 'Freies Spiel' }
+        ];
+
+        let rows = types.map(type => {
+            const stats = player.playStats[type.key] || { tore: 0, fehlwurf: 0 };
+            const attempts = stats.tore + stats.fehlwurf;
+            const quote = attempts > 0 ? Math.round((stats.tore / attempts) * 100) + '%' : '-';
+            // Only show row if there is at least one attempt? Or always show? 
+            // User wants to see "wie hoch die Wurfquote ... ist", likely implies seeing all.
+            // But if 0/0, maybe hide to save space? Let's show implies availability.
+            // Let's show all for consistency.
+            return `
+                <tr>
+                    <td style="text-align: left;">${type.label}</td>
+                    <td>${stats.tore}</td>
+                    <td>${attempts}</td>
+                    <td>${quote}</td>
+                </tr>
+            `;
+        }).join('');
+
+        playTypeStatsHtml = `
+            <div class="table-container" style="margin-top: 15px; margin-bottom: 15px;">
+                <h4 style="font-size: 0.85rem; margin-bottom: 8px; color: var(--text-muted);">Wurfquote nach Situation</h4>
+                <table class="season-table">
+                    <thead>
+                        <tr>
+                            <th style="text-align: left;">Art</th>
+                            <th>Tore</th>
+                            <th>Würfe</th>
+                            <th>%</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${rows}
+                    </tbody>
+                </table>
+            </div>
+        `;
+    }
 
     // Heatmap Buttons - Check for field throws and 7m throws separately
     const fieldThrows = player.seasonLog ? player.seasonLog.filter(e => !e.is7m) : [];
@@ -793,7 +843,9 @@ function createPlayerCard(player, index) {
 
     heatmapButtonsHtml += '</div>';
 
-    details.innerHTML = statsTable + heatmapButtonsHtml;
+    heatmapButtonsHtml += '</div>';
+
+    details.innerHTML = statsTable + playTypeStatsHtml + heatmapButtonsHtml;
 
     // FIX: Attach listeners immediately
     const heatmapBtns = details.querySelectorAll('.show-heatmap-btn');

@@ -121,6 +121,7 @@ export function exportiereAlsTxt() {
 
     let header = "Spieler".padEnd(maxNameLength);
     header += "7m".padEnd(col7m);
+    header += "Ast".padEnd(colGut); // Reuse colGut width for Ast
     header += "Gut".padEnd(colGut);
     header += "Fehl".padEnd(colFehlwurf);
     header += "TF".padEnd(colTechFehler);
@@ -134,7 +135,8 @@ export function exportiereAlsTxt() {
 
     statsData.forEach(stats => {
         let row = (`#${stats.number} ${stats.name}`).padEnd(maxNameLength);
-        row += String(stats.siebenMeter).padEnd(col7m);
+        row += String(stats.siebenMeterTore || 0).padEnd(col7m);
+        row += String(stats.assist || 0).padEnd(colGut);
         row += String(stats.guteAktion).padEnd(colGut);
         row += String(stats.fehlwurf).padEnd(colFehlwurf);
         row += String(stats.techFehler).padEnd(colTechFehler);
@@ -186,12 +188,12 @@ export function exportiereAlsCsv() {
     }
     let csvContent = "\uFEFF";
     csvContent += "Spieler-Statistik\n";
-    csvContent += "Nummer;Name;Tore;7m Raus;Gute Aktion;Fehlwurf;Tech Fehler;Gelb;2min;Rot\n";
+    csvContent += "Nummer;Name;Tore;7m Tore;Assist;Gute Aktion;Fehlwurf;Tech Fehler;Gelb;2min;Rot\n";
     const statsData = berechneStatistiken();
     const toreMap = berechneTore();
     statsData.forEach(s => {
-        const tore = toreMap.get(s.number) || 0;
-        csvContent += `${s.number};${s.name};${tore};${s.siebenMeter};${s.guteAktion};${s.fehlwurf};${s.techFehler};${s.gelb};${s.zweiMinuten};${s.rot}\n`;
+        const tore = s.tore || 0;
+        csvContent += `${s.number};${s.name};${tore};${s.siebenMeterTore || 0};${s.assist || 0};${s.guteAktion};${s.fehlwurf};${s.techFehler || s.ballverlust || 0};${s.gelb};${s.zweiMinuten};${s.rot}\n`;
     });
     csvContent += "\n\nSpielverlauf\nZeit;Aktion;Spieler/Team;Details;Spielstand\n";
     [...spielstand.gameLog].reverse().forEach(e => {
@@ -427,8 +429,8 @@ export function exportiereHistorieAlsPdf(game) {
     // Table headers
     doc.setFontSize(9);
     doc.setFont('helvetica', 'bold');
-    const headers = ['Spieler', 'Tore', '7m', 'Fehl', 'Quote', 'Gut', 'TF', 'Gelb', '2min', 'Rot'];
-    const colWidths = [45, 12, 12, 12, 15, 12, 12, 12, 12, 12];
+    const headers = ['Spieler', 'Tore', 'Ast', '7m', 'Fehl', 'Quote', 'Gut', 'TF', 'Gelb', '2min', 'Rot'];
+    const colWidths = [42, 10, 10, 12, 10, 15, 12, 12, 12, 12, 12];
 
     let xPos = 20;
     let yPos = 78;
@@ -468,11 +470,12 @@ export function exportiereHistorieAlsPdf(game) {
         const rowData = [
             `#${stats.number} ${stats.name}`,
             String(tore),
+            String(stats.assist || 0),
             sevenMeterDisplay,
             String(stats.fehlwurf),
             quote,
             String(stats.guteAktion),
-            String(stats.techFehler),
+            String(stats.techFehler || stats.ballverlust || 0),
             String(stats.gelb),
             String(stats.zweiMinuten),
             String(stats.rot)
@@ -527,11 +530,12 @@ export function exportiereHistorieAlsPdf(game) {
         const rowData = [
             stats.name.substring(0, 20),
             String(stats.tore),
+            String(stats.assist || 0),
             sevenMeterDisplay,
             String(stats.fehlwurf),
             quote,
             String(stats.guteAktion),
-            String(stats.techFehler),
+            String(stats.techFehler || stats.ballverlust || 0),
             String(stats.gelb),
             String(stats.zweiMinuten),
             String(stats.rot)
@@ -656,8 +660,8 @@ export function exportiereAlsPdf() {
     // Table headers
     doc.setFontSize(9);
     doc.setFont('helvetica', 'bold');
-    const headers = ['Spieler', 'Tore', '7m', 'Fehl', 'Quote', 'Gut', 'TF', 'Gelb', '2min', 'Rot'];
-    const colWidths = [45, 12, 12, 12, 15, 12, 12, 12, 12, 12];
+    const headers = ['Spieler', 'Tore', 'Ast', '7m', 'Fehl', 'Quote', 'Gut', 'TF', 'Gelb', '2min', 'Rot'];
+    const colWidths = [42, 10, 10, 12, 10, 15, 12, 12, 12, 12, 12];
 
     let xPos = 20;
     let yPos = 78;
@@ -702,11 +706,12 @@ export function exportiereAlsPdf() {
         const rowData = [
             `#${stats.number} ${stats.name}`,
             String(tore),
+            String(stats.assist || 0),
             sevenMeterDisplay, // New Format
             String(stats.fehlwurf),
             quote,
             String(stats.guteAktion),
-            String(stats.techFehler),
+            String(stats.techFehler || stats.ballverlust || 0),
             String(stats.gelb),
             String(stats.zweiMinuten),
             String(stats.rot)
@@ -761,11 +766,12 @@ export function exportiereAlsPdf() {
         const rowData = [
             stats.name.substring(0, 20),
             String(stats.tore),
+            String(stats.assist || 0),
             sevenMeterDisplay, // New Format
             String(stats.fehlwurf),
             quote,
             String(stats.guteAktion),
-            String(stats.techFehler),
+            String(stats.techFehler || stats.ballverlust || 0),
             String(stats.gelb),
             String(stats.zweiMinuten),
             String(stats.rot)

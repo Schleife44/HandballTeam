@@ -582,11 +582,19 @@ export function zeichneStatistikTabelle(statsData) {
         const s = timeOnField % 60;
         const timeStr = `${m}:${s < 10 ? '0' + s : s}`;
 
+        const feldtore = stats.tore - stats.siebenMeterTore;
+        const totalWuerfe = stats.tore + stats.fehlwurf;
+        const quote = totalWuerfe > 0 ? Math.round((stats.tore / totalWuerfe) * 100) : 0;
+
         tr.innerHTML = `
             <td>${displayName}</td>
             <td>${timeStr}</td>
-            <td>${stats.siebenMeter}</td>
+            <td>${stats.tore}</td>
+            <td>${feldtore}</td>
+            <td>${stats.siebenMeterTore}/${stats.siebenMeterVersuche}</td>
             <td>${stats.fehlwurf}</td>
+            <td>${stats.assist}</td>
+            <td>${quote}%</td>
             <td>${stats.ballverlust}</td>
             <td>${stats.stuermerfoul}</td>
             <td>${stats.block}</td>
@@ -598,7 +606,99 @@ export function zeichneStatistikTabelle(statsData) {
             <td>${stats.zweiMinuten}</td>
             <td>${stats.rot}</td>
         `;
+        tr.style.cursor = 'pointer';
+        tr.title = 'Klicken für Details und Wurfquote';
+        tr.addEventListener('click', () => showLivePlayerDetails(stats));
+
         statistikTabelleBody.appendChild(tr);
+    });
+}
+
+export function showLivePlayerDetails(stats) {
+    // Generate PlayType Table
+    let playTypeRows = '';
+    const types = [
+        { key: 'tempo_gegenstoss', label: 'Tempo Gegenstoß' },
+        { key: 'schnelle_mitte', label: 'Schnelle Mitte' },
+        { key: 'spielzug', label: 'Spielzug' },
+        { key: 'freies_spiel', label: 'Freies Spiel' }
+    ];
+
+    if (stats.playStats) {
+        playTypeRows = types.map(type => {
+            const s = stats.playStats[type.key] || { tore: 0, fehlwurf: 0 };
+            const attempts = s.tore + s.fehlwurf;
+            const quote = attempts > 0 ? Math.round((s.tore / attempts) * 100) + '%' : '-';
+            return `
+                <tr>
+                    <td style="text-align: left; padding: 6px;">${type.label}</td>
+                    <td style="text-align: center;">${s.tore}</td>
+                    <td style="text-align: center;">${attempts}</td>
+                    <td style="text-align: center;">${quote}</td>
+                </tr>
+            `;
+        }).join('');
+    } else {
+        playTypeRows = '<tr><td colspan="4" style="text-align:center;">Keine Daten</td></tr>';
+    }
+
+    // Create Modal HTML
+    const modalHtml = `
+        <div id="livePlayerDetailModal" class="modal-overlay" style="z-index: 9999; display: flex; align-items: center; justify-content: center;">
+            <div class="shadcn-modal-content" style="max-width: 400px; width: 95%;">
+                <div class="shadcn-modal-header" style="justify-content: space-between;">
+                    <h3 style="margin: 0;">${stats.name || 'Spieler #' + stats.number}</h3>
+                    <button class="close-modal-btn" style="position: relative; top: 0; right: 0;">&times;</button>
+                </div>
+                <div class="shadcn-modal-body" style="padding-top: 10px;">
+                    <div class="info-block" style="margin-bottom: 15px; background: var(--bg-secondary); padding: 10px; border-radius: 8px;">
+                        <div style="font-size: 0.9rem; color: var(--text-muted);">Gesamt Quote</div>
+                        <div style="font-size: 1.2rem; font-weight: bold;">
+                            ${stats.tore + stats.fehlwurf > 0 ? Math.round((stats.tore / (stats.tore + stats.fehlwurf)) * 100) + '%' : '0%'}
+                            <span style="font-size: 0.8rem; font-weight: normal; margin-left: 5px;">(${stats.tore}/${stats.tore + stats.fehlwurf})</span>
+                        </div>
+                    </div>
+
+                    <h4 style="font-size: 0.9rem; margin-bottom: 8px; color: var(--text-muted);">Wurfquote nach Situation</h4>
+                    <div class="table-container">
+                        <table class="season-table" style="width: 100%; font-size: 0.85rem;">
+                            <thead>
+                                <tr style="border-bottom: 1px solid var(--border-color);">
+                                    <th style="text-align: left; padding: 6px;">Art</th>
+                                    <th style="padding: 6px;">Tore</th>
+                                    <th style="padding: 6px;">Würfe</th>
+                                    <th style="padding: 6px;">%</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${playTypeRows}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                <div class="shadcn-modal-footer" style="padding-top: 15px;">
+                    <button class="shadcn-btn-primary close-modal-btn-action" style="width: 100%;">Schließen</button>
+                </div>
+            </div>
+        </div>
+    `;
+
+    // Append to body
+    const wrapper = document.createElement('div');
+    wrapper.innerHTML = modalHtml;
+    document.body.appendChild(wrapper.firstElementChild);
+
+    // Bind Close Events
+    const modal = document.getElementById('livePlayerDetailModal');
+    const closeBtns = modal.querySelectorAll('.close-modal-btn, .close-modal-btn-action');
+
+    const close = () => {
+        modal.remove();
+    };
+
+    closeBtns.forEach(btn => btn.addEventListener('click', close));
+    modal.addEventListener('click', (e) => {
+        if (e.target === modal) close();
     });
 }
 

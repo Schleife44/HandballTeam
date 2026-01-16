@@ -21,6 +21,7 @@ import { renderHeatmap, setCurrentHeatmapContext, setCurrentHeatmapTab, currentH
 import { customConfirm, customAlert } from './customDialog.js';
 import { exportiereHistorieAlsPdf } from './export.js';
 import { getGameResult } from './utils.js';
+import { showLivePlayerDetails } from './ui.js';
 
 // --- Export einzelnes Spiel ---
 export function exportiereEinzelnesSpiel(game) {
@@ -250,6 +251,11 @@ export function renderHomeStatsInHistory(tbody, statsData, gameLog, isLive = fal
         const showTime = (!spielstand.gameMode || spielstand.gameMode !== 'simple');
 
         const tr = document.createElement('tr');
+        if (isLive) {
+            tr.style.cursor = 'pointer';
+            tr.title = 'Klicken für Details und Wurfquote';
+            tr.addEventListener('click', () => showLivePlayerDetails(stats));
+        }
         tr.innerHTML = `
             <td>#${stats.number} ${stats.name}</td>
             ${showTime ? `<td>${timeStr}</td>` : ''}
@@ -257,6 +263,7 @@ export function renderHomeStatsInHistory(tbody, statsData, gameLog, isLive = fal
             <td>${feldtore}</td>
             <td>${sevenMDisplay}</td>
             <td>${stats.fehlwurf}</td>
+            <td>${stats.assist || 0}</td>
             <td>${quote}</td>
             <td>${stats.ballverlust}</td>
             <td>${stats.stuermerfoul}</td>
@@ -341,6 +348,11 @@ export function renderOpponentStatsInHistory(tbody, statsData, gameLog, game = n
         const showTime = (!spielstand.gameMode || spielstand.gameMode !== 'simple');
 
         const tr = document.createElement('tr');
+        if (isLive) {
+            tr.style.cursor = 'pointer';
+            tr.title = 'Klicken für Details und Wurfquote';
+            tr.addEventListener('click', () => showLivePlayerDetails(stats));
+        }
         tr.innerHTML = `
             <td>${stats.name}</td>
             ${showTime ? `<td>${timeStr}</td>` : ''}
@@ -348,6 +360,7 @@ export function renderOpponentStatsInHistory(tbody, statsData, gameLog, game = n
             <td>${feldtore}</td>
             <td>${sevenMDisplay}</td>
             <td>${stats.fehlwurf}</td>
+            <td>${stats.assist || 0}</td>
             <td>${quote}</td>
             <td>${stats.ballverlust || 0}</td>
             <td>${stats.stuermerfoul || 0}</td>

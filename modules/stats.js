@@ -33,27 +33,45 @@ export function berechneStatistiken(overrideGameLog, overrideRoster) {
             name: player.name,
             number: player.number,
             fehlwurf: 0,
-            ballverlust: 0, // Renamed from techFehler
-            stuermerfoul: 0, // NEW
-            block: 0, // NEW
-            rausgeholt2min: 0, // NEW
-            gewonnen1v1: 0, // NEW
-            oneOnOneLost: 0, // NEW - 1v1 Verloren
-            rausgeholt7m: 0, // NEW
+            ballverlust: 0,
+            stuermerfoul: 0,
+            block: 0,
+            rausgeholt2min: 0,
+            gewonnen1v1: 0,
+            oneOnOneLost: 0,
+            rausgeholt7m: 0,
             siebenMeter: 0,
             siebenMeterTore: 0,
             siebenMeterVersuche: 0,
             guteAktion: 0,
+            assist: 0,
             gelb: 0,
             zweiMinuten: 0,
             rot: 0,
             tore: 0,
-            timeOnField: player.timeOnField || 0 // NEW
+            tore: 0,
+            playStats: {
+                schnelle_mitte: { tore: 0, fehlwurf: 0 },
+                tempo_gegenstoss: { tore: 0, fehlwurf: 0 },
+                spielzug: { tore: 0, fehlwurf: 0 },
+                freies_spiel: { tore: 0, fehlwurf: 0 },
+                unknown: { tore: 0, fehlwurf: 0 }
+            },
+            timeOnField: player.timeOnField || 0
         });
     });
 
     for (const eintrag of log) {
-        // --- CHECK ATTRIBUTION for 1v1 Lost (even if playerId is null or opponent) ---
+        // --- ASSIST AGGREGATION ---
+        if (eintrag.assist && eintrag.assist.nummer) {
+            const assistId = eintrag.assist.nummer;
+            if (statsMap.has(assistId)) {
+                statsMap.get(assistId).assist++;
+                statsMap.get(assistId).guteAktion++;
+            }
+        }
+
+        // --- CHECK ATTRIBUTION for 1v1 Lost ---
         if ((eintrag.action === "Gegner 1und1" || eintrag.action === "Gegner 1v1") &&
             eintrag.attributedPlayer &&
             (eintrag.attributedPlayer.teamKey === 'myteam' || !eintrag.attributedPlayer.isOpponent)) {
@@ -78,24 +96,22 @@ export function berechneStatistiken(overrideGameLog, overrideRoster) {
             stats.guteAktion++;
         } else if (eintrag.action === "Fehlwurf" || eintrag.action === "Wurf Gehalten" || eintrag.action === "Post Out") {
             stats.fehlwurf++;
+            const pType = eintrag.playType || eintrag.spielart;
+            if (pType) {
+                if (!stats.playStats[pType]) stats.playStats[pType] = { tore: 0, fehlwurf: 0 };
+                stats.playStats[pType].fehlwurf++;
+            }
         } else if (eintrag.action === "Technischer Fehler" || eintrag.action === "Ballverlust") {
             stats.ballverlust++;
         } else if (eintrag.action === "Foul") {
             stats.stuermerfoul++;
         } else if (eintrag.action === "Block") {
-            // "Block" clicked on Home Player -> Home Player was blocked (Shooter)
-            // So Home Player gets Fehlwurf (Miss), Not Block.
             stats.fehlwurf++;
-            // The blocker (Opponent) is handled in berechneGegnerStatistiken via attributedPlayer check
         } else if (eintrag.action === "Gegner Block" &&
             eintrag.attributedPlayer &&
             eintrag.attributedPlayer.teamKey === 'myteam') {
-            // Opponent Shot blocked by Home Player (Attributed)
-            // The Home Player gets the Block stat
-            if (eintrag.attributedPlayer.number == player.number) {
-                stats.block++;
-                stats.guteAktion++;
-            }
+            stats.block++;
+            stats.guteAktion++;
         } else if (eintrag.action === "2min Provoziert") {
             stats.rausgeholt2min++;
             stats.guteAktion++;
@@ -117,6 +133,11 @@ export function berechneStatistiken(overrideGameLog, overrideRoster) {
             stats.rot++;
         } else if (eintrag.action === "Tor") {
             stats.tore++;
+            const pType = eintrag.playType || eintrag.spielart;
+            if (pType) {
+                if (!stats.playStats[pType]) stats.playStats[pType] = { tore: 0, fehlwurf: 0 };
+                stats.playStats[pType].tore++;
+            }
         } else if (eintrag.action === "7m Tor") {
             stats.tore++;
             stats.siebenMeterTore++;
@@ -162,6 +183,15 @@ export function berechneGegnerStatistiken(overrideGameLog, players = []) {
     }
 
     for (const eintrag of log) {
+        // --- ASSIST AGGREGATION ---
+        if (eintrag.assist && eintrag.assist.nummer) {
+            const assistNum = eintrag.assist.nummer;
+            if (gegnerStatsMap.has(assistNum)) {
+                gegnerStatsMap.get(assistNum).assist++;
+                gegnerStatsMap.get(assistNum).guteAktion++;
+            }
+        }
+
         // Determine if relevant for Opponent Stats
         let nummer = null;
         let isDirectAction = false;
@@ -197,6 +227,7 @@ export function berechneGegnerStatistiken(overrideGameLog, players = []) {
                 siebenMeterTore: 0,
                 siebenMeterVersuche: 0,
                 guteAktion: 0,
+                assist: 0,
                 gelb: 0,
                 zweiMinuten: 0,
                 rot: 0,
@@ -327,5 +358,75 @@ export function berechneWurfbilder(overrideGameLog) {
         heim7m: Object.values(heim7mWuerfe),
         gegner: Object.values(gegnerWuerfe),
         gegner7m: Object.values(gegner7mWuerfe)
+    };
+}
+
+/**
+ * Berechnet Statistiken pro Spielart (Angriffsvariante)
+ * @param {Array} overrideGameLog - Optional: Anderer GameLog (z.B. für Historie)
+ * @returns {Object} Statistiken pro Spielart mit Toren, Würfen und Quote
+ */
+export function berechneSpielartStatistik(overrideGameLog) {
+    const log = getSource(overrideGameLog);
+
+    // Helper to create empty structure
+    const createStatStructure = () => ({
+        schnelle_mitte: { name: 'Schnelle Mitte', tore: 0, wuerfe: 0 },
+        tempo_gegenstoss: { name: 'Tempo Gegenstoß', tore: 0, wuerfe: 0 },
+        spielzug: { name: 'Spielzug', tore: 0, wuerfe: 0 },
+        freies_spiel: { name: 'Freies Spiel', tore: 0, wuerfe: 0 },
+        ohne: { name: 'Ohne Angabe', tore: 0, wuerfe: 0 }
+    });
+
+    const heimStats = createStatStructure();
+    const gegnerStats = createStatStructure();
+
+    // Actions die als Wurf zählen (Heim)
+    const wurfActionsHeim = ['Tor', 'Fehlwurf', 'Wurf Gehalten', 'Gehalten', 'Parade', 'Block', 'Post Out'];
+    // Actions die als Wurf zählen (Gegner)
+    const wurfActionsGegner = ['Gegner Tor', 'Gegner Wurf Vorbei', 'Gegner Wurf Gehalten', 'Gegner Fehlwurf', 'Gegner Parade', 'Gegner Block', 'Gehalten'];
+
+    for (const eintrag of log) {
+        const isGegner = eintrag.action.startsWith('Gegner');
+        const spielart = eintrag.playType || eintrag.spielart || 'ohne';
+
+        // Heim-Aktionen
+        if (!isGegner && eintrag.playerId) {
+            const isWurf = wurfActionsHeim.some(a => eintrag.action.includes(a));
+            const isTor = eintrag.action === 'Tor';
+
+            if (isWurf || isTor) {
+                if (heimStats[spielart]) {
+                    heimStats[spielart].wuerfe++;
+                    if (isTor) heimStats[spielart].tore++;
+                }
+            }
+        }
+
+        // Gegner-Aktionen
+        if (isGegner) {
+            const isWurf = wurfActionsGegner.some(a => eintrag.action === a);
+            const isTor = eintrag.action === 'Gegner Tor';
+
+            if (isWurf) {
+                if (gegnerStats[spielart]) {
+                    gegnerStats[spielart].wuerfe++;
+                    if (isTor) gegnerStats[spielart].tore++;
+                }
+            }
+        }
+    }
+
+    // Quote berechnen
+    const calcQuotes = (stats) => {
+        Object.values(stats).forEach(s => {
+            s.quote = s.wuerfe > 0 ? Math.round((s.tore / s.wuerfe) * 100) : 0;
+        });
+        return stats;
+    };
+
+    return {
+        heim: calcQuotes(heimStats),
+        gegner: calcQuotes(gegnerStats)
     };
 }

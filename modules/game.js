@@ -4,7 +4,7 @@ import {
     statistikWrapper, gamePhaseButton, timerAnzeige, pauseButton,
     heimScoreUp, heimScoreDown, gegnerScoreUp, gegnerScoreDown,
     gegnerNummerModal, sevenMeterOutcomeModal, aktionsMenue, aktionVorauswahl, kommentarBereich,
-    wurfpositionModal, spielBeendenButton
+    wurfpositionModal, spielBeendenButton, combinedThrowModal
 } from './dom.js';
 import {
     applyViewSettings, applyTheme, updateScoreDisplay, updateProtokollAnzeige,
@@ -663,7 +663,7 @@ export function setAktuelleAktionTyp(typ) {
 
 export function logAktion(aktion, kommentar = null) {
     // Map button actions to standard internal names
-    if (aktion === "Gehalten") aktion = "Parade";
+    if (aktion === "Gehalten") aktion = "Wurf Gehalten";
     if (aktion === "Post Out") aktion = "Fehlwurf";
 
     // Prüfe, ob dies eine Gegner-Aktion ist
@@ -728,7 +728,7 @@ export function logAktion(aktion, kommentar = null) {
     deselectPlayer();
 
     // Check for Modals (Shot Recording)
-    const isShotAction = ["Tor", "Fehlwurf", "Parade", "Pfosten", "Latte"].includes(aktion);
+    const isShotAction = ["Tor", "Fehlwurf", "Parade", "Pfosten", "Latte", "Wurf Gehalten"].includes(aktion);
     const isBlockAction = aktion === "Block";
 
     if (isShotAction || isBlockAction) {
@@ -738,11 +738,18 @@ export function logAktion(aktion, kommentar = null) {
 
         const isAuswaerts = spielstand.settings.isAuswaertsspiel;
         const showPos = isAuswaerts ? spielstand.settings.showWurfpositionGegner : spielstand.settings.showWurfpositionHeim;
+        const showBild = isAuswaerts ? spielstand.settings.showWurfbildGegner : spielstand.settings.showWurfbildHeim;
 
-        if (showPos) {
+        // Check if combined mode is enabled and both are needed
+        if (spielstand.settings.combinedThrowMode && (showPos || showBild)) {
+            combinedThrowModal.classList.remove('versteckt');
+            // Populate assist player list
+            if (typeof window.populateAssistPlayerList === 'function') {
+                window.populateAssistPlayerList();
+            }
+        } else if (showPos) {
             wurfpositionModal.classList.remove('versteckt');
         } else {
-            const showBild = isAuswaerts ? spielstand.settings.showWurfbildGegner : spielstand.settings.showWurfbildHeim;
             if (showBild) {
                 oeffneWurfbildModal('standard');
             } else if (isBlockAction) {
@@ -810,6 +817,8 @@ function handleGegnerAktion(aktion, kommentar) {
         applySuspensionToPlayer(player, teamKey, actualIndex, "Gegner Rot");
     } else if (aktion === "Parade") {
         mappedAction = "Gegner Parade";
+    } else if (aktion === "Gehalten") {
+        mappedAction = "Gegner Wurf Gehalten";
     } else {
         // Für andere Aktionen, präfixiere einfach mit "Gegner"
         mappedAction = `Gegner ${aktion}`;
@@ -838,7 +847,7 @@ function handleGegnerAktion(aktion, kommentar) {
 
     // Zeige Modals basierend auf Einstellungen (Wurfposition zuerst, dann Wurfbild)
     // Nur für Tor, Fehlwurf und Parade
-    const isShotAction = ["Gegner Tor", "Gegner Wurf Vorbei", "Gegner Parade", "Gegner Fehlwurf"].includes(mappedAction);
+    const isShotAction = ["Gegner Tor", "Gegner Wurf Vorbei", "Gegner Parade", "Gegner Fehlwurf", "Gegner Wurf Gehalten"].includes(mappedAction);
     const isBlockAction = mappedAction === "Gegner Block";
 
     if (isShotAction || isBlockAction) {
@@ -854,7 +863,15 @@ function handleGegnerAktion(aktion, kommentar) {
         const showPos = oppIsHeim ? spielstand.settings.showWurfpositionHeim : spielstand.settings.showWurfpositionGegner;
         const showWurfbild = oppIsHeim ? spielstand.settings.showWurfbildHeim : spielstand.settings.showWurfbildGegner;
 
-        if (showPos) {
+        // Check if combined mode is enabled
+        if (spielstand.settings.combinedThrowMode && (showPos || showWurfbild)) {
+            spielstand.tempGegnerNummer = gegnernummer;
+            combinedThrowModal.classList.remove('versteckt');
+            // Populate assist player list (hidden for opponent actions)
+            if (typeof window.populateAssistPlayerList === 'function') {
+                window.populateAssistPlayerList();
+            }
+        } else if (showPos) {
             spielstand.tempGegnerNummer = gegnernummer;
             wurfpositionModal.classList.remove('versteckt');
         } else {

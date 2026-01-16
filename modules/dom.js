@@ -220,6 +220,20 @@ export const wurfpositionModal = document.getElementById('wurfpositionModal');
 export const wurfpositionFeld = document.getElementById('wurfpositionFeld');
 export const wurfpositionUeberspringen = document.getElementById('wurfpositionUeberspringen');
 
+// Combined Throw Modal
+export const combinedThrowModal = document.getElementById('combinedThrowModal');
+export const combinedWurfpositionFeld = document.getElementById('combinedWurfpositionFeld');
+export const combinedWurfbildUmgebung = document.getElementById('combinedWurfbildUmgebung');
+export const combinedGoalSvg = document.getElementById('combinedGoalSvg');
+export const combinedFieldMarker = document.getElementById('combinedFieldMarker');
+export const combinedGoalMarker = document.getElementById('combinedGoalMarker');
+export const combinedThrowSave = document.getElementById('combinedThrowSave');
+export const combinedThrowSkip = document.getElementById('combinedThrowSkip');
+export const toggleCombinedThrow = document.getElementById('toggleCombinedThrow');
+export const combinedAssistPlayerList = document.getElementById('combinedAssistPlayerList');
+export const combinedAssistNone = document.getElementById('combinedAssistNone');
+export const combinedPlayTypeList = document.getElementById('combinedPlayTypeList');
+
 export const heatmapSvg = document.getElementById('heatmapSvg');
 export const heatmapTeamToggle = document.getElementById('heatmapTeamToggle');
 export const heatmapPlayerSelect = document.getElementById('heatmapPlayerSelect');

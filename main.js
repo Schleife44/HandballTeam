@@ -6,6 +6,7 @@ import {
     toggleDarkMode, myTeamNameInput,
     toggleWurfbildHeim, toggleWurfbildGegner, inputTeamNameHeim,
     inputTeamNameGegner, toggleWurfpositionHeim, toggleWurfpositionGegner,
+    toggleCombinedThrow,
     rosterBereich, spielBereich, globalAktionen, scoreWrapper, timerAnzeige,
     statistikWrapper, pauseButton, gamePhaseButton, spielBeendenButton,
     liveOverviewBereich, liveOverviewContent, seasonBereich, seasonContent,
@@ -48,6 +49,7 @@ function initApp() {
     if (toggleWurfbildGegner) toggleWurfbildGegner.checked = spielstand.settings.showWurfbildGegner;
     if (toggleWurfpositionHeim) toggleWurfpositionHeim.checked = spielstand.settings.showWurfpositionHeim;
     if (toggleWurfpositionGegner) toggleWurfpositionGegner.checked = spielstand.settings.showWurfpositionGegner;
+    if (toggleCombinedThrow) toggleCombinedThrow.checked = spielstand.settings.combinedThrowMode || false;
     if (rosterTeamNameHeim) rosterTeamNameHeim.value = spielstand.settings.teamNameHeim;
     if (rosterTeamNameGegner) rosterTeamNameGegner.value = spielstand.settings.teamNameGegner;
 
@@ -420,6 +422,49 @@ export function showLiveOverviewInline() {
                         </div>
                     `;
 
+                    // Spielart-Statistik Cards
+                    const spielartStats = stats.berechneSpielartStatistik ? stats.berechneSpielartStatistik(spielstand.gameLog) : null;
+
+                    if (spielartStats) {
+                        // Heim Stats
+                        const heimData = Object.entries(spielartStats.heim).filter(([key, s]) => s.wuerfe > 0);
+                        if (heimData.length > 0) {
+                            html += `
+                                <div class="stats-card playtype-card">
+                                    <h2 class="card-title">Angriffsvarianten (${homeName})</h2>
+                                    <div class="playtype-stats-grid">
+                                        ${heimData.map(([key, s]) => `
+                                            <div class="playtype-stat-item">
+                                                <span class="playtype-name">${s.name}</span>
+                                                <span class="playtype-data">${s.tore}/${s.wuerfe}</span>
+                                                <span class="playtype-quote ${s.quote >= 50 ? 'good' : s.quote >= 30 ? 'medium' : 'low'}">${s.quote}%</span>
+                                            </div>
+                                        `).join('')}
+                                    </div>
+                                </div>
+                            `;
+                        }
+
+                        // Gegner Stats
+                        const gegnerData = Object.entries(spielartStats.gegner).filter(([key, s]) => s.wuerfe > 0);
+                        if (gegnerData.length > 0) {
+                            html += `
+                                <div class="stats-card playtype-card">
+                                    <h2 class="card-title">Angriffsvarianten (${oppName})</h2>
+                                    <div class="playtype-stats-grid">
+                                        ${gegnerData.map(([key, s]) => `
+                                            <div class="playtype-stat-item">
+                                                <span class="playtype-name">${s.name}</span>
+                                                <span class="playtype-data">${s.tore}/${s.wuerfe}</span>
+                                                <span class="playtype-quote ${s.quote >= 50 ? 'good' : s.quote >= 30 ? 'medium' : 'low'}">${s.quote}%</span>
+                                            </div>
+                                        `).join('')}
+                                    </div>
+                                </div>
+                            `;
+                        }
+                    }
+
                     const infoIcon = `<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="tooltip-icon"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>`;
 
 
@@ -439,6 +484,7 @@ export function showLiveOverviewInline() {
                                             <th title="Feldtore">Feldtore</th>
                                             <th title="7-Meter Tore/Versuche">7m</th>
                                             <th title="Fehlwürfe (Gehalten/Vorbei)">Fehlw</th>
+                                            <th title="Assists">Assist</th>
                                             <th title="Wurfquote">Quote</th>
                                             <th title="Ballverlust">BV ${infoIcon}</th>
                                             <th title="Stürmerfoul">SF ${infoIcon}</th>
@@ -471,6 +517,7 @@ export function showLiveOverviewInline() {
                                             <th title="Feldtore">Feldtore</th>
                                             <th title="7-Meter Tore/Versuche">7m</th>
                                             <th title="Fehlwürfe (Gehalten/Vorbei)">Fehlw</th>
+                                            <th title="Assists">Assist</th>
                                             <th title="Wurfquote">Quote</th>
                                             <th title="Ballverlust">BV ${infoIcon}</th>
                                             <th title="Stürmerfoul">SF ${infoIcon}</th>

@@ -56,6 +56,14 @@ export function aggregatePlayerStats() {
                     gelb: 0,
                     zweiMinuten: 0,
                     rot: 0,
+                    assist: 0,
+                    playStats: {
+                        schnelle_mitte: { tore: 0, fehlwurf: 0 },
+                        tempo_gegenstoss: { tore: 0, fehlwurf: 0 },
+                        spielzug: { tore: 0, fehlwurf: 0 },
+                        freies_spiel: { tore: 0, fehlwurf: 0 },
+                        unknown: { tore: 0, fehlwurf: 0 }
+                    },
                     seasonLog: [] // Unified log for heatmap
                 });
             } else {
@@ -81,6 +89,7 @@ export function aggregatePlayerStats() {
             aggregated.gelb += statPlayer.gelb || 0;
             aggregated.zweiMinuten += statPlayer.zweiMinuten || 0;
             aggregated.rot += statPlayer.rot || 0;
+            aggregated.assist += statPlayer.assist || 0;
 
             // Collect Heatmap Data for this player
             game.gameLog.forEach(entry => {
@@ -90,6 +99,21 @@ export function aggregatePlayerStats() {
 
                 const entryNum = entry.playerId;
                 if (String(entryNum).trim() === pNumStr) {
+                    // Aggregate PlayType Stats
+                    const pType = entry.playType || entry.spielart;
+                    if (pType && aggregated.playStats[pType]) {
+                        if (entry.action === 'Tor') {
+                            aggregated.playStats[pType].tore++;
+                        } else if (entry.action === 'Fehlwurf' || entry.action === '7mVerworfen') {
+                            aggregated.playStats[pType].fehlwurf++;
+                        }
+                    } else if (pType && !aggregated.playStats[pType]) {
+                        // initialize dynamic keys if needed, or fallback
+                        if (!aggregated.playStats[pType]) aggregated.playStats[pType] = { tore: 0, fehlwurf: 0 };
+                        if (entry.action === 'Tor') aggregated.playStats[pType].tore++;
+                        if (entry.action === 'Fehlwurf') aggregated.playStats[pType].fehlwurf++;
+                    }
+
                     // Include any entry with coords
                     if (entry.wurfbild || entry.wurfposition || entry.x !== undefined) {
                         aggregated.seasonLog.push({
@@ -157,6 +181,7 @@ export function aggregatePlayerStats() {
                     gelb: 0,
                     zweiMinuten: 0,
                     rot: 0,
+                    assist: 0,
                     seasonLog: []
                 });
             } else {
@@ -183,6 +208,7 @@ export function aggregatePlayerStats() {
             aggregated.gelb += opp.gelb || 0;
             aggregated.zweiMinuten += opp.zweiMinuten || 0;
             aggregated.rot += opp.rot || 0;
+            aggregated.assist += opp.assist || 0;
 
             // Collect Heatmap Data for Opponent
             game.gameLog.forEach(entry => {

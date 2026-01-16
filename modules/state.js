@@ -29,6 +29,7 @@ export let spielstand = {
         teamColor: '#dc3545', // Default Red
         teamColorGegner: '#2563eb', // Default Blue
         isAuswaertsspiel: false,
+        combinedThrowMode: false, // false = hintereinander, true = kombiniert
 
         // Team identity settings (cross-game)
         teamSettingsValidated: false,
@@ -69,6 +70,7 @@ export function ladeSpielstandDaten() {
         if (!spielstand.settings.teamNameHeim) spielstand.settings.teamNameHeim = 'Heim';
         if (!spielstand.settings.teamNameGegner) spielstand.settings.teamNameGegner = 'Gegner';
         if (typeof spielstand.settings.isAuswaertsspiel === 'undefined') spielstand.settings.isAuswaertsspiel = false;
+        if (typeof spielstand.settings.combinedThrowMode === 'undefined') spielstand.settings.combinedThrowMode = false;
 
         // Team identity defaults
         if (typeof spielstand.settings.teamSettingsValidated === 'undefined') spielstand.settings.teamSettingsValidated = false;

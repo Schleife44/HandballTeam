@@ -26,6 +26,9 @@ import {
     viewTeamModal, viewTeamTitle, editTeamNameInput, viewTeamPlayersList, saveTeamChanges, viewTeamClose,
     rosterSwapTeamsBtn,
     toggleWurfpositionHeim, toggleWurfpositionGegner, wurfpositionModal, wurfpositionFeld, wurfpositionUeberspringen,
+    combinedThrowModal, combinedWurfpositionFeld, combinedWurfbildUmgebung, combinedGoalSvg,
+    combinedFieldMarker, combinedGoalMarker, combinedThrowSave, combinedThrowSkip, toggleCombinedThrow,
+    combinedAssistPlayerList, combinedAssistNone, combinedPlayTypeList,
     heatmapSvg,
     heatmapTeamToggle, heatmapPlayerSelect, heatmapToreFilter, heatmapMissedFilter, heatmap7mFilter,
     spielBeendenButton, historieBereich, historieListe, backToStartFromHistory, historyButton,
@@ -585,6 +588,15 @@ export function registerEventListeners() {
         });
     }
 
+    // === Combined Throw Mode Toggle ===
+    if (toggleCombinedThrow) {
+        toggleCombinedThrow.addEventListener('change', (e) => {
+            if (!spielstand.settings) spielstand.settings = {};
+            spielstand.settings.combinedThrowMode = e.target.checked;
+            speichereSpielstand();
+        });
+    }
+
     // === Auswärtsspiel Toggle ===
 
     if (toggleAuswaertsspiel) {
@@ -761,6 +773,233 @@ export function registerEventListeners() {
 
     if (wurfbildUeberspringen) {
         wurfbildUeberspringen.addEventListener('click', schliesseWurfbildModal);
+    }
+
+    // === Combined Throw Modal Logic ===
+    // Temporary state for combined modal
+    let tempCombinedField = null;
+    let tempCombinedGoal = null;
+
+    if (combinedWurfpositionFeld) {
+        combinedWurfpositionFeld.addEventListener('click', (e) => {
+            const svg = combinedWurfpositionFeld.querySelector('svg');
+            if (!svg) return;
+
+            // Use SVG's own coordinate system for precise positioning
+            const pt = svg.createSVGPoint();
+            pt.x = e.clientX;
+            pt.y = e.clientY;
+            const svgPt = pt.matrixTransform(svg.getScreenCTM().inverse());
+
+            const svgX = svgPt.x;
+            const svgY = svgPt.y;
+            const x = ((svgX - 10) / 280) * 100;
+            const y = ((svgY - 10) / 380) * 100;
+
+            tempCombinedField = { x: x.toFixed(1), y: y.toFixed(1) };
+
+            // Show marker at exact click position
+            if (combinedFieldMarker) {
+                combinedFieldMarker.setAttribute('cx', svgX);
+                combinedFieldMarker.setAttribute('cy', svgY);
+                combinedFieldMarker.style.display = 'block';
+            }
+        });
+    }
+
+    if (combinedWurfbildUmgebung) {
+        combinedWurfbildUmgebung.addEventListener('click', (e) => {
+            const svg = combinedGoalSvg;
+            if (!svg) return;
+
+            // Use SVG's own coordinate system for precise positioning
+            const pt = svg.createSVGPoint();
+            pt.x = e.clientX;
+            pt.y = e.clientY;
+            const svgPt = pt.matrixTransform(svg.getScreenCTM().inverse());
+
+            const svgX = svgPt.x;
+            const svgY = svgPt.y;
+            const x = ((svgX - 25) / 250) * 100;
+            const y = ((svgY - 10) / 180) * 100;
+
+            tempCombinedGoal = { x: x.toFixed(1), y: y.toFixed(1) };
+
+            // Show marker at exact click position
+            if (combinedGoalMarker) {
+                combinedGoalMarker.setAttribute('cx', svgX);
+                combinedGoalMarker.setAttribute('cy', svgY);
+                combinedGoalMarker.style.display = 'block';
+            }
+        });
+    }
+
+    // === Assist Selection Logic ===
+    let selectedAssistPlayer = null;
+
+    // Function to populate assist player list when modal opens
+    window.populateAssistPlayerList = function () {
+        if (!combinedAssistPlayerList) return;
+        combinedAssistPlayerList.innerHTML = '';
+        selectedAssistPlayer = null;
+
+        // Determine which players to show based on game mode
+        const isComplexMode = spielstand.gameMode === 'complex';
+        const isOpponentAction = spielstand.tempSourcePlayer?.isOpponent || false;
+        const currentAction = spielstand.tempSourceAction || "";
+
+        // --- Conditional Section Visibility ---
+        const goalSection = document.getElementById('combinedWurfbildUmgebung')?.closest('.throw-section');
+        const assistSection = document.querySelector('.assist-selection-section');
+
+        // 1. Hide Goal SVG for Block actions (but keep Play Types visible)
+        if (goalSection) {
+            const isBlock = currentAction.toLowerCase().includes('block');
+            const goalHeader = goalSection.querySelector('h4');
+            const goalSvgContainer = document.getElementById('combinedWurfbildUmgebung');
+
+            if (goalHeader) goalHeader.style.display = isBlock ? 'none' : 'block';
+            if (goalSvgContainer) goalSvgContainer.style.display = isBlock ? 'none' : 'block';
+        }
+
+        // 2. Hide Assist for Non-Goal actions (Fehlwurf, Gehalten, Block)
+        const isGoal = currentAction === "Tor" || currentAction === "Gegner Tor" || currentAction === "7m Tor" || currentAction === "Gegner 7m Tor";
+
+        if (!isGoal) {
+            if (assistSection) assistSection.style.display = 'none';
+            return;
+        }
+        if (assistSection) assistSection.style.display = 'block';
+
+        const isAway = spielstand.settings.isAuswaertsspiel;
+        let playersToShow = [];
+        let scorerNumber = null;
+        const lastEntry = spielstand.gameLog[0];
+
+        if (isOpponentAction) {
+            scorerNumber = lastEntry?.gegnerNummer;
+            if (isComplexMode) {
+                // Opponent lineup side
+                const oppPrefix = isAway ? 'heim' : 'gast';
+                const lineupElements = document.querySelectorAll(`#${oppPrefix}ActiveRoster .spieler-button, #${oppPrefix}GoalkeeperRoster .spieler-button`);
+                lineupElements.forEach(el => {
+                    const number = el.dataset.gegnerNummer;
+                    const index = el.dataset.index;
+                    if (number) {
+                        const p = spielstand.knownOpponents[index];
+                        playersToShow.push({ number: parseInt(number), name: p?.name || '' });
+                    }
+                });
+            } else {
+                playersToShow = (spielstand.knownOpponents || []).map(p => ({ number: p.number, name: p.name || '' }));
+            }
+        } else {
+            scorerNumber = lastEntry?.playerId;
+            if (isComplexMode) {
+                // Our lineup side
+                const ourPrefix = isAway ? 'gast' : 'heim';
+                const lineupElements = document.querySelectorAll(`#${ourPrefix}ActiveRoster .spieler-button, #${ourPrefix}GoalkeeperRoster .spieler-button`);
+                lineupElements.forEach(el => {
+                    const index = el.dataset.index;
+                    if (index !== undefined && el.dataset.team === 'myteam') {
+                        const p = spielstand.roster[index];
+                        if (p) playersToShow.push({ number: p.number, name: p.name || '' });
+                    }
+                });
+            } else {
+                playersToShow = (spielstand.roster || []).map(p => ({ number: p.number, name: p.name || '' }));
+            }
+        }
+
+        // Exclude the scorer
+        playersToShow = playersToShow.filter(p => p.number != scorerNumber);
+
+        // Create buttons
+        playersToShow.sort((a, b) => a.number - b.number).forEach(player => {
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            btn.className = 'assist-player-btn';
+            btn.textContent = `#${player.number}`;
+            if (player.name) btn.title = player.name;
+            btn.dataset.playerNumber = player.number;
+            btn.dataset.playerName = player.name;
+            btn.addEventListener('click', () => {
+                combinedAssistPlayerList.querySelectorAll('.assist-player-btn').forEach(b => b.classList.remove('selected'));
+                btn.classList.add('selected');
+                selectedAssistPlayer = { number: player.number, name: player.name };
+            });
+            combinedAssistPlayerList.appendChild(btn);
+        });
+    };
+
+    // "Kein Assist" button
+    if (combinedAssistNone) {
+        combinedAssistNone.addEventListener('click', () => {
+            combinedAssistPlayerList.querySelectorAll('.assist-player-btn').forEach(b => b.classList.remove('selected'));
+            selectedAssistPlayer = null;
+        });
+    }
+
+    // === Spielart (Play Type) Selection ===
+    let selectedPlayType = null;
+
+    if (combinedPlayTypeList) {
+        combinedPlayTypeList.querySelectorAll('.playtype-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                // Deselect all
+                combinedPlayTypeList.querySelectorAll('.playtype-btn').forEach(b => b.classList.remove('selected'));
+                // Select this one
+                btn.classList.add('selected');
+                selectedPlayType = btn.dataset.playtype;
+            });
+        });
+    }
+
+    // Reset function for combined modal
+    function resetCombinedModal() {
+        tempCombinedField = null;
+        tempCombinedGoal = null;
+        selectedAssistPlayer = null;
+        selectedPlayType = null;
+        if (combinedFieldMarker) combinedFieldMarker.style.display = 'none';
+        if (combinedGoalMarker) combinedGoalMarker.style.display = 'none';
+        if (combinedPlayTypeList) {
+            combinedPlayTypeList.querySelectorAll('.playtype-btn').forEach(b => b.classList.remove('selected'));
+        }
+        combinedThrowModal.classList.add('versteckt');
+        spielstand.tempGegnerNummer = null;
+        spielstand.temp7mOutcome = null;
+    }
+
+    if (combinedThrowSave) {
+        combinedThrowSave.addEventListener('click', () => {
+            if (spielstand.gameLog.length > 0) {
+                const lastEntry = spielstand.gameLog[0];
+                if (tempCombinedField) {
+                    lastEntry.wurfposition = tempCombinedField;
+                }
+                if (tempCombinedGoal) {
+                    lastEntry.wurfbild = { x: tempCombinedGoal.x, y: tempCombinedGoal.y, color: null };
+                }
+                // Save assist if selected
+                if (selectedAssistPlayer) {
+                    lastEntry.assist = { nummer: selectedAssistPlayer.number, name: selectedAssistPlayer.name || '' };
+                }
+                // Save play type
+                if (selectedPlayType) {
+                    lastEntry.playType = selectedPlayType;
+                }
+                speichereSpielstand();
+            }
+
+            resetCombinedModal();
+        });
+    }
+
+    if (combinedThrowSkip) {
+        combinedThrowSkip.addEventListener('click', () => {
+            resetCombinedModal();
+        });
     }
 
     if (closeWurfbilderStats) closeWurfbilderStats.addEventListener('click', () => wurfbilderStatsModal.classList.add('versteckt'));

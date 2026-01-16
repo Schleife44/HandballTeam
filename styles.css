@@ -1010,6 +1010,279 @@ body.dark-mode #wurfpositionFeld svg circle {
     stroke: #a1a1aa;
 }
 
+/* === Combined Throw Modal === */
+.combined-throw-container {
+    display: flex;
+    gap: 24px;
+    justify-content: center;
+    align-items: flex-start;
+    padding: 1rem 0;
+}
+
+.throw-section {
+    flex: 1;
+    text-align: center;
+    min-width: 0;
+}
+
+.throw-section h4 {
+    margin: 0;
+    font-weight: 500;
+}
+
+.throw-svg-container {
+    background: hsl(var(--muted) / 0.3);
+    border-radius: var(--radius);
+    padding: 10px;
+    cursor: crosshair;
+    transition: box-shadow 0.2s;
+}
+
+.throw-svg-container:hover {
+    box-shadow: 0 0 0 2px hsl(var(--primary) / 0.3);
+}
+
+.throw-svg-container svg {
+    display: block;
+    margin: 0 auto;
+}
+
+/* Dark Mode für kombiniertes Modal */
+body.dark-mode .throw-svg-container {
+    background: hsl(var(--muted) / 0.5);
+}
+
+body.dark-mode #combinedWurfpositionFeld svg rect:first-child {
+    fill: #27272a;
+    stroke: #52525b;
+}
+
+body.dark-mode #combinedWurfpositionFeld svg path,
+body.dark-mode #combinedWurfpositionFeld svg line,
+body.dark-mode #combinedWurfpositionFeld svg circle:not(#combinedFieldMarker) {
+    stroke: #a1a1aa;
+}
+
+body.dark-mode #combinedWurfbildUmgebung svg rect {
+    stroke: #52525b;
+}
+
+body.dark-mode #combinedWurfbildUmgebung svg line {
+    stroke: #52525b;
+}
+
+/* Responsive: Stack auf kleinen Bildschirmen */
+@media (max-width: 768px) {
+    .combined-throw-container {
+        flex-direction: column;
+        gap: 16px;
+    }
+
+    .throw-section {
+        width: 100%;
+    }
+}
+
+/* Assist Player Buttons - 5 Spalten Grid */
+.assist-player-grid {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 4px;
+}
+
+.assist-selection-section {
+    margin-top: 0.75rem;
+    border-top: 1px solid hsl(var(--border));
+    padding-top: 0.75rem;
+}
+
+.assist-player-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 40px;
+    height: 32px;
+    padding: 0 8px;
+    border-radius: var(--radius);
+    font-size: 0.8rem;
+    font-weight: 600;
+    background: hsl(var(--muted));
+    border: 1px solid hsl(var(--border));
+    color: hsl(var(--foreground));
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+.assist-player-btn:hover {
+    background: hsl(var(--accent));
+    border-color: hsl(var(--primary) / 0.3);
+}
+
+.assist-player-btn.selected {
+    background: hsl(var(--primary));
+    color: hsl(var(--primary-foreground));
+    border-color: hsl(var(--primary));
+}
+
+/* Spielart-Buttons (Playtype) */
+.playtype-buttons {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 6px;
+}
+
+.playtype-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    height: 32px;
+    padding: 0 10px;
+    border-radius: var(--radius);
+    font-size: 0.75rem;
+    font-weight: 500;
+    background: hsl(var(--muted));
+    border: 1px solid hsl(var(--border));
+    color: hsl(var(--foreground));
+    cursor: pointer;
+    transition: all 0.15s ease;
+    white-space: nowrap;
+}
+
+.playtype-btn:hover {
+    background: hsl(var(--accent));
+}
+
+.playtype-btn.selected {
+    background: hsl(142 76% 36%);
+    color: white;
+    border-color: hsl(142 76% 36%);
+}
+
+/* Spielart-Statistik Anzeige */
+.playtype-stats-grid {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 4px;
+    margin-top: 4px;
+}
+
+@media (max-width: 600px) {
+    .playtype-stats-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+.playtype-stat-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 4px;
+    background: hsl(var(--muted) / 0.5);
+    border-radius: var(--radius);
+    border: 1px solid hsl(var(--border));
+}
+
+.playtype-name {
+    font-size: 0.65rem;
+    font-weight: 500;
+    color: hsl(var(--muted-foreground));
+    margin-bottom: 2px;
+    text-align: center;
+    line-height: 1.1;
+}
+
+.playtype-data {
+    font-size: 0.9rem;
+    font-weight: 700;
+    color: hsl(var(--foreground));
+    line-height: 1.1;
+}
+
+.stats-card {
+    background: hsl(var(--card));
+    border: 1px solid hsl(var(--border));
+    border-radius: var(--radius);
+    padding: 6px;
+    margin-bottom: 6px;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+    height: auto !important;
+    min-height: 0 !important;
+    align-self: start;
+}
+
+/* --- Live Overview Layout Management --- */
+.live-overview-container {
+    display: flex !important;
+    flex-direction: row !important;
+    flex-wrap: wrap !important;
+    gap: 12px !important;
+    align-items: flex-start !important;
+    width: 100% !important;
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 10px;
+}
+
+.live-overview-container .score-card {
+    flex: 1 1 100% !important;
+    width: 100% !important;
+    margin-bottom: 10px;
+}
+
+/* Playtype variants: side-by-side */
+.live-overview-container .playtype-card {
+    flex: 1 1 300px !important;
+    min-width: 280px !important;
+    padding: 1rem !important;
+}
+
+/* Player stats tables: below variants (full width) */
+.live-overview-container .stats-card:not(.score-card):not(.playtype-card) {
+    flex: 1 1 100% !important;
+    width: 100% !important;
+    padding: 1.5rem !important;
+}
+
+/* Force Playtype Card to be compact */
+/* Force Playtype Card to be compact */
+.playtype-card {
+    height: auto !important;
+    min-height: 0 !important;
+    max-height: none !important;
+    margin-bottom: 0 !important;
+}
+
+.card-title {
+    font-size: 0.85rem;
+    font-weight: 600;
+    margin-bottom: 4px;
+    color: hsl(var(--foreground));
+    line-height: 1.2;
+}
+
+.playtype-quote {
+    font-size: 0.9rem;
+    font-weight: 600;
+    margin-top: 4px;
+    padding: 2px 8px;
+    border-radius: 999px;
+}
+
+.playtype-quote.good {
+    background: hsl(142 76% 36% / 0.2);
+    color: hsl(142 76% 36%);
+}
+
+.playtype-quote.medium {
+    background: hsl(48 96% 53% / 0.2);
+    color: hsl(38 92% 50%);
+}
+
+.playtype-quote.low {
+    background: hsl(0 84% 60% / 0.2);
+    color: hsl(0 84% 60%);
+}
+
 /* 3. Heatmap Mini Goals */
 .mini-tor-wrapper {
     background-color: hsl(var(--muted));
@@ -1266,7 +1539,7 @@ body {
     color: hsl(var(--accent-foreground));
 }
 
-@media (max-width: 640px) {
+@media (max-width: 768px) {
     .shadcn-modal-footer {
         flex-direction: column-reverse;
     }
@@ -1274,6 +1547,12 @@ body {
     .shadcn-btn-primary,
     .shadcn-btn-outline {
         width: 100%;
+    }
+
+    /* Enable scrolling ONLY on mobile where vertical space is tight */
+    .shadcn-modal-content {
+        max-height: 85vh !important;
+        overflow-y: auto !important;
     }
 }
 
@@ -1492,16 +1771,7 @@ select.shadcn-select-native option {
 
 
 
-/* --- Live Overview --- */
-.live-overview-container {
-    display: flex;
-    flex-direction: column;
-    gap: 1.5rem;
-    padding: 0 1.1rem 1.1rem 1.1rem;
-    /* Removed top padding */
-    max-width: 1200px;
-    margin: 0 auto;
-}
+/* Removed redundant .live-overview-container definition - now managed at L1214 */
 
 .stats-card {
     background: hsl(var(--card));
@@ -2456,11 +2726,7 @@ body.dark-mode .heatmap-tab.white-style:not(.active) {
     }
 
     /* Live Overview Columns */
-    .live-overview-container {
-        display: flex;
-        flex-direction: column;
-        gap: 15px;
-    }
+    /* Removed redundant .live-overview-container definition - managed at L1214 */
 
     .dashboard-grid {
         grid-template-columns: 1fr !important;
@@ -3192,31 +3458,7 @@ th {
 
 /* Live Overview Final Styles */
 
-/* 1. Score Card - Full width but compact height */
-.live-overview-container .score-card {
-    flex: 1 1 100% !important;
-    max-width: 100% !important;
-    min-width: 100% !important;
-    margin-bottom: 20px;
-    height: auto !important;
-}
-
-/* 2. Stats Cards Container */
-.live-overview-container {
-    display: flex;
-    gap: 20px;
-    flex-wrap: wrap;
-    justify-content: center;
-    width: 100%;
-    align-items: flex-start;
-}
-
-/* 3. Stats Card Sizing */
-.live-overview-container .stats-card:not(.score-card) {
-    flex: 1 1 500px;
-    min-width: 350px;
-    padding: 1.5rem;
-}
+/* Removed redundant Final Styles - managed at L1214 */
 
 /* 4. Table Styles - Larger and Left Aligned */
 .modern-stats-table th,
@@ -4364,7 +4606,6 @@ th {
         gap: 2px !important;
     }
 
-    .game-player-grid .spieler-button,
     .game-player-grid .player-btn {
         padding: 2px 3px !important;
         font-size: 0.55rem !important;
@@ -4408,7 +4649,7 @@ th {
 
     /* Override specifically for simple mode on mobile to allow more columns */
     #spielBereich.simple-mode .game-player-grid {
-        grid-template-columns: repeat(auto-fit, minmax(60px, 1fr)) !important;
+        grid-template-columns: repeat(auto-fill, minmax(60px, 1fr)) !important;
         gap: 4px !important;
         display: grid !important;
     }
@@ -4456,7 +4697,7 @@ th {
     .game-phase-controls button {
         padding: 4px 6px !important;
         /* Slightly reduced horizontal padding */
-        font-size: 0.7rem !important;
+        font-size: 0.75rem !important;
         min-height: 32px;
         box-sizing: border-box !important;
         /* Critical for padding calculation */
@@ -4543,6 +4784,91 @@ th {
 
     .calendar-header-days>div {
         font-size: 0.6rem;
+        padding: 2px !important;
+    }
+
+    /* Combined Throw Modal Mobile Optimization */
+    .combined-throw-container {
+        flex-direction: column !important;
+        gap: 8px !important;
+        /* Reduced gap */
+    }
+
+    .throw-section {
+        width: 100%;
+        margin-bottom: 0 !important;
+    }
+
+    .throw-section h4 {
+        margin-bottom: 4px !important;
+        margin-top: 2px !important;
+        font-size: 0.8rem !important;
+    }
+
+    /* Field (Vertical) */
+    #combinedWurfpositionFeld svg {
+        max-height: 20vh !important;
+        /* Reduced further from 22vh */
+    }
+
+    /* Goal (Horizontal) */
+    #combinedWurfbildUmgebung svg {
+        max-height: 14vh !important;
+        /* Reduced further from 16vh */
+    }
+
+    .playtype-buttons {
+        grid-template-columns: 1fr 1fr;
+        gap: 2px !important;
+        /* Reduced from 4px */
+        margin-top: 2px !important;
+        /* Reduced from 4px */
+    }
+
+    .playtype-btn {
+        padding: 2px !important;
+        /* Reduced from 4px */
+        font-size: 0.6rem !important;
+        /* Reduced from 0.65rem */
+        min-height: 22px !important;
+        /* Reduced from 26px */
+        line-height: 1 !important;
+    }
+
+    .assist-selection-section {
+        margin-top: 6px !important;
+    }
+
+    .assist-selection-section h4 {
+        margin-bottom: 2px !important;
+        font-size: 0.75rem !important;
+    }
+
+    .assist-player-grid {
+        grid-template-columns: repeat(auto-fill, minmax(38px, 1fr)) !important;
+        /* Tighter grid */
+        gap: 3px !important;
+    }
+
+    .assist-player-grid .player-btn {
+        padding: 2px !important;
+        font-size: 0.65rem !important;
+        min-height: 24px !important;
+        /* Very compact */
+    }
+
+    #combinedAssistNone {
+        margin-top: 4px !important;
+        padding: 2px 6px !important;
+        font-size: 0.65rem !important;
+        height: 24px !important;
+    }
+
+    /* Pull footer up */
+    .shadcn-modal-footer {
+        margin-top: 8px !important;
+        /* Override inline 1rem */
+        padding-top: 0 !important;
     }
 }
 
