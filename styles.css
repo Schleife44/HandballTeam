@@ -1022,6 +1022,20 @@ body.dark-mode #wurfpositionFeld svg circle {
     display: none !important;
 }
 
+/* --- GAME MODE SELECTION & GAME CONTENT --- */
+/* Default: Mode selection visible with flex, game content hidden */
+#gameModeSelection {
+    display: flex;
+}
+
+#gameModeSelection.versteckt {
+    display: none !important;
+}
+
+#gameContent.versteckt {
+    display: none !important;
+}
+
 /* MODALS */
 .modal-overlay {
     position: fixed;
@@ -2020,11 +2034,6 @@ select.shadcn-select-native option {
     min-width: 140px;
     font-size: 1rem;
     padding: 10px;
-}
-
-/* Hide Unused */
-.simple-mode .hidden.score-adjust-btn {
-    /* Only if I used class="hidden" in HTML, I simply used display:none via CSS selector above for non-simple */
 }
 
 /* Ensure regular mode layout is preserved */
@@ -4066,10 +4075,19 @@ th {
 
     /* --- GAME VIEW MOBILE --- */
 
-    /* Mode Selection */
-    #gameModeSelection {
+    /* Mode Selection - Only apply styles when visible */
+    #gameModeSelection:not(.versteckt) {
+        display: flex !important;
         min-height: 300px !important;
         padding: 20px !important;
+    }
+
+    /* Ensure hidden state is respected on mobile */
+    #gameModeSelection.versteckt {
+        display: none !important;
+        min-height: 0 !important;
+        height: 0 !important;
+        padding: 0 !important;
     }
 
     #gameModeSelection h2 {
@@ -5361,4 +5379,111 @@ th {
 
 #customConfirmModal {
     z-index: 9999 !important;
+}
+
+/* ===========================
+   TACTICAL BOARD MOBILE STYLES
+   =========================== */
+@media screen and (max-width: 768px) {
+    .tactical-board-wrapper {
+        padding: 10px !important;
+    }
+
+    .tactical-toolbar {
+        flex-direction: column !important;
+        gap: 10px !important;
+        padding: 10px !important;
+        align-items: stretch !important;
+    }
+
+    .tool-group {
+        flex-wrap: wrap !important;
+        padding-right: 0 !important;
+        border-right: none !important;
+        border-bottom: 1px solid hsl(var(--border) / 0.3);
+        padding-bottom: 10px !important;
+        justify-content: flex-start !important;
+        gap: 8px !important;
+    }
+
+    .tool-group:last-child {
+        border-bottom: none;
+        padding-bottom: 0;
+    }
+
+    .tool-label {
+        width: 100%;
+        margin-bottom: 5px;
+    }
+
+    .tactical-stage-container {
+        width: 100% !important;
+        overflow-x: auto;
+    }
+
+    .tactical-court {
+        width: 100% !important;
+        min-width: 350px;
+        height: auto !important;
+        aspect-ratio: 8 / 5;
+    }
+
+    .draggable-source {
+        width: 28px !important;
+        height: 28px !important;
+        font-size: 0.9rem;
+    }
+
+    .tool-btn {
+        width: 32px !important;
+        height: 32px !important;
+    }
+
+    .shadcn-btn-secondary,
+    .shadcn-btn-primary,
+    .shadcn-btn-outline {
+        padding: 6px 10px !important;
+        font-size: 0.8rem !important;
+    }
+
+    /* Timeline more compact */
+    .timeline-container {
+        padding: 8px !important;
+    }
+
+    .timeline-thumb {
+        padding: 6px 10px !important;
+        font-size: 0.75rem !important;
+    }
+}
+
+@media screen and (max-width: 480px) {
+    .tactical-toolbar {
+        padding: 8px !important;
+        gap: 8px !important;
+    }
+
+    .tool-group {
+        gap: 6px !important;
+        padding-bottom: 8px !important;
+    }
+
+    .tool-label {
+        font-size: 0.6rem !important;
+    }
+
+    .draggable-source {
+        width: 26px !important;
+        height: 26px !important;
+        font-size: 0.8rem;
+    }
+
+    .tactical-court {
+        min-width: 300px;
+    }
+
+    .timeline-thumb {
+        padding: 4px 8px !important;
+        font-size: 0.7rem !important;
+    }
 }

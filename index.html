@@ -689,7 +689,7 @@
             style="padding: 0; background: transparent; border: none; box-shadow: none;">
             <!-- Mode Selection UI -->
             <div id="gameModeSelection"
-                style="display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; min-height: 400px; gap: 30px;">
+                style="flex-direction: column; align-items: center; justify-content: center; height: 100%; min-height: 400px; gap: 30px;">
                 <div style="text-align: center;">
                     <h2 style="font-size: 1.8rem; margin-bottom: 10px;">Spiel starten</h2>
                     <p style="color: var(--text-muted);">Wähle deine Ansicht für dieses Spiel</p>
@@ -739,7 +739,7 @@
             </div>
 
             <!-- Actual Game Content (Hidden initially) -->
-            <div id="gameContent" style="display: none;">
+            <div id="gameContent" class="versteckt">
                 <div class="game-split-view">
                     <!-- LEFT COLUMN: PLAYER ROSTER (Both Teams Side by Side) -->
                     <div class="game-roster-column">

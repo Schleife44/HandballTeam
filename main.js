@@ -255,9 +255,14 @@ function navigateToView(view) {
             // Determine if we need selection or game content
             if (spielstand.timer.gamePhase === 1 && !spielstand.modeSelected) {
 
-                // Show Selection
-                if (modeSelection) modeSelection.style.display = 'flex';
-                if (gameContent) gameContent.style.display = 'none';
+                // Show Selection, Hide Content
+                if (modeSelection) {
+                    modeSelection.classList.remove('versteckt');
+                    modeSelection.style.display = ''; // Clear any inline style
+                }
+                if (gameContent) {
+                    gameContent.classList.add('versteckt');
+                }
 
                 // Hide specific controls during selection for cleaner look
                 if (globalAktionen) globalAktionen.classList.add('versteckt');
@@ -265,9 +270,14 @@ function navigateToView(view) {
 
             } else {
 
-                // Show Content
-                if (modeSelection) modeSelection.style.display = 'none';
-                if (gameContent) gameContent.style.display = 'block';
+                // Hide Selection, Show Content
+                if (modeSelection) {
+                    modeSelection.classList.add('versteckt');
+                }
+                if (gameContent) {
+                    gameContent.classList.remove('versteckt');
+                    gameContent.style.display = ''; // Clear any inline style
+                }
 
                 renderGameViewFull();
             }
