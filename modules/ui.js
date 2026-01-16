@@ -1186,10 +1186,10 @@ export function showLiveGameOverview() {
 
     if (isAway) {
         renderHomeStatsInHistory(liveOverviewStatsGegnerBody, stats, spielstand.gameLog, true);
-        renderOpponentStatsInHistory(liveOverviewStatsBody, gegnerStats, spielstand.gameLog, true);
+        renderOpponentStatsInHistory(liveOverviewStatsBody, gegnerStats, spielstand.gameLog, null, true, false, null, showLivePlayerDetails);
     } else {
         renderHomeStatsInHistory(liveOverviewStatsBody, stats, spielstand.gameLog, true);
-        renderOpponentStatsInHistory(liveOverviewStatsGegnerBody, gegnerStats, spielstand.gameLog, true);
+        renderOpponentStatsInHistory(liveOverviewStatsGegnerBody, gegnerStats, spielstand.gameLog, null, true, false, null, showLivePlayerDetails);
     }
 
     // Initial Tab State

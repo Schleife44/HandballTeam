@@ -189,7 +189,14 @@ export function berechneGegnerStatistiken(overrideGameLog, players = []) {
                 rausgeholt7m: 0,
                 gewonnen1v1: 0,
                 oneOnOneLost: 0,
-                timeOnField: p.timeOnField || 0 // Merge time directly
+                timeOnField: p.timeOnField || 0, // Merge time directly
+                playStats: {
+                    schnelle_mitte: { tore: 0, fehlwurf: 0 },
+                    tempo_gegenstoss: { tore: 0, fehlwurf: 0 },
+                    spielzug: { tore: 0, fehlwurf: 0 },
+                    freies_spiel: { tore: 0, fehlwurf: 0 },
+                    unknown: { tore: 0, fehlwurf: 0 }
+                }
             });
         });
     }
@@ -252,7 +259,14 @@ export function berechneGegnerStatistiken(overrideGameLog, players = []) {
                 rausgeholt7m: 0,
                 gewonnen1v1: 0,
                 oneOnOneLost: 0,
-                timeOnField: 0
+                timeOnField: 0,
+                playStats: {
+                    schnelle_mitte: { tore: 0, fehlwurf: 0 },
+                    tempo_gegenstoss: { tore: 0, fehlwurf: 0 },
+                    spielzug: { tore: 0, fehlwurf: 0 },
+                    freies_spiel: { tore: 0, fehlwurf: 0 },
+                    unknown: { tore: 0, fehlwurf: 0 }
+                }
             });
         }
 

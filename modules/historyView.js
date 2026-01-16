@@ -318,7 +318,11 @@ export function renderHomeStatsInHistory(tbody, statsData, gameLog, isLive = fal
 }
 
 // --- Render Opponent Stats in History ---
-export function renderOpponentStatsInHistory(tbody, statsData, gameLog, game = null, isLive = false, stayInHeatmap = false, renderBound = null) {
+export function renderOpponentStatsInHistory(tbody, statsData, gameLog, game = null, isLive = false, stayInHeatmap = false, renderBound = null, onRowClick = null) {
+    // Logic: If game is null (Live View) OR callback provided, assume Live/Clickable
+    // Also handle legacy signature where 4th arg (game) might be boolean true (isLive)
+    if (game === null || onRowClick || game === true) isLive = true;
+
     tbody.innerHTML = '';
 
     const toreMap = berechneTore(gameLog); // Needed if not already in statsData
@@ -351,7 +355,15 @@ export function renderOpponentStatsInHistory(tbody, statsData, gameLog, game = n
         if (isLive) {
             tr.style.cursor = 'pointer';
             tr.title = 'Klicken für Details und Wurfquote';
-            tr.addEventListener('click', () => showLivePlayerDetails(stats));
+            tr.addEventListener('click', () => {
+                if (onRowClick) {
+                    onRowClick(stats);
+                } else if (typeof showLivePlayerDetails === 'function') {
+                    showLivePlayerDetails(stats);
+                } else {
+                    console.error('No valid click handler found for Opponent stats');
+                }
+            });
         }
         tr.innerHTML = `
             <td>${stats.name}</td>

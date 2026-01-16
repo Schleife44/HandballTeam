@@ -266,7 +266,7 @@ function setupInteractions() {
                 sources.forEach(s => s.classList.remove('active-spawn'));
                 source.classList.add('active-spawn');
             }
-        });
+        }, { passive: true });
     });
 
     svg.addEventListener('dragover', (e) => e.preventDefault());

@@ -375,6 +375,171 @@ function drawFieldHeatmapToPdf(doc, x, y, width, height, logEntries, teamFilter)
     doc.text(title, x + width / 2, y + height + 5, { align: 'center' });
 }
 
+// Helper to aggregate Play Stats for a team
+function aggregatePlayStats(statsData) {
+    const totals = {
+        schnelle_mitte: { tore: 0, fehlwurf: 0 },
+        tempo_gegenstoss: { tore: 0, fehlwurf: 0 },
+        spielzug: { tore: 0, fehlwurf: 0 },
+        freies_spiel: { tore: 0, fehlwurf: 0 }
+    };
+
+    statsData.forEach(p => {
+        if (!p.playStats) return;
+        ['schnelle_mitte', 'tempo_gegenstoss', 'spielzug', 'freies_spiel'].forEach(key => {
+            if (p.playStats[key]) {
+                totals[key].tore += p.playStats[key].tore || 0;
+                totals[key].fehlwurf += p.playStats[key].fehlwurf || 0;
+            }
+        });
+    });
+    return totals;
+}
+
+// Helper to draw the stats table (Shared logic could go here, but keeping inline for now or duplicating safely)
+function drawStatsTableForPdf(doc, statsData, startX, startY, title) {
+    let xPos = startX;
+    let yPos = startY;
+
+    // Headers
+    doc.setFontSize(12);
+    doc.setFont('helvetica', 'bold');
+    doc.text(title, xPos, yPos);
+    yPos += 8;
+
+    doc.setFontSize(7); // Smaller font for many columns
+    doc.setFont('helvetica', 'bold');
+
+    // Columns: [Label, Width]
+    const columns = [
+        { header: 'Spieler', width: 30, key: 'name' },
+        { header: 'Zeit', width: 10, key: 'time' },
+        { header: 'T', width: 7, key: 'tore', title: 'Tore' },
+        { header: 'F', width: 7, key: 'feldtore', title: 'Feldtore' },
+        { header: '7m', width: 10, key: '7m', title: '7m Tore/Versuche' },
+        { header: 'Fehl', width: 8, key: 'fehl', title: 'Fehlwürfe' },
+        { header: 'Ast', width: 8, key: 'assist', title: 'Assists' },
+        { header: 'Quote', width: 10, key: 'quote', title: 'Wurfquote' },
+        { header: 'Ball', width: 8, key: 'ball', title: 'Ballverlust/Tech.Fehler' },
+        { header: 'Foul', width: 8, key: 'foul', title: 'Stürmerfoul' },
+        { header: 'Blk', width: 8, key: 'block', title: 'Blocks' },
+        { header: '1v1+', width: 8, key: '1v1_won', title: '1v1 Gewonnen' },
+        { header: '1v1-', width: 8, key: '1v1_lost', title: '1v1 Verloren' },
+        { header: '7m+', width: 8, key: '7m_plus', title: '7m Rausgeholt' },
+        { header: '2m+', width: 8, key: '2m_plus', title: '2min Rausgeholt' },
+        { header: 'G', width: 6, key: 'gelb' },
+        { header: '2\'', width: 6, key: '2min' },
+        { header: 'R', width: 6, key: 'rot' }
+    ];
+
+    // Draw Headers
+    let currentX = xPos;
+    columns.forEach(col => {
+        doc.text(col.header, currentX, yPos);
+        currentX += col.width;
+    });
+
+    // Draw Line
+    yPos += 2;
+    doc.setLineWidth(0.5);
+    doc.line(xPos, yPos, currentX, yPos);
+    yPos += 4;
+
+    // Draw Rows
+    doc.setFont('helvetica', 'normal');
+
+    statsData.forEach(stats => {
+        if (yPos > 275) { doc.addPage(); yPos = 20; }
+
+        const goals = stats.tore || 0;
+        const sevenMGoals = stats.siebenMeterTore || 0;
+        const sevenMAttempts = stats.siebenMeterVersuche || 0;
+        const feldtore = goals - sevenMGoals;
+        const attempts = goals + (stats.fehlwurf || 0);
+        const quote = attempts > 0 ? Math.round((goals / attempts) * 100) + '%' : '-';
+        const sevenMDisplay = sevenMAttempts > 0 ? `${sevenMGoals}/${sevenMAttempts}` : "0/0";
+
+        // Time formatting
+        const timeOnField = stats.timeOnField || 0;
+        const m = Math.floor(timeOnField / 60);
+        const s = timeOnField % 60;
+        const timeStr = `${m}:${s < 10 ? '0' + s : s}`;
+
+        const rowData = {
+            name: (`#${stats.number} ${stats.name}`).substring(0, 18),
+            time: timeStr,
+            tore: String(goals),
+            feldtore: String(feldtore),
+            '7m': sevenMDisplay,
+            fehl: String(stats.fehlwurf || 0),
+            assist: String(stats.assist || 0),
+            quote: quote,
+            ball: String((stats.techFehler || 0) + (stats.ballverlust || 0)),
+            foul: String(stats.stuermerfoul || 0),
+            block: String(stats.block || 0),
+            '1v1_won': String(stats.gewonnen1v1 || 0),
+            '1v1_lost': String(stats.oneOnOneLost || 0),
+            '7m_plus': String(stats.rausgeholt7m || 0),
+            '2m_plus': String(stats.rausgeholt2min || 0),
+            gelb: String(stats.gelb || 0),
+            '2min': String(stats.zweiMinuten || 0),
+            rot: String(stats.rot || 0)
+        };
+
+        currentX = xPos;
+        columns.forEach(col => {
+            doc.text(rowData[col.key], currentX, yPos);
+            currentX += col.width;
+        });
+        yPos += 4;
+    });
+
+    return yPos;
+}
+
+function drawPlayStatsSummary(doc, statsData, startX, startY) {
+    const totals = aggregatePlayStats(statsData);
+    const types = [
+        { label: 'Tempo Gegenstoß', key: 'tempo_gegenstoss' },
+        { label: 'Schnelle Mitte', key: 'schnelle_mitte' },
+        { label: 'Spielzug', key: 'spielzug' },
+        { label: 'Freies Spiel', key: 'freies_spiel' }
+    ];
+
+    let yPos = startY + 5;
+    if (yPos > 260) { doc.addPage(); yPos = 20; }
+
+    doc.setFontSize(9);
+    doc.setFont('helvetica', 'bold');
+    doc.text("Angriffsvarianten", startX, yPos);
+    yPos += 5;
+
+    // Headers
+    doc.setFontSize(8);
+    doc.text("Art", startX, yPos);
+    doc.text("Tore", startX + 40, yPos);
+    doc.text("Würfe", startX + 55, yPos);
+    doc.text("Quote", startX + 70, yPos);
+    yPos += 2;
+    doc.line(startX, yPos, startX + 90, yPos);
+    yPos += 4;
+
+    doc.setFont('helvetica', 'normal');
+    types.forEach(type => {
+        const t = totals[type.key];
+        const attempts = t.tore + t.fehlwurf;
+        const quote = attempts > 0 ? Math.round((t.tore / attempts) * 100) + '%' : '-';
+
+        doc.text(type.label, startX, yPos);
+        doc.text(String(t.tore), startX + 40, yPos);
+        doc.text(String(attempts), startX + 55, yPos);
+        doc.text(quote, startX + 70, yPos);
+        yPos += 4;
+    });
+
+    return yPos;
+}
+
 // Exportiert ein historisches Spiel als PDF
 export function exportiereHistorieAlsPdf(game) {
     if (!game || !game.gameLog || game.gameLog.length === 0) {
@@ -414,139 +579,28 @@ export function exportiereHistorieAlsPdf(game) {
     });
     doc.text(`Spiel vom: ${spielDatum}`, 105, 55, { align: 'center' });
 
-    // Separator line
+    // Separator
     doc.setDrawColor(200, 200, 200);
     doc.line(20, 60, 190, 60);
 
-    // -- HOME STATS --
-    doc.setFontSize(14);
-    doc.setFont('helvetica', 'bold');
-    doc.text(`Statistik ${heimName}`, 20, 70);
-
+    // Calc Stats
     const statsData = berechneStatistiken(game.gameLog, game.roster);
-    const toreMap = berechneTore(game.gameLog);
+    const gegnerStats = berechneGegnerStatistiken(game.gameLog);
 
-    // Table headers
-    doc.setFontSize(9);
-    doc.setFont('helvetica', 'bold');
-    const headers = ['Spieler', 'Tore', 'Ast', '7m', 'Fehl', 'Quote', 'Gut', 'TF', 'Gelb', '2min', 'Rot'];
-    const colWidths = [42, 10, 10, 12, 10, 15, 12, 12, 12, 12, 12];
+    // -- HOME STATS --
+    let yPos = drawStatsTableForPdf(doc, statsData, 15, 70, `Statistik ${heimName}`);
 
-    let xPos = 20;
-    let yPos = 78;
-
-    headers.forEach((header, i) => {
-        doc.text(header, xPos, yPos);
-        xPos += colWidths[i];
-    });
-
-    // Table data
-    doc.setFont('helvetica', 'normal');
-    yPos += 6;
-
-    statsData.forEach(stats => {
-        if (yPos > 270) {
-            doc.addPage();
-            yPos = 20;
-        }
-
-        xPos = 20;
-        const tore = toreMap.get(stats.number) || 0;
-
-        // Calculate Quote
-        const totalSchuesse = tore + stats.fehlwurf;
-        let quote = "-";
-        if (totalSchuesse > 0) {
-            quote = Math.round((tore / totalSchuesse) * 100) + "%";
-        }
-
-        let sevenMeterDisplay = "0/0";
-        if (stats.siebenMeterVersuche > 0) {
-            sevenMeterDisplay = `${stats.siebenMeterTore}/${stats.siebenMeterVersuche}`;
-        } else if (stats.siebenMeter > 0 && stats.siebenMeterVersuche === 0) {
-            sevenMeterDisplay = "0/0";
-        }
-
-        const rowData = [
-            `#${stats.number} ${stats.name}`,
-            String(tore),
-            String(stats.assist || 0),
-            sevenMeterDisplay,
-            String(stats.fehlwurf),
-            quote,
-            String(stats.guteAktion),
-            String(stats.techFehler || stats.ballverlust || 0),
-            String(stats.gelb),
-            String(stats.zweiMinuten),
-            String(stats.rot)
-        ];
-
-        rowData.forEach((cell, i) => {
-            doc.text(cell.substring(0, 15), xPos, yPos);
-            xPos += colWidths[i];
-        });
-        yPos += 5;
-    });
+    // Play Stats Summary (Home)
+    yPos = drawPlayStatsSummary(doc, statsData, 15, yPos);
 
     // -- OPPONENT STATS --
     yPos += 10;
     if (yPos > 250) { doc.addPage(); yPos = 20; }
 
-    doc.setFontSize(14);
-    doc.setFont('helvetica', 'bold');
-    doc.text(`Statistik ${gegnerName}`, 20, yPos);
-    yPos += 8;
+    yPos = drawStatsTableForPdf(doc, gegnerStats, 15, yPos, `Statistik ${gegnerName}`);
 
-    // Headers again
-    xPos = 20;
-    doc.setFontSize(9);
-    doc.setFont('helvetica', 'bold');
-    headers.forEach((header, i) => {
-        doc.text(header, xPos, yPos);
-        xPos += colWidths[i];
-    });
-    yPos += 6;
-
-    // Opponent Data
-    const gegnerStats = berechneGegnerStatistiken(game.gameLog);
-    doc.setFont('helvetica', 'normal');
-
-    gegnerStats.forEach(stats => {
-        if (yPos > 270) { doc.addPage(); yPos = 20; }
-
-        xPos = 20;
-
-        const totalSchuesse = stats.tore + stats.fehlwurf;
-        let quote = "-";
-        if (totalSchuesse > 0) {
-            quote = Math.round((stats.tore / totalSchuesse) * 100) + "%";
-        }
-
-        let sevenMeterDisplay = "0/0";
-        if (stats.siebenMeterVersuche > 0) {
-            sevenMeterDisplay = `${stats.siebenMeterTore}/${stats.siebenMeterVersuche}`;
-        }
-
-        const rowData = [
-            stats.name.substring(0, 20),
-            String(stats.tore),
-            String(stats.assist || 0),
-            sevenMeterDisplay,
-            String(stats.fehlwurf),
-            quote,
-            String(stats.guteAktion),
-            String(stats.techFehler || stats.ballverlust || 0),
-            String(stats.gelb),
-            String(stats.zweiMinuten),
-            String(stats.rot)
-        ];
-
-        rowData.forEach((cell, i) => {
-            doc.text(cell, xPos, yPos);
-            xPos += colWidths[i];
-        });
-        yPos += 5;
-    });
+    // Play Stats Summary (Opponent)
+    yPos = drawPlayStatsSummary(doc, gegnerStats, 15, yPos);
 
 
     // --- Page 2: Visualizations ---
@@ -557,11 +611,9 @@ export function exportiereHistorieAlsPdf(game) {
 
     // 2x2 Grid
     drawGoalHeatmapToPdf(doc, 20, 30, 80, 60, game.gameLog, 'home');
-    drawGoalHeatmapToPdf(doc, 110, 30, 80, 60, game.gameLog, 'away');
-
+    drawGoalHeatmapToPdf(doc, 110, 30, 80, 60, game.gameLog, 'away'); // Corrected logic to away
     drawFieldHeatmapToPdf(doc, 20, 110, 80, 100, game.gameLog, 'home');
     drawFieldHeatmapToPdf(doc, 110, 110, 80, 100, game.gameLog, 'away');
-
 
     // --- Page 3+: Full Game Log ---
     doc.addPage();
@@ -573,7 +625,6 @@ export function exportiereHistorieAlsPdf(game) {
     doc.setFontSize(8);
     doc.setFont('helvetica', 'normal');
 
-    // Full log iteration
     game.gameLog.forEach(entry => {
         if (yPos > 280) {
             doc.addPage();
@@ -602,11 +653,12 @@ export function exportiereHistorieAlsPdf(game) {
     doc.setTextColor(128, 128, 128);
     doc.text('Erstellt mit Team-Tracker', 105, 290, { align: 'center' });
 
-    // Save PDF
+    // Save
     const dateStr = new Date(game.date).toISOString().slice(0, 10);
     doc.save(`spielbericht_${heimName}_vs_${gegnerName}_${dateStr}.pdf`);
 }
 
+// Exportiert die aktuelle LIVE-Statistik als PDF
 export function exportiereAlsPdf() {
     if (spielstand.gameLog.length === 0) {
         customAlert("Keine Daten zum Exportieren.");
@@ -649,140 +701,24 @@ export function exportiereAlsPdf() {
     doc.setDrawColor(200, 200, 200);
     doc.line(20, 60, 190, 60);
 
+    // Calc Stats
+    const statsData = berechneStatistiken(); // Uses global state by default
+    const gegnerStats = berechneGegnerStatistiken();
+
     // -- HOME STATS --
-    doc.setFontSize(14);
-    doc.setFont('helvetica', 'bold');
-    doc.text(`Statistik ${heimName}`, 20, 70);
+    let yPos = drawStatsTableForPdf(doc, statsData, 15, 70, `Statistik ${heimName}`);
 
-    const statsData = berechneStatistiken();
-    const toreMap = berechneTore();
-
-    // Table headers
-    doc.setFontSize(9);
-    doc.setFont('helvetica', 'bold');
-    const headers = ['Spieler', 'Tore', 'Ast', '7m', 'Fehl', 'Quote', 'Gut', 'TF', 'Gelb', '2min', 'Rot'];
-    const colWidths = [42, 10, 10, 12, 10, 15, 12, 12, 12, 12, 12];
-
-    let xPos = 20;
-    let yPos = 78;
-
-    headers.forEach((header, i) => {
-        doc.text(header, xPos, yPos);
-        xPos += colWidths[i];
-    });
-
-    // Table data
-    doc.setFont('helvetica', 'normal');
-    yPos += 6;
-
-    statsData.forEach(stats => {
-        if (yPos > 270) {
-            doc.addPage();
-            yPos = 20;
-        }
-
-        xPos = 20;
-        const tore = toreMap.get(stats.number) || 0;
-
-        // Calculate Quote
-        const totalSchuesse = tore + stats.fehlwurf;
-        let quote = "-";
-        if (totalSchuesse > 0) {
-            quote = Math.round((tore / totalSchuesse) * 100) + "%";
-        }
-
-        // Format 7m: "Tore/Versuche"
-        // If no attempts, show "-" or "0/0"? User asked for fraction.
-        // If 0 attempts, maybe just "0/0" or "-"
-        let sevenMeterDisplay = "0/0";
-        if (stats.siebenMeterVersuche > 0) {
-            sevenMeterDisplay = `${stats.siebenMeterTore}/${stats.siebenMeterVersuche}`;
-        } else if (stats.siebenMeter > 0 && stats.siebenMeterVersuche === 0) {
-            // Fallback if older data or legacy: use "siebenMeter" as 'Rausgeholt' or similar? 
-            // No, user specifically asked for Goals/Attempts stats.
-            sevenMeterDisplay = "0/0";
-        }
-
-        const rowData = [
-            `#${stats.number} ${stats.name}`,
-            String(tore),
-            String(stats.assist || 0),
-            sevenMeterDisplay, // New Format
-            String(stats.fehlwurf),
-            quote,
-            String(stats.guteAktion),
-            String(stats.techFehler || stats.ballverlust || 0),
-            String(stats.gelb),
-            String(stats.zweiMinuten),
-            String(stats.rot)
-        ];
-
-        rowData.forEach((cell, i) => {
-            doc.text(cell.substring(0, 15), xPos, yPos);
-            xPos += colWidths[i];
-        });
-        yPos += 5;
-    });
+    // Play Stats Summary (Home)
+    yPos = drawPlayStatsSummary(doc, statsData, 15, yPos);
 
     // -- OPPONENT STATS --
     yPos += 10;
     if (yPos > 250) { doc.addPage(); yPos = 20; }
 
-    doc.setFontSize(14);
-    doc.setFont('helvetica', 'bold');
-    doc.text(`Statistik ${gegnerName}`, 20, yPos);
-    yPos += 8;
+    yPos = drawStatsTableForPdf(doc, gegnerStats, 15, yPos, `Statistik ${gegnerName}`);
 
-    // Headers again
-    xPos = 20;
-    doc.setFontSize(9);
-    doc.setFont('helvetica', 'bold');
-    headers.forEach((header, i) => {
-        doc.text(header, xPos, yPos);
-        xPos += colWidths[i];
-    });
-    yPos += 6;
-
-    // Opponent Data
-    const gegnerStats = berechneGegnerStatistiken();
-    doc.setFont('helvetica', 'normal');
-
-    gegnerStats.forEach(stats => {
-        if (yPos > 270) { doc.addPage(); yPos = 20; }
-
-        xPos = 20;
-
-        const totalSchuesse = stats.tore + stats.fehlwurf;
-        let quote = "-";
-        if (totalSchuesse > 0) {
-            quote = Math.round((stats.tore / totalSchuesse) * 100) + "%";
-        }
-
-        let sevenMeterDisplay = "0/0";
-        if (stats.siebenMeterVersuche > 0) {
-            sevenMeterDisplay = `${stats.siebenMeterTore}/${stats.siebenMeterVersuche}`;
-        }
-
-        const rowData = [
-            stats.name.substring(0, 20),
-            String(stats.tore),
-            String(stats.assist || 0),
-            sevenMeterDisplay, // New Format
-            String(stats.fehlwurf),
-            quote,
-            String(stats.guteAktion),
-            String(stats.techFehler || stats.ballverlust || 0),
-            String(stats.gelb),
-            String(stats.zweiMinuten),
-            String(stats.rot)
-        ];
-
-        rowData.forEach((cell, i) => {
-            doc.text(cell, xPos, yPos);
-            xPos += colWidths[i];
-        });
-        yPos += 5;
-    });
+    // Play Stats Summary (Opponent)
+    yPos = drawPlayStatsSummary(doc, gegnerStats, 15, yPos);
 
 
     // --- Page 2: Visualizations ---
@@ -809,8 +745,8 @@ export function exportiereAlsPdf() {
     doc.setFontSize(8);
     doc.setFont('helvetica', 'normal');
 
-    // Full log iteration (no slice)
-    spielstand.gameLog.forEach(entry => {
+    // Full log iteration
+    [...spielstand.gameLog].reverse().forEach(entry => {
         if (yPos > 280) {
             doc.addPage();
             yPos = 20;
@@ -839,5 +775,6 @@ export function exportiereAlsPdf() {
     doc.text('Erstellt mit Team-Tracker', 105, 290, { align: 'center' });
 
     // Save PDF
-    doc.save(`spielbericht_${heimName}_vs_${gegnerName}.pdf`);
+    const dateStr = new Date().toISOString().slice(0, 10);
+    doc.save(`spielbericht_live_${heimName}_vs_${gegnerName}_${dateStr}.pdf`);
 }
