@@ -5813,3 +5813,21 @@ th {
         font-size: 0.7rem !important;
     }
 }
+
+/* Specific Optimization for Small Screens (< 480px) */
+@media screen and (max-width: 480px) {
+
+    /* Make Throw Position Field larger for better touch accuracy */
+    #combinedWurfpositionFeld svg {
+        max-height: 35vh !important;
+        /* Increased from 20vh */
+        min-height: 250px;
+        /* Ensure minimum usable size */
+    }
+
+    /* Adjust modal content to ensure scrolling works well with larger field */
+    .shadcn-modal-content {
+        max-height: 90vh !important;
+        padding: 10px !important;
+    }
+}
