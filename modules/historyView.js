@@ -216,8 +216,12 @@ export function renderHistoryList() {
     });
 }
 
+
+
 // --- Render Home Stats in History ---
-export function renderHomeStatsInHistory(tbody, statsData, gameLog, isLive = false, stayInHeatmap = false, renderBound = null) {
+export function renderHomeStatsInHistory(tbody, statsData, gameLog, isLive = false, stayInHeatmap = false, renderBound = null, onRowClick = null) {
+    if (onRowClick) isLive = true; // Use same logic as Opponent to enable clicks if callback provided
+
     tbody.innerHTML = '';
 
     const toreMap = berechneTore(gameLog);
@@ -254,8 +258,16 @@ export function renderHomeStatsInHistory(tbody, statsData, gameLog, isLive = fal
         if (isLive) {
             tr.style.cursor = 'pointer';
             tr.title = 'Klicken für Details und Wurfquote';
-            tr.addEventListener('click', () => showLivePlayerDetails(stats));
+            tr.addEventListener('click', () => {
+                if (onRowClick) {
+                    onRowClick(stats);
+                } else if (typeof showLivePlayerDetails === 'function') {
+                    showLivePlayerDetails(stats);
+                }
+            });
         }
+
+
         tr.innerHTML = `
             <td>#${stats.number} ${stats.name}</td>
             ${showTime ? `<td>${timeStr}</td>` : ''}
@@ -820,8 +832,8 @@ export function openHistoryDetail(game) {
         if (histHeatmapHomeTitle) histHeatmapHomeTitle.textContent = homeName;
         if (histHeatmapGegnerTitle) histHeatmapGegnerTitle.textContent = oppName;
 
-        renderHomeStatsInHistory(histHeatmapStatsBodyHome, homeStats, game.gameLog, false, true, renderBound);
-        renderOpponentStatsInHistory(histHeatmapStatsBodyGegner, opponentStats, game.gameLog, game, false, true, renderBound);
+        renderHomeStatsInHistory(histHeatmapStatsBodyHome, homeStats, game.gameLog, false, true, renderBound, showLivePlayerDetails);
+        renderOpponentStatsInHistory(histHeatmapStatsBodyGegner, opponentStats, game.gameLog, game, false, true, renderBound, showLivePlayerDetails);
     }
 
     const histFilter = histContentHeatmap.querySelector('.heatmap-filter');
