@@ -70,7 +70,7 @@ export async function handleSpielBeenden() {
         };
 
         if (spielstand.gameLog && spielstand.gameLog.length > 0) {
-            speichereSpielInHistorie(gameData);
+            await speichereSpielInHistorie(gameData);
             await customAlert("Spiel gespeichert!", "Erfolg ✓");
         } else {
             await customAlert("Spiel hat keine Einträge und wurde nicht gespeichert.", "Info");
@@ -113,16 +113,17 @@ export async function handleSpielBeenden() {
 }
 
 // --- Render History List ---
-export function renderHistoryList() {
-    historieListe.innerHTML = '';
+export async function renderHistoryList() {
+    historieListe.innerHTML = '<div style="grid-column: 1/-1; text-align:center; padding:40px; color: var(--text-muted);"><div class="loading-spinner" style="margin: 0 auto 15px;"></div>Lade Spiele aus der Cloud...</div>';
 
     // Ensure grid container class
     historieListe.className = 'history-grid';
-    historieListe.style.display = 'grid'; // Force grid if class not applied instantly via CSS transition
+    historieListe.style.display = 'grid';
 
-    const games = getHistorie();
+    const games = await getHistorie();
+    historieListe.innerHTML = '';
 
-    if (games.length === 0) {
+    if (!games || games.length === 0) {
         historieListe.style.display = 'block'; // Fallback for message
         historieListe.innerHTML = '<p style="text-align:center; padding:20px; color: var(--text-muted);">Keine gespeicherten Spiele vorhanden.</p>';
         return;
@@ -207,7 +208,7 @@ export function renderHistoryList() {
             e.stopPropagation();
             const confirmed = await customConfirm("Spiel wirklich aus der Historie löschen?", "Löschen?");
             if (confirmed) {
-                loescheSpielAusHistorie(game.id);
+                await loescheSpielAusHistorie(game.id);
                 renderHistoryList();
             }
         });

@@ -282,9 +282,9 @@ export function closeSeasonOverview() {
 }
 
 // Rendert Saison-Statistiken (Team Focused)
-export function renderSeasonStats() {
+export async function renderSeasonStats() {
     const summary = getSeasonSummary();
-    const historie = getHistorie();
+    const historie = await getHistorie();
     const seasonSummary = document.getElementById('seasonSummary');
     const seasonStatsContainer = document.getElementById('seasonStatsContainer');
 
@@ -594,8 +594,8 @@ export function renderPlayerSeasonStats(targetContainer = null) {
 }
 
 // Erstellt Liste der Spiele für einen Spieler
-function renderGameHistoryList(player) {
-    const historyGames = getHistorie().sort((a, b) => new Date(b.date) - new Date(a.date));
+async function renderGameHistoryList(player) {
+    const historyGames = (await getHistorie()).sort((a, b) => new Date(b.date) - new Date(a.date));
 
     const container = document.createElement('div');
     container.style.marginTop = '20px';
@@ -732,9 +732,48 @@ function createPlayerCard(player, index) {
     const details = document.createElement('div');
     details.className = 'season-player-details versteckt';
 
-    // Stats Table - Calculate Feldtore (field goals = tore - 7m goals)
-    const feldtore = player.tore - (player.siebenMeterTore || 0);
+    header.addEventListener('click', async () => {
+        const isVersteckt = details.classList.contains('versteckt');
+        
+        // Hide all others
+        document.querySelectorAll('.season-player-details').forEach(d => {
+            if (d !== details) {
+                d.classList.add('versteckt');
+                const otherHeader = d.previousElementSibling;
+                if (otherHeader) {
+                    const icon = otherHeader.querySelector('.expand-icon');
+                    if (icon) icon.style.transform = 'rotate(0deg)';
+                }
+            }
+        });
 
+        if (isVersteckt) {
+            details.classList.remove('versteckt');
+            header.querySelector('.expand-icon').style.transform = 'rotate(180deg)';
+            
+            // Render content if empty
+            if (details.innerHTML === '') {
+                await renderPlayerDetailsContent(details, player);
+            }
+        } else {
+            details.classList.add('versteckt');
+            header.querySelector('.expand-icon').style.transform = 'rotate(0deg)';
+        }
+    });
+
+    card.appendChild(header);
+    card.appendChild(details);
+    return card;
+}
+
+/**
+ * Separate function to render detail content as it's now async
+ */
+async function renderPlayerDetailsContent(details, player) {
+    details.innerHTML = '<div style="text-align:center; padding:20px;"><div class="loading-spinner" style="margin:0 auto;"></div><p style="font-size:0.8rem; margin-top:10px; color:var(--text-muted);">Lade Details...</p></div>';
+    
+    // 1. Stats Table
+    const feldtore = player.tore - (player.siebenMeterTore || 0);
     const statsTable = `
         <div class="table-container">
             <table class="season-table">
@@ -772,7 +811,7 @@ function createPlayerCard(player, index) {
         </div>
     `;
 
-    // --- PlayType Stats Table ---
+    // 2. PlayType Stats Table
     let playTypeStatsHtml = '';
     if (player.playStats) {
         const types = [
@@ -786,10 +825,6 @@ function createPlayerCard(player, index) {
             const stats = player.playStats[type.key] || { tore: 0, fehlwurf: 0 };
             const attempts = stats.tore + stats.fehlwurf;
             const quote = attempts > 0 ? Math.round((stats.tore / attempts) * 100) + '%' : '-';
-            // Only show row if there is at least one attempt? Or always show? 
-            // User wants to see "wie hoch die Wurfquote ... ist", likely implies seeing all.
-            // But if 0/0, maybe hide to save space? Let's show implies availability.
-            // Let's show all for consistency.
             return `
                 <tr>
                     <td style="text-align: left;">${type.label}</td>
@@ -820,64 +855,45 @@ function createPlayerCard(player, index) {
         `;
     }
 
-    // Heatmap Buttons - Check for field throws and 7m throws separately
+    // 3. Heatmap Buttons
     const fieldThrows = player.seasonLog ? player.seasonLog.filter(e => !e.is7m) : [];
     const sevenMThrows = player.seasonLog ? player.seasonLog.filter(e => e.is7m) : [];
-
     const hasFieldData = fieldThrows.length > 0;
     const has7mData = sevenMThrows.length > 0;
 
     let heatmapButtonsHtml = '<div class="season-btn-group">';
-
     if (hasFieldData) {
-        heatmapButtonsHtml += `<button class="show-heatmap-btn shadcn-btn-secondary" data-player-index="${index}" data-mode="field" style="flex: 1; height: 36px; font-size: 0.85rem;">Grafik</button>`;
+        heatmapButtonsHtml += `<button class="show-heatmap-btn shadcn-btn-secondary" data-mode="field" style="flex: 1; height: 36px; font-size: 0.85rem;">Grafik</button>`;
     }
-
     if (has7mData) {
-        heatmapButtonsHtml += `<button class="show-heatmap-btn shadcn-btn-outline" data-player-index="${index}" data-mode="7m" style="flex: 1; height: 36px; font-size: 0.85rem; border-color: #f59e0b; color: #f59e0b;">7m Grafik</button>`;
+        heatmapButtonsHtml += `<button class="show-heatmap-btn shadcn-btn-outline" data-mode="7m" style="flex: 1; height: 36px; font-size: 0.85rem; border-color: #f59e0b; color: #f59e0b;">7m Grafik</button>`;
     }
-
     if (!hasFieldData && !has7mData) {
         heatmapButtonsHtml += '<small style="color:hsl(var(--muted-foreground)); width:100%; text-align:center;">Keine Grafik-Daten</small>';
     }
-
     heatmapButtonsHtml += '</div>';
 
-    heatmapButtonsHtml += '</div>';
-
+    // Update details innerHTML
     details.innerHTML = statsTable + playTypeStatsHtml + heatmapButtonsHtml;
 
-    // FIX: Attach listeners immediately
+    // Attach heatmap listeners
     const heatmapBtns = details.querySelectorAll('.show-heatmap-btn');
     heatmapBtns.forEach(btn => {
         btn.addEventListener('click', (e) => {
             e.stopPropagation();
             const mode = btn.dataset.mode;
-            showPlayerHeatmap(index, mode);
+            showPlayerHeatmap(player.index, mode);
         });
     });
 
-    // Add Game History List
-    const historyList = renderGameHistoryList(player);
+    // 4. Game History List (Async)
+    const historyList = await renderGameHistoryList(player);
     if (historyList) {
         details.appendChild(historyList);
     }
 
-    // Render icons (Now includes history list icons)
+    // Finalize
     if (typeof lucide !== 'undefined') lucide.createIcons({ root: details });
-
-    // Toggle functionality
-    header.addEventListener('click', () => {
-        details.classList.toggle('versteckt');
-        const icon = header.querySelector('.expand-icon');
-        const isHidden = details.classList.contains('versteckt');
-        icon.style.transform = isHidden ? 'rotate(0deg)' : 'rotate(180deg)';
-    });
-
-    card.appendChild(header);
-    card.appendChild(details);
-
-    return card;
 }
 
 // Zeigt Heatmap für Spieler

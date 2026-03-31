@@ -3,20 +3,20 @@ import { berechneTore, berechneStatistiken, berechneGegnerStatistiken } from './
 import { spielstand } from './state.js';
 
 // Sammelt alle Spiele aus der Historie
-export function getAllGames() {
-    const history = getHistorie();
+export async function getAllGames() {
+    const history = await getHistorie();
     return history || [];
 }
 
 // Aggregiert Spieler-Statistiken über alle Spiele
-export function aggregatePlayerStats() {
+export async function aggregatePlayerStats() {
     // 1. Create a map of current roster names for high-priority naming
     const rosterNameMap = {};
     (spielstand.roster || []).forEach(p => {
         rosterNameMap[String(p.number).trim()] = p.name;
     });
 
-    const games = getAllGames();
+    const games = await getAllGames();
     const playerMap = new Map(); // Key: "number_name", Value: aggregated stats
     const masterTeamNames = {}; // Key: normalized, Value: best display
 
@@ -275,9 +275,9 @@ export function aggregatePlayerStats() {
 }
 
 // Gibt Saison-Statistik-Zusammenfassung zurück
-export function getSeasonSummary() {
-    const players = aggregatePlayerStats();
-    const games = getAllGames();
+export async function getSeasonSummary() {
+    const players = await aggregatePlayerStats();
+    const games = await getAllGames();
 
     const totalTore = players.reduce((sum, p) => sum + p.tore, 0);
     const totalGames = games.length;

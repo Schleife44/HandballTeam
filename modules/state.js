@@ -1,6 +1,12 @@
 import { formatiereZeit } from './utils.js';
+import { saveSpielstandToFirestore, getAuthUid } from './firebase.js';
 
-export const SPEICHER_KEY = 'handballTeamState';
+export const SPEICHER_KEY_BASE = 'handballTeamState';
+
+function getStorageKey() {
+    const uid = getAuthUid();
+    return uid ? `${SPEICHER_KEY_BASE}_${uid}` : SPEICHER_KEY_BASE;
+}
 
 export let spielstand = {
     uiState: 'setup', // 'setup' oder 'game'
@@ -41,12 +47,17 @@ export let spielstand = {
     calendarSubscriptions: [] // { id, url, title, lastUpdated }
 };
 
+// --- Deep Clone of Initial State for Reset ---
+const INITIAL_SPIELSTAND = JSON.parse(JSON.stringify(spielstand));
+
 export function speichereSpielstand() {
-    localStorage.setItem(SPEICHER_KEY, JSON.stringify(spielstand));
+    localStorage.setItem(getStorageKey(), JSON.stringify(spielstand));
+    // Also sync to Firestore (debounced, non-blocking)
+    saveSpielstandToFirestore(spielstand);
 }
 
 export function ladeSpielstandDaten() {
-    const gespeicherterStand = localStorage.getItem(SPEICHER_KEY);
+    const gespeicherterStand = localStorage.getItem(getStorageKey());
     if (!gespeicherterStand) {
         return false; // Nichts geladen
     }
@@ -92,4 +103,57 @@ export function ladeSpielstandDaten() {
         console.error("Fehler beim Laden des Spielstands:", e);
         return false;
     }
+}
+
+/**
+ * Merge remote Firestore data into the local spielstand.
+ * Called by the onSnapshot listener whenever remote data changes.
+ * @param {Object} remoteData
+ */
+export function mergeRemoteSpielstand(remoteData) {
+    if (!remoteData) return;
+    try {
+        const fields = ['score', 'gameLog', 'timer', 'roster', 'knownOpponents',
+                        'settings', 'activeSuspensions', 'calendarEvents',
+                        'calendarSubscriptions', 'uiState', 'gameMode', 'modeSelected'];
+        fields.forEach(key => {
+            if (remoteData[key] !== undefined) {
+                spielstand[key] = remoteData[key];
+            }
+        });
+        // Also persist to localStorage so offline fallback is fresh
+        localStorage.setItem(getStorageKey(), JSON.stringify(spielstand));
+    } catch (e) {
+        console.error('[State] mergeRemoteSpielstand error:', e);
+    }
+}
+
+/**
+ * Resets the local spielstand object to its default values.
+ */
+export function resetSpielstand() {
+    console.log('[State] Resetting spielstand to default');
+    Object.assign(spielstand, JSON.parse(JSON.stringify(INITIAL_SPIELSTAND)));
+    clearLocalState();
+}
+
+/**
+ * Completely wipes all local storage game state and history fragments.
+ * Iterates through all keys and removes anything prefixed with 'handball'.
+ */
+export function clearLocalState() {
+    // Collect all keys to remove to avoid mutation issues during iteration
+    const keysToRemove = [];
+    for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (key && key.startsWith('handball')) {
+            keysToRemove.push(key);
+        }
+    }
+    
+    keysToRemove.forEach(key => {
+        localStorage.removeItem(key);
+    });
+    
+    console.log(`[State] Session isolation: ${keysToRemove.length} local keys cleared.`);
 }

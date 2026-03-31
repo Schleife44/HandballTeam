@@ -1,7 +1,10 @@
-﻿// main.js - Entry Point
+// main.js - Entry Point
 // Minimal setup: Load data, initialize UI, register event listeners
 
-import { ladeSpielstandDaten, spielstand, speichereSpielstand } from './modules/state.js';
+import { 
+    ladeSpielstandDaten, spielstand, speichereSpielstand, 
+    mergeRemoteSpielstand, resetSpielstand 
+} from './modules/state.js';
 import {
     toggleDarkMode, myTeamNameInput,
     toggleWurfbildHeim, toggleWurfbildGegner, inputTeamNameHeim,
@@ -27,20 +30,30 @@ import {
     zeigeWurfstatistik
 } from './modules/ui.js';
 import { registerEventListeners } from './modules/eventListeners.js';
-import { initCustomDialogs } from './modules/customDialog.js';
+import { initCustomDialogs, customConfirm, customAlert } from './modules/customDialog.js';
 import { renderHistoryList } from './modules/historyView.js';
 
 import { openSeasonOverview, renderTeamScatterPlot, getSeasonSummary } from './modules/seasonView.js';
-import { getHistorie } from './modules/history.js';
+import { getHistorie, clearLocalHistory } from './modules/history.js';
 import { exportiereAlsPdf, exportiereAlsTxt, exportiereAlsCsv } from './modules/export.js';
 import { showDashboardInline } from './modules/dashboardView.js';
 import { initSettingsPage, updateRosterInputsForValidation } from './modules/settingsManager.js';
+import {
+    onAuthChange, firebaseLogin, firebaseRegister, loginWithGoogle, firebaseLogout,
+    loadSpielstandFromFirestore, startSpielstandListener, stopSpielstandListener,
+    loadTeamsFromFirestore, startTeamsListener,
+    updateStatusIndicator, getActiveTeamId, redeemInviteToken
+} from './modules/firebase.js';
+
+import { showTeamSelectionOverlay } from './modules/teamsView.js';
 
 // --- App Initialization ---
 // --- App Initialization ---
 
-function initApp() {
-    const geladen = ladeSpielstandDaten();
+function initApp(skipLocalLoad = false) {
+    if (!skipLocalLoad) {
+        ladeSpielstandDaten();
+    }
 
     // Set UI checkboxes from loaded data
     if (toggleDarkMode) toggleDarkMode.checked = spielstand.settings.darkMode;
@@ -63,7 +76,9 @@ function initApp() {
 
     applyTheme();
 
-    if (geladen && spielstand.uiState === 'game') {
+    // Restore game view if a game was in progress
+    const wasInGame = spielstand.uiState === 'game';
+    if (wasInGame) {
         rosterBereich.classList.add('versteckt');
         spielBereich.classList.remove('versteckt');
         if (globalAktionen) globalAktionen.classList.remove('versteckt');
@@ -225,13 +240,13 @@ function initSidebar() {
     // Mobile Menu Toggles handled in eventListeners.js
 }
 
-function navigateToView(view) {
+async function navigateToView(view) {
     // Hide all sections first
     hideAllSections();
 
     switch (view) {
         case 'dashboard':
-            showDashboardInline();
+            await showDashboardInline();
             break;
         case 'roster':
             if (rosterBereich) rosterBereich.classList.remove('versteckt');
@@ -949,16 +964,16 @@ function hideAllSections() {
     if (tbBereich) tbBereich.classList.add('versteckt');
 }
 
-function showTeamDiagrammView() {
+async function showTeamDiagrammView() {
     teamDiagrammBereich.classList.remove('versteckt');
 
     // Clear previous content
     teamDiagrammContent.innerHTML = '';
 
     // Get Data
-    const summary = getSeasonSummary();
+    const summary = await getSeasonSummary();
     if (!summary || !summary.players || summary.players.length === 0) {
-        teamDiagrammContent.innerHTML = '<p style="padding: 20px; color: #ccc;">Keine Saison-Daten verfÃ¼gbar. Spiele erst einige Spiele.</p>';
+        teamDiagrammContent.innerHTML = '<p style="padding: 20px; color: #ccc;">Keine Saison-Daten verfügbar. Spiele erst einige Spiele.</p>';
         return;
     }
 
@@ -975,32 +990,8 @@ function showTeamDiagrammView() {
     modals.forEach(modal => modal.classList.add('versteckt'));
 }
 
-// --- Start App ---
-initCustomDialogs();
-registerEventListeners();
-initApp();
-initSidebar();
-
-// --- Initial View State ---
-let initialView = 'dashboard';
-if (spielstand.uiState === 'game') {
-    initialView = 'game';
-} else {
-    initialView = document.querySelector('.nav-item.active')?.dataset.view || 'dashboard';
-}
-
-// Ensure correct item is active in sidebar
-const navItems = document.querySelectorAll('.nav-item');
-navItems.forEach(i => {
-    if (i.dataset.view === initialView) {
-        i.classList.add('active');
-    } else {
-        i.classList.remove('active');
-    }
-});
-
-navigateToView(initialView);
-updateSidebarTimerVisibility(initialView);
+// --- App is started ONLY after Firebase Auth confirms login ---
+// See: onFirebaseLogin() below
 
 function renderGameViewFull() {
     if (spielBereich) spielBereich.classList.remove('versteckt');
@@ -1051,3 +1042,281 @@ setupGameModeListeners();
 document.addEventListener('gameStateReset', () => {
     navigateToView('game');
 });
+
+// ─── Firebase Auth Gate ────────────────────────────────────────────────────────
+/**
+ * Full UI refresh after Firestore data is merged into spielstand.
+ * Called both on initial load and on every onSnapshot update.
+ */
+function refreshUIFromState() {
+    // Sync input fields
+    if (toggleDarkMode) toggleDarkMode.checked = spielstand.settings.darkMode;
+    if (toggleWurfbildHeim) toggleWurfbildHeim.checked = spielstand.settings.showWurfbildHeim;
+    if (toggleWurfbildGegner) toggleWurfbildGegner.checked = spielstand.settings.showWurfbildGegner;
+    if (toggleWurfpositionHeim) toggleWurfpositionHeim.checked = spielstand.settings.showWurfpositionHeim;
+    if (toggleWurfpositionGegner) toggleWurfpositionGegner.checked = spielstand.settings.showWurfpositionGegner;
+    if (rosterTeamNameHeim) rosterTeamNameHeim.value = spielstand.settings.teamNameHeim || 'Heim';
+    if (rosterTeamNameGegner) rosterTeamNameGegner.value = spielstand.settings.teamNameGegner || 'Gegner';
+
+    applyTheme();
+    updateScoreDisplay();
+    zeichneSpielerRaster();
+    updateSuspensionDisplay();
+    updateProtokollAnzeige();
+
+    if (window.lucide) window.lucide.createIcons();
+}
+
+/**
+ * Wire up Login Modal submit button.
+ */
+function initLoginUI() {
+    const errorMsg = document.getElementById('loginErrorMessage');
+    const submitBtn = document.getElementById('loginSubmitBtn');
+    const emailInput = document.getElementById('loginEmailInput');
+    const passwordInput = document.getElementById('loginPasswordInput');
+    const toggleBtn = document.getElementById('toggleAuthMode');
+    const subtitle = document.getElementById('loginSubtitle');
+
+    let isRegisterMode = false;
+
+    const toggleMode = () => {
+        isRegisterMode = !isRegisterMode;
+        if (isRegisterMode) {
+            submitBtn.textContent = 'Konto erstellen';
+            subtitle.textContent = 'Erstelle ein neues Konto';
+            toggleBtn.textContent = 'Bereits ein Konto? Anmelden';
+        } else {
+            submitBtn.textContent = 'Anmelden';
+            subtitle.textContent = 'Melde dich an, um fortzufahren';
+            toggleBtn.textContent = 'Noch kein Konto? Registrieren';
+        }
+        if (errorMsg) errorMsg.textContent = '';
+    };
+
+    if (toggleBtn) toggleBtn.addEventListener('click', toggleMode);
+
+    const doAuth = async () => {
+        const email = emailInput?.value;
+        const password = passwordInput?.value;
+
+        if (!email || !password) {
+            if (errorMsg) errorMsg.textContent = 'Bitte E-Mail und Passwort eingeben.';
+            return;
+        }
+
+        submitBtn.disabled = true;
+        const originalText = submitBtn.textContent;
+        submitBtn.textContent = 'Warten…';
+
+        const result = isRegisterMode 
+            ? await firebaseRegister(email, password)
+            : await firebaseLogin(email, password);
+
+        if (!result.success) {
+            if (errorMsg) errorMsg.textContent = result.error;
+            submitBtn.disabled = false;
+            submitBtn.textContent = originalText;
+        }
+    };
+
+    submitBtn.addEventListener('click', doAuth);
+    passwordInput?.addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') doAuth();
+    });
+    emailInput?.addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') passwordInput?.focus();
+    });
+    const googleBtn = document.getElementById('googleLoginBtn');
+    if (googleBtn) {
+        googleBtn.addEventListener('click', async () => {
+            if (errorMsg) errorMsg.textContent = '';
+            googleBtn.disabled = true;
+            const originalHtml = googleBtn.innerHTML;
+            googleBtn.textContent = 'Verbinden…';
+            
+            const result = await loginWithGoogle();
+            
+            if (!result.success) {
+                if (errorMsg) errorMsg.textContent = result.error || 'Google-Anmeldung fehlgeschlagen.';
+                googleBtn.innerHTML = originalHtml;
+                googleBtn.disabled = false;
+            }
+        });
+    }
+}
+
+/**
+ * Wire up Logout button in sidebar.
+ */
+function initLogoutUI() {
+    const logoutBtn = document.getElementById('firebaseLogoutBtn');
+    if (logoutBtn) {
+        logoutBtn.addEventListener('click', async () => {
+            const confirmed = await customConfirm('Abmelden?', 'Möchtest du dich wirklich abmelden? Lokale Änderungen gehen verloren.');
+            if (confirmed) {
+                await firebaseLogout();
+                onFirebaseLogout();
+            }
+        });
+    }
+}
+
+/**
+ * Handle incoming invite links
+ */
+async function handleInviteUrl() {
+    const urlParams = new URLSearchParams(window.location.search);
+    const inviteToken = urlParams.get('invite');
+
+    if (inviteToken) {
+        // Save invite to session in case user needs to login first
+        sessionStorage.setItem('pending_invite', inviteToken);
+        
+        // Clean URL to avoid re-runs on refresh
+        const cleanUrl = window.location.origin + window.location.pathname;
+        window.history.replaceState({}, document.title, cleanUrl);
+    }
+}
+
+/**
+ * Check if there is a pending invite in session storage and redeem it
+ */
+async function processPendingInvite() {
+    const inviteToken = sessionStorage.getItem('pending_invite');
+    if (!inviteToken) return;
+
+    // Wait a bit for auth to be fully ready
+    setTimeout(async () => {
+        const result = await redeemInviteToken(inviteToken);
+        sessionStorage.removeItem('pending_invite');
+
+        if (result.success) {
+            customAlert(`Erfolg! Du bist dem Team "${result.teamName}" beigetreten.`, 'Beitritt erfolgreich');
+            // Refresh team lists
+            if (typeof initTeamsView === 'function') {
+                await initTeamsView();
+            }
+        } else {
+            console.warn('[Invite] Redemption failed:', result.error);
+            // Only show alert if it's a real error (not just already member)
+            if (!result.error.includes('already member')) {
+                customAlert(result.error, 'Einladung Fehler');
+            }
+        }
+    }, 1000);
+}
+
+/**
+ * Called after successful Firebase login.
+ * Loads Firestore data, starts listener, and boots the app.
+ */
+async function onFirebaseLogin(user, profile) {
+    console.log('[Firebase] Logged in as:', user.email);
+
+    // Process any invitations
+    await handleInviteUrl();
+    await processPendingInvite();
+
+    // Hide login overlay
+    const loginOverlay = document.getElementById('firebaseLoginOverlay');
+    if (loginOverlay) {
+        loginOverlay.style.transition = 'opacity 0.4s ease, visibility 0.4s';
+        loginOverlay.style.opacity = '0';
+        loginOverlay.style.visibility = 'hidden';
+    }
+
+    // Show Team Selection/Creation Overlay
+    showTeamSelectionOverlay(profile, (selectedTeamId) => {
+        bootApp(selectedTeamId);
+    });
+}
+
+/**
+ * Consolidate app startup after team is selected.
+ */
+async function bootApp(teamId) {
+    console.log('[App] Booting for team:', teamId);
+
+    // 0. Ensure clean slate before loading new team data
+    resetSpielstand();
+    
+    // 1. Try to load from Firestore first
+    const remoteData = await loadSpielstandFromFirestore();
+    let skipLocal = false;
+    if (remoteData) {
+        mergeRemoteSpielstand(remoteData);
+        skipLocal = true;
+    }
+
+    // 2. Load saved teams (roster) from Firestore
+    const remoteTeams = await loadTeamsFromFirestore();
+    if (remoteTeams) {
+        localStorage.setItem('handball_saved_teams', JSON.stringify(remoteTeams));
+    }
+
+    // 3. Boot the app - only load local if remote is empty
+    initApp(skipLocal);
+    initSidebar();
+    registerEventListeners();
+    initCustomDialogs();
+    initLogoutUI();
+
+    // Navigate to correct initial view (scope to current state)
+    const initialView = spielstand.uiState === 'game' ? 'game' : 'dashboard';
+    const navItemsAll = document.querySelectorAll('.nav-item');
+    navItemsAll.forEach(i => {
+        if (i.dataset.view === initialView) i.classList.add('active');
+        else i.classList.remove('active');
+    });
+    navigateToView(initialView);
+    updateSidebarTimerVisibility(initialView);
+
+    // 4. Start real-time Firestore listeners
+    startSpielstandListener((remoteData) => {
+        if (!remoteData) return;
+        console.log('[Firebase] Remote update received');
+        mergeRemoteSpielstand(remoteData);
+        refreshUIFromState();
+    });
+
+    startTeamsListener((remoteTeams) => {
+        if (!remoteTeams) return;
+        localStorage.setItem('handball_saved_teams', JSON.stringify(remoteTeams));
+    });
+}
+
+/**
+ * Called when Firebase auth state becomes logged out.
+ */
+function onFirebaseLogout() {
+    console.log('[Firebase] Logged out – user not authenticated');
+    updateStatusIndicator('offline');
+
+    // 1. Full Data Wipe on Logout
+    resetSpielstand();
+    clearLocalHistory();
+
+    // 2. UI Reset
+    renderHistoryList(); // Now renders empty/loading
+    
+    // 3. Safely stop listener – only if one was started
+    try { stopSpielstandListener(); } catch (e) { /* ignore */ }
+
+    // 4. Show login overlay – NEVER reload the page automatically
+    const overlay = document.getElementById('firebaseLoginOverlay');
+    if (overlay) {
+        overlay.style.visibility = 'visible';
+        overlay.style.opacity = '1';
+        // Re-enable the form
+        const submitBtn = document.getElementById('loginSubmitBtn');
+        if (submitBtn) { submitBtn.textContent = 'Anmelden'; submitBtn.disabled = false; }
+    }
+}
+
+// ─── Bootstrap ─────────────────────────────────────────────────────────────────
+// Init login form
+initLoginUI();
+
+// Watch auth state – this is the main entry point
+onAuthChange(onFirebaseLogin, onFirebaseLogout);

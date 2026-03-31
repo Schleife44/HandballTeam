@@ -10,7 +10,7 @@ let dashboardRenderId = 0;
 /**
  * Renders the dashboard view into the main content area.
  */
-export function showDashboardInline() {
+export async function showDashboardInline() {
     dashboardRenderId++;
     const currentRenderId = dashboardRenderId;
 
@@ -30,7 +30,7 @@ export function showDashboardInline() {
         document.getElementById('main-content').appendChild(dashboardBereich);
     }
 
-    const history = getHistorie();
+    const history = await getHistorie();
 
     dashboardBereich.innerHTML = `
         <div class="dashboard-header" style="text-align: center; margin-bottom: 20px; padding-top: 5px;">

@@ -2,6 +2,7 @@ import { spielstand, speichereSpielstand } from './state.js';
 import { zeichneRosterListe, zeichneSpielerRaster, applyTheme } from './ui.js';
 import { customAlert, customConfirm } from './customDialog.js';
 import { getHistorie } from './history.js';
+import { saveTeamsToFirestore } from './firebase.js';
 
 const SAVED_TEAMS_KEY = 'handball_saved_teams';
 
@@ -11,9 +12,10 @@ function getSavedTeams() {
     return saved ? JSON.parse(saved) : { home: [], opponent: [] };
 }
 
-// Save teams to localStorage
+// Save teams to localStorage + Firestore
 function setSavedTeams(teams) {
     localStorage.setItem(SAVED_TEAMS_KEY, JSON.stringify(teams));
+    saveTeamsToFirestore(teams); // Sync to cloud
 }
 
 // Save current team
@@ -243,7 +245,7 @@ export async function loadHistoryTeam(index) {
 }
 
 // Show load team modal
-export function showLoadTeamModal() {
+export async function showLoadTeamModal() {
     const savedTeams = getSavedTeams();
     const homeTeams = savedTeams.home || [];
     const opponentTeams = savedTeams.opponent || [];
@@ -285,8 +287,8 @@ export function showLoadTeamModal() {
         }
     }
 
-    // Extract opponent teams from game history (not saved)
-    const historyTeams = getOpponentTeamsFromHistory();
+    // --- Saved Teams Manager ---
+    const historyTeams = await getOpponentTeamsFromHistory();
     if (historyTeams.length > 0) {
         const historyHeader = document.createElement('h4');
         historyHeader.textContent = '📜 Teams aus vergangenen Spielen';
@@ -315,8 +317,8 @@ export function showLoadTeamModal() {
 }
 
 // Extract opponent teams from game history
-function getOpponentTeamsFromHistory() {
-    const history = getHistorie() || [];
+async function getOpponentTeamsFromHistory() {
+    const history = (await getHistorie()) || [];
     const teamsMap = new Map(); // Key: team name, Value: { name, players, gameDate }
 
     history.forEach(game => {

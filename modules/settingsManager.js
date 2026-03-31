@@ -1,6 +1,6 @@
-// modules/settingsManager.js
 import { spielstand, speichereSpielstand } from './state.js';
-import { customAlert } from './customDialog.js';
+import { customAlert, customConfirm } from './customDialog.js';
+import { createInviteToken, getActiveTeamId, getCurrentUserProfile, leaveTeam, deleteTeam } from './firebase.js';
 
 /**
  * Validates and locks the team settings
@@ -150,6 +150,159 @@ export function initSettingsPage() {
 
     // Update UI based on validation state
     updateSettingsUI();
+
+    // Initialize Invite UI
+    initInviteUI();
+
+    // Initialize Team Management UI
+    initTeamManagementUI();
+}
+
+/**
+ * Handle Leave/Delete Team
+ */
+function initTeamManagementUI() {
+    const leaveBtn = document.getElementById('leaveTeamBtn');
+    const deleteBtn = document.getElementById('deleteTeamBtn');
+    if (!leaveBtn || !deleteBtn) return;
+
+    const teamId = getActiveTeamId();
+    const profile = getCurrentUserProfile();
+    
+    console.log('[Settings] Init Team Management. Current Team ID:', teamId);
+
+    if (!teamId) {
+        console.warn('[Settings] No active team ID. Hiding management buttons.');
+        leaveBtn.style.display = 'none';
+        deleteBtn.style.display = 'none';
+        return;
+    }
+
+    // Default state: Show Leave button, Hide Delete button
+    // This ensures we always have a way out even if profile isn't fully loaded yet
+    leaveBtn.style.display = 'inline-flex';
+    deleteBtn.style.display = 'none';
+
+    // If we HAVE profile data, we can try to be more specific (Trainer vs Member)
+    if (profile && profile.teams) {
+        // Find the team in the list (handle current teamId or legacy id)
+        const currentTeamData = profile.teams.find(t => (t.teamId === teamId) || (t.id === teamId));
+        
+        if (currentTeamData) {
+            console.log('[Settings] Found team role in profile:', currentTeamData.role);
+            if (currentTeamData.role === 'trainer') {
+                // Trainer: Hide Leave, Show Delete
+                leaveBtn.style.display = 'none';
+                deleteBtn.style.display = 'inline-flex';
+            } else {
+                // Member: Show Leave, Hide Delete
+                leaveBtn.style.display = 'inline-flex';
+                deleteBtn.style.display = 'none';
+            }
+        } else {
+            console.warn('[Settings] Active team context not found in user profile list. Keeping Leave fallback.');
+        }
+    } else {
+        console.warn('[Settings] Profile data not ready. Keeping Leave fallback.');
+    }
+
+    // Assign events
+    deleteBtn.onclick = async () => {
+        const confirmed = await customConfirm('Team löschen', 'Möchtest du dieses Team WIRKLICH endgültig löschen? Alle Daten und Wurfbilder gehen verloren. Diese Aktion kann nicht rückgängig gemacht werden.');
+        if (confirmed) {
+            deleteBtn.disabled = true;
+            const originalText = deleteBtn.innerHTML;
+            deleteBtn.innerHTML = '<i data-lucide="loader" class="spin" style="width: 16px; height: 16px; margin-right: 8px;"></i> Lösche...';
+            if (window.lucide) window.lucide.createIcons();
+            
+            const res = await deleteTeam(teamId);
+            if (res.success) {
+                window.location.href = window.location.origin + window.location.pathname; // Clear state and go to selection
+            } else {
+                customAlert('Fehler', res.error);
+                deleteBtn.disabled = false;
+                deleteBtn.innerHTML = originalText;
+                if (window.lucide) window.lucide.createIcons();
+            }
+        }
+    };
+
+    leaveBtn.onclick = async () => {
+        const confirmed = await customConfirm('Team verlassen', 'Möchtest du dieses Team wirklich verlassen? Du hast dann keinen Zugriff mehr auf die Daten.');
+        if (confirmed) {
+            leaveBtn.disabled = true;
+            const originalText = leaveBtn.innerHTML;
+            leaveBtn.innerHTML = '<i data-lucide="loader" class="spin" style="width: 16px; height: 16px; margin-right: 8px;"></i> Verlasse...';
+            if (window.lucide) window.lucide.createIcons();
+
+            const res = await leaveTeam(teamId);
+            if (res.success) {
+                window.location.href = window.location.origin + window.location.pathname;
+            } else {
+                customAlert('Fehler', res.error);
+                leaveBtn.disabled = false;
+                leaveBtn.innerHTML = originalText;
+                if (window.lucide) window.lucide.createIcons();
+            }
+        }
+    };
+}
+
+/**
+ * Handle Invite Link generation
+ */
+export function initInviteUI() {
+    const genBtn = document.getElementById('generateInviteBtn');
+    const container = document.getElementById('inviteLinkContainer');
+    const input = document.getElementById('inviteLinkInput');
+    const copyBtn = document.getElementById('copyInviteBtn');
+
+    if (!genBtn) return;
+
+    genBtn.onclick = async () => {
+        const teamId = getActiveTeamId();
+        const teamName = spielstand.settings.myTeamName || 'Handball Team';
+
+        if (!teamId) {
+            customAlert('Bitte zuerst ein Team wählen.');
+            return;
+        }
+
+        genBtn.disabled = true;
+        genBtn.textContent = 'Generiere...';
+
+        const token = await createInviteToken(teamId, teamName);
+        
+        if (token) {
+            const url = window.location.origin + window.location.pathname + '?invite=' + token;
+            input.value = url;
+            container.classList.remove('versteckt');
+            if (window.lucide) window.lucide.createIcons();
+        } else {
+            customAlert('Fehler beim Erstellen des Links.');
+        }
+
+        genBtn.disabled = false;
+        genBtn.innerHTML = '<i data-lucide="user-plus" style="width: 16px; height: 16px; margin-right: 8px;"></i> Einladungslink generieren';
+        if (window.lucide) window.lucide.createIcons();
+    };
+
+    if (copyBtn) {
+        copyBtn.onclick = () => {
+            input.select();
+            input.setSelectionRange(0, 99999);
+            navigator.clipboard.writeText(input.value);
+            
+            const originalIcon = copyBtn.innerHTML;
+            copyBtn.innerHTML = '<i data-lucide="check" style="width: 16px; height: 16px; color: #22c55e;"></i>';
+            if (window.lucide) window.lucide.createIcons();
+            
+            setTimeout(() => {
+                copyBtn.innerHTML = originalIcon;
+                if (window.lucide) window.lucide.createIcons();
+            }, 2000);
+        };
+    }
 }
 
 /**

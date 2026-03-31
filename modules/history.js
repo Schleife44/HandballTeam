@@ -1,68 +1,98 @@
-import { customAlert } from './customDialog.js';
+import { 
+    getActiveTeamId, saveGameToHistory, loadTeamHistory, deleteGameFromHistory,
+    getAuthUid
+} from './firebase.js';
 
-const HISTORY_KEY = 'handball_history';
+const HISTORY_KEY_BASE = 'handball_history_';
+
+function getHistoryKey() {
+    const uid = getAuthUid();
+    return uid ? `${HISTORY_KEY_BASE}${uid}_global` : `${HISTORY_KEY_BASE}global`;
+}
 
 /**
- * Speichert ein Spiel im Local Storage.
- * @param {Object} gameData Alle relevanten Spieldaten (Spielstand, Log, Teams, etc.).
+ * Speichert ein Spiel in der Cloud (oder lokal als Fallback).
+ * @param {Object} gameData Alle relevanten Spieldaten.
  */
-export function speichereSpielInHistorie(gameData) {
-    const history = getHistorie();
+export async function speichereSpielInHistorie(gameData) {
+    const teamId = getActiveTeamId();
     const newEntry = {
-        id: Date.now(), // Zeitstempel als eindeutige ID
+        id: Date.now(),
         date: new Date().toISOString(),
         ...gameData
     };
 
-    // Am Anfang des Arrays hinzufügen
-    history.unshift(newEntry);
-
-    // Zurückspeichern
-    localStorage.setItem(HISTORY_KEY, JSON.stringify(history));
+    if (teamId) {
+        // 1. Cloud Save
+        await saveGameToHistory(teamId, newEntry);
+    } else {
+        // 2. Local Fallback
+        const history = await getHistorie();
+        history.unshift(newEntry);
+        localStorage.setItem(getHistoryKey(), JSON.stringify(history));
+    }
 
     return newEntry;
 }
 
 /**
- * Ruft die vollständige Spielhistorie ab.
- * @returns {Array} Liste der Spiele.
+ * Ruft die Spielhistorie für das aktive Team ab.
+ * @returns {Promise<Array>} Liste der Spiele.
  */
-export function getHistorie() {
+export async function getHistorie() {
+    const teamId = getActiveTeamId();
+    
+    if (teamId) {
+        // Load from Cloud
+        return await loadTeamHistory(teamId);
+    }
+
+    // Local Fallback
     try {
-        const raw = localStorage.getItem(HISTORY_KEY);
+        const raw = localStorage.getItem(getHistoryKey());
         if (!raw) return [];
         return JSON.parse(raw);
     } catch (e) {
-        console.error("Fehler beim Laden der Historie:", e);
+        console.error("Fehler beim Laden der lokalen Historie:", e);
         return [];
     }
 }
 
 /**
  * Ruft ein bestimmtes Spiel mittels ID ab.
- * @param {number} id 
- * @returns {Object|null}
  */
-export function getSpielAusHistorie(id) {
-    const history = getHistorie();
-    return history.find(g => g.id === Number(id)) || null;
+export async function getSpielAusHistorie(id) {
+    const history = await getHistorie();
+    return history.find(g => String(g.id) === String(id)) || null;
 }
 
 /**
  * Löscht ein Spiel mittels ID.
- * @param {number} id 
  */
-export function loescheSpielAusHistorie(id) {
-    let history = getHistorie();
-    history = history.filter(g => g.id !== Number(id));
-    localStorage.setItem(HISTORY_KEY, JSON.stringify(history));
+export async function loescheSpielAusHistorie(id) {
+    const teamId = getActiveTeamId();
+    if (teamId) {
+        await deleteGameFromHistory(teamId, id);
+    } else {
+        let history = await getHistorie();
+        history = history.filter(g => String(g.id) !== String(id));
+        localStorage.setItem(getHistoryKey(), JSON.stringify(history));
+    }
+}
+
+/**
+ * Clears the local history fallback (used on logout).
+ */
+export function clearLocalHistory() {
+    localStorage.removeItem(getHistoryKey());
+    console.log('[History] Local history cache cleared');
 }
 
 /**
  * Exportiert Historie als JSON-Datei (Backup)
  */
-export function exportHistorie() {
-    const history = getHistorie();
+export async function exportHistorie() {
+    const history = await getHistorie();
     if (history.length === 0) {
         customAlert("Keine Historie vorhanden.");
         return;
@@ -85,31 +115,30 @@ export function importiereSpiel(file) {
     return new Promise((resolve) => {
         const reader = new FileReader();
 
-        reader.onload = (e) => {
+        reader.onload = async (e) => {
             try {
                 const data = JSON.parse(e.target.result);
-                const history = getHistorie();
+                const teamId = getActiveTeamId();
                 let importedCount = 0;
 
                 // Prüfe, ob es ein Array (mehrere Spiele) oder ein einzelnes Spiel ist
                 const games = Array.isArray(data) ? data : [data];
 
-                games.forEach(game => {
+                for (const game of games) {
                     // Validiere, dass es wie ein Spiel-Objekt aussieht
                     if (game.teams && game.score && game.gameLog) {
                         // Generiere neue ID, um Konflikte zu vermeiden
                         const newGame = {
                             ...game,
-                            id: Date.now() + importedCount, // Eindeutige ID
+                            id: Date.now() + importedCount,
                             date: game.date || new Date().toISOString()
                         };
-                        history.unshift(newGame);
+                        await speichereSpielInHistorie(newGame);
                         importedCount++;
                     }
-                });
+                }
 
                 if (importedCount > 0) {
-                    localStorage.setItem(HISTORY_KEY, JSON.stringify(history));
                     resolve({
                         success: true,
                         count: importedCount,
@@ -119,7 +148,7 @@ export function importiereSpiel(file) {
                     resolve({
                         success: false,
                         count: 0,
-                        message: "Keine gültigen Spiele in der Datei gefunden."
+                        message: "Fehler beim Lesen der Datei. Ist es eine gültige JSON-Datei?"
                     });
                 }
             } catch (err) {

@@ -88,6 +88,42 @@
                 <span class="nav-icon"><i data-lucide="settings"></i></span>
                 <span class="nav-label">Einstellungen</span>
             </div>
+
+            <!-- Firebase Status + Logout -->
+            <div id="firebaseStatusBar" style="
+                margin: 8px 12px 4px;
+                padding: 8px 12px;
+                background: rgba(255,255,255,0.05);
+                border-radius: 10px;
+                border: 1px solid rgba(255,255,255,0.08);
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                gap: 8px;
+            ">
+                <div style="display: flex; align-items: center; gap: 8px;">
+                    <div id="firebaseStatusDot" style="
+                        width: 8px; height: 8px;
+                        border-radius: 50%;
+                        background: #6b7280;
+                        flex-shrink: 0;
+                        transition: background 0.3s, box-shadow 0.3s;
+                    "></div>
+                    <span id="firebaseStatusLabel" style="font-size: 0.75rem; color: var(--text-muted);">Offline</span>
+                </div>
+                <button id="firebaseLogoutBtn" title="Abmelden" style="
+                    background: none; border: none;
+                    cursor: pointer;
+                    color: var(--text-muted);
+                    padding: 2px 4px;
+                    border-radius: 4px;
+                    display: flex; align-items: center;
+                    opacity: 0.6;
+                    transition: opacity 0.2s;
+                " onmouseover="this.style.opacity='1'" onmouseout="this.style.opacity='0.6'">
+                    <i data-lucide="log-out" style="width:14px;height:14px;"></i>
+                </button>
+            </div>
         </nav>
     </div>
 
@@ -633,13 +669,39 @@
                             <span>Einstellungen sind im Kader gespeichert</span>
                         </div>
                     </div>
+
+                    <!-- Card 3: Team Invitations -->
+                    <div class="settings-card"
+                        style="background: var(--bg-container); padding: 20px; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+                        <h4
+                            style="margin-top: 0; margin-bottom: 15px; border-bottom: 2px solid var(--btn-primary); padding-bottom: 10px; display: inline-block;">
+                            Mitglieder einladen</h4>
+                        <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 15px;">
+                            Erstelle einen Link, um andere Trainer oder Analysten zu diesem Team einzuladen.
+                        </p>
+                        
+                        <div style="display: flex; flex-direction: column; gap: 10px;">
+                            <button id="generateInviteBtn" class="shadcn-btn-primary" style="width: 100%;">
+                                <i data-lucide="user-plus" style="width: 16px; height: 16px; margin-right: 8px;"></i>
+                                Einladungslink generieren
+                            </button>
+                            
+                            <div id="inviteLinkContainer" class="versteckt" style="margin-top: 10px;">
+                                <div style="display: flex; gap: 8px;">
+                                    <input type="text" id="inviteLinkInput" readonly class="shadcn-input" style="flex: 1; font-size: 0.8rem; background: var(--bg-secondary);">
+                                    <button id="copyInviteBtn" class="shadcn-btn-outline" style="padding: 0 12px;" title="In Zwischenablage kopieren">
+                                        <i data-lucide="copy" style="width: 16px; height: 16px;"></i>
+                                    </button>
+                                </div>
+                                <p style="font-size: 0.75rem; color: #22c55e; margin-top: 5px; text-align: center;">Link wurde erstellt (7 Tage gültig)</p>
+                            </div>
+                        </div>
+                    </div>
                 </div>
 
-
-
-                <!-- Card 4: Wurfbilder -->
+                <!-- Card 5: Wurfbilder -->
                 <div class="settings-card"
-                    style="background: var(--bg-container); padding: 20px; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+                    style="background: var(--bg-container); padding: 20px; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); margin-top: 20px;">
                     <h4
                         style="margin-top: 0; margin-bottom: 15px; border-bottom: 2px solid var(--btn-danger); padding-bottom: 10px; display: inline-block;">
                         Wurfbilder (Popups)</h4>
@@ -692,6 +754,28 @@
                         <p style="font-size: 0.75rem; color: var(--text-muted); margin: 5px 0 0 0;">
                             Zeigt Feld und Tor nebeneinander statt hintereinander
                         </p>
+                    </div>
+                </div>
+
+                <!-- Card 4: Team-Verwaltung (Gefahrenzone) -->
+                <div class="settings-card"
+                    style="background: var(--bg-container); padding: 20px; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); margin-top: 20px; border: 1px solid rgba(239, 68, 68, 0.2);">
+                    <h4
+                        style="margin-top: 0; margin-bottom: 15px; border-bottom: 2px solid #ef4444; padding-bottom: 10px; display: inline-block; color: #ef4444;">
+                        Team-Verwaltung</h4>
+                    <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 15px;">
+                        Gefahrenzone: Aktionen, die dein Team oder deine Mitgliedschaft betreffen.
+                    </p>
+                    
+                    <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                        <button id="leaveTeamBtn" class="shadcn-btn-outline" style="border-color: #ef4444; color: #ef4444; min-width: 150px; display: inline-flex;">
+                            <i data-lucide="log-out" style="width: 16px; height: 16px; margin-right: 8px;"></i>
+                            Team verlassen
+                        </button>
+                        <button id="deleteTeamBtn" class="shadcn-btn-primary" style="background: #ef4444; display: none; min-width: 150px;">
+                            <i data-lucide="trash-2" style="width: 16px; height: 16px; margin-right: 8px;"></i>
+                            Team löschen
+                        </button>
                     </div>
                 </div>
             </div>
@@ -1808,7 +1892,145 @@
         </div>
     </div>
 
-    <script type="module" src="main.js"></script>
+    <!-- Firebase Login Modal (shown before app loads) -->
+    <div id="firebaseLoginOverlay" style="
+        position: fixed; inset: 0;
+        z-index: 99999;
+        display: flex; align-items: center; justify-content: center;
+        background: hsl(222.2 84% 2%);
+        backdrop-filter: blur(12px);
+        transition: opacity 0.4s ease, visibility 0.4s;
+    ">
+        <div style="
+            width: 100%; max-width: 400px;
+            margin: 20px;
+            background: hsl(222.2, 84%, 4.9%);
+            border: 1px solid hsl(217.2, 32.6%, 17.5%);
+            border-radius: 0.75rem;
+            padding: 2.5rem;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+            animation: loginFadeIn 0.4s ease-out;
+            color: hsl(210, 40%, 98%);
+        ">
+            <!-- Header -->
+            <div style="text-align: center; margin-bottom: 2rem;">
+                <h1 style="font-size: 1.5rem; font-weight: 600; letter-spacing: -0.025em; margin-bottom: 0.5rem;">Handball Dashboard</h1>
+                <p id="loginSubtitle" style="font-size: 0.875rem; color: hsl(215, 20.2%, 65.1%);">Melde dich an, um fortzufahren</p>
+            </div>
+
+            <!-- Form Body -->
+            <div style="display: flex; flex-direction: column; gap: 1.25rem;">
+                <!-- Email Field -->
+                <div style="display: flex; flex-direction: column; gap: 0.5rem;">
+                    <label style="font-size: 0.875rem; font-weight: 500; line-height: 1;" for="loginEmailInput">E-Mail</label>
+                    <input id="loginEmailInput" type="email" placeholder="name@beispiel.de"
+                        autocomplete="email"
+                        style="
+                            height: 2.5rem; width: 100%;
+                            background: transparent;
+                            border: 1px solid hsl(217.2, 32.6%, 17.5%);
+                            border-radius: 0.375rem;
+                            padding: 0.5rem 0.75rem;
+                            font-size: 0.875rem;
+                            color: hsl(210, 40%, 98%);
+                            box-sizing: border-box;
+                            outline: none;
+                            transition: border-color 0.2s, ring 0.2s;
+                        "
+                        onfocus="this.style.borderColor='hsl(217.2, 91.2%, 59.8%)'; this.style.boxShadow='0 0 0 2px hsl(217.2, 91.2%, 59.8%, 0.3)'"
+                        onblur="this.style.borderColor='hsl(217.2, 32.6%, 17.5%)'; this.style.boxShadow='none'">
+                </div>
+
+                <!-- Password Field -->
+                <div style="display: flex; flex-direction: column; gap: 0.5rem;">
+                    <label style="font-size: 0.875rem; font-weight: 500; line-height: 1;" for="loginPasswordInput">Passwort</label>
+                    <input id="loginPasswordInput" type="password" placeholder="••••••••"
+                        autocomplete="current-password"
+                        style="
+                            height: 2.5rem; width: 100%;
+                            background: transparent;
+                            border: 1px solid hsl(217.2, 32.6%, 17.5%);
+                            border-radius: 0.375rem;
+                            padding: 0.5rem 0.75rem;
+                            font-size: 0.875rem;
+                            color: hsl(210, 40%, 98%);
+                            box-sizing: border-box;
+                            outline: none;
+                            transition: border-color 0.2s, ring 0.2s;
+                        "
+                        onfocus="this.style.borderColor='hsl(217.2, 91.2%, 59.8%)'; this.style.boxShadow='0 0 0 2px hsl(217.2, 91.2%, 59.8%, 0.3)'"
+                        onblur="this.style.borderColor='hsl(217.2, 32.6%, 17.5%)'; this.style.boxShadow='none'">
+                </div>
+
+                <!-- Error Message -->
+                <p id="loginErrorMessage" style="margin: 0; font-size: 0.8rem; color: #f87171; text-align: center; min-height: 1.25rem;"></p>
+
+                <!-- Action Button -->
+                <button id="loginSubmitBtn" style="
+                    margin-top: 0.5rem;
+                    height: 2.5rem; border-radius: 0.375rem;
+                    font-size: 0.875rem; font-weight: 500;
+                    background: hsl(210, 40%, 98%); color: hsl(222.2, 47.4%, 11.2%);
+                    border: none; cursor: pointer;
+                    transition: opacity 0.2s;
+                "
+                onmouseover="this.style.opacity='0.9'"
+                onmouseout="this.style.opacity='1'">
+                    Anmelden
+                </button>
+
+                <!-- Toggle Mode -->
+                <div style="text-align: center; margin-top: 0.5rem;">
+                    <button id="toggleAuthMode" style="
+                        background: none; border: none; 
+                        color: hsl(215, 20.2%, 65.1%); 
+                        font-size: 0.75rem; cursor: pointer;
+                        text-decoration: underline;
+                    ">Noch kein Konto? Registrieren</button>
+                </div>
+
+                <!-- Separator -->
+                <div style="position: relative; margin: 1rem 0;">
+                    <div style="position: absolute; inset: 0; display: flex; align-items: center;">
+                        <span style="width: 100%; border-top: 1px solid hsl(217.2, 32.6%, 17.5%);"></span>
+                    </div>
+                    <div style="position: relative; display: flex; justify-content: center; text-transform: uppercase; font-size: 0.75rem;">
+                        <span style="background: hsl(222.2, 84%, 4.9%); padding: 0 0.5rem; color: hsl(215, 20.2%, 65.1%);">Oder</span>
+                    </div>
+                </div>
+
+                <!-- Google Button -->
+                <button id="googleLoginBtn" style="
+                    height: 2.5rem; width: 100%;
+                    background: transparent;
+                    color: hsl(210, 40%, 98%);
+                    border: 1px solid hsl(217.2, 32.6%, 17.5%);
+                    border-radius: 0.375rem;
+                    font-size: 0.875rem; font-weight: 500;
+                    cursor: pointer;
+                    display: flex; align-items: center; justify-content: center; gap: 0.5rem;
+                    transition: background 0.2s;
+                "
+                onmouseover="this.style.background='hsl(217.2, 32.6%, 12%)'"
+                onmouseout="this.style.background='transparent'">
+                    <svg width="18" height="18" viewBox="0 0 18 18"><path d="M17.64 9.2c0-.63-.06-1.25-.16-1.84H9v3.49h4.84a4.14 4.14 0 0 1-1.8 2.71v2.24h2.92a8.83 8.83 0 0 0 2.68-6.6z" fill="#4285F4"/><path d="M9 18c2.43 0 4.47-.8 5.96-2.18l-2.92-2.24c-.81.54-1.84.87-3.04.87-2.33 0-4.3-1.58-5-3.71H.95v2.3A8.99 8.99 0 0 0 9 18z" fill="#34A853"/><path d="M4 10.74a5.4 5.4 0 0 1 0-3.48V4.96H.95a8.99 8.99 0 0 0 0 8.08L4 10.74z" fill="#FBBC05"/><path d="M9 3.58c1.32 0 2.5.45 3.44 1.35L15.02 2.3A8.99 8.99 0 0 0 9 0 8.99 8.99 0 0 0 .95 4.96L4 7.26c.7-2.13 2.67-3.68 5-3.68z" fill="#EA4335"/></svg>
+                    Google Anmeldung
+                </button>
+            </div>
+        </div>
+    </div>
+        </div>
+    </div>
+
+    <style>
+        @keyframes loginFadeIn {
+            from { opacity: 0; transform: translateY(20px) scale(0.97); }
+            to   { opacity: 1; transform: translateY(0) scale(1); }
+        }
+        #deleteTeamBtn { display: none; }
+    </style>
+
+    <script type="module" src="main.js?v=9"></script>
     <script>
         // Initialize Lucide Icons
         if (typeof lucide !== 'undefined') {
