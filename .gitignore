@@ -1,0 +1,17 @@
+# Firebase configuration (SENSITIVE)
+modules/firebase-config.js
+
+# Firebase local files
+.firebase/
+firebaserc
+
+# OS specific files
+.DS_Store
+Thumbs.db
+
+# IDEs
+.vscode/
+
+# Build/Dist
+dist/
+node_modules/

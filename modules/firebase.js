@@ -31,7 +31,7 @@ import {
 
 // ─── Firebase Config ───────────────────────────────────────────────────────────
 const firebaseConfig = {
-    apiKey: "AIzaSyC_yx588x0gNBWZAvTxRgktgUfkZ-utEPM",
+    apiKey: "API_KEY_HIER_EINTRAGEN", // AUS SICHERHEITSGRÜNDEN ENTFERNT
     authDomain: "handball-tracker-322a1.firebaseapp.com",
     projectId: "handball-tracker-322a1",
     storageBucket: "handball-tracker-322a1.firebasestorage.app",
