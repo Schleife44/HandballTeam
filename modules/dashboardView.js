@@ -3,9 +3,114 @@ import { getHistorie } from './history.js';
 import { getGameResult } from './utils.js';
 import { spielstand } from './state.js';
 import { getBaseOptions, commonCenterTextPlugin, destroyChart } from './chartUtils.js';
+import { getAuthUid, getCurrentUserProfile } from './firebase.js';
+import { updateParticipation, getEventStats, showEventDetails, isPlayerAbsent } from './calendar.js';
 
 let dashboardCharts = [];
 let dashboardRenderId = 0;
+
+export function renderDashNextEvents() {
+    const nextEventContainer = document.getElementById('dashNextEvent');
+    if (!nextEventContainer || !spielstand.calendarEvents) return;
+
+    const now = new Date();
+    const todayStr = now.toISOString().slice(0, 10);
+
+    let futureEvents = spielstand.calendarEvents.filter(e => e.date >= todayStr);
+
+    futureEvents.sort((a, b) => {
+        if (a.date !== b.date) return a.date.localeCompare(b.date);
+        return (a.time || '00:00').localeCompare(b.time || '00:00');
+    });
+
+    if (futureEvents.length > 0) {
+        const next3 = futureEvents.slice(0, 3);
+        
+        nextEventContainer.innerHTML = next3.map((nextEv, index) => {
+            const dateObj = new Date(nextEv.date);
+            const dateFmt = dateObj.toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric' });
+            const dayName = dateObj.toLocaleDateString('de-DE', { weekday: 'long' });
+
+            let typeColor = 'var(--text-main)';
+            let typeLabel = 'Termin';
+            if (nextEv.type === 'game') { typeColor = '#ef4444'; typeLabel = 'Spiel'; }
+            else if (nextEv.type === 'training') { typeColor = '#3b82f6'; typeLabel = 'Training'; }
+
+            const stats = getEventStats(nextEv);
+            let myStatus = null;
+            const uid = getAuthUid ? getAuthUid() : null;
+            const profile = getCurrentUserProfile ? getCurrentUserProfile() : null;
+            const rosterName = profile ? profile.rosterName : null;
+
+            if (nextEv.responses) {
+                if (uid && nextEv.responses[uid]) myStatus = nextEv.responses[uid].status;
+                else if (rosterName) {
+                    const tempKey = `manual_${rosterName.replace(/\s+/g, '_')}`;
+                    if (nextEv.responses[tempKey]) myStatus = nextEv.responses[tempKey].status;
+                }
+            }
+
+            // Sync with personal Absence
+            if (!myStatus && isPlayerAbsent) {
+                const absence = isPlayerAbsent(nextEv.date, uid, rosterName);
+                if (absence) myStatus = 'not-going';
+            }
+            
+            const isLast = index === next3.length - 1;
+            const bottomStyles = isLast ? '' : 'margin-bottom: 15px; border-bottom: 1px solid var(--border-color);';
+
+            return `
+            <div style="padding-bottom: 15px; ${bottomStyles}">
+                <div style="font-size: 1.1rem; font-weight: 700; margin-bottom: 4px;">${nextEv.title}</div>
+                <div style="display:flex; align-items:center; gap:8px; justify-content:center; color: var(--text-muted); font-size: 0.9rem; margin-bottom: 6px;">
+                    <span style="font-weight:600; color:${typeColor}; background: ${typeColor}20; padding: 2px 8px; border-radius: 4px; font-size: 0.75rem;">${typeLabel}</span>
+                </div>
+                <div style="font-size: 0.95rem; font-weight: 500;">
+                    ${dayName}, ${dateFmt} <span style="margin: 0 4px; opacity:0.5;">|</span> ${nextEv.time} Uhr
+                </div>
+                ${nextEv.location ? `<div style="font-size: 0.85rem; color: var(--text-muted); margin-top: 4px; margin-bottom: 8px;"><i data-lucide="map-pin" style="width:12px; height:12px; vertical-align:text-top;"></i> ${nextEv.location}</div>` : ''}
+                
+                <div style="display:flex; justify-content:center; gap:8px; margin-top:12px;">
+                    <button class="dash-rsvp-btn" data-event-id="${nextEv.id}" data-status="going" style="border:1px solid ${myStatus === 'going' ? '#15803d' : '#22c55e'}; color:${myStatus === 'going' ? 'white' : '#22c55e'}; background:${myStatus === 'going' ? '#22c55e' : 'transparent'}; display:flex; align-items:center; gap:4px; padding:4px 12px; border-radius:4px; cursor:pointer; font-weight:600; font-size:0.85rem; transition:all 0.2s;">
+                        <i data-lucide="thumbs-up" style="width:14px; height:14px;"></i> ${stats.going}
+                    </button>
+                    <button class="dash-rsvp-btn" data-event-id="${nextEv.id}" data-status="maybe" style="border:1px solid ${myStatus === 'maybe' ? '#b45309' : '#f59e0b'}; color:${myStatus === 'maybe' ? 'white' : '#f59e0b'}; background:${myStatus === 'maybe' ? '#f59e0b' : 'transparent'}; display:flex; align-items:center; gap:4px; padding:4px 12px; border-radius:4px; cursor:pointer; font-weight:600; font-size:0.85rem; transition:all 0.2s;">
+                        <i data-lucide="help-circle" style="width:14px; height:14px;"></i> ${stats.maybe}
+                    </button>
+                    <button class="dash-rsvp-btn" data-event-id="${nextEv.id}" data-status="not-going" style="border:1px solid ${myStatus === 'not-going' ? '#991b1b' : '#ef4444'}; color:${myStatus === 'not-going' ? 'white' : '#ef4444'}; background:${myStatus === 'not-going' ? '#ef4444' : 'transparent'}; display:flex; align-items:center; gap:4px; padding:4px 12px; border-radius:4px; cursor:pointer; font-weight:600; font-size:0.85rem; transition:all 0.2s;">
+                        <i data-lucide="thumbs-down" style="width:14px; height:14px;"></i> ${stats.missing}
+                    </button>
+                    <button class="dash-details-btn" data-event-id="${nextEv.id}" style="border:1px solid var(--border-color); color:var(--text-main); background:transparent; display:flex; align-items:center; gap:4px; padding:4px 12px; border-radius:4px; cursor:pointer; font-weight:600; font-size:0.85rem; transition:all 0.2s;">
+                        <i data-lucide="users" style="width:14px; height:14px;"></i>
+                    </button>
+                </div>
+            </div>`;
+        }).join('');
+
+        if (window.lucide) window.lucide.createIcons();
+
+        nextEventContainer.querySelectorAll('.dash-rsvp-btn').forEach(btn => {
+            btn.addEventListener('click', async (e) => {
+                e.stopPropagation();
+                if (updateParticipation) {
+                    // Warte auf Firebase Speicher- und UI-Prompt-Vorgänge
+                    await updateParticipation(btn.dataset.eventId, btn.dataset.status, '');
+                    // Render NUR diesen Container neu, um Flackern des gesamten Dashboards zu vermeiden!
+                    renderDashNextEvents();
+                }
+            });
+        });
+
+        nextEventContainer.querySelectorAll('.dash-details-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                if (showEventDetails) showEventDetails(btn.dataset.eventId, true);
+            });
+        });
+    } else {
+        nextEventContainer.innerHTML = `<div style="text-align:center; color: var(--text-muted); font-style:italic;">Keine anstehenden Termine</div>`;
+    }
+}
 
 /**
  * Renders the dashboard view into the main content area.
@@ -39,15 +144,15 @@ export async function showDashboardInline() {
 
         <div class="season-grid-panels" style="margin-bottom: 0;">
     
-            <!-- 0. Next Event Panel (NEW) -->
-            <div class="season-panel" style="min-height: 140px; box-shadow: none; border: 1px solid var(--border-color); background: linear-gradient(to bottom right, var(--bg-card), var(--bg-secondary));">
+            <!-- 0. Next Events Panel (MOVED BACK TOP) -->
+            <div class="season-panel" style="min-height: 200px; box-shadow: none; border: 1px solid var(--border-color); background: linear-gradient(to bottom right, var(--bg-card), var(--bg-secondary)); grid-row: span 2;">
                 <div class="season-panel-title" style="display:flex; justify-content:space-between; align-items:center;">
-                    <span>Nächster Termin</span>
+                    <span>Nächste Termine</span>
                     <i data-lucide="calendar" style="width:16px; height:16px; opacity:0.7;"></i>
                 </div>
-                <div id="dashNextEvent" style="flex: 1; display: flex; flex-direction: column; justify-content: center; padding: 10px 0;">
+                <div id="dashNextEvent" style="flex: 1; display: flex; flex-direction: column; justify-content: flex-start; padding: 10px 0;">
                     <!-- JS Injected Content -->
-                    <div style="text-align:center; color: var(--text-muted); font-style:italic;">Keine anstehenden Termine</div>
+                    <div style="text-align:center; color: var(--text-muted); font-style:italic;">Lade Termine...</div>
                 </div>
             </div>
 
@@ -112,6 +217,8 @@ export async function showDashboardInline() {
                     </div>
                 </div>
             </div>
+
+            <!-- EOF Grid Panels -->
         </div>
     `;
 
@@ -293,46 +400,8 @@ export async function showDashboardInline() {
         // --- POPULATE DASHBOARD ---
 
         // 0. Next Event Logic
-        const nextEventContainer = document.getElementById('dashNextEvent');
-        if (nextEventContainer && spielstand.calendarEvents) {
-            const now = new Date();
-            const todayStr = now.toISOString().slice(0, 10);
-
-            // Filter events: Date >= Today
-            // Note: This matches today's events even if time passed, which is usually desired "Today's Event"
-            let futureEvents = spielstand.calendarEvents.filter(e => e.date >= todayStr);
-
-            // Sort by Date then Time
-            futureEvents.sort((a, b) => {
-                if (a.date !== b.date) return a.date.localeCompare(b.date);
-                return (a.time || '00:00').localeCompare(b.time || '00:00');
-            });
-
-            if (futureEvents.length > 0) {
-                const nextEv = futureEvents[0];
-                const dateObj = new Date(nextEv.date);
-                const dateFmt = dateObj.toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric' });
-                const dayName = dateObj.toLocaleDateString('de-DE', { weekday: 'long' });
-
-                let typeColor = 'var(--text-main)';
-                let typeLabel = 'Termin';
-                if (nextEv.type === 'game') { typeColor = '#ef4444'; typeLabel = 'Spiel'; } // Red
-                else if (nextEv.type === 'training') { typeColor = '#3b82f6'; typeLabel = 'Training'; } // Blue
-
-                nextEventContainer.innerHTML = `
-                <div style="font-size: 1.1rem; font-weight: 700; margin-bottom: 4px;">${nextEv.title}</div>
-                <div style="display:flex; align-items:center; gap:8px; justify-content:center; color: var(--text-muted); font-size: 0.9rem; margin-bottom: 6px;">
-                    <span style="font-weight:600; color:${typeColor}; background: ${typeColor}20; padding: 2px 8px; border-radius: 4px; font-size: 0.75rem;">${typeLabel}</span>
-                </div>
-                <div style="font-size: 0.95rem; font-weight: 500;">
-                    ${dayName}, ${dateFmt} <span style="margin: 0 4px; opacity:0.5;">|</span> ${nextEv.time} Uhr
-                </div>
-                ${nextEv.location ? `<div style="font-size: 0.85rem; color: var(--text-muted); margin-top: 4px;"><i data-lucide="map-pin" style="width:12px; height:12px; vertical-align:text-top;"></i> ${nextEv.location}</div>` : ''}
-            `;
-            } else {
-                nextEventContainer.innerHTML = `<div style="text-align:center; color: var(--text-muted); font-style:italic;">Keine anstehenden Termine</div>`;
-            }
-        }
+        // We use our standalone non-flickering render function here to initially draw the 3 incoming events
+        renderDashNextEvents();
 
         // 1. Last Results Logic
         const listContainer = document.getElementById('dashLastResults');

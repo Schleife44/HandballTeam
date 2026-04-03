@@ -1,4 +1,4 @@
-﻿/* 
+/* 
   SHADCN/UI THEME REFACTOR 
   Based on Zinc color palette
 */
@@ -5831,3 +5831,164 @@ th {
         padding: 10px !important;
     }
 }
+
+/* --- ATTENDANCE SYSTEM (SpielerPlus Style) --- */
+.attendance-section {
+    animation: fadeIn 0.3s ease-out;
+}
+
+.attendance-pills {
+    display: flex;
+    gap: 8px;
+}
+
+.att-btn {
+    flex: 1;
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    padding: 4px 8px;
+    border-radius: 4px;
+    border: 1px solid;
+    background: transparent;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    font-size: 0.8rem;
+    font-weight: 600;
+}
+
+.att-btn svg {
+    width: 14px;
+    height: 14px;
+}
+
+.att-btn.att-going { border-color: #22c55e; color: #22c55e; }
+.att-btn.att-maybe { border-color: #f59e0b; color: #f59e0b; }
+.att-btn.att-not-going { border-color: #ef4444; color: #ef4444; }
+.att-btn.att-info { border-color: var(--border-color); color: var(--text-main); }
+
+.att-btn.active.att-info {
+    background: #3b82f6;
+    color: white;
+    border-color: #2563eb;
+}
+
+.att-btn:hover {
+    background: hsla(0, 0%, 100%, 0.1);
+    transform: translateY(-1px);
+}
+
+.att-btn.active.att-going {
+    background: #22c55e;
+    color: white;
+    border-color: #15803d;
+}
+
+.att-btn.active.att-maybe {
+    background: #f59e0b;
+    color: white;
+    border-color: #b45309;
+}
+
+.att-btn.active.att-not-going {
+    background: #ef4444;
+    color: white;
+    border-color: #991b1b;
+}
+
+.attendance-player-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 6px 0;
+    border-bottom: 1px solid rgba(0,0,0,0.05);
+}
+
+.attendance-player-row:last-child {
+    border-bottom: none;
+}
+
+.att-player-info {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.att-player-name {
+    font-size: 0.85rem;
+    font-weight: 600;
+}
+
+.att-player-reason {
+    font-size: 0.7rem;
+    color: var(--text-muted);
+    font-style: italic;
+}
+
+.att-status-indicator {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    display: inline-block;
+    margin-right: 6px;
+}
+
+.status-going { background: #22c55e; }
+.status-maybe { background: #f59e0b; }
+.status-not-going { background: #ef4444; }
+.status-absence { background: #f59e0b; border: 1px solid #d97706; }
+.status-none { background: #94a3b8; opacity: 0.5; }
+
+.trainer-att-controls {
+    display: flex;
+    gap: 4px;
+}
+
+.trainer-att-btn {
+    width: 28px;
+    height: 28px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 4px;
+    border: 1px solid;
+    background: transparent;
+    cursor: pointer;
+    font-size: 10px;
+    transition: all 0.1s;
+    padding: 0;
+}
+
+.trainer-att-btn svg {
+    width: 14px;
+    height: 14px;
+}
+
+.trainer-att-btn.att-going { border-color: #22c55e; color: #22c55e; }
+.trainer-att-btn.att-maybe { border-color: #f59e0b; color: #f59e0b; }
+.trainer-att-btn.att-not-going { border-color: #ef4444; color: #ef4444; }
+
+.trainer-att-btn:hover {
+    transform: scale(1.1);
+}
+
+.trainer-att-btn.active.att-going {
+    background: #22c55e;
+    color: white;
+    border-color: #15803d;
+}
+
+.trainer-att-btn.active.att-maybe {
+    background: #f59e0b;
+    color: white;
+    border-color: #b45309;
+}
+
+.trainer-att-btn.active.att-not-going {
+    background: #ef4444;
+    color: white;
+    border-color: #991b1b;
+}
+

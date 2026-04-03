@@ -40,11 +40,19 @@ export let spielstand = {
         // Team identity settings (cross-game)
         teamSettingsValidated: false,
         myTeamName: '',
-        myTeamColor: '#dc3545'
+        myTeamColor: '#dc3545',
+
+        // New Calendar Settings
+        calendar: {
+            requireReason: false,
+            deadlineHours: 0,
+            defaultStatus: 'none' // 'none' or 'going'
+        }
     },
     knownOpponents: [], // { number: 7, name: 'Max' } - Name ist optional
     calendarEvents: [], // { id, title, type, date, time, location }
-    calendarSubscriptions: [] // { id, url, title, lastUpdated }
+    calendarSubscriptions: [], // { id, url, title, lastUpdated }
+    rosterAssignments: {} // { uid: 'Spieler Name' } - Wer ist welcher Kader-Spieler
 };
 
 // --- Deep Clone of Initial State for Reset ---
@@ -89,6 +97,7 @@ export function ladeSpielstandDaten() {
         if (!spielstand.settings.myTeamColor) spielstand.settings.myTeamColor = '#dc3545';
 
         if (!spielstand.knownOpponents) spielstand.knownOpponents = [];
+        if (!spielstand.rosterAssignments) spielstand.rosterAssignments = {};
 
         // Migration: Konvertiere alte Gegner-Nummern zu Objekt-Format
         if (spielstand.knownOpponents.length > 0 && typeof spielstand.knownOpponents[0] === 'number') {
@@ -115,7 +124,8 @@ export function mergeRemoteSpielstand(remoteData) {
     try {
         const fields = ['score', 'gameLog', 'timer', 'roster', 'knownOpponents',
                         'settings', 'activeSuspensions', 'calendarEvents',
-                        'calendarSubscriptions', 'uiState', 'gameMode', 'modeSelected'];
+                        'calendarSubscriptions', 'uiState', 'gameMode', 'modeSelected',
+                        'rosterAssignments'];
         fields.forEach(key => {
             if (remoteData[key] !== undefined) {
                 spielstand[key] = remoteData[key];
@@ -126,6 +136,14 @@ export function mergeRemoteSpielstand(remoteData) {
     } catch (e) {
         console.error('[State] mergeRemoteSpielstand error:', e);
     }
+}
+
+export function getOpponentLabel() {
+    return spielstand.settings.isAuswaertsspiel ? 'Heim' : 'Gast';
+}
+
+export function getMyTeamLabel() {
+    return spielstand.settings.isAuswaertsspiel ? 'Gast' : 'Heim';
 }
 
 /**

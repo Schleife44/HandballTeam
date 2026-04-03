@@ -26,19 +26,15 @@ import {
     signInWithPopup,
     GoogleAuthProvider,
     signOut,
-    onAuthStateChanged
+    onAuthStateChanged,
+    sendEmailVerification
 } from 'https://www.gstatic.com/firebasejs/11.6.0/firebase-auth.js';
 
 // ─── Firebase Config ───────────────────────────────────────────────────────────
-const firebaseConfig = {
-    apiKey: "API_KEY_HIER_EINTRAGEN", // AUS SICHERHEITSGRÜNDEN ENTFERNT
-    authDomain: "handball-tracker-322a1.firebaseapp.com",
-    projectId: "handball-tracker-322a1",
-    storageBucket: "handball-tracker-322a1.firebasestorage.app",
-    messagingSenderId: "543345608323",
-    appId: "1:543345608323:web:f126e979414ec5305b7db6",
-    measurementId: "G-S35J20GMHM"
-};
+// Config is loaded from a separate file that is excluded from Git via .gitignore.
+// If you are setting up this project locally, copy firebase-config.example.js
+// to firebase-config.js and insert your API key.
+import { firebaseConfig } from './firebase-config.js';
 
 // ─── Init ──────────────────────────────────────────────────────────────────────
 const app = initializeApp(firebaseConfig);
@@ -183,7 +179,6 @@ async function syncUserProfile(user) {
     
     if (snap.exists()) {
         const data = snap.data();
-        // Update email if it changed
         if (data.email !== user.email) {
             await updateDoc(userRef, { email: user.email });
         }
@@ -193,11 +188,26 @@ async function syncUserProfile(user) {
             uid: user.uid,
             email: user.email,
             displayName: user.displayName || '',
+            rosterName: '', // New: Global player name
             teams: [], // List of { teamId, role, teamName }
             createdAt: serverTimestamp()
         };
         await setDoc(userRef, newProfile);
         return newProfile;
+    }
+}
+
+/**
+ * Updates the rosterName in the user's profile.
+ */
+export async function updateUserRosterName(name) {
+    if (!auth.currentUser) return;
+    try {
+        const userRef = getUserDoc(auth.currentUser.uid);
+        await updateDoc(userRef, { rosterName: name });
+        if (currentUserProfile) currentUserProfile.rosterName = name;
+    } catch (err) {
+        console.error('[Firebase] Update rosterName error:', err);
     }
 }
 
@@ -292,6 +302,15 @@ export function getAuthUid() {
 
 export function getCurrentUserProfile() {
     return currentUserProfile;
+}
+
+/**
+ * Helper to check if current user is trainer for active team
+ */
+export function isUserTrainer() {
+    if (!currentUserProfile || !activeTeamId) return false;
+    const teamRecord = currentUserProfile.teams.find(t => String(t.teamId) === String(activeTeamId));
+    return teamRecord && teamRecord.role === 'trainer';
 }
 
 // ─── Team Invitations ─────────────────────────────────────────────────────────

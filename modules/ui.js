@@ -1,6 +1,7 @@
 import { berechneTore, berechneWurfbilder, berechneStatistiken, berechneGegnerStatistiken } from './stats.js';
 import { drawGoalHeatmap, drawFieldHeatmap, renderHeatmap, setCurrentHeatmapTab, setCurrentHeatmapContext } from './heatmap.js';
-import { spielstand, speichereSpielstand } from './state.js';
+import { spielstand, speichereSpielstand, getOpponentLabel, getMyTeamLabel } from './state.js';
+import { getAuthUid, getCurrentUserProfile, isUserTrainer } from './firebase.js';
 import {
     statistikSidebar, scoreAnzeige, scoreAnzeigeGegner,
     teamNameHeimDisplay, teamNameGegnerDisplay,
@@ -94,14 +95,6 @@ export function applyViewSettings() {
     } else {
         statistikSidebar.classList.add('versteckt');
     }
-}
-
-export function getOpponentLabel() {
-    return spielstand.settings.isAuswaertsspiel ? 'Heim' : 'Gast';
-}
-
-export function getMyTeamLabel() {
-    return spielstand.settings.isAuswaertsspiel ? 'Gast' : 'Heim';
 }
 
 export function updateScoreDisplay() {
@@ -786,8 +779,18 @@ export function zeichneRosterListe(showGastTab = false) {
         deleteBtn.dataset.index = index;
         if (isShowingOpponents) deleteBtn.dataset.opponentIndex = index;
 
-        actionsDiv.appendChild(editBtn);
-        actionsDiv.appendChild(deleteBtn);
+        // NEW: Permissions Check
+        const uid = getAuthUid();
+        const trainer = isUserTrainer();
+        const isMe = spielstand.rosterAssignments && spielstand.rosterAssignments[uid] === player.name;
+
+        if (trainer || (isMe && isShowingOurTeam)) {
+            actionsDiv.appendChild(editBtn);
+            // Only trainers can delete players for now (safety)
+            if (trainer) {
+                actionsDiv.appendChild(deleteBtn);
+            }
+        }
 
         div.appendChild(infoDiv);
         div.appendChild(editDiv);

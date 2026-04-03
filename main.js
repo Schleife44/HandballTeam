@@ -45,7 +45,7 @@ import {
     updateStatusIndicator, getActiveTeamId, redeemInviteToken
 } from './modules/firebase.js';
 
-import { showTeamSelectionOverlay } from './modules/teamsView.js';
+import { showTeamSelectionOverlay, showPlayerNameSelection } from './modules/teamsView.js';
 
 // --- App Initialization ---
 // --- App Initialization ---
@@ -260,7 +260,16 @@ async function navigateToView(view) {
             break;
         case 'calendar':
             if (calendarBereich) calendarBereich.classList.remove('versteckt');
-            import('./modules/calendar.js').then(cal => cal.initCalendar());
+            // Use a global flag to ensure init happens only once
+            if (!window.calendarInitialized) {
+                import('./modules/calendar.js').then(cal => {
+                    cal.initCalendar();
+                    window.calendarInitialized = true;
+                });
+            } else {
+                // Just refresh the view if already init
+                import('./modules/calendar.js').then(cal => cal.renderCalendar());
+            }
             break;
         case 'game':
             if (spielBereich) spielBereich.classList.remove('versteckt');
@@ -1283,6 +1292,11 @@ async function bootApp(teamId) {
     startTeamsListener((remoteTeams) => {
         if (!remoteTeams) return;
         localStorage.setItem('handball_saved_teams', JSON.stringify(remoteTeams));
+    });
+
+    // 5. Show player name selection if not yet assigned
+    showPlayerNameSelection(() => {
+        console.log('[App] Player name assignment complete.');
     });
 }
 

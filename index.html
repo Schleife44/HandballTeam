@@ -5,10 +5,11 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Team-Tracker</title>
-    <link rel="stylesheet" href="styles.css?v=2.8">
+    <link rel="stylesheet" href="styles.css?v=3.8">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
+    <script type="module" src="main.js?v=20"></script>
 </head>
 
 <body>
@@ -142,6 +143,9 @@
                     <button id="manageCalendarBtn" class="shadcn-btn-outline" title="Kalender verwalten">
                         <i data-lucide="settings"></i> <span class="mobile-hidden">Verwalten</span>
                     </button>
+                    <button id="addAbsenceBtn" class="shadcn-btn-outline" style="color: #f59e0b; border-color: #f59e0b;">
+                        <i data-lucide="user-x"></i> <span class="mobile-hidden">Abwesenheit</span>
+                    </button>
                     <button id="addEventBtn" class="shadcn-btn-primary">
                         <i data-lucide="plus"></i> <span class="mobile-hidden">Termin</span>
                     </button>
@@ -177,6 +181,21 @@
                                     class="shadcn-input" style="flex:1;" />
                                 <button id="addSubBtn" class="shadcn-btn-primary">Hinzufügen</button>
                             </div>
+                            <!-- Rules for new Sub -->
+                            <div style="display: flex; gap: 10px; margin-top: 8px; font-size: 0.75rem; align-items: center; color: var(--text-muted);">
+                                <label style="display: flex; align-items: center; gap: 4px; cursor: pointer;" title="Grundpflicht bei Absage/Vlt">
+                                    <input type="checkbox" id="subRequireReason" />
+                                    <span>Grundpflicht</span>
+                                </label>
+                                <label style="display: flex; align-items: center; gap: 4px;" title="Abmeldefrist in Stunden">
+                                    <span>Frist (Std.):</span>
+                                    <input type="number" id="subDeadlineHours" class="shadcn-input" style="width: 40px; padding: 2px 4px;" value="0" min="0" />
+                                </label>
+                                <label style="display: flex; align-items: center; gap: 4px;" title="Standard-Status für neue Termine">
+                                    <input type="checkbox" id="subDefaultStatus" />
+                                    <span>Automatisch Dabei</span>
+                                </label>
+                            </div>
                         </div>
 
                         <hr style="border: 0; border-top: 1px solid hsl(var(--border)); margin: 0;">
@@ -204,7 +223,6 @@
                                 <div style="font-style: italic;">Keine Serien vorhanden.</div>
                             </div>
                         </div>
-
                     </div>
                 </div>
                 <div id="calendarGrid" class="calendar-grid">
@@ -282,15 +300,32 @@
                     </div>
                 </div>
 
-                <div class="form-section recurrence-section">
-                    <label class="checkbox-wrapper">
+                <div class="form-section" style="margin-top: 15px;">
+                    <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; font-size: 0.85rem;">
                         <input type="checkbox" id="eventRepeatInput">
-                        <span class="checkbox-label">Wöchentlich</span>
+                        <span>Wiederholen (wöchentlich)</span>
                     </label>
+                    <div id="recurrenceOptions" class="versteckt" style="margin-top: 5px; padding-left: 24px;">
+                        <span style="font-size: 0.75rem; color: var(--text-muted);">Endet am:</span>
+                        <input type="date" id="eventRepeatEndInput" class="shadcn-input" style="border:none; padding:0; font-size: 0.85rem; width: auto;">
+                    </div>
+                </div>
 
-                    <div id="recurrenceOptions" class="recurrence-options versteckt">
-                        <label style="font-size:0.8rem;">Bis:</label>
-                        <input type="date" id="eventRepeatEndInput" class="shadcn-input">
+                <div class="form-section" style="border-top: 1px solid hsl(var(--border)); margin-top: 15px; padding-top: 10px;">
+                    <h4 style="font-size: 0.7rem; text-transform: uppercase; color: var(--text-muted); margin-bottom: 8px; letter-spacing: 0.05em;">Regeln</h4>
+                    <div style="display: flex; flex-direction: column; gap: 10px; font-size: 0.85rem;">
+                        <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                            <input type="checkbox" id="eventRequireReasonInput">
+                            <span>Grundpflicht bei Absage/Vlt</span>
+                        </label>
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <span>Abmeldefrist (Std.):</span>
+                            <input type="number" id="eventDeadlineInput" class="shadcn-input" style="width: 50px; padding: 2px 5px;" min="0" value="0">
+                        </div>
+                        <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                            <input type="checkbox" id="eventDefaultStatusInput">
+                            <span>Automatisch Dabei (für diesen Termin/Serie)</span>
+                        </label>
                     </div>
                 </div>
 
@@ -325,10 +360,45 @@
                     <span id="detailsLocation">Halle Bösperde</span>
                 </div>
 
-                <div class="modal-actions">
+                <!-- NEW: Attendance System (SpielerPlus Style) -->
+                <div class="attendance-section" style="margin-top: 15px; border-top: 1px solid var(--border-color); padding-top: 15px;">
+                    <h3 style="font-size: 0.9rem; margin-bottom: 10px; font-weight: 600;">Deine Teilnahme</h3>
+                    <div class="attendance-pills" style="display: flex; gap: 8px; margin-bottom: 12px;">
+                        <button class="att-btn att-going" data-status="going" title="Zusage">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 10v12"/><path d="M15 5.88 14 10h5.83a2 2 0 0 1 1.92 2.56l-2.33 8A2 2 0 0 1 17.5 22H4a2 2 0 0 1-2-2v-8a2 2 0 0 1 2-2h2.76a2 2 0 0 0 1.79-1.11L12 2h0a3.13 3.13 0 0 1 3 3.88Z"/></svg> <span>Dabei</span>
+                        </button>
+                        <button class="att-btn att-maybe" data-status="maybe" title="Vielleicht">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><path d="M12 17h.01"/></svg> <span>Vielleicht</span>
+                        </button>
+                        <button class="att-btn att-not-going" data-status="not-going" title="Absage">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 14V2"/><path d="M9 18.12 10 14H4.17a2 2 0 0 1-1.92-2.56l2.33-8A2 2 0 0 1 6.5 2H20a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2h-2.76a2 2 0 0 0-1.79 1.11L12 22h0a3.13 3.13 0 0 1-3-3.88Z"/></svg> <span>Absage</span>
+                        </button>
+                        <button id="modalDetailsBtn" class="att-btn att-info" title="Teilnehmer" style="flex: 0 0 auto; width: 44px; padding: 6px 0;">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+                        </button>
+                    </div>
+
+                    <div id="attendanceReasonContainer" class="versteckt" style="margin-bottom: 15px; display: flex; gap: 8px;">
+                        <input type="text" id="attendanceReasonInput" class="shadcn-input" placeholder="Grund für Absage/Vielleicht..." style="font-size: 0.85rem; flex: 1;">
+                        <button id="saveAttendanceReasonBtn" class="shadcn-btn-primary" title="Grund speichern" style="height: 36px; padding: 0 10px;">
+                            <i data-lucide="check"></i>
+                        </button>
+                    </div>
+
+                    <div class="attendance-summary" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; padding: 0 4px;">
+                        <div id="attendanceStats" style="font-size: 0.8rem; font-weight: 600; color: var(--text-muted);">
+                            <!-- JS: 10 dabei | 2 fehlt -->
+                        </div>
+                    </div>
+
+                    <div id="attendanceFullList" class="versteckt" style="max-height: 200px; overflow-y: auto; background: rgba(0,0,0,0.03); border-radius: 8px; padding: 8px;">
+                        <!-- JS populated player list with reasons and trainer buttons -->
+                    </div>
+                </div>
+
+                <div class="modal-actions" style="margin-top: 15px;">
                     <button id="deleteEventBtn" class="shadcn-btn-destructive" title="Löschen"><i data-lucide="trash-2"
                             style="width:16px;"></i></button>
-                    <!-- Close button in header is enough, or we keep a discrete close/edit here -->
                 </div>
             </div>
         </div>
@@ -1845,8 +1915,7 @@
                     <p id="customPromptMessage"></p>
                 </div>
                 <div class="shadcn-modal-body">
-                    <input type="text" id="customPromptInput" class="shadcn-input" placeholder="Text eingeben..."
-                        style="width: 100%; box-sizing: border-box;">
+                    <input type="text" id="customPromptInput" class="shadcn-input" placeholder="Text eingeben..." autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" data-1p-ignore="true" data-bwignore="true" data-lpignore="true" style="width: 100%; box-sizing: border-box;">
                 </div>
                 <div class="shadcn-modal-footer">
                     <button id="customPromptCancel" class="shadcn-btn-secondary">Abbrechen</button>
@@ -1919,7 +1988,7 @@
             </div>
 
             <!-- Form Body -->
-            <div style="display: flex; flex-direction: column; gap: 1.25rem;">
+            <form id="loginFormElem" style="display: flex; flex-direction: column; gap: 1.25rem;" onsubmit="event.preventDefault(); document.getElementById('loginSubmitBtn').click();">
                 <!-- Email Field -->
                 <div style="display: flex; flex-direction: column; gap: 0.5rem;">
                     <label style="font-size: 0.875rem; font-weight: 500; line-height: 1;" for="loginEmailInput">E-Mail</label>
@@ -1944,29 +2013,14 @@
                 <!-- Password Field -->
                 <div style="display: flex; flex-direction: column; gap: 0.5rem;">
                     <label style="font-size: 0.875rem; font-weight: 500; line-height: 1;" for="loginPasswordInput">Passwort</label>
-                    <input id="loginPasswordInput" type="password" placeholder="••••••••"
-                        autocomplete="current-password"
-                        style="
-                            height: 2.5rem; width: 100%;
-                            background: transparent;
-                            border: 1px solid hsl(217.2, 32.6%, 17.5%);
-                            border-radius: 0.375rem;
-                            padding: 0.5rem 0.75rem;
-                            font-size: 0.875rem;
-                            color: hsl(210, 40%, 98%);
-                            box-sizing: border-box;
-                            outline: none;
-                            transition: border-color 0.2s, ring 0.2s;
-                        "
-                        onfocus="this.style.borderColor='hsl(217.2, 91.2%, 59.8%)'; this.style.boxShadow='0 0 0 2px hsl(217.2, 91.2%, 59.8%, 0.3)'"
-                        onblur="this.style.borderColor='hsl(217.2, 32.6%, 17.5%)'; this.style.boxShadow='none'">
+                    <input id="loginPasswordInput" type="password" placeholder="••••••••" autocomplete="current-password" style="height: 2.5rem; width: 100%; background: transparent; border: 1px solid rgb(30, 41, 59); border-radius: 0.375rem; padding: 0.5rem 0.75rem; font-size: 0.875rem; color: rgb(248, 250, 252); box-sizing: border-box; outline: none; transition: border-color 0.2s, ring 0.2s; box-shadow: none;" onfocus="this.style.borderColor='hsl(217.2, 91.2%, 59.8%)'; this.style.boxShadow='0 0 0 2px hsl(217.2, 91.2%, 59.8%, 0.3)'" onblur="this.style.borderColor='hsl(217.2, 32.6%, 17.5%)'; this.style.boxShadow='none'">
                 </div>
 
                 <!-- Error Message -->
                 <p id="loginErrorMessage" style="margin: 0; font-size: 0.8rem; color: #f87171; text-align: center; min-height: 1.25rem;"></p>
 
                 <!-- Action Button -->
-                <button id="loginSubmitBtn" style="
+                <button id="loginSubmitBtn" type="button" style="
                     margin-top: 0.5rem;
                     height: 2.5rem; border-radius: 0.375rem;
                     font-size: 0.875rem; font-weight: 500;
@@ -2016,7 +2070,7 @@
                     <svg width="18" height="18" viewBox="0 0 18 18"><path d="M17.64 9.2c0-.63-.06-1.25-.16-1.84H9v3.49h4.84a4.14 4.14 0 0 1-1.8 2.71v2.24h2.92a8.83 8.83 0 0 0 2.68-6.6z" fill="#4285F4"/><path d="M9 18c2.43 0 4.47-.8 5.96-2.18l-2.92-2.24c-.81.54-1.84.87-3.04.87-2.33 0-4.3-1.58-5-3.71H.95v2.3A8.99 8.99 0 0 0 9 18z" fill="#34A853"/><path d="M4 10.74a5.4 5.4 0 0 1 0-3.48V4.96H.95a8.99 8.99 0 0 0 0 8.08L4 10.74z" fill="#FBBC05"/><path d="M9 3.58c1.32 0 2.5.45 3.44 1.35L15.02 2.3A8.99 8.99 0 0 0 9 0 8.99 8.99 0 0 0 .95 4.96L4 7.26c.7-2.13 2.67-3.68 5-3.68z" fill="#EA4335"/></svg>
                     Google Anmeldung
                 </button>
-            </div>
+            </form>
         </div>
     </div>
         </div>
@@ -2030,7 +2084,68 @@
         #deleteTeamBtn { display: none; }
     </style>
 
-    <script type="module" src="main.js?v=9"></script>
+    <!-- SUB SETTINGS MODAL -->
+    <div id="subSettingsModal" class="event-popover versteckt" style="width: 320px; z-index: 9999;">
+        <div class="modal-header">
+            <h3 style="font-size: 1rem;">Abo-Einstellungen</h3>
+            <button id="closeSubSettingsBtn" class="close-btn">X</button>
+        </div>
+        <div class="modal-body" style="padding: 1rem; display: flex; flex-direction: column; gap: 1rem;">
+            <div style="display: flex; flex-direction: column; gap: 0.75rem; font-size: 0.85rem;">
+                <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                    <input type="checkbox" id="modalSubRequireReason" />
+                    <span>Grundpflicht bei Absage/Vlt</span>
+                </label>
+                <label style="display: flex; align-items: center; gap: 8px;">
+                    <span>Abmeldefrist (Std. vorher):</span>
+                    <input type="number" id="modalSubDeadlineHours" class="shadcn-input" style="width: 50px; padding: 2px 5px;" min="0" />
+                </label>
+                <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                    <input type="checkbox" id="modalSubDefaultStatus" />
+                    <span>Automatisch Dabei</span>
+                </label>
+            </div>
+            <button id="saveSubSettingsBtn" class="shadcn-btn-primary" style="width: 100%;">Einstellungen speichern</button>
+        </div>
+    </div>
+
+    <!-- POPOVER: Add Absence -->
+    <div id="absenceModal" class="event-popover versteckt" style="width: 350px;">
+        <div class="modal-header">
+            <h3>Abwesenheit melden</h3>
+            <button id="closeAbsenceBtn" class="icon-btn-ghost"><i data-lucide="x"></i></button>
+        </div>
+        <div class="modal-body">
+            <div class="form-section">
+                <label class="form-label">Grund</label>
+                <input type="text" id="absenceReasonInput" class="shadcn-input" placeholder="z.B. Urlaub, Verletzt, Arbeit...">
+            </div>
+            <div class="form-section">
+                <div class="form-row-2">
+                    <div class="input-group">
+                        <label class="form-label">Von</label>
+                        <input type="date" id="absenceStartDate" class="shadcn-input">
+                    </div>
+                    <div class="input-group">
+                        <label class="form-label">Bis (inklusive)</label>
+                        <input type="date" id="absenceEndDate" class="shadcn-input">
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer" style="padding:0; margin-top:20px;">
+                <button id="saveAbsenceBtn" class="shadcn-btn-primary" style="width:100%; background:#f59e0b; border-color:#f59e0b;">Speichern</button>
+            </div>
+            
+            <div id="absenceListContainer" style="margin-top:20px; border-top:1px solid var(--border-color); padding-top:15px;">
+                <h4 style="font-size:0.85rem; margin-bottom:10px; color:var(--text-muted);">Deine gemeldeten Abwesenheiten</h4>
+                <div id="absenceList" style="max-height:150px; overflow-y:auto; display:flex; flex-direction:column; gap:8px;">
+                    <!-- JS fills this -->
+                    <div style="font-size:0.75rem; color:#888; font-style:italic;">Keine Abwesenheiten gemeldet.</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <script>
         // Initialize Lucide Icons
         if (typeof lucide !== 'undefined') {

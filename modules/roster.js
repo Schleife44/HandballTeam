@@ -80,8 +80,16 @@ export async function addPlayer(e) {
 }
 
 export async function deletePlayer(index) {
-    const confirmed = await customConfirm(`Spieler "${spielstand.roster[index].name}" wirklich löschen?`, "Spieler löschen?");
+    const player = spielstand.roster[index];
+    const confirmed = await customConfirm(`Spieler "${player.name}" wirklich löschen?`, "Spieler löschen?");
     if (confirmed) {
+        // Remove rosterAssignment for this player so the name is freed
+        if (spielstand.rosterAssignments) {
+            const uid = Object.keys(spielstand.rosterAssignments).find(
+                k => spielstand.rosterAssignments[k] === player.name
+            );
+            if (uid) delete spielstand.rosterAssignments[uid];
+        }
         spielstand.roster.splice(index, 1);
         speichereSpielstand();
         zeichneRosterListe();
@@ -117,6 +125,8 @@ export async function deleteEntireTeam() {
             spielstand.knownOpponents = [];
         } else {
             spielstand.roster = [];
+            // Remove ALL roster assignments when entire team is deleted
+            spielstand.rosterAssignments = {};
         }
         speichereSpielstand();
         zeichneRosterListe(isOpponentMode);

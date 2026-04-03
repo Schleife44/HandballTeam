@@ -79,6 +79,22 @@ export const closeDetailsModal = document.getElementById('closeDetailsModal');
 export const closeDetailsBtn = document.getElementById('closeDetailsBtn');
 export const deleteEventBtn = document.getElementById('deleteEventBtn');
 export const editEventBtn = document.getElementById('editEventBtn');
+export const attendanceReasonInput = document.getElementById('attendanceReasonInput');
+export const attendanceReasonContainer = document.getElementById('attendanceReasonContainer');
+export const attendanceStats = document.getElementById('attendanceStats');
+export const attendanceFullList = document.getElementById('attendanceFullList');
+export const modalDetailsBtn = document.getElementById('modalDetailsBtn');
+export const saveAttendanceReasonBtn = document.getElementById('saveAttendanceReasonBtn');
+
+// Personal Absence Modal
+export const addAbsenceBtn = document.getElementById('addAbsenceBtn');
+export const absenceModal = document.getElementById('absenceModal');
+export const closeAbsenceBtn = document.getElementById('closeAbsenceBtn');
+export const absenceReasonInput = document.getElementById('absenceReasonInput');
+export const absenceStartDate = document.getElementById('absenceStartDate');
+export const absenceEndDate = document.getElementById('absenceEndDate');
+export const saveAbsenceBtn = document.getElementById('saveAbsenceBtn');
+export const absenceList = document.getElementById('absenceList');
 
 // Manage UI
 export const manageCalendarBtn = document.getElementById('manageCalendarBtn');

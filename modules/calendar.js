@@ -1,14 +1,27 @@
-import { spielstand, speichereSpielstand } from './state.js';
+import { 
+    speichereSpielstand, 
+    spielstand, 
+    getOpponentLabel, 
+    getMyTeamLabel 
+} from './state.js';
+import { 
+    getAuthUid, 
+    isUserTrainer, 
+    getCurrentUserProfile,
+    getActiveTeamId
+} from './firebase.js';
 import {
     calendarGrid, currentMonthLabel, addEventModal, addEventModalTitle,
     eventTitleInput, eventDateInput, eventTimeInput, eventLocationInput,
     eventRepeatInput, eventRepeatEndInput, recurrenceOptions,
     eventDetailsModal, detailsTitle, detailsDate, detailsTime, detailsLocation, detailsLocationRow,
     closeDetailsModal, closeDetailsBtn, deleteEventBtn, editEventBtn,
+    attendanceReasonInput, attendanceReasonContainer, attendanceStats,
+    attendanceFullList, modalDetailsBtn, saveAttendanceReasonBtn,
     // Manage UI
     manageCalendarBtn, manageCalendarModal, closeManageBtn, manageUrlInput, addSubBtn, subsList, seriesList, addEventBtn
 } from './dom.js';
-import { customAlert, customConfirm } from './customDialog.js';
+import { customAlert, customConfirm, customPrompt } from './customDialog.js';
 
 import { openDatePicker, closeDatePicker } from './datepicker.js';
 import { openTimePicker, closeTimePicker } from './timepicker.js';
@@ -17,10 +30,20 @@ import { parseICS } from './ics.js';
 
 let currentDate = new Date(); // Start with today
 let currentEventId = null; // Store ID for delete/details action
+let attendanceListenersBound = false;
+let calendarInitialized = false;
 let editingEventId = null; // Store ID for edit action
 
 export function initCalendar() {
+    if (calendarInitialized) return;
+    calendarInitialized = true;
+
+    if (!spielstand.absences) spielstand.absences = [];
+    
     renderCalendar();
+
+    // Absence Modal Listeners
+    setupAbsenceListeners();
 
     // Custom DatePicker for Date Input
     if (eventDateInput) {
@@ -121,13 +144,17 @@ export function initCalendar() {
     }
 
     if (addSubBtn) {
-        addSubBtn.addEventListener('click', async () => {
+        addSubBtn.addEventListener('click', () => {
             const url = manageUrlInput.value.trim();
-            if (!url) { toast.error("Fehler", "Bitte URL eingeben"); return; }
-
-            await addSubscription(url);
-            manageUrlInput.value = '';
-            renderManageView();
+            if (url) {
+                const subRules = {
+                    requireReason: document.getElementById('subRequireReason')?.checked || false,
+                    deadlineHours: parseInt(document.getElementById('subDeadlineHours')?.value) || 0,
+                    defaultStatus: document.getElementById('subDefaultStatus')?.checked ? 'going' : 'none'
+                };
+                addSubscription(url, subRules);
+                manageUrlInput.value = '';
+            }
         });
     }
 
@@ -148,6 +175,231 @@ export function initCalendar() {
             editEvent(currentEventId);
         });
     }
+
+    // Attendance UI Initializers
+    setupAttendanceListeners();
+
+    // --- SUB SETTINGS MODAL ---
+    const closeSubSettingsBtn = document.getElementById('closeSubSettingsBtn');
+    const saveSubSettingsBtn = document.getElementById('saveSubSettingsBtn');
+    if (closeSubSettingsBtn) closeSubSettingsBtn.onclick = closeSubSettingsModal;
+    if (saveSubSettingsBtn) saveSubSettingsBtn.onclick = saveSubSettings;
+}
+
+function setupAbsenceListeners() {
+    if (addAbsenceBtn) {
+        addAbsenceBtn.onclick = (e) => {
+            e.stopPropagation();
+            openAbsenceModal();
+        };
+    }
+    if (closeAbsenceBtn) closeAbsenceBtn.onclick = closeAbsenceModal;
+    if (saveAbsenceBtn) saveAbsenceBtn.onclick = saveAbsence;
+}
+
+function openAbsenceModal() {
+    if (!absenceModal) return;
+    closeAddEventModal();
+    closeEventDetails();
+    
+    document.body.appendChild(absenceModal);
+    absenceModal.classList.remove('versteckt');
+    
+    // Position fixed center
+    Object.assign(absenceModal.style, {
+        position: 'fixed',
+        top: '50%',
+        left: '50%',
+        transform: 'translate(-50%, -50%)',
+        zIndex: '1100'
+    });
+
+    // Reset fields
+    absenceReasonInput.value = '';
+    const today = new Date().toISOString().split('T')[0];
+    absenceStartDate.value = today;
+    absenceEndDate.value = today;
+
+    renderAbsenceList();
+}
+
+function closeAbsenceModal() {
+    if (absenceModal) absenceModal.classList.add('versteckt');
+}
+
+function saveAbsence() {
+    const reason = absenceReasonInput.value.trim();
+    const start = absenceStartDate.value;
+    const end = absenceEndDate.value;
+    
+    if (!start || !end) {
+        toast.error("Fehler", "Bitte Start- und Enddatum angeben.");
+        return;
+    }
+    
+    const profile = getCurrentUserProfile();
+    if (!profile || !profile.rosterName) {
+        toast.error("Profil fehlt", "Bitte setze erst deinen Namen im Profil.");
+        return;
+    }
+
+    const uid = getAuthUid();
+    const absence = {
+        id: Date.now().toString(),
+        uid: uid,
+        playerName: profile.rosterName,
+        reason: reason || 'Abwesend',
+        startDate: start,
+        endDate: end,
+        createdAt: Date.now()
+    };
+    
+    if (!spielstand.absences) spielstand.absences = [];
+    spielstand.absences.push(absence);
+    
+    speichereSpielstand();
+    toast.success("Abwesenheit gespeichtert", "Deine Abwesenheit wurde registriert.");
+    // Don't close modal yet, just refresh list
+    renderAbsenceList();
+    renderCalendar(); // Refresh UI to show stats change
+}
+
+function renderAbsenceList() {
+    if (!absenceList) return;
+    absenceList.innerHTML = '';
+    const uid = getAuthUid();
+    
+    const myAbsences = (spielstand.absences || []).filter(a => a.uid === uid);
+    
+    if (myAbsences.length === 0) {
+        absenceList.innerHTML = '<div style="font-size:0.75rem; color:#888; font-style:italic;">Keine Abwesenheiten gemeldet.</div>';
+        return;
+    }
+
+    // Sort by start date (descending)
+    myAbsences.sort((a, b) => b.startDate.localeCompare(a.startDate));
+
+    myAbsences.forEach(abs => {
+        const item = document.createElement('div');
+        item.style = 'display:flex; justify-content:space-between; align-items:center; background:rgba(0,0,0,0.03); padding:6px 10px; border-radius:4px; font-size:0.8rem;';
+        
+        const dateRange = `<b>${abs.startDate}</b> bis <b>${abs.endDate}</b>`;
+        item.innerHTML = `
+            <div>
+                <div>${dateRange}</div>
+                <div style="font-size:0.7rem; color:#666;">${abs.reason}</div>
+            </div>
+            <button class="delete-abs-btn" style="background:transparent; border:none; color:#ef4444; cursor:pointer; padding:4px;">
+                <i data-lucide="trash-2" style="width:14px; height:14px;"></i>
+            </button>
+        `;
+        
+        item.querySelector('.delete-abs-btn').onclick = () => deleteAbsence(abs.id);
+        absenceList.appendChild(item);
+    });
+
+    if (window.lucide) window.lucide.createIcons();
+}
+
+async function deleteAbsence(id) {
+    if (!await customConfirm("Abwesenheit wirklich löschen?")) return;
+    
+    if (spielstand.absences) {
+        spielstand.absences = spielstand.absences.filter(a => a.id !== id);
+        speichereSpielstand();
+        renderAbsenceList();
+        renderCalendar();
+        toast.success("Gelöscht", "Die Abwesenheit wurde entfernt.");
+    }
+}
+
+/**
+ * Helper to check if a specific player (by UID or Name) is absent on a specific date.
+ */
+export function isPlayerAbsent(dateStr, uid, playerName) {
+    if (!spielstand.absences) return null;
+    const date = new Date(dateStr);
+    
+    return spielstand.absences.find(abs => {
+        // Match by UID or exactly by Name (for manual roster entries)
+        const isMe = (uid && abs.uid === uid) || (playerName && abs.playerName === playerName);
+        if (!isMe) return false;
+        
+        const start = new Date(abs.startDate);
+        const end = new Date(abs.endDate);
+        // Set all to 00:00:00 for clean comparison
+        date.setHours(0,0,0,0);
+        start.setHours(0,0,0,0);
+        end.setHours(0,0,0,0);
+        
+        return date >= start && date <= end;
+    });
+}
+
+
+function setupAttendanceListeners() {
+    if (attendanceListenersBound) return;
+    
+    // Bind only to actual RSVP buttons (exclude the 4th details/participants button)
+    const pills = document.querySelectorAll('.att-btn:not(#modalDetailsBtn)');
+    pills.forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            const status = btn.dataset.status;
+            const reason = attendanceReasonInput ? attendanceReasonInput.value.trim() : '';
+            updateParticipation(currentEventId, status, reason);
+        });
+    });
+
+    if (toggleAttendanceList) {
+        toggleAttendanceList.addEventListener('click', () => {
+            if (attendanceFullList) {
+                attendanceFullList.classList.toggle('versteckt');
+                toggleAttendanceList.textContent = attendanceFullList.classList.contains('versteckt') ? 'Details' : 'Schließen';
+            }
+        });
+    }
+
+    if (attendanceReasonInput) {
+        attendanceReasonInput.addEventListener('change', () => {
+            // If user already has a status, update reason immediately
+            const event = spielstand.calendarEvents.find(e => e.id === currentEventId);
+            const uid = getAuthUid();
+            const profile = getCurrentUserProfile();
+            const rName = profile ? profile.rosterName : null;
+            let myStatus = null;
+            if (event?.responses) {
+                if (event.responses[uid]) myStatus = event.responses[uid].status;
+                else {
+                    const tempKey = `manual_${rName?.replace(/\s+/g, '_')}`;
+                    if (event.responses[tempKey]) myStatus = event.responses[tempKey].status;
+                }
+            }
+            if (myStatus) {
+                updateParticipation(currentEventId, myStatus, attendanceReasonInput.value.trim());
+            }
+        });
+    }
+
+    if (saveAttendanceReasonBtn && attendanceReasonInput) {
+        saveAttendanceReasonBtn.addEventListener('click', () => {
+            if (!currentEventId) return;
+            const event = spielstand.calendarEvents.find(e => e.id === currentEventId);
+            const uid = getAuthUid();
+            const profile = getCurrentUserProfile();
+            const rName = profile ? profile.rosterName : null;
+            let myStatus = 'maybe'; // Fallback
+            if (event?.responses) {
+                if (event.responses[uid]) myStatus = event.responses[uid].status;
+                else {
+                    const tempKey = `manual_${rName?.replace(/\s+/g, '_')}`;
+                    if (event.responses[tempKey]) myStatus = event.responses[tempKey].status;
+                }
+            }
+            updateParticipation(currentEventId, myStatus, attendanceReasonInput.value);
+        });
+    }
+    
+    attendanceListenersBound = true;
 }
 
 export function handlePrevMonth() {
@@ -211,9 +463,18 @@ export function renderCalendar() {
         events.sort((a, b) => (a.time || '').localeCompare(b.time || ''));
 
         events.forEach(ev => {
+            const stats = getEventStats(ev);
+            
             const pill = document.createElement('div');
             pill.className = `event-pill event-${ev.type}`;
-            pill.innerHTML = `<span class="event-time">${ev.time}</span> ${ev.title}`;
+            pill.innerHTML = `
+                <div style="display:flex; justify-content:space-between; align-items:center;">
+                    <span style="font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;"><span class="event-time" style="margin-right:4px;">${ev.time}</span> ${ev.title}</span>
+                    <div style="font-size:0.75rem; background:rgba(255,255,255,0.25); padding:2px 6px; border-radius:10px; display:flex; align-items:center; gap:4px; font-weight:700;">
+                        ${stats.going} <i data-lucide="thumbs-up" style="width:11px; height:11px;"></i>
+                    </div>
+                </div>
+            `;
 
             // Show Details on Click
             pill.addEventListener('click', (e) => {
@@ -252,76 +513,48 @@ export function openAddEventModal(preselectDate = null, clickEvent = null, posit
         document.body.appendChild(addEventModal);
         addEventModal.classList.remove('versteckt');
 
-        // Use Fixed to avoid scrolling bugs
-        addEventModal.style.position = 'fixed';
+        // Fix: Ensure modal doesn't leak out of screen
+        Object.assign(addEventModal.style, {
+            position: 'fixed',
+            top: '50%',
+            left: '50%',
+            transform: 'translate(-50%, -50%)',
+            maxHeight: '90vh',
+            overflowY: 'auto',
+            width: '450px',
+            zIndex: '1000'
+        });
 
-        let top, left;
+        // Reset Edit State
+        editingEventId = null;
 
-        // Priority 1: Explicit Override (used by Edit)
-        if (positionOverride) {
-            top = positionOverride.top;
-            left = positionOverride.left;
-        }
-        else {
-            // Priority 2: Click Event (used by New)
-            // Try to resolve target safely
-            const target = clickEvent ? (clickEvent.currentTarget || clickEvent.target) : null;
+        // Default values
+        eventTitleInput.value = '';
+        eventTimeInput.value = '19:00';
+        eventLocationInput.value = '';
 
-            if (target) {
-                const rect = target.getBoundingClientRect();
+        if (eventRepeatInput) eventRepeatInput.checked = false;
+        if (recurrenceOptions) recurrenceOptions.classList.add('versteckt');
+        if (eventRepeatEndInput) eventRepeatEndInput.value = '';
 
-                const popWidth = 350;
-                const popHeight = 500;
+        const targetDate = preselectDate || new Date().toISOString().slice(0, 10);
+        eventDateInput.value = targetDate;
+        updateModalTitle(targetDate);
 
-                // Center horiz over click
-                left = rect.left + (rect.width / 2) - (popWidth / 2);
-                top = rect.top + (rect.height / 2) - (popHeight / 2);
+        // Rules Reset
+        if (document.getElementById('eventRequireReasonInput')) document.getElementById('eventRequireReasonInput').checked = false;
+        if (document.getElementById('eventDeadlineInput')) document.getElementById('eventDeadlineInput').value = 0;
+        if (document.getElementById('eventDefaultStatusInput')) document.getElementById('eventDefaultStatusInput').checked = false;
 
-                // Bounds
-                if (left + popWidth > window.innerWidth) left = window.innerWidth - popWidth - 10;
-                if (left < 10) left = 10;
+        // Focus Title for quick entry
+        setTimeout(() => eventTitleInput.focus(), 50);
 
-                if (top + popHeight > window.innerHeight) {
-                    top = window.innerHeight - popHeight - 10;
-                }
-                if (top < 10) top = 10;
-            }
-            // Priority 3: Fallback Center (No valid target)
-            else {
-                top = (window.innerHeight / 2) - 250;
-                left = (window.innerWidth / 2) - 175;
-            }
-        }
-
-        addEventModal.style.top = `${top}px`;
-        addEventModal.style.left = `${left}px`;
-        addEventModal.style.transform = 'none';
-
+        if (window.lucide) window.lucide.createIcons();
+        
         setTimeout(() => {
             document.addEventListener('click', handleAddOutsideClick);
         }, 0);
     }
-
-    // Reset Edit State
-    editingEventId = null;
-
-    // Default values
-    eventTitleInput.value = '';
-    eventTimeInput.value = '19:00';
-    eventLocationInput.value = '';
-
-    if (eventRepeatInput) eventRepeatInput.checked = false;
-    if (recurrenceOptions) recurrenceOptions.classList.add('versteckt');
-    if (eventRepeatEndInput) eventRepeatEndInput.value = '';
-
-    const targetDate = preselectDate || new Date().toISOString().slice(0, 10);
-    eventDateInput.value = targetDate;
-    updateModalTitle(targetDate);
-
-    // Focus Title for quick entry
-    setTimeout(() => eventTitleInput.focus(), 50);
-
-    if (window.lucide) window.lucide.createIcons();
 }
 
 function handleAddOutsideClick(e) {
@@ -370,13 +603,37 @@ export function saveEvent() {
     if (editingEventId) {
         const index = spielstand.calendarEvents.findIndex(e => e.id === editingEventId);
         if (index !== -1) {
+            const rules = {
+                requireReason: document.getElementById('eventRequireReasonInput')?.checked || false,
+                deadlineHours: parseInt(document.getElementById('eventDeadlineInput')?.value) || 0,
+                defaultStatus: document.getElementById('eventDefaultStatusInput')?.checked ? 'going' : 'none'
+            };
+
+            const ev = spielstand.calendarEvents[index];
+            // Apply default status retroactively to those who haven't voted
+            if (rules.defaultStatus === 'going') {
+                if (!ev.responses) ev.responses = {};
+                const roster = spielstand.roster || [];
+                roster.forEach(p => {
+                    const name = p.name || `Spieler #${p.number}`;
+                    const hasVotedUid = Object.keys(ev.responses).find(u => spielstand.rosterAssignments?.[u] === name);
+                    const hasVotedName = Object.values(ev.responses).find(r => r.name === name);
+                    
+                    if (!hasVotedUid && !hasVotedName) {
+                        const key = `manual_${name.replace(/\s+/g, '_')}`;
+                        ev.responses[key] = { status: 'going', name, updatedAt: Date.now(), isAutoGenerated: true };
+                    }
+                });
+            }
+
             spielstand.calendarEvents[index] = {
-                ...spielstand.calendarEvents[index],
+                ...ev,
                 type,
                 title,
                 date: startDateStr,
                 time,
-                location
+                location,
+                rules
             };
         }
         toast.success("Termin aktualisiert", "Deine Änderungen wurden erfolgreich gespeichert.");
@@ -401,6 +658,11 @@ export function saveEvent() {
                 safetyCounter++;
             }
         }
+        const rules = {
+            requireReason: document.getElementById('eventRequireReasonInput')?.checked || false,
+            deadlineHours: parseInt(document.getElementById('eventDeadlineInput')?.value) || 0,
+            defaultStatus: document.getElementById('eventDefaultStatusInput')?.checked ? 'going' : 'none'
+        };
 
         datesToSave.forEach(dateStr => {
             const newEvent = {
@@ -411,8 +673,21 @@ export function saveEvent() {
                 time,
                 location,
                 isRecurring: repeat,
-                seriesId: newSeriesId // Link them
+                seriesId: newSeriesId, // Link them
+                responses: {},
+                rules
             };
+
+            // Apply default status if configured
+            if (rules.defaultStatus === 'going') {
+                const roster = spielstand.roster || [];
+                roster.forEach(p => {
+                    const name = p.name || `Spieler #${p.number}`;
+                    const key = `manual_${name.replace(/\s+/g, '_')}`;
+                    newEvent.responses[key] = { status: 'going', name, updatedAt: Date.now(), isAutoGenerated: true };
+                });
+            }
+            
             spielstand.calendarEvents.push(newEvent);
         });
 
@@ -446,6 +721,17 @@ function editEvent(id) {
     eventTimeInput.value = event.time;
     eventLocationInput.value = event.location || '';
 
+    // Load Rules
+    if (document.getElementById('eventRequireReasonInput')) {
+        document.getElementById('eventRequireReasonInput').checked = event.rules?.requireReason || false;
+    }
+    if (document.getElementById('eventDeadlineInput')) {
+        document.getElementById('eventDeadlineInput').value = event.rules?.deadlineHours || 0;
+    }
+    if (document.getElementById('eventDefaultStatusInput')) {
+        document.getElementById('eventDefaultStatusInput').checked = event.rules?.defaultStatus === 'going';
+    }
+
     updateModalTitle(event.date);
 
     const radio = document.querySelector(`input[name = "eventType"][value = "${event.type}"]`);
@@ -454,45 +740,28 @@ function editEvent(id) {
 
 // --- DETAILS LOGIC ---
 
-function openEventDetails(event, clickEvent) {
-    if (!calendarGrid) return;
+export function showEventDetails(eventId, participantsOnly = false) {
+    const event = spielstand.calendarEvents.find(e => e.id === eventId);
+    if (!event) return;
 
-    closeAddEventModal();
+    currentEventId = eventId;
 
-    currentEventId = event.id;
     if (eventDetailsModal) {
         document.body.appendChild(eventDetailsModal);
         eventDetailsModal.classList.remove('versteckt');
-
-        // Use Fixed
-        eventDetailsModal.style.position = 'fixed';
-
-        if (clickEvent) {
-            const targetElement = clickEvent.target.closest('.event-pill') || clickEvent.target;
-            const rect = targetElement.getBoundingClientRect();
-
-            let top = rect.top;
-            let left = rect.right + 10; // Right of element
-
-            const popoverWidth = 320;
-            // Flip to left if no space
-            if (left + popoverWidth > window.innerWidth) {
-                left = rect.left - popoverWidth - 10;
-            }
-            if (left < 10) left = 10; // Safety
-
-            const popHeight = 250;
-            // Flip up if no space
-            if (top + popHeight > window.innerHeight) {
-                top = rect.bottom - popHeight; // aligned bottom
-            }
-            if (top < 10) top = 10;
-
-            eventDetailsModal.style.top = `${top}px`;
-            eventDetailsModal.style.left = `${left}px`;
-        }
+        
+        // Fix: Ensure modal doesn't leak out of screen
+        Object.assign(eventDetailsModal.style, {
+            position: 'fixed',
+            top: '50%',
+            left: '50%',
+            transform: 'translate(-50%, -50%)',
+            maxHeight: '90vh',
+            overflowY: 'auto',
+            width: '450px',
+            zIndex: '1000'
+        });
     }
-
 
     if (detailsTitle) detailsTitle.textContent = event.title;
     if (detailsDate) {
@@ -510,6 +779,91 @@ function openEventDetails(event, clickEvent) {
         }
     }
 
+    renderAttendanceUI(event);
+
+    // Filter elements for "Participants Only" compact mode
+    const myTeilnahmeHeader = Array.from(eventDetailsModal.querySelectorAll('h4')).find(el => el.textContent.includes('Teilnahme') || el.textContent.includes('Teilnahmen'));
+    const pillContainer = eventDetailsModal.querySelector('.attendance-pills') || eventDetailsModal.querySelector('.att-btn')?.parentElement;
+    const reasonContainer = document.getElementById('attendanceReasonContainer');
+    
+    const displayTop = participantsOnly ? 'none' : 'flex';
+    const displayBlock = participantsOnly ? 'none' : 'block';
+
+    if (detailsDate && detailsDate.parentElement) detailsDate.parentElement.style.display = displayTop;
+    if (detailsTime && detailsTime.parentElement) detailsTime.parentElement.style.display = displayTop;
+    
+    if (participantsOnly && detailsLocationRow) detailsLocationRow.classList.add('versteckt');
+    
+    if (myTeilnahmeHeader) myTeilnahmeHeader.style.display = displayBlock;
+    if (pillContainer) {
+        pillContainer.style.display = 'flex';
+        // In compact mode, we start by hiding the RSVP buttons and showing only the 4th button
+        const rsvpButtons = pillContainer.querySelectorAll('.att-btn:not(#modalDetailsBtn)');
+        rsvpButtons.forEach(btn => btn.style.display = participantsOnly ? 'none' : 'flex');
+        if (modalDetailsBtn) {
+            modalDetailsBtn.style.display = 'flex';
+            modalDetailsBtn.style.flex = participantsOnly ? '1' : '0 0 auto';
+        }
+    }
+    if (reasonContainer && participantsOnly) reasonContainer.classList.add('versteckt');
+    
+    // Hide Trainer/Admin controls in compact mode
+    if (editEventBtn) editEventBtn.style.display = participantsOnly ? 'none' : '';
+    if (deleteEventBtn) deleteEventBtn.style.display = participantsOnly ? 'none' : '';
+    
+    // Ensure close buttons ALWAYS work, even if dashboard opened this modal without prior init
+    const boundClose = () => {
+        if (eventDetailsModal) eventDetailsModal.classList.add('versteckt');
+        currentEventId = null;
+        document.removeEventListener('click', handleOutsideClick);
+    };
+    if (closeDetailsBtn) closeDetailsBtn.onclick = boundClose;
+    if (closeDetailsModal) closeDetailsModal.onclick = boundClose;
+
+    // Auto-Expand list if in compact mode
+    if (attendanceFullList) {
+        if (participantsOnly) {
+            attendanceFullList.classList.remove('versteckt');
+            if (modalDetailsBtn) {
+                modalDetailsBtn.classList.add('active');
+                modalDetailsBtn.style.display = 'flex'; // Ensure it's visible in compact mode
+            }
+        } else {
+            attendanceFullList.classList.add('versteckt');
+            if (modalDetailsBtn) {
+                modalDetailsBtn.classList.remove('active');
+                modalDetailsBtn.style.display = 'flex';
+                // Bind click listener once
+                if (!modalDetailsBtn.dataset.bound) {
+                    modalDetailsBtn.onclick = (e) => {
+                        e.stopPropagation();
+                        // 1. Toggle the list
+                        const isNowHidden = attendanceFullList.classList.toggle('versteckt');
+                        
+                        // 2. Toggle active class on the button
+                        modalDetailsBtn.classList.toggle('active', !isNowHidden);
+
+                        // 3. Hide/Show the RSVP buttons (the first 3) based on whether list is visible
+                        const rsvpButtons = modalDetailsBtn.parentElement.querySelectorAll('.att-btn:not(#modalDetailsBtn)');
+                        rsvpButtons.forEach(btn => {
+                            btn.style.display = isNowHidden ? 'flex' : 'none';
+                        });
+                        
+                        // 4. Make the 4th button fill the space if others are hidden
+                        modalDetailsBtn.style.flex = isNowHidden ? '0 0 auto' : '1';
+                    };
+                    modalDetailsBtn.dataset.bound = "true";
+                }
+                
+                // Reset to default entry state: RSVP buttons visible, list hidden
+                const rsvpButtons = modalDetailsBtn.parentElement.querySelectorAll('.att-btn:not(#modalDetailsBtn)');
+                rsvpButtons.forEach(btn => { if(btn) btn.style.display = 'flex'; });
+                modalDetailsBtn.style.flex = '0 0 auto';
+                attendanceFullList.classList.add('versteckt');
+            }
+        }
+    }
+
     if (window.lucide) window.lucide.createIcons();
 
     setTimeout(() => {
@@ -517,11 +871,351 @@ function openEventDetails(event, clickEvent) {
     }, 0);
 }
 
+function openEventDetails(event, clickEvent) {
+    showEventDetails(event.id);
+}
+
+export function getEventStats(event) {
+    let going = 0, missing = 0, maybe = 0;
+    const roster = spielstand.roster || [];
+    roster.forEach(player => {
+        const playerName = player.name || `Spieler #${player.number}`;
+        let resp = null;
+        const responses = event.responses || {};
+        
+        const assignedUid = Object.keys(spielstand.rosterAssignments || {}).find(u => spielstand.rosterAssignments[u] === playerName);
+        if (assignedUid && responses[assignedUid]) {
+            resp = responses[assignedUid];
+        } else {
+            const responseKey = Object.keys(responses).find(k => responses[k].name === playerName);
+            if (responseKey) resp = responses[responseKey];
+        }
+
+        if (resp) {
+            // Priority: Manual Vote > Absence > Auto Vote
+            const isAuto = resp.isAutoGenerated === true;
+            
+            if (isAuto) {
+                const absence = isPlayerAbsent(event.date, assignedUid, playerName);
+                if (absence) {
+                    missing++; // Absence overrides Auto Vote
+                } else {
+                    if (resp.status === 'going') going++;
+                    else if (resp.status === 'maybe') maybe++;
+                    else if (resp.status === 'not-going') missing++;
+                }
+            } else {
+                // Manual vote always wins
+                if (resp.status === 'going') going++;
+                else if (resp.status === 'maybe') maybe++;
+                else if (resp.status === 'not-going') missing++;
+            }
+        } else {
+            // No response at all: Check for absence or default
+            const absence = isPlayerAbsent(event.date, assignedUid, playerName);
+            if (absence) {
+                missing++;
+            } else if (event.rules && event.rules.defaultStatus === 'going') {
+                going++;
+            }
+        }
+    });
+
+    if (roster.length === 0) {
+        const responses = event.responses || {};
+        going = Object.values(responses).filter(r => r.status === 'going').length;
+        missing = Object.values(responses).filter(r => r.status === 'not-going').length;
+        maybe = Object.values(responses).filter(r => r.status === 'maybe').length;
+    }
+
+    return { going, missing, maybe };
+}
+
+function renderAttendanceUI(event) {
+    const uid = getAuthUid();
+    const profile = getCurrentUserProfile();
+    const rosterName = profile ? profile.rosterName : null;
+    
+    let myResponse = null;
+    if (event.responses) {
+        if (event.responses[uid]) {
+            myResponse = event.responses[uid];
+        } else if (rosterName) {
+            const tempKey = `manual_${rosterName.replace(/\s+/g, '_')}`;
+            if (event.responses[tempKey]) {
+                myResponse = event.responses[tempKey];
+            }
+        }
+    }
+
+    // 1. Highlight personal buttons (exclude the 4th details button)
+    // Derive effective status for current user (Absence > Auto-RSVP)
+    let effectiveStatus = myResponse ? myResponse.status : null;
+    const isAuto = myResponse?.isAutoGenerated === true;
+    if (isAuto || !myResponse) {
+        const abs = isPlayerAbsent(event.date, uid, rosterName);
+        if (abs) effectiveStatus = 'not-going';
+    }
+
+    const pills = document.querySelectorAll('.att-btn:not(#modalDetailsBtn)');
+    pills.forEach(p => {
+        p.classList.remove('active');
+        if (effectiveStatus && p.dataset.status === effectiveStatus) {
+            p.classList.add('active');
+        }
+    });
+
+    // 2. Reason Input handling
+    if (attendanceReasonContainer && attendanceReasonInput) {
+        if (effectiveStatus === 'not-going' || effectiveStatus === 'maybe') {
+            attendanceReasonContainer.classList.remove('versteckt');
+            // If it's an absence, show the absence reason if no manual reason exists
+            if (effectiveStatus === 'not-going' && !myResponse?.reason) {
+                 const abs = isPlayerAbsent(event.date, uid, rosterName);
+                 attendanceReasonInput.value = abs ? `Abwesend: ${abs.reason}` : '';
+            } else {
+                 attendanceReasonInput.value = myResponse?.reason || '';
+            }
+        } else {
+            attendanceReasonContainer.classList.add('versteckt');
+            attendanceReasonInput.value = '';
+        }
+    }
+
+    // Calculate stats accurately based on active roster loop to avoid duplicate ghost records
+    const { going, missing, maybe } = getEventStats(event);
+    
+    // 3. Stats Summary
+    if (attendanceStats) {
+        attendanceStats.innerHTML = `<span style="color:#22c55e;">${going} Dabei</span> | <span style="color:#ef4444;">${missing} Absagen</span>` + (maybe > 0 ? ` | <span style="color:#f59e0b;">${maybe} ?</span>` : '');
+    }
+
+    // 4. Detailed Player List
+    if (attendanceFullList) {
+        attendanceFullList.innerHTML = '';
+        const roster = spielstand.roster || [];
+        const isTrainer = isUserTrainer();
+
+        if (roster.length === 0) {
+            attendanceFullList.innerHTML = '<div style="font-size:0.75rem; color:#888; text-align:center; padding:10px;">Kein Kader hinterlegt.</div>';
+        } else {
+            const voted = [];
+            const notVoted = [];
+
+            roster.forEach(player => {
+                const playerName = player.name || `Spieler #${player.number}`;
+                let resp = null;
+                const responses = event.responses || {};
+                
+                const assignedUid = Object.keys(spielstand.rosterAssignments || {}).find(u => spielstand.rosterAssignments[u] === playerName);
+                if (assignedUid && responses[assignedUid]) {
+                    resp = responses[assignedUid];
+                } else {
+                    const responseKey = Object.keys(responses).find(k => responses[k].name === playerName);
+                    if (responseKey) resp = responses[responseKey];
+                }
+                // Personal Absence check with priority
+                // 1. Manual Vote wins
+                // 2. Absence wins over Auto Vote
+                // 3. Auto Vote wins if no absence
+                
+                const isAuto = resp?.isAutoGenerated === true;
+                const absence = (isAuto || !resp) ? isPlayerAbsent(event.date, assignedUid, playerName) : null;
+                
+                if (absence) {
+                    resp = { status: 'not-going', reason: absence.reason, isAbsence: true };
+                }
+
+                if (resp) voted.push({ player, resp, playerName, isAbsence: !!resp.isAbsence });
+                else notVoted.push({ player, playerName });
+            });
+
+            // Helper to render row
+            const createRow = (item, isPending = false) => {
+                const { player, resp, playerName, isAbsence } = item;
+                const row = document.createElement('div');
+                row.className = 'attendance-player-row';
+
+                let statusDotClass = 'status-none';
+                if (resp) {
+                    if (resp.status === 'going') statusDotClass = 'status-going';
+                    if (resp.status === 'maybe') statusDotClass = 'status-maybe';
+                    if (resp.status === 'not-going') {
+                        statusDotClass = isAbsence ? 'status-absence' : 'status-not-going';
+                    }
+                }
+
+                let trainerHtml = '';
+                if (isTrainer) {
+                    trainerHtml = `
+                        <div class="trainer-att-controls">
+                            <button class="trainer-att-btn att-going ${resp?.status === 'going' ? 'active' : ''}" data-status="going" data-player="${playerName}" title="Dabei" style="display:flex; justify-content:center; align-items:center;">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 10v12"/><path d="M15 5.88 14 10h5.83a2 2 0 0 1 1.92 2.56l-2.33 8A2 2 0 0 1 17.5 22H4a2 2 0 0 1-2-2v-8a2 2 0 0 1 2-2h2.76a2 2 0 0 0 1.79-1.11L12 2h0a3.13 3.13 0 0 1 3 3.88Z"/></svg>
+                            </button>
+                            <button class="trainer-att-btn att-maybe ${resp?.status === 'maybe' ? 'active' : ''}" data-status="maybe" data-player="${playerName}" title="Vielleicht" style="display:flex; justify-content:center; align-items:center;">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><path d="M12 17h.01"/></svg>
+                            </button>
+                            <button class="trainer-att-btn att-not-going ${resp?.status === 'not-going' ? 'active' : ''}" data-status="not-going" data-player="${playerName}" title="Absage" style="display:flex; justify-content:center; align-items:center;">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 14V2"/><path d="M9 18.12 10 14H4.17a2 2 0 0 1-1.92-2.56l2.33-8A2 2 0 0 1 6.5 2H20a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2h-2.76a2 2 0 0 0-1.79 1.11L12 22h0a3.13 3.13 0 0 1-3-3.88Z"/></svg>
+                            </button>
+                        </div>
+                    `;
+                }
+
+                const displayReason = isAbsence ? `Abwesend: ${resp.reason}` : resp?.reason;
+
+                row.innerHTML = `
+                    <div class="att-player-info">
+                        <div class="att-player-name">
+                            <span class="att-status-indicator ${statusDotClass}"></span>
+                            ${playerName} ${player.number ? `(${player.number})` : ''}
+                        </div>
+                        ${displayReason ? `<div class="att-player-reason">${displayReason}</div>` : ''}
+                    </div>
+                    ${trainerHtml}
+                `;
+
+                if (isTrainer) {
+                    row.querySelectorAll('.trainer-att-btn').forEach(btn => {
+                        btn.addEventListener('click', (e) => {
+                            e.stopPropagation();
+                            updateParticipation(event.id, btn.dataset.status, resp?.reason || '', playerName);
+                        });
+                    });
+                }
+                return row;
+            };
+
+            // Render Sections
+            if (voted.length > 0) {
+                const h = document.createElement('div');
+                h.style = 'font-size:0.7rem; font-weight:700; color:#94a3b8; text-transform:uppercase; margin:10px 0 5px 4px;';
+                h.textContent = 'Abgestimmt';
+                attendanceFullList.appendChild(h);
+                voted.forEach(item => attendanceFullList.appendChild(createRow(item)));
+            }
+
+            if (notVoted.length > 0) {
+                const h = document.createElement('div');
+                h.style = 'font-size:0.7rem; font-weight:700; color:#94a3b8; text-transform:uppercase; margin:15px 0 5px 4px;';
+                h.textContent = 'Noch nicht abgestimmt';
+                attendanceFullList.appendChild(h);
+                notVoted.forEach(item => attendanceFullList.appendChild(createRow(item, true)));
+            }
+        }
+
+        // Finally, create icons for everyone
+        if (window.lucide) {
+            window.lucide.createIcons();
+            // Backup for dynamic rendering lag
+            setTimeout(() => window.lucide.createIcons(), 50);
+        }
+    }
+}
+
+export async function updateParticipation(eventId, status, reason = '', targetPlayerName = null) {
+    if (!status) return; // Prevent resets from non-RSVP buttons
+    const event = spielstand.calendarEvents.find(e => e.id === eventId);
+    if (!event) return;
+
+    if (!event.responses) event.responses = {};
+
+    const uid = getAuthUid();
+    const profile = getCurrentUserProfile();
+
+    // UNIFY: If targetPlayerName is actually the current user, clear it to use UID
+    if (targetPlayerName && profile && profile.rosterName === targetPlayerName) {
+        targetPlayerName = null;
+    }
+
+    let responseKey = uid;
+    let responseName = profile ? (profile.displayName || profile.email) : 'Anonym';
+    let checkKey = responseKey;
+
+    if (!targetPlayerName && !event.responses[uid] && profile && profile.rosterName) {
+        const tempKey = `manual_${profile.rosterName.replace(/\s+/g, '_')}`;
+        if (event.responses[tempKey]) checkKey = tempKey;
+    }
+
+    if (targetPlayerName) {
+        responseKey = `manual_${targetPlayerName.replace(/\s+/g, '_')}`;
+        responseName = targetPlayerName;
+        checkKey = responseKey;
+    }
+
+    // BREAK EARLY: Do nothing if clicking on current status AND reason hasn't changed
+    const existingEntry = event.responses[checkKey];
+    const oldReason = existingEntry?.reason || '';
+    if (existingEntry && existingEntry.status === status && oldReason.trim() === reason.trim()) {
+        return; 
+    }
+
+    const isTrainer = isUserTrainer();
+    
+    // Get Rules: Primary from event, Secondary from subscription, Fallback to defaults
+    let rules = event.rules;
+    if (!rules && event.subscriptionId) {
+        const sub = spielstand.calendarSubscriptions.find(s => s.id === event.subscriptionId);
+        if (sub) rules = sub.rules;
+    }
+    if (!rules) rules = { requireReason: false, deadlineHours: 0 };
+
+    // 1. Check Deadline (if not trainer)
+    if (!isTrainer && rules.deadlineHours > 0) {
+        const eventDateStr = event.date + (event.time ? `T${event.time}` : 'T00:00');
+        const eventDate = new Date(eventDateStr);
+        const hoursDiff = (eventDate - Date.now()) / (1000 * 60 * 60);
+        
+        if (status !== 'going' && hoursDiff < rules.deadlineHours) {
+            toast.error("Frist abgelaufen", `Abmeldung/Änderung nur bis ${rules.deadlineHours}h vor Termin möglich.`);
+            return;
+        }
+    }
+
+    // 2. Check Mandatory Reason
+    if (rules.requireReason && (status === 'not-going' || status === 'maybe')) {
+        if (!reason.trim()) {
+            const promptMsg = status === 'maybe' ? "Warum vielleicht? (Grund erforderlich)" : "Warum absagen? (Grund erforderlich)";
+            let inputReason = await customPrompt(promptMsg, "Grund eingeben");
+            if (inputReason === null || !inputReason.trim()) {
+                toast.error("Abgebrochen", "Ein Grund ist für diese Aktion zwingend erforderlich.");
+                return;
+            }
+            reason = inputReason.trim();
+            // Automatically update the input field visually if present
+            const inpd = document.getElementById('attendanceReasonInput');
+            if (inpd) inpd.value = reason;
+        }
+    }
+
+    // CLEANUP RECORD DUPLICATES: Destroy any generic manual ghosts if the real user is voting
+    if (!targetPlayerName && profile && profile.rosterName) {
+        const ghostKey = `manual_${profile.rosterName.replace(/\s+/g, '_')}`;
+        if (event.responses[ghostKey]) delete event.responses[ghostKey];
+    }
+
+    event.responses[responseKey] = {
+        status,
+        reason,
+        name: responseName,
+        updatedAt: Date.now()
+    };
+
+    speichereSpielstand();
+    // Update UI if still open - Ensure ID comparison is safe
+    if (String(currentEventId) === String(eventId)) {
+        renderAttendanceUI(event);
+    }
+    renderCalendar(); // Forces the calendar pills (the little boxes in the Grid) to update
+    toast.success("Teilnahme aktualisiert", targetPlayerName ? `Status für ${targetPlayerName} geändert.` : "Deine Antwort wurde gespeichert.");
+}
+
 function handleOutsideClick(e) {
     if (eventDetailsModal &&
         !eventDetailsModal.contains(e.target) &&
         !e.target.closest('.event-pill') &&
-        !e.target.closest('#addEventModal')
+        !e.target.closest('#addEventModal') &&
+        !e.target.closest('#customPromptModal')
     ) {
         closeEventDetails();
     }
@@ -546,56 +1240,200 @@ async function deleteEvent(id) {
     }
 }
 
+// --- SUB SETTINGS POPUP ---
+
+let currentEditingBatchId = null;
+let currentEditingBatchType = 'sub';
+
+function openSubSettingsModal(batchId, type = 'sub') {
+    currentEditingBatchId = batchId;
+    currentEditingBatchType = type;
+    const modal = document.getElementById('subSettingsModal');
+    if (!modal) return;
+
+    let rulesTarget = null;
+    if (type === 'sub') {
+        const sub = spielstand.calendarSubscriptions.find(s => s.id === batchId);
+        if (!sub) return;
+        rulesTarget = sub.rules;
+        modal.querySelector('h3').textContent = 'Abo-Einstellungen';
+    } else {
+        const firstEvent = (spielstand.calendarEvents || []).find(e => e.seriesId === batchId);
+        if (!firstEvent) return;
+        rulesTarget = firstEvent.rules;
+        modal.querySelector('h3').textContent = 'Serien-Einstellungen';
+    }
+
+    document.getElementById('modalSubRequireReason').checked = rulesTarget?.requireReason || false;
+    document.getElementById('modalSubDeadlineHours').value = rulesTarget?.deadlineHours || 0;
+    document.getElementById('modalSubDefaultStatus').checked = rulesTarget?.defaultStatus === 'going';
+
+    modal.classList.remove('versteckt');
+
+    // Position popover relative to screen center
+    Object.assign(modal.style, {
+        position: 'fixed',
+        top: '50%',
+        left: '50%',
+        transform: 'translate(-50%, -50%)',
+        zIndex: '1200'
+    });
+
+    setTimeout(() => {
+        document.addEventListener('click', handleSubSettingsOutsideClick);
+    }, 0);
+}
+
+function handleSubSettingsOutsideClick(e) {
+    const modal = document.getElementById('subSettingsModal');
+    if (modal && !modal.contains(e.target) && !e.target.closest('.active-sub-settings') && !e.target.closest('.active-series-settings')) {
+        closeSubSettingsModal();
+    }
+}
+
+function closeSubSettingsModal() {
+    const modal = document.getElementById('subSettingsModal');
+    if (modal) modal.classList.add('versteckt');
+    currentEditingBatchId = null;
+    document.removeEventListener('click', handleSubSettingsOutsideClick);
+}
+
+function saveSubSettings() {
+    if (!currentEditingBatchId) return;
+
+    const newRules = {
+        requireReason: document.getElementById('modalSubRequireReason').checked,
+        deadlineHours: parseInt(document.getElementById('modalSubDeadlineHours').value) || 0,
+        defaultStatus: document.getElementById('modalSubDefaultStatus').checked ? 'going' : 'none'
+    };
+
+    if (currentEditingBatchType === 'sub') {
+        const sub = spielstand.calendarSubscriptions.find(s => s.id === currentEditingBatchId);
+        if (sub) sub.rules = { ...newRules };
+    }
+
+    // Propagate to all existing events of this batch
+    (spielstand.calendarEvents || []).forEach(ev => {
+        const matches = (currentEditingBatchType === 'sub') ? (ev.subscriptionId === currentEditingBatchId) : (ev.seriesId === currentEditingBatchId);
+        if (matches) {
+            if (!ev.rules) ev.rules = {};
+            ev.rules.requireReason = newRules.requireReason;
+            ev.rules.deadlineHours = newRules.deadlineHours;
+            
+            if (newRules.defaultStatus === 'going') {
+                if (!ev.responses) ev.responses = {};
+                const roster = spielstand.roster || [];
+                const resValues = Object.values(ev.responses);
+                roster.forEach(p => {
+                    const name = p.name || `Spieler #${p.number}`;
+                    const assignedUid = Object.keys(spielstand.rosterAssignments || {}).find(u => spielstand.rosterAssignments[u] === name);
+                    const hasVotedUid = assignedUid && ev.responses[assignedUid];
+                    const hasVotedName = resValues.some(r => r.name === name);
+                    
+                    if (!hasVotedUid && !hasVotedName) {
+                        const key = `manual_${name.replace(/\s+/g, '_')}`;
+                        ev.responses[key] = { status: 'going', name, updatedAt: Date.now() };
+                    }
+                });
+            }
+        }
+    });
+
+    speichereSpielstand();
+    closeSubSettingsModal();
+    toast.success("Gespeichert", currentEditingBatchType === 'sub' ? "Abo-Einstellungen übernommen." : "Serien-Einstellungen übernommen.");
+}
+
+// --- MANAGE OUTSIDE CLICK ---
 // --- MANAGE HELPERS ---
 
-export async function addSubscription(url) {
+export async function addSubscription(url, rules = { requireReason: false, deadlineHours: 0, defaultStatus: 'none' }) {
     try {
         toast.info("Lade...", "Abo wird hinzugefügt...");
 
-        // Fix: Check for duplicates
         if (spielstand.calendarSubscriptions && spielstand.calendarSubscriptions.some(sub => sub.url === url)) {
-            toast.warning("Info", "Dieser Kalender ist bereits abonniert.");
+            toast.info("Info", "Dieser Kalender ist bereits abonniert.");
             return;
         }
 
-        let fetchUrl = url.replace('webcal://', 'https://');
-        const proxyUrl = 'https://corsproxy.io/?' + encodeURIComponent(fetchUrl);
+        const fetchUrl = url.replace('webcal://', 'https://').trim();
+        
+        let icsText = null;
 
-        const response = await fetch(proxyUrl);
-        if (!response.ok) throw new Error("Netzwerkfehler");
-        const icsText = await response.text();
+        // Proxy 1: codetabs (most reliable for handball.net)
+        try {
+            const resp = await fetch(`https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(fetchUrl)}`);
+            if (resp.ok) icsText = await resp.text();
+        } catch (e) { console.warn('[Calendar] Proxy 1 (codetabs) failed:', e.message); }
+
+        // Proxy 2: corsproxy.io fallback
+        if (!icsText || icsText.length < 50) {
+            try {
+                const resp = await fetch(`https://corsproxy.io/?url=${encodeURIComponent(fetchUrl)}`);
+                if (resp.ok) icsText = await resp.text();
+            } catch (e) { console.warn('[Calendar] Proxy 2 (corsproxy) failed:', e.message); }
+        }
+
+        // Proxy 3: AllOrigins fallback
+        if (!icsText || icsText.length < 50) {
+            try {
+                const resp = await fetch(`https://api.allorigins.win/get?url=${encodeURIComponent(fetchUrl)}`);
+                if (resp.ok) {
+                    const data = await resp.json();
+                    icsText = data.contents;
+                }
+            } catch (e) { console.warn('[Calendar] Proxy 3 (allorigins) failed:', e.message); }
+        }
+
+        if (!icsText || icsText.length < 10) {
+            throw new Error("Kalender konnte nicht geladen werden. Bitte prüfe die URL.");
+        }
 
         const subId = Date.now().toString();
         const newEvents = parseICS(icsText);
 
         if (newEvents.length === 0) {
-            toast.info("Leer", "Keine Termine gefunden.");
+            toast.info("Leer", "Keine Termine im Kalender gefunden.");
             return;
         }
 
-        // Mark events with Subscription ID
-        newEvents.forEach(ev => ev.subscriptionId = subId);
+        // Mark events with Subscription ID and apply default status
+        newEvents.forEach(ev => {
+            ev.subscriptionId = subId;
+            ev.responses = {};
+            if (rules.defaultStatus === 'going') {
+                const roster = spielstand.roster || [];
+                roster.forEach(p => {
+                    const name = p.name || `Spieler #${p.number}`;
+                    const key = `manual_${name.replace(/\s+/g, '_')}`;
+                    ev.responses[key] = { status: 'going', name, updatedAt: Date.now(), isAutoGenerated: true };
+                });
+            }
+            ev.rules = { 
+                requireReason: rules.requireReason, 
+                deadlineHours: rules.deadlineHours 
+            };
+        });
 
-        // Save Subscription
         if (!spielstand.calendarSubscriptions) spielstand.calendarSubscriptions = [];
         spielstand.calendarSubscriptions.push({
             id: subId,
             url: url,
-            title: `Kalender (${newEvents.length} Termine)`,
-            addedAt: new Date().toISOString()
+            title: `Abo (${newEvents.length} Termine)`,
+            addedAt: new Date().toISOString(),
+            rules: rules
         });
 
-        // Add Events
         if (!spielstand.calendarEvents) spielstand.calendarEvents = [];
         spielstand.calendarEvents.push(...newEvents);
 
         speichereSpielstand();
         renderCalendar();
-        toast.success("Erfolg", "Kalender abonniert!");
+        toast.success("Erfolg", "Kalender erfolgreich abonniert!");
 
     } catch (err) {
-        console.error(err);
-        toast.error("Fehler", "Konnte Kalender nicht laden.");
+        console.error("[Calendar] Subscription Error:", err);
+        toast.error("Fehler", err.message);
     }
 }
 
@@ -616,10 +1454,19 @@ function renderManageView() {
 
             row.innerHTML = `
                 <div style="flex:1; overflow:hidden;">
-                    <div style="font-weight:600; font-size:0.9rem;">${sub.title || 'Kalender'}</div>
-                    <div style="font-size:0.7rem; color:#888; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${sub.url}</div>
+                    <div style="font-weight:600; font-size:0.85rem; display:flex; justify-content:space-between; align-items:center;">
+                        <span>${sub.title || 'Kalender'}</span>
+                        <div style="display:flex; gap:8px; align-items:center;">
+                             <button class="shadcn-btn-ghost active-sub-settings" style="padding:4px;" data-id="${sub.id}" title="Einstellungen">
+                                <i data-lucide="settings" style="width:14px; height:14px;"></i>
+                             </button>
+                             <button class="shadcn-btn-ghost active-sub-delete" style="color:red; padding:4px;" data-id="${sub.id}" title="Löschen">
+                                <i data-lucide="trash-2" style="width:14px; height:14px;"></i>
+                             </button>
+                        </div>
+                    </div>
+                    <div style="font-size:0.7rem; color:#888; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; margin-top:2px;">${sub.url}</div>
                 </div>
-                <button class="shadcn-btn-ghost active-sub-delete" style="color:red;" data-id="${sub.id}"><i data-lucide="trash-2"></i></button>
             `;
             subsList.appendChild(row);
 
@@ -627,7 +1474,14 @@ function renderManageView() {
             row.querySelector('.active-sub-delete').addEventListener('click', (e) => {
                 deleteSubscription(sub.id);
             });
+
+            // Bind Settings
+            row.querySelector('.active-sub-settings').addEventListener('click', (e) => {
+                openSubSettingsModal(sub.id);
+            });
         });
+
+        if (window.lucide) window.lucide.createIcons();
     } else {
         subsList.innerHTML = '<div style="font-style:italic;">Keine Abos.</div>';
     }
@@ -662,16 +1516,28 @@ function renderManageView() {
             row.style.borderBottom = '1px solid #eee';
 
             row.innerHTML = `
-                <div>
-                    <div style="font-weight:600; font-size:0.9rem;">${series.title}</div>
+                <div style="flex:1; overflow:hidden;">
+                    <div style="font-weight:600; font-size:0.9rem; display:flex; justify-content:space-between; align-items:center;">
+                        <span>${series.title}</span>
+                        <div style="display:flex; gap:8px; align-items:center;">
+                             <button class="shadcn-btn-ghost active-series-settings" style="padding:4px;" data-id="${series.id}" title="Einstellungen">
+                                <i data-lucide="settings" style="width:14px; height:14px;"></i>
+                             </button>
+                             <button class="shadcn-btn-ghost series-delete" style="color:red; padding:4px;" data-id="${series.id}" title="Löschen">
+                                <i data-lucide="trash-2" style="width:14px; height:14px;"></i>
+                             </button>
+                        </div>
+                    </div>
                     <div style="font-size:0.7rem; color:#888;">${series.weekday}s – Serie (${series.count} Termine)</div>
                 </div>
-                <button class="shadcn-btn-ghost series-delete" style="color:red;" data-id="${series.id}"><i data-lucide="trash-2"></i></button>
             `;
             seriesList.appendChild(row);
 
             row.querySelector('.series-delete').addEventListener('click', () => {
                 deleteSeries(series.id);
+            });
+            row.querySelector('.active-series-settings').addEventListener('click', () => {
+                openSubSettingsModal(series.id, 'series');
             });
         });
     } else {

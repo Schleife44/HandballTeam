@@ -1,12 +1,12 @@
-import { createTeam, setActiveTeam } from './firebase.js';
+import { createTeam, setActiveTeam, getAuthUid, getCurrentUserProfile, updateUserRosterName } from './firebase.js';
+import { spielstand, speichereSpielstand } from './state.js';
 
 /**
  * Show the team selection / creation overlay.
- * @param {Object} profile - The user profile { uid, email, teams: [] }
- * @param {Function} onFinish - Called with the selected teamId
  */
 export function showTeamSelectionOverlay(profile, onFinish) {
-    // 1. Create Overlay
+    if (document.getElementById('teamSelectionOverlay')) return;
+
     const overlay = document.createElement('div');
     overlay.id = 'teamSelectionOverlay';
     Object.assign(overlay.style, {
@@ -20,7 +20,7 @@ export function showTeamSelectionOverlay(profile, onFinish) {
     Object.assign(card.style, {
         width: '100%', maxWidth: '450px', padding: '2rem',
         background: 'hsl(222.2, 84%, 4.9%)', border: '1px solid hsl(217.2, 32.6%, 17.5%)',
-        borderRadius: '0.75rem', color: 'white',textAlign: 'center'
+        borderRadius: '0.75rem', color: 'white', textAlign: 'center'
     });
 
     overlay.appendChild(card);
@@ -28,7 +28,6 @@ export function showTeamSelectionOverlay(profile, onFinish) {
 
     const renderContent = () => {
         card.innerHTML = '';
-        
         if (!profile.teams || profile.teams.length === 0) {
             renderCreateInitial(card, profile, onFinish, overlay);
         } else {
@@ -70,7 +69,7 @@ function renderCreateInitial(container, profile, onFinish, overlay) {
 
         btn.disabled = true;
         btn.textContent = 'Erstelle...';
-        
+
         const res = await createTeam(name);
         if (res.success) {
             setActiveTeam(res.teamId);
@@ -117,11 +116,19 @@ function renderSelectionList(container, profile, onFinish, overlay, renderConten
         </div>
     `;
 
-    // Click on team
+    // Click on team - fix: disable all items immediately to prevent double-click
     container.querySelectorAll('.team-item').forEach(item => {
         item.onmouseover = () => item.style.background = 'rgba(255,255,255,0.05)';
         item.onmouseout = () => item.style.background = 'transparent';
-        item.onclick = (e) => {
+        item.onclick = () => {
+            // Prevent multiple clicks
+            container.querySelectorAll('.team-item').forEach(i => {
+                i.style.pointerEvents = 'none';
+                i.style.opacity = '0.5';
+            });
+            item.style.opacity = '1';
+            item.innerHTML += '<span style="margin-left:8px;font-size:0.8rem;color:#94a3b8;">Lädt...</span>';
+
             const id = item.dataset.id;
             setActiveTeam(id);
             overlay.remove();
@@ -129,7 +136,6 @@ function renderSelectionList(container, profile, onFinish, overlay, renderConten
         };
     });
 
-    // Show create form
     container.querySelector('#showCreateBtn').onclick = () => {
         renderCreateView(container, profile, onFinish, overlay, renderContent);
     };
@@ -166,7 +172,7 @@ function renderCreateView(container, profile, onFinish, overlay, onBack) {
 
         btn.disabled = true;
         btn.textContent = 'Erstelle...';
-        
+
         const res = await createTeam(name);
         if (res.success) {
             setActiveTeam(res.teamId);
@@ -178,4 +184,151 @@ function renderCreateView(container, profile, onFinish, overlay, onBack) {
             btn.textContent = 'Erstellen';
         }
     };
+}
+
+/**
+ * Show the player name assignment dialog after joining a team.
+ * Only shown if the current user has no rosterAssignment yet.
+ * @param {Function} onComplete - Called when user selects/creates their name
+ */
+export function showPlayerNameSelection(onComplete) {
+    const uid = getAuthUid();
+    if (!uid) { onComplete(); return; }
+
+    // Prevent duplicate overlays
+    if (document.getElementById('playerNameOverlay')) {
+        return;
+    }
+
+    // 1. Check if we already have a rosterAssignment FOR THIS TEAM
+    if (spielstand.rosterAssignments && spielstand.rosterAssignments[uid]) {
+        onComplete();
+        return;
+    }
+
+    // 2. NEW: Check if global profile HAS A NAME we can reuse
+    const profile = getCurrentUserProfile();
+    if (profile && profile.rosterName) {
+        console.log('[App] Auto-assigning name from profile:', profile.rosterName);
+        if (!spielstand.rosterAssignments) spielstand.rosterAssignments = {};
+        spielstand.rosterAssignments[uid] = profile.rosterName;
+        speichereSpielstand();
+        onComplete();
+        return;
+    }
+
+    // Get taken names
+    const takenNames = Object.values(spielstand.rosterAssignments || {});
+    const availablePlayers = (spielstand.roster || []).filter(p => !takenNames.includes(p.name));
+
+    const overlay = document.createElement('div');
+    overlay.id = 'playerNameOverlay';
+    Object.assign(overlay.style, {
+        position: 'fixed', inset: '0', zIndex: '100001',
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        background: 'rgba(0,0,0,0.85)', backdropFilter: 'blur(8px)'
+    });
+
+    const card = document.createElement('div');
+    Object.assign(card.style, {
+        width: '100%', maxWidth: '420px', padding: '2rem',
+        background: 'hsl(222.2, 84%, 4.9%)',
+        border: '1px solid hsl(217.2, 32.6%, 17.5%)',
+        borderRadius: '0.75rem', color: 'white'
+    });
+
+    const rosterHtml = availablePlayers.length > 0
+        ? availablePlayers.map(p => `
+            <button class="player-name-opt" data-name="${p.name}" style="
+                width: 100%; text-align: left; padding: 0.75rem 1rem;
+                border: 1px solid #334155; border-radius: 0.5rem;
+                background: transparent; color: white; cursor: pointer;
+                margin-bottom: 0.5rem; transition: background 0.15s; font-size: 0.9rem;
+            ">
+                <span style="font-weight:600;">${p.name}</span>
+                <span style="color:#94a3b8; margin-left:6px;">${p.number ? `#${p.number}` : ''}</span>
+            </button>
+        `).join('')
+        : '<p style="color:#94a3b8; font-size:0.85rem; margin-bottom:1rem;">Kein Kader hinterlegt – bitte gib einfach deinen Namen ein.</p>';
+
+    card.innerHTML = `
+        <h2 style="font-size: 1.3rem; font-weight: 700; margin-bottom: 0.4rem;">Wer bist du?</h2>
+        <p style="color: #94a3b8; font-size: 0.85rem; margin-bottom: 1.5rem;">
+            Wähle deinen Namen aus dem Kader oder erstelle einen neuen.
+        </p>
+
+        <div style="max-height: 250px; overflow-y: auto; margin-bottom: 1rem;">
+            ${rosterHtml}
+        </div>
+
+        <div style="border-top: 1px solid #334155; padding-top: 1rem; margin-top: 0.5rem;">
+            <label style="font-size: 0.8rem; color: #94a3b8; display: block; margin-bottom: 0.5rem;">
+                Namen nicht dabei? Eigenen Namen eingeben:
+            </label>
+            <div style="display: flex; gap: 8px;">
+                <input id="customPlayerName" type="text" placeholder="Dein Name..."
+                    style="flex: 1; height: 2.25rem; background: transparent; border: 1px solid #334155;
+                    border-radius: 0.375rem; padding: 0 0.75rem; color: white; outline: none; font-size: 0.875rem;">
+                <button id="saveCustomName" class="shadcn-btn-primary" style="height: 2.25rem; padding: 0 1rem; white-space: nowrap;">
+                    Speichern
+                </button>
+            </div>
+            <p id="nameError" style="color:#ef4444; font-size:0.75rem; margin-top:4px; min-height:1rem;"></p>
+        </div>
+    `;
+
+    overlay.appendChild(card);
+    document.body.appendChild(overlay);
+
+    // Hover effects
+    card.querySelectorAll('.player-name-opt').forEach(btn => {
+        btn.onmouseover = () => btn.style.background = 'rgba(255,255,255,0.06)';
+        btn.onmouseout = () => btn.style.background = 'transparent';
+        btn.onclick = () => assignPlayerName(btn.dataset.name, overlay, onComplete);
+    });
+
+    // Custom name save
+    card.querySelector('#saveCustomName').onclick = () => {
+        const nameInput = card.querySelector('#customPlayerName');
+        const err = card.querySelector('#nameError');
+        const name = nameInput.value.trim();
+        if (!name) { err.textContent = 'Bitte einen Namen eingeben.'; return; }
+        assignPlayerName(name, overlay, onComplete);
+    };
+}
+
+function assignPlayerName(name, overlay, onComplete) {
+    const uid = getAuthUid();
+    if (!uid) { overlay.remove(); onComplete(); return; }
+
+    // Save to local team state
+    if (!spielstand.rosterAssignments) spielstand.rosterAssignments = {};
+    spielstand.rosterAssignments[uid] = name;
+
+    // NEW: Auto-Add to Roster if not exists
+    if (!spielstand.roster) spielstand.roster = [];
+    const exists = spielstand.roster.some(p => (p.name || '').toLowerCase() === name.toLowerCase());
+    if (!exists) {
+        console.log('[Roster] Auto-adding new player:', name);
+        spielstand.roster.push({
+            name: name,
+            number: '', // No number assigned yet
+            isGoalkeeper: false
+        });
+        // Sort roster by number if possible
+        spielstand.roster.sort((a, b) => {
+            if (!a.number && !b.number) return 0;
+            if (!a.number) return 1;
+            if (!b.number) return -1;
+            return a.number - b.number;
+        });
+    }
+
+    speichereSpielstand();
+
+    // Save to global profile (permanent persistence)
+    updateUserRosterName(name);
+
+    overlay.remove();
+    onComplete();
 }
