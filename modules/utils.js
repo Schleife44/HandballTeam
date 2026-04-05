@@ -67,3 +67,50 @@ export function getGameResult(game, currentMyTeamName = null) {
     if (myScore < opponentScore) return 'loss';
     return 'draw';
 }
+
+/**
+ * Simple HTML Escaper to prevent XSS
+ */
+export function escapeHTML(str) {
+    if (typeof str !== 'string') return str;
+    return str.replace(/[&<>"']/g, function(m) {
+        return {
+            '&': '&amp;',
+            '<': '&lt;',
+            '>': '&gt;',
+            '"': '&quot;',
+            "'": '&#39;'
+        }[m];
+    });
+}
+
+/**
+ * Basic HTML Sanitizer - allows some safe structural tags for templates
+ * This is used to wrap tr.innerHTML or div.innerHTML safely.
+ */
+export function sanitizeHTML(html) {
+    if (typeof html !== 'string') return html;
+    // In a real app we'd use DOMPurify, but for this context:
+    // We allow <td> <tr> <span> <strong> <i> <button> and common attributes
+    // but strip <script> <iframe> etc.
+    const temp = document.createElement('div');
+    temp.innerHTML = html;
+    
+    const scripts = temp.querySelectorAll('script, iframe, object, embed, form');
+    scripts.forEach(s => s.remove());
+    
+    // Also remove inline event handlers (onmouseover, onclick, etc.) 
+    // unless they are explicitly needed in some templates and we trust them.
+    // However, modern web apps should use addEventListener.
+    const allElements = temp.querySelectorAll('*');
+    allElements.forEach(el => {
+        const attrs = el.attributes;
+        for (let i = attrs.length - 1; i >= 0; i--) {
+            if (attrs[i].name.startsWith('on')) {
+                el.removeAttribute(attrs[i].name);
+            }
+        }
+    });
+
+    return temp.innerHTML;
+}

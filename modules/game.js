@@ -4,7 +4,8 @@ import {
     statistikWrapper, gamePhaseButton, timerAnzeige, pauseButton,
     heimScoreUp, heimScoreDown, gegnerScoreUp, gegnerScoreDown,
     gegnerNummerModal, sevenMeterOutcomeModal, aktionsMenue, aktionVorauswahl, kommentarBereich,
-    wurfpositionModal, spielBeendenButton, combinedThrowModal
+    wurfpositionModal, spielBeendenButton, combinedThrowModal,
+    gameModeSelection, gameContent
 } from './dom.js';
 import {
     applyViewSettings, applyTheme, updateScoreDisplay, updateProtokollAnzeige,
@@ -18,6 +19,7 @@ import { formatiereZeit } from './utils.js';
 import { berechneStatistiken } from './stats.js';
 import { customConfirm, customAlert } from './customDialog.js';
 import { toast } from './toast.js';
+import { sanitizeHTML, escapeHTML } from './securityUtils.js';
 
 export let aktuellerSpielerIndex = null;
 export let aktuelleAktionTyp = '';
@@ -78,11 +80,21 @@ export function switchToGame() {
     }
 
     zeichneSpielerRaster();
-
-    zeichneSpielerRaster();
     updateProtokollAnzeige();
-    // updateTorTracker(); // Removed feature
     updateSuspensionDisplay();
+
+    // Toggle Mode Selection vs Game Content
+    if (spielstand.modeSelected) {
+        if (gameModeSelection) gameModeSelection.style.display = 'none';
+        if (gameContent) {
+            gameContent.classList.remove('versteckt');
+            // IMPORT: applyGameMode is exported from ui.js
+            import('./ui.js').then(m => m.applyGameMode());
+        }
+    } else {
+        if (gameModeSelection) gameModeSelection.style.display = 'flex';
+        if (gameContent) gameContent.classList.add('versteckt');
+    }
 }
 
 export function switchToRoster() {
@@ -305,18 +317,17 @@ export function selectPlayer(index, team, gegnerNummer, name, isOnBench = false)
     const selectedBtn = document.querySelector(selector);
     if (selectedBtn) selectedBtn.classList.add('selected');
 
-    // 3. Check if mobile screen (tablet/phone) - special handling for substitutions
+    // 3. Choice Synchronization
+    pendingBenchSwap = null;
+    document.querySelectorAll('.pending-swap').forEach(b => b.classList.remove('pending-swap'));
+
+    // If Complex Mode + Mobile: Handle swaps or show popup
     if (window.innerWidth <= 768) {
         // CASE 1: Clicking bench player - store for pending swap, no popup
         if (isOnBench) {
             pendingBenchSwap = { index: parseInt(index, 10), team, name };
-            // Show visual feedback that bench player is selected for swap
-            if (selectedBtn) {
-                selectedBtn.classList.add('pending-swap');
-            }
-            // Show toast notification
-            // toast.info(`${name || 'Bank'} ausgewählt - tippe auf aktiven Spieler zum Wechseln`);
-            return; // Don't open popup
+            if (selectedBtn) selectedBtn.classList.add('pending-swap');
+            return; 
         }
 
         // CASE 2: Active player clicked while bench player is pending - perform swap
@@ -326,7 +337,7 @@ export function selectPlayer(index, team, gegnerNummer, name, isOnBench = false)
         }
 
         // CASE 3: Normal player selection - show popup
-        pendingBenchSwap = null; // Clear any pending swap
+        pendingBenchSwap = null; 
         document.querySelectorAll('.pending-swap').forEach(b => b.classList.remove('pending-swap'));
         showMobileActionPopup(name, team, index, gegnerNummer, isOnBench);
         return;
@@ -475,14 +486,14 @@ function showMobileActionPopup(name, team, index, gegnerNummer, isOnBench) {
 
     const createButton = (action, width = '1fr') => {
         const disabled = isOnBench && !allowedBenchActions.includes(action.name);
-        return `<button class="mobile-action-btn" data-action="${action.name}" 
+        return sanitizeHTML(`<button class="mobile-action-btn" data-action="${escapeHTML(action.name)}" 
             style="
                 padding: 8px 2px; /* Very tight padding */
                 font-size: 0.7rem; /* Smaller font */
                 font-weight: 600;
                 border-radius: 8px;
                 border: none;
-                background: ${action.color || '#475569'};
+                background: ${escapeHTML(action.color || '#475569')};
                 color: white;
                 cursor: pointer;
                 transition: transform 0.1s, opacity 0.1s;
@@ -497,10 +508,10 @@ function showMobileActionPopup(name, team, index, gegnerNummer, isOnBench) {
                 width: 100%; /* Ensure it fills grid cell */
                 ${disabled ? 'opacity: 0.25; pointer-events: none;' : ''}
             "
-            ${disabled ? 'disabled' : ''}>${action.label || action.name.toUpperCase()}</button>`;
+            ${disabled ? 'disabled' : ''}>${escapeHTML(action.label || action.name.toUpperCase())}</button>`);
     };
 
-    popup.innerHTML = `
+    popup.innerHTML = sanitizeHTML(`
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; padding-bottom: 12px; border-bottom: 1px solid rgba(255,255,255,0.1);">
             <div style="display: flex; align-items: center; gap: 12px;">
                 <div style="
@@ -509,9 +520,9 @@ function showMobileActionPopup(name, team, index, gegnerNummer, isOnBench) {
                     border-radius: 10px;
                     display: flex; align-items: center; justify-content: center;
                     font-weight: bold; font-size: 1.1rem; color: white;
-                ">${playerNumber}</div>
+                ">${escapeHTML(playerNumber)}</div>
                 <div>
-                    <div style="font-size: 1.1rem; font-weight: 600; color: white;">${name || 'Spieler'}</div>
+                    <div style="font-size: 1.1rem; font-weight: 600; color: white;">${escapeHTML(name || 'Spieler')}</div>
                     <div style="font-size: 0.75rem; color: rgba(255,255,255,0.6);">${isOpponent ? 'Gegner' : 'Eigenes Team'}</div>
                 </div>
             </div>
@@ -564,7 +575,7 @@ function showMobileActionPopup(name, team, index, gegnerNummer, isOnBench) {
             border-radius: 10px;
             cursor: pointer;
         ">Abbrechen</button>
-    `;
+    `);
 
     document.body.appendChild(popup);
 
@@ -1376,13 +1387,6 @@ export function getActivePlayerCount(teamKey) {
 export function handleLineupSlotClick(slotType, slotIndex, teamKey, playerIndex, isEmpty) {
     const isAway = spielstand.settings.isAuswaertsspiel;
 
-    let playerList;
-    if (teamKey === 'myteam') {
-        playerList = spielstand.roster;
-    } else {
-        playerList = spielstand.knownOpponents;
-    }
-
     // Handle Substitution Logic
     if (substitutionState.active) {
         const source = substitutionState.sourceSlot;
@@ -1514,7 +1518,7 @@ export function handleLineupSlotClick(slotType, slotIndex, teamKey, playerIndex,
 }
 
 export function handleBenchPlayerClick(playerIndex, teamKey, gegnerNummer) {
-    const isAway = spielstand.settings.isAuswaertsspiel;
+    const isAway = spielstand.settings.isAway || spielstand.settings.isAuswaertsspiel;
     const isMobile = window.innerWidth < 770;
 
     let playerList;
@@ -1523,12 +1527,11 @@ export function handleBenchPlayerClick(playerIndex, teamKey, gegnerNummer) {
     } else {
         playerList = spielstand.knownOpponents;
     }
-
     const actualIndex = teamKey === 'myteam' ? playerIndex : playerList.findIndex(p => p.number == gegnerNummer);
+    const player = playerList[actualIndex];
 
     // On mobile, skip substitutionState logic entirely - use bench-first flow only
     if (isMobile) {
-        const player = playerList[actualIndex];
         if (player) {
             selectPlayer(actualIndex, teamKey, gegnerNummer, player.name || '', true); // isOnBench = true
         }
@@ -1599,7 +1602,6 @@ export function handleBenchPlayerClick(playerIndex, teamKey, gegnerNummer) {
 
     // First click on bench player (or after cancellation/switch/substitution)
     // Select for actions
-    const player = playerList[actualIndex];
     if (player) {
         // Toggle Deselect
         if (selectedPlayerState.team === teamKey && selectedPlayerState.index === actualIndex) {
@@ -1669,10 +1671,10 @@ export function oeffneAttributedPlayerModal(teamKey, title, subtitle, onlyActive
         const actualIndex = playersAll.indexOf(player);
         const btn = document.createElement('button');
         btn.className = 'spieler-button action-btn';
-        btn.innerHTML = `
-            <div class="spieler-nummer-display">${player.number}</div>
-            <span class="spieler-name-display">${player.name || ''}</span>
-        `;
+        btn.innerHTML = sanitizeHTML(`
+            <div class="spieler-nummer-display">${escapeHTML(player.number)}</div>
+            <span class="spieler-name-display">${escapeHTML(player.name || '')}</span>
+        `);
 
         // Use identity colors
         const isAway = spielstand.settings.isAuswaertsspiel;

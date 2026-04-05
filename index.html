@@ -5,20 +5,20 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Team-Tracker</title>
-    <link rel="stylesheet" href="styles.css?v=3.8">
+    <link rel="stylesheet" href="styles.css">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
-    <script type="module" src="main.js?v=20"></script>
+    <script type="module" src="main.js"></script>
 </head>
 
 <body>
 
     <!-- Mobile Menu Toggle Button -->
-    <button id="mobileMenuBtn" class="mobile-menu-btn">☰</button>
+    <button id="mobileMenuBtn" class="mobile-menu-btn" data-action="toggle-mobile-menu">☰</button>
 
     <!-- Sidebar Overlay -->
-    <div id="sidebarOverlay" class="sidebar-overlay"></div>
+    <div id="sidebarOverlay" class="sidebar-overlay" data-action="toggle-mobile-menu"></div>
 
     <!-- Sidebar Navigation -->
     <div id="sidebar">
@@ -27,65 +27,75 @@
         </div>
         <nav class="sidebar-nav">
             <div class="nav-group-label">Basis</div>
-            <div class="nav-item active" data-view="dashboard">
+            <div class="nav-item active" data-action="nav" data-view="dashboard">
                 <span class="nav-icon"><i data-lucide="layout-dashboard"></i></span>
                 <span class="nav-label">Überblick</span>
             </div>
-            <div class="nav-item" data-view="calendar">
+            <div class="nav-item" data-action="nav" data-view="calendar">
                 <span class="nav-icon"><i data-lucide="calendar"></i></span>
                 <span class="nav-label">Kalender</span>
             </div>
-            <div class="nav-item" data-view="tacticalboard">
+            <div class="nav-item" data-action="nav" data-view="tacticalboard">
                 <span class="nav-icon"><i data-lucide="clipboard-list"></i></span>
                 <span class="nav-label">Taktikboard</span>
             </div>
 
             <div class="nav-group-label">Spieltag</div>
-            <div class="nav-item" data-view="game">
+            <div class="nav-item" data-action="nav" data-view="game">
                 <span class="nav-icon"><i data-lucide="play-circle"></i></span>
                 <span class="nav-label">Spiel</span>
                 <span id="sidebarTimer" class="sidebar-timer versteckt">00:00</span>
             </div>
-            <div class="nav-item" data-view="roster">
+            <div class="nav-item" data-action="nav" data-view="roster">
                 <span class="nav-icon"><i data-lucide="users"></i></span>
                 <span class="nav-label">Kader</span>
             </div>
 
-            <div class="nav-group-label">Live Analyse</div>
-            <div class="nav-item" data-view="overview">
-                <span class="nav-icon"><i data-lucide="bar-chart-2"></i></span>
-                <span class="nav-label">Übersicht</span>
+            <div class="nav-group-label" data-action="toggle-nav-group" data-group="live">
+                <span>Live Analyse</span>
+                <i data-lucide="chevron-down" class="nav-group-toggle"></i>
             </div>
-            <div class="nav-item" data-view="shots">
-                <span class="nav-icon"><i data-lucide="crosshair"></i></span>
-                <span class="nav-label">Wurfbilder</span>
-            </div>
-            <div class="nav-item" data-view="heatmap">
-                <span class="nav-icon"><i data-lucide="flame"></i></span>
-                <span class="nav-label">Heatmap</span>
-            </div>
-            <div class="nav-item" data-view="protocol">
-                <span class="nav-icon"><i data-lucide="list"></i></span>
-                <span class="nav-label">Protokoll</span>
+            <div class="nav-group-content" id="nav-group-live">
+                <div class="nav-item" data-action="nav" data-view="overview">
+                    <span class="nav-icon"><i data-lucide="bar-chart-2"></i></span>
+                    <span class="nav-label">Übersicht</span>
+                </div>
+                <div class="nav-item" data-action="nav" data-view="shots">
+                    <span class="nav-icon"><i data-lucide="crosshair"></i></span>
+                    <span class="nav-label">Wurfbilder</span>
+                </div>
+                <div class="nav-item" data-action="nav" data-view="heatmap">
+                    <span class="nav-icon"><i data-lucide="flame"></i></span>
+                    <span class="nav-label">Heatmap</span>
+                </div>
+                <div class="nav-item" data-action="nav" data-view="protocol">
+                    <span class="nav-icon"><i data-lucide="list"></i></span>
+                    <span class="nav-label">Protokoll</span>
+                </div>
             </div>
 
-            <div class="nav-group-label">Archiv</div>
-            <div class="nav-item" data-view="history">
-                <span class="nav-icon"><i data-lucide="history"></i></span>
-                <span class="nav-label">Historie</span>
+            <div class="nav-group-label" data-action="toggle-nav-group" data-group="archiv">
+                <span>Archiv</span>
+                <i data-lucide="chevron-down" class="nav-group-toggle"></i>
             </div>
-            <div class="nav-item" data-view="videoanalyse">
-                <span class="nav-icon"><i data-lucide="video"></i></span>
-                <span class="nav-label">Video Analyse</span>
-            </div>
-            <div class="nav-item" data-view="seasonStats">
-                <span class="nav-icon"><i data-lucide="bar-chart-2"></i></span>
-                <span class="nav-label">Saison Statistiken</span>
+            <div class="nav-group-content" id="nav-group-archiv">
+                <div class="nav-item" data-action="nav" data-view="history">
+                    <span class="nav-icon"><i data-lucide="history"></i></span>
+                    <span class="nav-label">Historie</span>
+                </div>
+                <div class="nav-item" data-action="nav" data-view="videoanalyse">
+                    <span class="nav-icon"><i data-lucide="video"></i></span>
+                    <span class="nav-label">Video Analyse</span>
+                </div>
+                <div class="nav-item" data-action="nav" data-view="seasonStats">
+                    <span class="nav-icon"><i data-lucide="bar-chart-2"></i></span>
+                    <span class="nav-label">Saison Statistiken</span>
+                </div>
             </div>
 
             <div class="nav-group-label">System</div>
 
-            <div class="nav-item" data-view="settings">
+            <div class="nav-item" data-action="nav" data-view="settings">
                 <span class="nav-icon"><i data-lucide="settings"></i></span>
                 <span class="nav-label">Einstellungen</span>
             </div>
@@ -112,7 +122,7 @@
                     "></div>
                     <span id="firebaseStatusLabel" style="font-size: 0.75rem; color: var(--text-muted);">Offline</span>
                 </div>
-                <button id="firebaseLogoutBtn" title="Abmelden" style="
+                <button id="firebaseLogoutBtn" data-action="logout" title="Abmelden" style="
                     background: none; border: none;
                     cursor: pointer;
                     color: var(--text-muted);
@@ -490,8 +500,8 @@
                             </div>
                         </div>
                         <div>
-                            <button type="submit" class="shadcn-btn-white" style="height: 40px;">Hinzufügen</button>
-                            <button type="button" id="cancelEditButton" class="shadcn-btn-outline versteckt"
+                            <button type="submit" data-action="roster-save-player" class="shadcn-btn-white" style="height: 40px;">Hinzufügen</button>
+                            <button type="button" data-action="roster-cancel-edit" id="cancelEditButton" class="shadcn-btn-outline versteckt"
                                 style="height: 40px;">Abbrechen</button>
                         </div>
                     </form>
@@ -863,7 +873,7 @@
 
                 <div style="display: flex; gap: 20px; flex-wrap: wrap; justify-content: center;">
                     <!-- Complex Option -->
-                    <div id="btnSelectComplex" class="mode-selection-card"
+                    <div class="mode-selection-card" data-action="game-select-mode" data-mode="complex"
                         style="width: 250px; padding: 25px; display: flex; flex-direction: column; align-items: center; gap: 15px; cursor: pointer;">
                         <div
                             style="width: 60px; height: 60px; background: rgba(var(--primary-rgb), 0.1); border-radius: 50%; display: flex; align-items: center; justify-content: center;">
@@ -883,7 +893,7 @@
                     </div>
 
                     <!-- Simple Option -->
-                    <div id="btnSelectSimple" class="mode-selection-card"
+                    <div class="mode-selection-card" data-action="game-select-mode" data-mode="simple"
                         style="width: 250px; padding: 25px; display: flex; flex-direction: column; align-items: center; gap: 15px; cursor: pointer;">
                         <div
                             style="width: 60px; height: 60px; background: rgba(var(--primary-rgb), 0.1); border-radius: 50%; display: flex; align-items: center; justify-content: center;">
@@ -1007,11 +1017,11 @@
                                 <div id="suspensionContainer" class="compact-suspensions"></div>
                             </div>
                             <div class="game-phase-controls">
-                                <button id="zurueckButton" class="shadcn-btn-ghost compact-btn" title="-30s"
+                                <button data-action="game-timer-jump" data-seconds="-30" class="shadcn-btn-ghost compact-btn" title="-30s"
                                     style="padding: 4px 8px; font-size: 0.8rem;">-30s</button>
-                                <button id="gamePhaseButton" class="shadcn-btn-red">Start</button>
-                                <button id="pauseButton" class="shadcn-btn-outline versteckt">Pause</button>
-                                <button id="vorButton" class="shadcn-btn-ghost compact-btn" title="+30s"
+                                <button id="gamePhaseButton" data-action="game-phase" class="shadcn-btn-red">Start</button>
+                                <button id="pauseButton" data-action="game-pause" class="shadcn-btn-outline versteckt">Pause</button>
+                                <button data-action="game-timer-jump" data-seconds="30" class="shadcn-btn-ghost compact-btn" title="+30s"
                                     style="padding: 4px 8px; font-size: 0.8rem;">+30s</button>
                             </div>
                         </div>
@@ -1028,11 +1038,11 @@
                             <div class="action-section">
                                 <h4 class="action-section-title">ERGEBNIS</h4>
                                 <div class="action-buttons-row">
-                                    <button class="action-btn btn-goal" data-action="Tor">TOR</button>
-                                    <button class="action-btn btn-save" data-action="Gehalten"
+                                    <button class="action-btn btn-goal" data-action="game-btn" data-type="Tor">TOR</button>
+                                    <button class="action-btn btn-save" data-action="game-btn" data-type="Gehalten"
                                         id="actionParadeBtn">GEHALTEN</button>
-                                    <button class="action-btn btn-post" data-action="Fehlwurf">FEHLWURF</button>
-                                    <button class="action-btn btn-lost" data-action="Block">GEBLOCKT</button>
+                                    <button class="action-btn btn-post" data-action="game-btn" data-type="Fehlwurf">FEHLWURF</button>
+                                    <button class="action-btn btn-lost" data-action="game-btn" data-type="Block">GEBLOCKT</button>
                                 </div>
                             </div>
 
@@ -1040,17 +1050,17 @@
                             <div class="action-section">
                                 <h4 class="action-section-title">AKTIONEN</h4>
                                 <div class="action-buttons-row">
-                                    <button class="action-btn btn-outline" data-action="Foul">STÜRMERFOUL</button>
+                                    <button class="action-btn btn-outline" data-action="game-btn" data-type="Foul">STÜRMERFOUL</button>
                                     <button class="action-btn btn-outline"
-                                        data-action="Ballverlust">BALLVERLUST</button>
+                                        data-action="game-btn" data-type="Ballverlust">BALLVERLUST</button>
                                 </div>
                                 <div class="action-buttons-row">
-                                    <button class="action-btn btn-outline" data-action="2min Provoziert">2 MIN
+                                    <button class="action-btn btn-outline" data-action="game-btn" data-type="2min Provoziert">2 MIN
                                         HERAUSGEHOLT</button>
-                                    <button class="action-btn btn-outline" data-action="7m Provoziert">7m
+                                    <button class="action-btn btn-outline" data-action="game-btn" data-type="7m Provoziert">7m
                                         HERAUSGEHOLT</button>
-                                    <button class="action-btn btn-outline" data-action="1und1">1 v 1 GEWONNEN</button>
-                                    <button class="action-btn btn-outline" data-action="7m+2min">7m + 2 MIN</button>
+                                    <button class="action-btn btn-outline" data-action="game-btn" data-type="1und1">1 v 1 GEWONNEN</button>
+                                    <button class="action-btn btn-outline" data-action="game-btn" data-type="7m+2min">7m + 2 MIN</button>
                                 </div>
                             </div>
 
@@ -1058,10 +1068,10 @@
                             <div class="action-section">
                                 <h4 class="action-section-title">STRAFEN</h4>
                                 <div class="action-buttons-row">
-                                    <button class="action-btn btn-2min" data-action="2 Minuten">2 MIN</button>
-                                    <button class="action-btn btn-yellow" data-action="Gelbe Karte">GELBE KARTE</button>
-                                    <button class="action-btn btn-red" data-action="Rote Karte">ROTE KARTE</button>
-                                    <button class="action-btn btn-blue" data-action="Blaue Karte">BLAUE KARTE</button>
+                                    <button class="action-btn btn-2min" data-action="game-btn" data-type="2 Minuten">2 MIN</button>
+                                    <button class="action-btn btn-yellow" data-action="game-btn" data-type="Gelbe Karte">GELBE KARTE</button>
+                                    <button class="action-btn btn-red" data-action="game-btn" data-type="Rote Karte">ROTE KARTE</button>
+                                    <button class="action-btn btn-blue" data-action="game-btn" data-type="Blaue Karte">BLAUE KARTE</button>
                                 </div>
                             </div>
                         </div>
@@ -1069,11 +1079,11 @@
                         <!-- 3. Bottom Controls -->
                         <div class="game-bottom-controls">
                             <button id="undoButton" class="shadcn-btn-outline" title="Letzte Aktion rückgängig"
-                                onclick="undoLastAction()">
+                                data-action="undo">
                                 <i data-lucide="undo-2" style="width: 16px; height: 16px; margin-right: 5px;"></i>
                                 Rückgängig
                             </button>
-                            <button id="spielBeendenButton" class="shadcn-btn-outline">Spiel beenden</button>
+                            <button id="spielBeendenButton" data-action="game-finish" class="shadcn-btn-outline">Spiel beenden</button>
                         </div>
 
                     </div>
@@ -1101,8 +1111,11 @@
 
         <!-- Vergangene Spiele Deitail -->
         <div id="historieDetailBereich" class="versteckt">
-            <button id="backToHistoryList" class="shadcn-btn-outline">Zurück zur Liste</button>
-
+            <button id="backToHistoryList" class="shadcn-btn-outline" style="margin-bottom: 20px; display: flex; align-items: center; gap: 8px;">
+                <i data-lucide="arrow-left" style="width: 16px; height: 16px;"></i>
+                Zurück zur Liste
+            </button>
+            <h2 style="margin-bottom: 15px; font-weight: 700; color: var(--text-main);">Spielanalyse</h2>
             <!-- The header is now dynamically managed in historyView.js via a 'score-card' to match live overview -->
             <div id="historieHeader" class="versteckt"></div>
 
@@ -1988,7 +2001,7 @@
             </div>
 
             <!-- Form Body -->
-            <form id="loginFormElem" style="display: flex; flex-direction: column; gap: 1.25rem;" onsubmit="event.preventDefault(); document.getElementById('loginSubmitBtn').click();">
+            <form id="loginFormElem" style="display: flex; flex-direction: column; gap: 1.25rem;">
                 <!-- Email Field -->
                 <div style="display: flex; flex-direction: column; gap: 0.5rem;">
                     <label style="font-size: 0.875rem; font-weight: 500; line-height: 1;" for="loginEmailInput">E-Mail</label>

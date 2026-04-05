@@ -21,7 +21,7 @@ function setSavedTeams(teams) {
 // Save current team
 export async function saveCurrentTeam() {
     const teamToggle = document.getElementById('teamToggle');
-    const isOpponentMode = teamToggle && teamToggle.checked;
+    const isOpponentMode = teamToggle && (teamToggle.checked || teamToggle.getAttribute('aria-checked') === 'true');
 
     const teamToSave = isOpponentMode ? spielstand.knownOpponents : spielstand.roster;
     const teamType = isOpponentMode ? 'Gegner' : 'Heim';
@@ -124,7 +124,7 @@ export async function loadSavedTeam(teamKey, index) {
 
     // Check current toggle state to determine where to load
     const teamToggle = document.getElementById('teamToggle');
-    const isOpponentMode = teamToggle && teamToggle.checked;
+    const isOpponentMode = teamToggle && (teamToggle.checked || teamToggle.getAttribute('aria-checked') === 'true');
     const targetType = isOpponentMode ? 'Gegner' : 'Heim';
 
     const confirmed = await customConfirm(
@@ -158,19 +158,48 @@ export async function loadSavedTeam(teamKey, index) {
     }
 
     speichereSpielstand();
-
-    // Update display and refresh colors
-    applyTheme();
-    zeichneRosterListe(isOpponentMode);
-    zeichneSpielerRaster();
-
+    zeichneRosterListe();
+    
     // Close modal
     const loadTeamModal = document.getElementById('loadTeamModal');
-    if (loadTeamModal) {
-        loadTeamModal.classList.add('versteckt');
-    }
+    if (loadTeamModal) loadTeamModal.classList.add('versteckt');
+    
+    await customAlert(`Team "${team.name}" wurde geladen.`, "Erfolg");
+}
 
-    await customAlert(`Team "${team.name}" wurde ins ${targetType}-Team geladen!`, "Team geladen");
+
+
+/**
+ * Clear the current active team roster
+ */
+export async function deleteCurrentTeam() {
+    const teamToggle = document.getElementById('teamToggle');
+    const isOpponentMode = teamToggle && (teamToggle.checked || teamToggle.getAttribute('aria-checked') === 'true');
+    const targetType = isOpponentMode ? 'Gegner' : 'Heim';
+    
+    const confirmed = await customConfirm(
+        `Möchtest du das aktuelle ${targetType}-Team wirklich komplett löschen?`,
+        "Kader löschen?"
+    );
+    
+    if (!confirmed) return;
+    
+    if (isOpponentMode) {
+        spielstand.knownOpponents = [];
+        spielstand.settings.teamNameGegner = 'GAST';
+        const rosterTeamNameGegner = document.getElementById('rosterTeamNameGegner');
+        if (rosterTeamNameGegner) rosterTeamNameGegner.value = '';
+    } else {
+        spielstand.roster = [];
+        spielstand.settings.teamNameHeim = 'HEIM';
+        const rosterTeamNameHeim = document.getElementById('rosterTeamNameHeim');
+        if (rosterTeamNameHeim) rosterTeamNameHeim.value = '';
+    }
+    
+    speichereSpielstand();
+    zeichneRosterListe();
+    
+    await customAlert(`Das ${targetType}-Team wurde gelöscht.`, "Erfolg");
 }
 
 // Delete a saved team
@@ -381,7 +410,7 @@ function createHistoryTeamCard(team, index) {
                 <small style="color: #666;">${team.players.length} Spieler · Spiel vom ${gameDate}</small>
             </div>
             <div style="display: flex; gap: 5px; flex-wrap: wrap;">
-                <button class="load-history-team-btn shadcn-btn-primary shadcn-btn-sm" data-index="${index}">
+                <button class="load-history-team-btn shadcn-btn-primary shadcn-btn-sm" data-action="load-history-team" data-index="${index}">
                     Laden
                 </button>
             </div>
@@ -413,13 +442,13 @@ function createTeamCard(team, index, teamKey) {
                 <small style="color: #666;">${team.players.length} Spieler · ${savedDate}</small>
             </div>
             <div style="display: flex; gap: 5px; flex-wrap: wrap;">
-                <button class="view-team-btn shadcn-btn-outline shadcn-btn-sm" data-key="${teamKey}" data-index="${index}">
+                <button class="view-team-btn shadcn-btn-outline shadcn-btn-sm" data-action="team-view" data-key="${teamKey}" data-index="${index}">
                     Anschauen
                 </button>
-                <button class="load-team-btn shadcn-btn-primary shadcn-btn-sm" data-key="${teamKey}" data-index="${index}">
+                <button class="load-team-btn shadcn-btn-primary shadcn-btn-sm" data-action="team-load" data-key="${teamKey}" data-index="${index}">
                     Laden
                 </button>
-                <button class="delete-saved-team-btn shadcn-btn-outline shadcn-btn-sm" data-key="${teamKey}" data-index="${index}" style="color: hsl(var(--destructive)); border-color: hsl(var(--destructive));">
+                <button class="delete-saved-team-btn shadcn-btn-outline shadcn-btn-sm" data-action="team-delete" data-key="${teamKey}" data-index="${index}" style="color: hsl(var(--destructive)); border-color: hsl(var(--destructive));">
                     Löschen
                 </button>
             </div>
@@ -472,7 +501,7 @@ export function viewTeam(teamKey, index) {
                     <input type="text" class="edit-player-name" data-player-index="${playerIndex}" 
                         value="${player.name || ''}" placeholder="Name (optional)"
                         style="flex: 1; padding: 5px; border: 1px solid #ddd; border-radius: 3px;">
-                    <button class="delete-team-player-btn shadcn-btn-outline shadcn-btn-xs" data-player-index="${playerIndex}" style="color: hsl(var(--destructive)); border-color: hsl(var(--destructive));">
+                    <button class="delete-team-player-btn shadcn-btn-outline shadcn-btn-xs" data-action="delete-player-from-saved-team" data-player-index="${playerIndex}" style="color: hsl(var(--destructive)); border-color: hsl(var(--destructive));">
                         Löschen
                     </button>
                 </div>

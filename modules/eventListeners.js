@@ -97,7 +97,25 @@ export function registerEventListeners() {
         });
     }
 
-    // Save/Load Team buttons
+    if (teamColorInput) {
+        teamColorInput.addEventListener('input', (e) => {
+            if (!spielstand.settings) spielstand.settings = {};
+            spielstand.settings.teamColor = e.target.value;
+            speichereSpielstand();
+            applyTheme();
+        });
+    }
+
+    if (teamColorInputGegner) {
+        teamColorInputGegner.addEventListener('input', (e) => {
+            if (!spielstand.settings) spielstand.settings = {};
+            spielstand.settings.teamColorGegner = e.target.value;
+            speichereSpielstand();
+            applyTheme();
+        });
+    }
+
+    /* Redundant: Moved to events.js
     if (saveTeamButton) {
         saveTeamButton.addEventListener('click', saveCurrentTeam);
     }
@@ -111,6 +129,7 @@ export function registerEventListeners() {
             loadTeamModal.classList.add('versteckt');
         });
     }
+    */
 
     // Event delegation for dynamically created load/delete buttons
     if (savedTeamsList) {
@@ -182,16 +201,69 @@ export function registerEventListeners() {
         });
     }
 
+    // === Roster Action Delegation (Fix for Circular Dependency) ===
+    if (rosterListe) {
+        rosterListe.addEventListener('click', async (e) => {
+            const btn = e.target.closest('button');
+            if (!btn || !btn.dataset.action) return;
+
+            const action = btn.dataset.action;
+            const index = parseInt(btn.dataset.index);
+            const isOpponent = btn.dataset.isOpponent === 'true';
+
+            if (action === 'delete-player') {
+                if (isOpponent) {
+                    await deleteOpponent(index);
+                } else {
+                    await deletePlayer(index);
+                }
+            } else if (action === 'save-player') {
+                const card = btn.closest('.roster-player-card');
+                if (!card) return;
+
+                const nameInput = card.querySelector('.inline-name-input');
+                const numInput = card.querySelector('.inline-number-input');
+                const twInput = card.querySelector('.inline-tw-input');
+
+                if (!nameInput || !numInput) return;
+
+                const newName = nameInput.value.trim();
+                const newNum = parseInt(numInput.value);
+                const newTw = twInput ? twInput.checked : false;
+
+                if (isNaN(newNum)) {
+                    await customAlert('Bitte Nummer eingeben');
+                    return;
+                }
+
+                const list = isOpponent ? spielstand.knownOpponents : spielstand.roster;
+                
+                // Duplicate check
+                const duplicate = list.find((p, i) => i !== index && p.number === newNum);
+                if (duplicate) {
+                    await customAlert('Diese Nummer ist bereits vergeben.');
+                    return;
+                }
+
+                const player = list[index];
+                if (player) {
+                    player.name = newName;
+                    player.number = newNum;
+                    player.isGoalkeeper = newTw;
+                    list.sort((a, b) => a.number - b.number);
+                    speichereSpielstand();
+                    zeichneRosterListe(isOpponent);
+                    zeichneSpielerRaster();
+                }
+            }
+        });
+    }
+
     // === History Buttons ===
+    /* Redundant: Moved to router.js and events.js
     if (historyButton) {
         historyButton.addEventListener('click', () => {
-            // Schließe alle anderen Bereiche und Modals
-            rosterBereich.classList.add('versteckt');
-            spielBereich.classList.add('versteckt');
-            settingsBereich.classList.add('versteckt');
-            // Zeige Historie
-            historieBereich.classList.remove('versteckt');
-            renderHistoryList();
+             // ...
         });
     }
 
@@ -203,6 +275,7 @@ export function registerEventListeners() {
     if (seasonOverviewClose) {
         seasonOverviewClose.addEventListener('click', closeSeasonOverview);
     }
+    */
 
     // Event delegation for heatmap buttons in season view
     if (seasonStatsContainer) {
@@ -256,9 +329,11 @@ export function registerEventListeners() {
             historieBereich.classList.remove('versteckt');
         });
     }
+    /* Redundant: Moved to events.js
     if (spielBeendenButton) {
         spielBeendenButton.addEventListener('click', handleSpielBeenden);
     }
+    */
 
     // === History Detail Tabs ===
     if (histTabHeatmap && histTabProtokoll && histTabTorfolge) {
@@ -297,12 +372,14 @@ export function registerEventListeners() {
         });
     }
 
-    // === Bildschirm 2: Game ===
+    // === Bildschirm 2: Game (Redundant: Moved to events.js) ===
+    /*
     if (gamePhaseButton) gamePhaseButton.addEventListener('click', handleGamePhaseClick);
     if (pauseButton) pauseButton.addEventListener('click', handleRealPauseClick);
     if (zurueckButton) zurueckButton.addEventListener('click', () => handleZeitSprung(-30));
     if (vorButton) vorButton.addEventListener('click', () => handleZeitSprung(30));
     if (neuesSpielButton) neuesSpielButton.addEventListener('click', starteNeuesSpiel);
+    */
 
 
     // === Dual Team Roster: Click Handlers for Substitution System ===

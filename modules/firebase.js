@@ -73,6 +73,9 @@ export function onAuthChange(onLogin, onLogout) {
             // Sync user profile before calling onLogin
             currentUserProfile = await syncUserProfile(user);
             
+            // Restore active team if possible
+            restoreActiveTeam();
+            
             onLogin(user, currentUserProfile);
         } else {
             isOnline = false;
@@ -228,7 +231,15 @@ export async function createTeam(teamName) {
             createdAt: serverTimestamp()
         });
 
-        // 2. Add to User Profile
+        // 2. Add to Members Subcollection (NEW: for hardened rules)
+        const memberRef = doc(db, 'teams', teamId, 'members', auth.currentUser.uid);
+        await setDoc(memberRef, {
+            uid: auth.currentUser.uid,
+            role: 'trainer',
+            joinedAt: serverTimestamp()
+        });
+
+        // 3. Add to User Profile
         const userRef = getUserDoc(auth.currentUser.uid);
         const teamEntry = { teamId, teamName, role: 'trainer' };
         await updateDoc(userRef, {
@@ -287,9 +298,64 @@ export async function deleteGameFromHistory(teamId, gameId) {
     }
 }
 
-export function setActiveTeam(teamId) {
+export async function setActiveTeam(teamId) {
     activeTeamId = teamId;
     console.log(`[Firebase] Active team set to: ${teamId}`);
+    
+    // Persist active team to localStorage for refresh recovery
+    if (auth.currentUser) {
+        localStorage.setItem(`handballActiveTeam_${auth.currentUser.uid}`, teamId);
+    }
+    
+    // Auto-sync membership for legacy teams or consistency
+    if (auth.currentUser && teamId) {
+        ensureTeamMembershipSynced(teamId);
+    }
+}
+
+/**
+ * Restore active team from localStorage on page refresh.
+ */
+export function restoreActiveTeam() {
+    if (!auth.currentUser) return;
+    const storedId = localStorage.getItem(`handballActiveTeam_${auth.currentUser.uid}`);
+    if (storedId) {
+        console.log(`[Firebase] Restoring active team from storage: ${storedId}`);
+        activeTeamId = storedId;
+        // Membership sync will happen in setActiveTeam if called, but here we just restore the ID
+        // so that isUserTrainer() and firestore paths work immediately.
+    }
+}
+
+/**
+ * Migration helper: Ensures the user has a record in the 'members' subcollection
+ * if they are listed as a member in their profile. This handles legacy teams
+ * created before the hardened rules were applied.
+ */
+async function ensureTeamMembershipSynced(teamId) {
+    if (!auth.currentUser || !currentUserProfile) return;
+    
+    const teamInProfile = currentUserProfile.teams.find(t => String(t.teamId) === String(teamId));
+    if (!teamInProfile) return;
+
+    try {
+        const memberRef = doc(db, 'teams', teamId, 'members', auth.currentUser.uid);
+        const snap = await getDoc(memberRef);
+        
+        if (!snap.exists()) {
+            console.log(`[Firebase] Syncing membership for team: ${teamId}`);
+            await setDoc(memberRef, {
+                uid: auth.currentUser.uid,
+                role: teamInProfile.role || 'member',
+                joinedAt: serverTimestamp(),
+                syncedAt: serverTimestamp() // Mark as migrated
+            });
+        }
+    } catch (err) {
+        // This might fail if rules are already applied and user isn't yet synced.
+        // In that case, we might need a more privileged way or a graceful failure.
+        console.warn('[Firebase] Membership sync failed (possibly rules already active):', err);
+    }
 }
 
 export function getActiveTeamId() {
@@ -309,8 +375,30 @@ export function getCurrentUserProfile() {
  */
 export function isUserTrainer() {
     if (!currentUserProfile || !activeTeamId) return false;
-    const teamRecord = currentUserProfile.teams.find(t => String(t.teamId) === String(activeTeamId));
-    return teamRecord && teamRecord.role === 'trainer';
+    
+    // 1. Check user profile for explicit trainer role
+    const teamRecord = currentUserProfile.teams.find(t => {
+        const tid = String(t.teamId || t.id);
+        const aid = String(activeTeamId);
+        return tid === aid;
+    });
+    
+    // Trainers or Owners are the same in terms of UI permissions
+    const isTrainer = teamRecord && (
+        teamRecord.role === 'trainer' || 
+        teamRecord.role === 'owner' || 
+        teamRecord.role === 'Creator' ||
+        teamRecord.role === 'coach'
+    );
+
+    if (!isTrainer) {
+        console.warn('[Firebase] isUserTrainer: Permission denied or Team not found.', {
+            activeTeamId,
+            userTeams: currentUserProfile.teams
+        });
+    }
+
+    return isTrainer;
 }
 
 // ─── Team Invitations ─────────────────────────────────────────────────────────
@@ -357,7 +445,7 @@ export async function redeemInviteToken(tokenId) {
             return { success: false, error: 'Dieser Link ist leider abgelaufen.' };
         }
 
-        // Add team to user profile
+        // Add to User Profile
         const userRef = getUserDoc(auth.currentUser.uid);
         const teamEntry = {
             teamId: inviteData.teamId,
@@ -366,6 +454,14 @@ export async function redeemInviteToken(tokenId) {
         };
         await updateDoc(userRef, {
             teams: arrayUnion(teamEntry)
+        });
+
+        // Add to Members Subcollection (NEW: for hardened rules)
+        const memberRef = doc(db, 'teams', inviteData.teamId, 'members', auth.currentUser.uid);
+        await setDoc(memberRef, {
+            uid: auth.currentUser.uid,
+            role: 'member',
+            joinedAt: serverTimestamp()
         });
 
         // Update local profile if loaded

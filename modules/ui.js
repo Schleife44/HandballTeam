@@ -1,7 +1,26 @@
+import { customAlert } from './customDialog.js';
 import { berechneTore, berechneWurfbilder, berechneStatistiken, berechneGegnerStatistiken } from './stats.js';
+import { sanitizeHTML, escapeHTML } from './securityUtils.js';
 import { drawGoalHeatmap, drawFieldHeatmap, renderHeatmap, setCurrentHeatmapTab, setCurrentHeatmapContext } from './heatmap.js';
 import { spielstand, speichereSpielstand, getOpponentLabel, getMyTeamLabel } from './state.js';
 import { getAuthUid, getCurrentUserProfile, isUserTrainer } from './firebase.js';
+
+/**
+ * Apply CSS classes based on selected Game Mode (Simple vs Complex)
+ */
+export function applyGameMode() {
+    const isSimple = spielstand.gameMode === 'simple';
+    
+    // Toggle on body for global CSS scope
+    document.body.classList.toggle('is-simple-mode', isSimple);
+    document.body.classList.toggle('is-complex-mode', !isSimple);
+
+    const spielBereich = document.getElementById('spielBereich');
+    if (spielBereich) {
+        spielBereich.classList.toggle('is-simple-mode', isSimple);
+        spielBereich.classList.toggle('is-complex-mode', !isSimple);
+    }
+}
 import {
     statistikSidebar, scoreAnzeige, scoreAnzeigeGegner,
     teamNameHeimDisplay, teamNameGegnerDisplay,
@@ -30,7 +49,7 @@ import {
     settingsBereich, toggleDarkMode, toggleAuswaertsspiel,
     toggleWurfbildHeim, toggleWurfbildGegner, inputTeamNameHeim, inputTeamNameGegner
 } from './dom.js';
-import { renderHomeStatsInHistory, renderOpponentStatsInHistory, openPlayerHistoryHeatmap } from './historyView.js';
+import { renderHomeStatsInHistory, renderOpponentStatsInHistory, openPlayerHistoryHeatmap } from './sharedViews.js';
 
 // We need to be careful with circular dependencies. 
 // We need to be careful with circular dependencies. 
@@ -97,6 +116,27 @@ export function applyViewSettings() {
     }
 }
 
+/**
+ * Initializes sidebar group states (collapsed/expanded) based on game state.
+ */
+export function initSidebarGroups() {
+    const liveGroup = document.getElementById('nav-group-live');
+    const liveToggle = document.querySelector('[data-group="live"] .nav-group-toggle');
+    
+    // If no game is active (no log entries), collapse Live Analysis
+    const isGameActive = spielstand.gameLog && spielstand.gameLog.length > 0;
+    
+    if (liveGroup) {
+        if (!isGameActive) {
+            liveGroup.classList.add('collapsed');
+            if (liveToggle) liveToggle.classList.add('rotated');
+        } else {
+            liveGroup.classList.remove('collapsed');
+            if (liveToggle) liveToggle.classList.remove('rotated');
+        }
+    }
+}
+
 export function updateScoreDisplay() {
     const isAway = spielstand.settings.isAuswaertsspiel;
 
@@ -149,10 +189,10 @@ export function updateSuspensionDisplay() {
         const sec = s.remaining % 60;
         const timeStr = `${min}:${sec < 10 ? '0' + sec : sec}`;
 
-        div.innerHTML = `
-            <div>#${s.number}</div>
-            <div class="suspension-time"><div class="time">${timeStr}</div>
-        `;
+        div.innerHTML = sanitizeHTML(`
+            <div>#${escapeHTML(s.number)}</div>
+            <div class="suspension-time"><div class="time">${escapeHTML(timeStr)}</div>
+        `);
         suspensionContainer.appendChild(div);
     });
 
@@ -165,6 +205,8 @@ export function updateSuspensionDisplay() {
 }
 
 export function zeichneSpielerRaster() {
+    applyGameMode(); // Sync layout classes before redrawing
+    
     // Clear all roster grids
     if (heimGoalkeeperRoster) heimGoalkeeperRoster.innerHTML = '';
     if (heimActiveRoster) heimActiveRoster.innerHTML = '';
@@ -206,109 +248,36 @@ export function zeichneSpielerRaster() {
 
     // Render function for a single team
     const renderTeam = (players, isOpponent, teamKey, gkContainer, activeContainer, benchContainer) => {
-        // If Simple Mode: Render ALL players into activeContainer, no slots, no bench container used
-        if (spielstand.gameMode === 'simple') {
-            activeContainer.innerHTML = '';
-            if (gkContainer) gkContainer.innerHTML = '';
-            if (benchContainer) benchContainer.innerHTML = '';
+        const playersToRender = [...players];
 
-            // Sort players by number
-            const sortedPlayers = [...players].sort((a, b) => (parseInt(a.number) || 0) - (parseInt(b.number) || 0));
-
-            sortedPlayers.forEach((player, index) => {
-                // Determine original index
-                const originalIndex = players.indexOf(player);
-                const playerForRender = { ...player, originalIndex: originalIndex };
-
-                const btn = document.createElement('button');
-
-                const nameDisplay = player.name || '';
-                const timeOnField = player.timeOnField || 0;
-                const m = Math.floor(timeOnField / 60);
-                const s = timeOnField % 60;
-                const timeStr = `${m}:${s < 10 ? '0' + s : s}`;
-
-                // Count 2min
-                const twoMinCount = (spielstand.gameLog || []).filter(e => {
-                    if (isOpponent) return e.action === "Gegner 2 min" && e.gegnerNummer == player.number;
-                    else return e.action === "2 Minuten" && e.playerId == player.number;
-                }).length;
-
-                let dotsHtml = '';
-                for (let i = 0; i < Math.min(twoMinCount, 2); i++) {
-                    dotsHtml += '<span class="two-min-dot"></span>';
-                }
-
-                btn.innerHTML = `
-                    <div class="two-min-indicators">${dotsHtml}</div>
-                    <!-- No Time Display in Simple Mode -->
-                    <div class="spieler-nummer-display">${player.number}</div>
-                    <span class="spieler-name-display">${nameDisplay}</span>
-                `;
-
-                // Use a generic valid class, but maybe reuse 'lineup-slot filled' for consistent sizing
-                // Or 'bench-player' style but in grid.
-                btn.className = 'spieler-button action-btn lineup-slot filled';
-                // if (player.isGoalkeeper) btn.classList.add('torwart'); // Removed for Simple Mode
-                if (player.disqualified) btn.classList.add('disqualified');
-
-                // Suspension check (visual only, no slot logic)
-                const isSuspended = (spielstand.activeSuspensions || []).some(s => s.teamKey === teamKey && s.number == player.number);
-                if (isSuspended) btn.classList.add('suspended');
-
-                if (!isOpponent) {
-                    btn.style.backgroundColor = 'var(--team-primary-color)';
-                    btn.style.color = 'var(--our-text-color)';
-                    btn.dataset.index = originalIndex;
-                    btn.dataset.team = 'myteam';
-                } else {
-                    btn.classList.add('gegner-button');
-                    btn.style.backgroundColor = 'var(--team-opponent-color)';
-                    btn.style.color = 'var(--opponent-text-color)';
-                    btn.dataset.gegnerNummer = player.number;
-                    btn.dataset.team = 'opponent';
-                    btn.dataset.index = originalIndex;
-                }
-
-                // Add required datasets for clicks
-                btn.dataset.teamKey = teamKey;
-
-                activeContainer.appendChild(btn);
-            });
-
-            // ADD PLAYER BUTTON (Green +)
-            const addBtn = document.createElement('button');
-            addBtn.className = 'spieler-button action-btn add-player-button';
-            // Determine text or icon
-            addBtn.innerHTML = '<div style="font-size: 2rem; font-weight: bold;">+</div>';
-
-            // Allow styling override
-            addBtn.style.backgroundColor = '#198754'; // Green
-            addBtn.style.color = 'white';
-
-            if (!isOpponent) {
-                // My Team -> Quick Add
-                addBtn.dataset.action = 'quickAdd';
-                addBtn.dataset.team = 'myteam';
-            } else {
-                // Opponent -> Add Opponent
-                addBtn.dataset.action = 'addOpponent';
-                addBtn.dataset.team = 'opponent';
-            }
-            activeContainer.appendChild(addBtn);
-
-            return; // EXIT Simple Mode Logic
+        // --- SECTION VISIBILITY & LABELS ---
+        // In Simple Mode, we hide Torwart and Bank containers/headers and show everything in activeContainer
+        const isSimple = spielstand.gameMode === 'simple';
+        
+        if (gkContainer && gkContainer.parentElement) {
+            gkContainer.parentElement.style.display = isSimple ? 'none' : 'block';
+        }
+        if (benchContainer && benchContainer.parentElement) {
+            benchContainer.parentElement.style.display = isSimple ? 'none' : 'block';
+        }
+        
+        // Find the "FELDSPIELER" header to change it in Simple mode if we want, or just hide it.
+        // Actually, let's just make the activeContainer header generic or hide it.
+        if (activeContainer && activeContainer.previousElementSibling) {
+            const title = activeContainer.previousElementSibling;
+            if (isSimple) title.style.display = 'none';
+            else title.style.display = 'block';
         }
 
-        // --- COMPLEX MODE (Existing Logic) ---
+        // --- COMPLEX MODE (Slot-Based) ---
         // Create slot arrays - players are placed by their lineupSlot
         // lineupSlot: 'gk' for goalkeeper, 0-5 for field players, null/undefined = bench
         const lineupGK = new Array(GK_SLOTS).fill(null);
         const lineupField = new Array(FIELD_SLOTS).fill(null);
         const bench = [];
 
-        players.forEach((player, index) => {
-            const playerWithIndex = { ...player, originalIndex: index };
+        playersToRender.forEach((player, index) => {
+            const playerWithIndex = { ...player, originalIndex: players.indexOf(player) };
             const slot = player.lineupSlot;
 
             if (slot === 'gk' || slot === 'gk0') {
@@ -355,12 +324,12 @@ export function zeichneSpielerRaster() {
                 dotsHtml += '<span class="two-min-dot"></span>';
             }
 
-            btn.innerHTML = `
+            btn.innerHTML = sanitizeHTML(`
                     <div class="two-min-indicators">${dotsHtml}</div>
-                    <div class="player-time-display" id="time-display-${teamKey}-${player.number}">${timeStr}</div>
-                    <div class="spieler-nummer-display">${player.number}</div>
-                    <span class="spieler-name-display">${nameDisplay}</span>
-                `;
+                    <div class="player-time-display" id="time-display-${escapeHTML(teamKey)}-${escapeHTML(player.number)}">${escapeHTML(timeStr)}</div>
+                    <div class="spieler-nummer-display">${escapeHTML(player.number)}</div>
+                    <span class="spieler-name-display">${escapeHTML(nameDisplay)}</span>
+                `);
             btn.className = 'spieler-button action-btn lineup-slot filled';
             if (player.isGoalkeeper) btn.classList.add('torwart');
 
@@ -383,6 +352,7 @@ export function zeichneSpielerRaster() {
                 btn.dataset.index = index;
             }
 
+            btn.dataset.action = 'lineup-player';
             btn.dataset.slotType = slotType;
             btn.dataset.slotIndex = slotIndex;
             btn.dataset.teamKey = teamKey;
@@ -390,11 +360,12 @@ export function zeichneSpielerRaster() {
             container.appendChild(btn);
         };
 
-        // Render empty slot placeholder
         const renderEmptySlot = (container, slotType, slotIndex) => {
             const btn = document.createElement('button');
             btn.className = 'spieler-button action-btn lineup-slot empty';
-            btn.innerHTML = `<div class="empty-slot-icon">+</div>`;
+            btn.innerHTML = `<div class="empty-slot-icon" style="font-size: 1.5rem; opacity: 0.5;">+</div>`;
+            btn.style.border = '2px dashed rgba(255,255,255,0.1)';
+            btn.style.background = 'rgba(255,255,255,0.02)';
             btn.dataset.slotType = slotType;
             btn.dataset.slotIndex = slotIndex;
             btn.dataset.teamKey = teamKey;
@@ -425,12 +396,12 @@ export function zeichneSpielerRaster() {
                 dotsHtml += '<span class="two-min-dot"></span>';
             }
 
-            btn.innerHTML = `
+            btn.innerHTML = sanitizeHTML(`
                 <div class="two-min-indicators">${dotsHtml}</div>
-                <div class="player-time-display" id="time-display-${teamKey}-${player.number}">${timeStr}</div>
-                <div class="spieler-nummer-display">${player.number}</div>
-                <span class="spieler-name-display">${nameDisplay}</span>
-            `;
+                <div class="player-time-display" id="time-display-${escapeHTML(teamKey)}-${escapeHTML(player.number)}">${escapeHTML(timeStr)}</div>
+                <div class="spieler-nummer-display">${escapeHTML(player.number)}</div>
+                <span class="spieler-name-display">${escapeHTML(nameDisplay)}</span>
+            `);
             btn.className = 'spieler-button action-btn bench-player';
             if (player.isGoalkeeper) btn.classList.add('torwart');
 
@@ -506,6 +477,20 @@ export function zeichneSpielerRaster() {
                 bench.forEach(p => renderBenchPlayer(p, benchContainer));
             }
         }
+
+        // --- SIMPLE MODE: UNIFIED GRID (MOVED HERE TO FIX TDZ ERROR) ---
+        if (isSimple) {
+            gkContainer && (gkContainer.innerHTML = '');
+            benchContainer && (benchContainer.innerHTML = '');
+            activeContainer.innerHTML = '';
+            
+            playersToRender.sort((a, b) => (parseInt(a.number) || 0) - (parseInt(b.number) || 0));
+
+            playersToRender.forEach((player, index) => {
+                const originalIdx = players.indexOf(player);
+                renderPlayerButton({ ...player, originalIndex: originalIdx }, activeContainer, 'field', index);
+            });
+        }
     };
 
     // Render both teams
@@ -538,21 +523,21 @@ export function updateProtokollAnzeige() {
         let text = '';
 
         if (eintrag.playerId) {
-            text = `#${eintrag.playerId} (${eintrag.playerName}): ${eintrag.action}`;
+            text = `#${escapeHTML(eintrag.playerId)} (${escapeHTML(eintrag.playerName)}): ${escapeHTML(eintrag.action)}`;
         } else if (eintrag.gegnerNummer) {
-            text = `${getOpponentLabel()} #${eintrag.gegnerNummer}: ${eintrag.action}`;
+            text = `${escapeHTML(getOpponentLabel())} #${escapeHTML(eintrag.gegnerNummer)}: ${escapeHTML(eintrag.action)}`;
         } else {
-            text = `${eintrag.action.toUpperCase()}`;
+            text = `${escapeHTML(eintrag.action.toUpperCase())}`;
         }
 
         if (eintrag.kommentar) {
-            text += ` - ${eintrag.kommentar}`;
+            text += ` - ${escapeHTML(eintrag.kommentar)}`;
         }
 
-        contentHtml += `<span class="log-text"><strong>${text}</strong><span style="opacity: 0.6; margin-left:8px;">${spielstandText}</span></span>`;
+        contentHtml += `<span class="log-text"><strong>${text}</strong><span style="opacity: 0.6; margin-left:8px;">${escapeHTML(spielstandText)}</span></span>`;
         contentHtml += `<span class="log-delete" data-index="${index}" title="Löschen"><i data-lucide="trash-2" style="width: 16px; height: 16px;"></i></span>`;
 
-        div.innerHTML = contentHtml;
+        div.innerHTML = sanitizeHTML(contentHtml);
         protokollAusgabe.appendChild(div);
     });
 
@@ -579,26 +564,26 @@ export function zeichneStatistikTabelle(statsData) {
         const totalWuerfe = stats.tore + stats.fehlwurf;
         const quote = totalWuerfe > 0 ? Math.round((stats.tore / totalWuerfe) * 100) : 0;
 
-        tr.innerHTML = `
-            <td>${displayName}</td>
-            <td>${timeStr}</td>
-            <td>${stats.tore}</td>
-            <td>${feldtore}</td>
-            <td>${stats.siebenMeterTore}/${stats.siebenMeterVersuche}</td>
-            <td>${stats.fehlwurf}</td>
-            <td>${stats.assist}</td>
-            <td>${quote}%</td>
-            <td>${stats.ballverlust}</td>
-            <td>${stats.stuermerfoul}</td>
-            <td>${stats.block}</td>
-            <td>${stats.gewonnen1v1}</td>
-            <td>${stats.oneOnOneLost}</td>
-            <td>${stats.rausgeholt7m}</td>
-            <td>${stats.rausgeholt2min}</td>
-            <td>${stats.gelb}</td>
-            <td>${stats.zweiMinuten}</td>
-            <td>${stats.rot}</td>
-        `;
+        tr.innerHTML = sanitizeHTML(`
+            <td>${escapeHTML(displayName)}</td>
+            <td>${escapeHTML(timeStr)}</td>
+            <td>${escapeHTML(stats.tore)}</td>
+            <td>${escapeHTML(feldtore)}</td>
+            <td>${escapeHTML(stats.siebenMeterTore)}/${escapeHTML(stats.siebenMeterVersuche)}</td>
+            <td>${escapeHTML(stats.fehlwurf)}</td>
+            <td>${escapeHTML(stats.assist)}</td>
+            <td>${escapeHTML(quote)}%</td>
+            <td>${escapeHTML(stats.ballverlust)}</td>
+            <td>${escapeHTML(stats.stuermerfoul)}</td>
+            <td>${escapeHTML(stats.block)}</td>
+            <td>${escapeHTML(stats.gewonnen1v1)}</td>
+            <td>${escapeHTML(stats.oneOnOneLost)}</td>
+            <td>${escapeHTML(stats.rausgeholt7m)}</td>
+            <td>${escapeHTML(stats.rausgeholt2min)}</td>
+            <td>${escapeHTML(stats.gelb)}</td>
+            <td>${escapeHTML(stats.zweiMinuten)}</td>
+            <td>${escapeHTML(stats.rot)}</td>
+        `);
         tr.style.cursor = 'pointer';
         tr.title = 'Klicken für Details und Wurfquote';
         tr.addEventListener('click', () => showLivePlayerDetails(stats));
@@ -622,33 +607,33 @@ export function showLivePlayerDetails(stats) {
             const s = stats.playStats[type.key] || { tore: 0, fehlwurf: 0 };
             const attempts = s.tore + s.fehlwurf;
             const quote = attempts > 0 ? Math.round((s.tore / attempts) * 100) + '%' : '-';
-            return `
+            return sanitizeHTML(`
                 <tr>
-                    <td style="text-align: left; padding: 6px;">${type.label}</td>
-                    <td style="text-align: center;">${s.tore}</td>
-                    <td style="text-align: center;">${attempts}</td>
-                    <td style="text-align: center;">${quote}</td>
+                    <td style="text-align: left; padding: 6px;">${escapeHTML(type.label)}</td>
+                    <td style="text-align: center;">${escapeHTML(s.tore)}</td>
+                    <td style="text-align: center;">${escapeHTML(attempts)}</td>
+                    <td style="text-align: center;">${escapeHTML(quote)}</td>
                 </tr>
-            `;
+            `);
         }).join('');
     } else {
         playTypeRows = '<tr><td colspan="4" style="text-align:center;">Keine Daten</td></tr>';
     }
 
     // Create Modal HTML
-    const modalHtml = `
+    const modalHtml = sanitizeHTML(`
         <div id="livePlayerDetailModal" class="modal-overlay" style="z-index: 9999; display: flex; align-items: center; justify-content: center;">
             <div class="shadcn-modal-content" style="max-width: 400px; width: 95%;">
                 <div class="shadcn-modal-header" style="justify-content: space-between;">
-                    <h3 style="margin: 0;">${stats.name || 'Spieler #' + stats.number}</h3>
+                    <h3 style="margin: 0;">${escapeHTML(stats.name || 'Spieler #' + stats.number)}</h3>
                     <button class="close-modal-btn" style="position: relative; top: 0; right: 0;">&times;</button>
                 </div>
                 <div class="shadcn-modal-body" style="padding-top: 10px;">
                     <div class="info-block" style="margin-bottom: 15px; background: var(--bg-secondary); padding: 10px; border-radius: 8px;">
                         <div style="font-size: 0.9rem; color: var(--text-muted);">Gesamt Quote</div>
                         <div style="font-size: 1.2rem; font-weight: bold;">
-                            ${stats.tore + stats.fehlwurf > 0 ? Math.round((stats.tore / (stats.tore + stats.fehlwurf)) * 100) + '%' : '0%'}
-                            <span style="font-size: 0.8rem; font-weight: normal; margin-left: 5px;">(${stats.tore}/${stats.tore + stats.fehlwurf})</span>
+                            ${escapeHTML(stats.tore + stats.fehlwurf > 0 ? Math.round((stats.tore / (stats.tore + stats.fehlwurf)) * 100) + '%' : '0%')}
+                            <span style="font-size: 0.8rem; font-weight: normal; margin-left: 5px;">(${escapeHTML(stats.tore)}/${escapeHTML(stats.tore + stats.fehlwurf)})</span>
                         </div>
                     </div>
 
@@ -674,7 +659,7 @@ export function showLivePlayerDetails(stats) {
                 </div>
             </div>
         </div>
-    `;
+    `);
 
     // Append to body
     const wrapper = document.createElement('div');
@@ -710,7 +695,7 @@ export function zeichneRosterListe(showGastTab = false) {
 
     if (list.length === 0) {
         const teamLabel = showGastTab ? getOpponentLabel() : getMyTeamLabel();
-        rosterListe.innerHTML = `<div style="grid-column: 1 / -1; text-align: center; padding: 40px; color: var(--text-muted);">Noch keine Spieler im ${teamLabel}-Team hinzugefügt.</div>`;
+        rosterListe.innerHTML = sanitizeHTML(`<div style="grid-column: 1 / -1; text-align: center; padding: 40px; color: var(--text-muted);">Noch keine Spieler im ${escapeHTML(teamLabel)}-Team hinzugefügt.</div>`);
         return;
     }
 
@@ -721,30 +706,30 @@ export function zeichneRosterListe(showGastTab = false) {
         // Read-only state
         const infoDiv = document.createElement('div');
         infoDiv.className = 'roster-player-info';
-        infoDiv.innerHTML = `
-            <div class="roster-player-number">${player.number}</div>
-            <div class="roster-player-name">${player.name || '<i>Kein Name</i>'}</div>
-        `;
+        infoDiv.innerHTML = sanitizeHTML(`
+            <div class="roster-player-number">${escapeHTML(player.number)}</div>
+            <div class="roster-player-name">${player.name ? escapeHTML(player.name) : '<i>Kein Name</i>'}</div>
+        `);
 
         // Edit state (hidden)
         const editDiv = document.createElement('div');
         editDiv.className = 'roster-inline-edit-grid versteckt';
-        editDiv.innerHTML = `
+        editDiv.innerHTML = sanitizeHTML(`
             <div class="edit-row-name">
-                <input type="text" class="shadcn-input inline-name-input" value="${player.name || ''}" placeholder="Name">
+                <input type="text" class="shadcn-input inline-name-input" value="${escapeHTML(player.name || '')}" placeholder="Name">
             </div>
             <div class="edit-row-controls">
-                <input type="number" class="shadcn-input inline-number-input" value="${player.number}" min="1" max="99" placeholder="Nr.">
+                <input type="number" class="shadcn-input inline-number-input" value="${escapeHTML(player.number)}" min="1" max="99" placeholder="Nr.">
                 <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; margin-right: 5px;">
                      <label style="font-size: 0.6rem; margin-bottom: 2px;">TW</label>
                      <input type="checkbox" class="inline-tw-input" ${player.isGoalkeeper ? 'checked' : ''} style="cursor: pointer;">
                 </div>
                 <div class="inline-edit-actions">
-                    <button class="inline-save-btn shadcn-btn-primary shadcn-btn-sm" title="Speichern">✓</button>
-                    <button class="inline-cancel-btn shadcn-btn-outline shadcn-btn-sm" title="Abbrechen">✕</button>
+                    <button class="inline-save-btn shadcn-btn-primary shadcn-btn-sm" title="Speichern" data-action="save-player" data-index="${index}" data-is-opponent="${isShowingOpponents}">✓</button>
+                    <button class="inline-cancel-btn shadcn-btn-outline shadcn-btn-sm" title="Abbrechen" data-action="cancel-edit">✕</button>
                 </div>
             </div>
-        `;
+        `);
 
         // Actions
         const actionsDiv = document.createElement('div');
@@ -777,17 +762,21 @@ export function zeichneRosterListe(showGastTab = false) {
         deleteBtn.style.borderColor = 'hsl(var(--destructive))';
         deleteBtn.innerHTML = 'Löschen';
         deleteBtn.dataset.index = index;
-        if (isShowingOpponents) deleteBtn.dataset.opponentIndex = index;
+        deleteBtn.dataset.action = 'delete-player';
+        if (isShowingOpponents) deleteBtn.dataset.isOpponent = 'true';
 
         // NEW: Permissions Check
         const uid = getAuthUid();
         const trainer = isUserTrainer();
-        const isMe = spielstand.rosterAssignments && spielstand.rosterAssignments[uid] === player.name;
+        // Fallback for isMe: check if this player's name matches my assigned name
+        const myName = (spielstand.rosterAssignments && uid) ? spielstand.rosterAssignments[uid] : null;
+        const isMe = myName && player.name && myName === player.name;
 
+        // Trainers can edit anyone. Players can edit themselves.
         if (trainer || (isMe && isShowingOurTeam)) {
             actionsDiv.appendChild(editBtn);
-            // Only trainers can delete players for now (safety)
-            if (trainer) {
+            // Only trainers and the player themselves can delete (though deleting yourself is usually a trainer task)
+            if (trainer || isMe) {
                 actionsDiv.appendChild(deleteBtn);
             }
         }
@@ -796,7 +785,7 @@ export function zeichneRosterListe(showGastTab = false) {
         div.appendChild(editDiv);
         div.appendChild(actionsDiv);
 
-        // Handlers
+        // Handlers - Use direct listeners ONLY for UI toggle
         editBtn.onclick = () => {
             infoDiv.classList.add('versteckt');
             actionsDiv.classList.add('versteckt');
@@ -811,32 +800,6 @@ export function zeichneRosterListe(showGastTab = false) {
         };
 
         editDiv.querySelector('.inline-cancel-btn').onclick = cancelEdit;
-
-        editDiv.querySelector('.inline-save-btn').onclick = async () => {
-            const newName = editDiv.querySelector('.inline-name-input').value.trim();
-            const newNum = parseInt(editDiv.querySelector('.inline-number-input').value);
-            const newTw = editDiv.querySelector('.inline-tw-input').checked;
-
-            if (isNaN(newNum)) {
-                await customAlert('Bitte Nummer eingeben');
-                return;
-            }
-
-            // Duplicate check
-            const duplicate = list.find((p, i) => i !== index && p.number === newNum);
-            if (duplicate) {
-                await customAlert('Diese Nummer ist bereits vergeben.');
-                return;
-            }
-
-            player.name = newName;
-            player.number = newNum;
-            player.isGoalkeeper = newTw;
-            list.sort((a, b) => a.number - b.number);
-            speichereSpielstand();
-            zeichneRosterListe(showGastTab);
-            zeichneSpielerRaster();
-        };
 
         rosterListe.appendChild(div);
     });
@@ -887,7 +850,7 @@ export function zeigeWurfstatistik() {
 
         const infoDiv = document.createElement('div');
         infoDiv.className = 'player-shot-info';
-        infoDiv.innerHTML = `<strong>#${playerData.number} ${playerData.name}${is7m ? ' (7m)' : ''}</strong>${tore} Tore${gehalten > 0 ? `, ${gehalten} Geh.` : ''}${vorbei > 0 ? `, ${vorbei} Vorb.` : ''} <strong>(${quote}%)</strong>`;
+        infoDiv.innerHTML = sanitizeHTML(`<strong>#${escapeHTML(playerData.number)} ${escapeHTML(playerData.name)}${is7m ? ' (7m)' : ''}</strong>${escapeHTML(tore)} Tore${gehalten > 0 ? `, ${escapeHTML(gehalten)} Geh.` : ''}${vorbei > 0 ? `, ${escapeHTML(vorbei)} Vorb.` : ''} <strong>(${escapeHTML(quote)}%)</strong>`);
         div.appendChild(infoDiv);
 
         const hasWurfposition = is7m ? false : playerData.wuerfe.some(w => w.wurfposition);
@@ -981,7 +944,7 @@ export function zeigeWurfstatistik() {
         if (svgContent) {
             const svgContainer = document.createElement('div');
             svgContainer.className = 'combined-shot-visual';
-            svgContainer.innerHTML = `<svg viewBox="${viewBox}" width="200" height="280">${svgContent}</svg>`;
+            svgContainer.innerHTML = sanitizeHTML(`<svg viewBox="${escapeHTML(viewBox)}" width="200" height="280">${svgContent}</svg>`);
             div.appendChild(svgContainer);
         }
         return div;
@@ -1264,4 +1227,249 @@ export function startButtonAnimation(btn) {
     setTimeout(() => {
         btn.classList.remove('active-action');
     }, 200);
+}
+// --- Live Game Views (Moved from main.js) ---
+
+/**
+ * Renders the live overview with score, playtypes, and tables.
+ */
+export async function showLiveOverviewInline() {
+    const { liveOverviewBereich, liveOverviewContent, timerAnzeige } = await import('./dom.js');
+    const { berechneStatistiken, berechneGegnerStatistiken, berechneSpielartStatistik } = await import('./stats.js');
+    const { setCurrentHeatmapContext } = await import('./heatmap.js');
+
+    if (liveOverviewBereich) liveOverviewBereich.classList.remove('versteckt');
+    
+    if (!spielstand.modeSelected || (spielstand.gameLog && spielstand.gameLog.length === 0)) {
+        if (liveOverviewContent) {
+            liveOverviewContent.innerHTML = `
+                <div class="no-game-placeholder" style="display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 60px 20px; text-align: center; color: var(--text-muted);">
+                    <div style="background: rgba(255,255,255,0.05); border-radius: 50%; padding: 30px; margin-bottom: 20px;">
+                        <i data-lucide="play-circle" style="width: 64px; height: 64px; opacity: 0.5;"></i>
+                    </div>
+                    <h2 style="font-size: 1.5rem; font-weight: 700; margin-bottom: 10px; color: var(--text-main);">Kein Spiel aktiv</h2>
+                    <p style="max-width: 400px; font-size: 1rem; line-height: 1.6;">Starten Sie ein neues Spiel im Bereich "Spiel", um Live-Statistiken und Analysen zu sehen.</p>
+                </div>
+            `;
+            if (window.lucide) window.lucide.createIcons();
+        }
+        return;
+    }
+
+    const homeStats = berechneStatistiken(spielstand.gameLog, spielstand.roster);
+    const opponentStats = berechneGegnerStatistiken(spielstand.gameLog, spielstand.knownOpponents);
+    const isAuswaerts = spielstand.settings?.isAuswaertsspiel || false;
+
+    let html = `<div class="live-overview-container">`;
+
+    // Score Card
+    const homeName = spielstand.settings?.teamNameHeim || 'Heim';
+    const homeScore = spielstand.score?.heim || 0;
+    const oppName = spielstand.settings?.teamNameGegner || 'Gegner';
+    const oppScore = spielstand.score?.gegner || 0;
+
+    const leftName = isAuswaerts ? oppName : homeName;
+    const leftScore = isAuswaerts ? oppScore : homeScore;
+    const rightName = isAuswaerts ? homeName : oppName;
+    const rightScore = isAuswaerts ? homeScore : oppScore;
+    const currentTime = (timerAnzeige && timerAnzeige.textContent) || "00:00";
+
+    html += `
+        <div class="stats-card score-card">
+            <div class="score-display">
+                <div class="score-team">
+                    <span class="team-name">${escapeHTML(leftName)}</span>
+                    <span class="team-score">${leftScore}</span>
+                </div>
+                <span class="score-separator">:</span>
+                <div class="score-team">
+                    <span class="team-name">${escapeHTML(rightName)}</span>
+                    <span class="team-score">${rightScore}</span>
+                </div>
+            </div>
+            <div style="margin-top: 10px; font-weight: 500; color: var(--text-muted); border-top: 1px solid var(--border); pt: 10px; display: inline-block; padding-top: 10px;">
+                Spielzeit: ${currentTime}
+            </div>
+        </div>
+    `;
+
+    // Playtype Stats
+    const spielartStats = berechneSpielartStatistik ? berechneSpielartStatistik(spielstand.gameLog) : null;
+    if (spielartStats) {
+        // ... (Appending playtype HTML)
+        const renderPlaytypes = (teamData, title) => {
+            const data = Object.entries(teamData).filter(([key, s]) => s.wuerfe > 0);
+            if (data.length === 0) return '';
+            return `
+                <div class="stats-card playtype-card">
+                    <h2 class="card-title">${escapeHTML(title)}</h2>
+                    <div class="playtype-stats-grid">
+                        ${data.map(([key, s]) => `
+                            <div class="playtype-stat-item">
+                                <span class="playtype-name">${escapeHTML(s.name)}</span>
+                                <span class="playtype-data">${s.tore}/${s.wuerfe}</span>
+                                <span class="playtype-quote ${s.quote >= 50 ? 'good' : s.quote >= 30 ? 'medium' : 'low'}">${s.quote}%</span>
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+            `;
+        };
+        html += renderPlaytypes(spielartStats.heim, `Angriffsvarianten (${homeName})`);
+        html += renderPlaytypes(spielartStats.gegner, `Angriffsvarianten (${oppName})`);
+    }
+
+    const infoIcon = `<i data-lucide="info" class="tooltip-icon"></i>`;
+    const showTime = spielstand.gameMode !== 'simple';
+
+    const renderTable = (name, bodyId) => `
+        <div class="stats-card">
+            <h2 class="card-title">${escapeHTML(name)}</h2>
+            <div class="table-container">
+                <table class="modern-stats-table">
+                    <thead>
+                        <tr>
+                            <th>Spieler</th>
+                            ${showTime ? '<th title="Spielzeit">Zeit</th>' : ''}
+                            <th title="Tore">Tore</th>
+                            <th title="Feldtore">Feldtore</th>
+                            <th title="7-Meter Tore/Versuche">7m</th>
+                            <th title="Fehlwürfe (Gehalten/Vorbei)">Fehlw</th>
+                            <th title="Assists">Assist</th>
+                            <th title="Wurfquote">Quote</th>
+                            <th title="Ballverlust">BV ${infoIcon}</th>
+                            <th title="Stürmerfoul">SF ${infoIcon}</th>
+                            <th title="Block">Blk ${infoIcon}</th>
+                            <th title="1 gegen 1 Gewonnen">1v1 ${infoIcon}</th>
+                            <th title="1 gegen 1 Verloren">1v1- ${infoIcon}</th>
+                            <th title="7m">7m+/- ${infoIcon}</th>
+                            <th title="2 Minuten">2m+/- ${infoIcon}</th>
+                            <th title="Karten">Karten ${infoIcon}</th>
+                        </tr>
+                    </thead>
+                    <tbody id="${bodyId}"></tbody>
+                </table>
+            </div>
+        </div>
+    `;
+
+    if (isAuswaerts) {
+        html += renderTable(oppName, 'liveStatsOpp') + renderTable(homeName, 'liveStatsHome');
+    } else {
+        html += renderTable(homeName, 'liveStatsHome') + renderTable(oppName, 'liveStatsOpp');
+    }
+
+    html += '</div>';
+    if (liveOverviewContent) {
+        liveOverviewContent.innerHTML = sanitizeHTML(html);
+        if (window.lucide) window.lucide.createIcons();
+
+        // Fill tables
+        renderHomeStatsInHistory(document.getElementById('liveStatsHome'), homeStats, spielstand.gameLog, true);
+        renderOpponentStatsInHistory(document.getElementById('liveStatsOpp'), opponentStats, spielstand.gameLog, true);
+    }
+
+    setCurrentHeatmapContext('liveOverview');
+}
+
+/**
+ * Renders individual shot charts for all players.
+ */
+export async function showShotsInline() {
+    const { shotsBereich, shotsContent } = await import('./dom.js');
+    const { berechneWurfbilder } = await import('./stats.js');
+    const { drawFieldHeatmap, drawGoalHeatmap } = await import('./heatmap.js');
+
+    if (shotsBereich) shotsBereich.classList.remove('versteckt');
+    if (!shotsContent) return;
+
+    const wurfbilder = berechneWurfbilder(spielstand.gameLog, spielstand.roster);
+    shotsContent.innerHTML = '';
+
+    const renderPlayerGroup = (playerData, is7m = false) => {
+        const div = document.createElement('div');
+        div.className = 'player-shot-card';
+
+        let tore = 0, gehalten = 0, vorbei = 0;
+        const isOpponent = playerData.isOpponent || false;
+
+        playerData.wuerfe.forEach(w => {
+            const act = (w.action || "").toLowerCase();
+            const isSave = act.includes('gehalten') || act.includes('parade') || w.isSave;
+            const isMiss = act.includes('vorbei') || act.includes('verworfen') || act.includes('fehlwurf') || act.includes('block') || w.color === 'gray';
+
+            if (isSave) gehalten++;
+            else if (isMiss) vorbei++;
+            else if (act.includes('tor')) tore++;
+        });
+
+        const totalWuerfe = tore + gehalten + vorbei;
+        const quote = totalWuerfe > 0 ? Math.round((tore / totalWuerfe) * 100) : 0;
+
+        const infoDiv = document.createElement('div');
+        infoDiv.className = 'player-shot-info';
+        infoDiv.innerHTML = `<strong>#${playerData.number} ${escapeHTML(playerData.name)}${is7m ? ' (7m)' : ''}</strong>: ${tore} Tore (${quote}%)`;
+        div.appendChild(infoDiv);
+
+        // ... (Heatmap generation logic kept from main.js)
+        const prefix = 'wb_' + (playerData.number || '0') + (isOpponent ? 'opp' : 'hm');
+        const pointsTor = playerData.wuerfe.filter(w => w.x && w.y).map(w => ({ ...w, x: parseFloat(w.x), y: parseFloat(w.y), isOpponent }));
+        const pointsFeld = playerData.wuerfe.filter(w => w.wurfposition).map(w => ({ ...w, x: parseFloat(w.wurfposition.x), y: parseFloat(w.wurfposition.y), isOpponent }));
+
+        let svgContent = '';
+        if (pointsTor.length > 0 || pointsFeld.length > 0) {
+             svgContent = `<svg viewBox="0 0 300 500" width="200" height="350">
+                ${drawFieldHeatmap(pointsFeld, 80, prefix)}
+                <g transform="translate(97.5, 24) scale(0.35)">
+                    ${drawGoalHeatmap(pointsTor, 0, prefix)}
+                </g>
+             </svg>`;
+        }
+
+        if (svgContent) {
+            const svgContainer = document.createElement('div');
+            svgContainer.className = 'shot-visual-container';
+            svgContainer.innerHTML = svgContent;
+            div.appendChild(svgContainer);
+        }
+
+        return div;
+    };
+
+    // Render Home / Gegner groups
+    if (wurfbilder.heim.length > 0) {
+        const h4 = document.createElement('h4');
+        h4.textContent = spielstand.settings.teamNameHeim;
+        shotsContent.appendChild(h4);
+        wurfbilder.heim.forEach(p => shotsContent.appendChild(renderPlayerGroup(p)));
+    }
+    // ... (etc for 7m and Opponent)
+}
+
+/**
+ * Renders the live interactive heatmap view.
+ */
+export async function showLiveHeatmapInline() {
+    const { liveHeatmapBereich, heatmapHeimLabel, heatmapGegnerLabel, heatmapTeamToggle, heatmapPlayerSelect, heatmapSvg } = await import('./dom.js');
+    const { renderHeatmap, setCurrentHeatmapContext } = await import('./heatmap.js');
+
+    if (liveHeatmapBereich) liveHeatmapBereich.classList.remove('versteckt');
+
+    if (heatmapHeimLabel) heatmapHeimLabel.textContent = spielstand.settings.teamNameHeim || 'HEIM';
+    if (heatmapGegnerLabel) heatmapGegnerLabel.textContent = spielstand.settings.teamNameGegner || 'GEGNER';
+
+    const getSelectedTeam = () => (heatmapTeamToggle?.dataset.state === 'checked' ? 'gegner' : 'heim');
+
+    if (heatmapPlayerSelect) {
+        const team = getSelectedTeam();
+        const list = team === 'heim' ? spielstand.roster : (spielstand.knownOpponents || []);
+        heatmapPlayerSelect.innerHTML = '<option value="all">Alle Spieler</option>' + 
+            list.map(p => `<option value="${p.number}">#${p.number} ${escapeHTML(p.name)}</option>`).join('');
+    }
+
+    setCurrentHeatmapContext(null);
+    renderHeatmap(heatmapSvg, spielstand.gameLog, false, {
+        team: getSelectedTeam(),
+        player: heatmapPlayerSelect?.value === 'all' ? null : parseInt(heatmapPlayerSelect?.value)
+    });
 }

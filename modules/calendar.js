@@ -34,6 +34,19 @@ let attendanceListenersBound = false;
 let calendarInitialized = false;
 let editingEventId = null; // Store ID for edit action
 
+/**
+ * Legacy Fallback: Users might have cached router logic calling this function.
+ * It's replaced by setupAttendanceListeners() but preserved to avoid ReferenceErrors.
+ */
+window.toggleAttendanceList = function() {
+    if (attendanceFullList) {
+        attendanceFullList.classList.toggle('versteckt');
+        if (modalDetailsBtn) {
+            modalDetailsBtn.textContent = attendanceFullList.classList.contains('versteckt') ? 'Details' : 'Schließen';
+        }
+    }
+};
+
 export function initCalendar() {
     if (calendarInitialized) return;
     calendarInitialized = true;
@@ -199,8 +212,7 @@ function setupAbsenceListeners() {
 
 function openAbsenceModal() {
     if (!absenceModal) return;
-    closeAddEventModal();
-    closeEventDetails();
+    // Keep detail modals open in background as requested
     
     document.body.appendChild(absenceModal);
     absenceModal.classList.remove('versteckt');
@@ -350,11 +362,11 @@ function setupAttendanceListeners() {
         });
     });
 
-    if (toggleAttendanceList) {
-        toggleAttendanceList.addEventListener('click', () => {
+    if (modalDetailsBtn) {
+        modalDetailsBtn.addEventListener('click', () => {
             if (attendanceFullList) {
                 attendanceFullList.classList.toggle('versteckt');
-                toggleAttendanceList.textContent = attendanceFullList.classList.contains('versteckt') ? 'Details' : 'Schließen';
+                modalDetailsBtn.textContent = attendanceFullList.classList.contains('versteckt') ? 'Details' : 'Schließen';
             }
         });
     }
@@ -1228,6 +1240,10 @@ function closeEventDetails() {
 }
 
 async function deleteEvent(id) {
+    if (!isUserTrainer()) {
+        toast.error("Zugriff verweigert", "Nur Trainer können Termine löschen.");
+        return;
+    }
     const confirmed = await customConfirm("Möchtest du diesen Termin wirklich löschen?");
     if (confirmed) {
         if (spielstand.calendarEvents) {
@@ -1578,7 +1594,7 @@ function deleteSeries(seriesId) {
 function handleManageOutsideClick(e) {
     if (manageCalendarModal && !manageCalendarModal.classList.contains('versteckt')) {
         // If click is NOT inside modal AND NOT on the button that opened it
-        if (!manageCalendarModal.contains(e.target) && !manageCalendarBtn.contains(e.target)) {
+        if (!manageCalendarModal.contains(e.target) && (manageCalendarBtn && !manageCalendarBtn.contains(e.target))) {
             closeManageModal();
         }
     }

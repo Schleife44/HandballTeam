@@ -1,4 +1,5 @@
 import { spielstand } from './state.js';
+import { getHistorie } from './history.js';
 
 let videoAnalysisInitialized = false;
 let currentVideoGame = null;
@@ -142,40 +143,34 @@ function updateTitleWithVideoName(videoName) {
     title.textContent = `${gameText} | ${videoName}`;
 }
 
-export function handleVideoAnalysisView() {
+export async function handleVideoAnalysisView() {
     initVideoAnalysis();
-    renderVideoGameList();
+    await renderVideoGameList();
 }
 
-function renderVideoGameList() {
+async function renderVideoGameList() {
     const listContainer = document.getElementById('videoGameListContent');
     if (!listContainer) return;
 
+    listContainer.innerHTML = '<div class="loading-spinner">Lade Spiele...</div>';
+    
+    const games = await getHistorie();
+
+    if (!games || games.length === 0) {
+        listContainer.innerHTML = '<p style="color: var(--text-muted); font-size: 0.9rem; padding: 1rem; text-align: center;">Keine Spiele im Archiv gefunden.</p>';
+        return;
+    }
+
     listContainer.innerHTML = '';
-    const historyData = localStorage.getItem('handball_history');
+    
+    // Sort games by timestamp descending
+    const sortedGames = [...games].sort((a, b) => {
+        const tsA = a.timestamp || a.id || 0;
+        const tsB = b.timestamp || b.id || 0;
+        return tsB - tsA;
+    });
 
-    if (!historyData) {
-        listContainer.innerHTML = '<p style="color: var(--text-muted); font-size: 0.9rem;">Keine Spiele im Archiv.</p>';
-        return;
-    }
-
-    let games = [];
-    try {
-        games = JSON.parse(historyData);
-    } catch (e) {
-        listContainer.innerHTML = '<p style="color: var(--destructive); font-size: 0.9rem;">Fehler beim Laden.</p>';
-        return;
-    }
-
-    if (!Array.isArray(games)) games = [games];
-    games.sort((a, b) => (b.timestamp || b.id || 0) - (a.timestamp || a.id || 0));
-
-    if (games.length === 0) {
-        listContainer.innerHTML = '<p style="color: var(--text-muted); font-size: 0.9rem;">Keine Spiele.</p>';
-        return;
-    }
-
-    games.forEach(game => {
+    sortedGames.forEach(game => {
         const item = document.createElement('div');
         item.style.padding = '12px';
         item.style.border = '1px solid var(--border-color)';
@@ -222,7 +217,7 @@ function renderVideoGameList() {
 
 let selectedItem = null;
 
-function selectGameForAnalysis(game) {
+export function selectGameForAnalysis(game) {
     currentVideoGame = game;
     const title = document.getElementById('videoAnalyseTitle');
     const heim = game.settings?.teamNameHeim || game.teamNameHeim || 'Heim';
@@ -254,6 +249,16 @@ function checkAndRenderProtocol() {
 
     if (currentVideoGame && hasVideo) {
         if (protocolContainer) protocolContainer.style.display = 'flex';
+        
+        // Fix: Limit size and enable scrolling
+        if (list) {
+            list.style.maxHeight = '400px'; 
+            list.style.overflowY = 'auto';
+            list.style.border = '1px solid var(--border-color)';
+            list.style.borderRadius = '8px';
+            list.style.background = 'var(--bg-secondary)';
+        }
+        
         renderProtocolList(currentVideoGame, list);
     } else {
         if (protocolContainer) protocolContainer.style.display = 'none';

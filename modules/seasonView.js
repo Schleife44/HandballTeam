@@ -4,7 +4,8 @@ import { heatmapSvg, heatmap7mFilter, heatmapToreFilter, heatmapMissedFilter } f
 import { spielstand } from './state.js';
 import { getHistorie } from './history.js';
 import { berechneStatistiken, berechneGegnerStatistiken, berechneTore } from './stats.js';
-import { openPlayerHistoryHeatmap } from './historyView.js';
+import { openPlayerHistoryHeatmap } from './sharedViews.js';
+import { sanitizeHTML, escapeHTML } from './securityUtils.js';
 
 // Persistent state for team collapse
 const collapsedTeams = {};
@@ -68,7 +69,7 @@ function renderSeasonHeatmapView() {
     if (!container) return;
 
     // Create the heatmap interface with controls
-    container.innerHTML = `
+    container.innerHTML = sanitizeHTML(`
         <div class="heatmap-controls-card">
             <!-- Row 1: Selects -->
             <div class="heatmap-row">
@@ -110,7 +111,7 @@ function renderSeasonHeatmapView() {
         <div class="heatmap-visual-container">
            <svg id="subtabSeasonHeatmapSvg" width="300" height="500"></svg>
         </div>
-    `;
+    `);
 
     // Add event listeners
     const tabButtons = container.querySelectorAll('.heatmap-tab');
@@ -149,8 +150,8 @@ function renderSeasonHeatmapView() {
 }
 
 // Helper to populate dropdowns for season heatmap
-function populateSeasonHeatmapDropdowns(playersOnly = false) {
-    const summary = getSeasonSummary();
+async function populateSeasonHeatmapDropdowns(playersOnly = false) {
+    const summary = await getSeasonSummary();
     const teamSelect = document.getElementById('subtabSeasonHeatmapTeamSelect');
     const playerSelect = document.getElementById('subtabSeasonHeatmapPlayerSelect');
 
@@ -168,7 +169,7 @@ function populateSeasonHeatmapDropdowns(playersOnly = false) {
             if (t === 'all') label = 'Alle Teams';
             else if (t === 'Heim') label = myTeamName;
             else if (t === 'all_opponents') label = 'Alle Gegner';
-            return `<option value="${t}">${label}</option>`;
+            return sanitizeHTML(`<option value="${escapeHTML(t)}">${escapeHTML(label)}</option>`);
         }).join('');
     }
 
@@ -184,19 +185,19 @@ function populateSeasonHeatmapDropdowns(playersOnly = false) {
         filteredPlayers.map(p => {
             const name = p.name || '#' + p.number;
             const teamLabel = p.team === 'Heim' ? myTeamName : p.team;
-            return `<option value="${p.number}-${p.team}">${name} (${teamLabel})</option>`;
+            return sanitizeHTML(`<option value="${escapeHTML(p.number)}-${escapeHTML(p.team)}">${escapeHTML(name)} (${escapeHTML(teamLabel)})</option>`);
         }).join('');
 }
 
 // Helper to render heatmap data
-function renderSeasonHeatmapData() {
+async function renderSeasonHeatmapData() {
     const svg = document.getElementById('subtabSeasonHeatmapSvg');
     if (!svg) return;
 
     const teamSelect = document.getElementById('subtabSeasonHeatmapTeamSelect');
     const playerSelect = document.getElementById('subtabSeasonHeatmapPlayerSelect');
 
-    const summary = getSeasonSummary();
+    const summary = await getSeasonSummary();
     let logEntries = [];
 
     const selectedTeam = teamSelect?.value || 'all';
@@ -235,11 +236,11 @@ function renderSeasonHeatmapData() {
 }
 
 // Render Team Diagram View
-function renderTeamDiagramView() {
+async function renderTeamDiagramView() {
     const container = document.getElementById('subtabSeasonDiagrammContent');
     if (!container) return;
 
-    const summary = getSeasonSummary();
+    const summary = await getSeasonSummary();
     const allPlayers = summary.players;
 
     // Clear container first
@@ -247,7 +248,7 @@ function renderTeamDiagramView() {
 
     // Check if we have any players at all
     if (!allPlayers || allPlayers.length === 0) {
-        container.innerHTML = '<p style="text-align: center; padding: 40px; color: hsl(var(--muted-foreground));">Noch keine Daten vorhanden. Bitte erfasse zuerst Spiele.</p>';
+        container.innerHTML = sanitizeHTML('<p style="text-align: center; padding: 40px; color: hsl(var(--muted-foreground));">Noch keine Daten vorhanden. Bitte erfasse zuerst Spiele.</p>');
         return;
     }
 
@@ -261,12 +262,12 @@ function renderTeamDiagramView() {
             lucide.createIcons({ root: container });
         }
     } else {
-        container.innerHTML = `
+        container.innerHTML = sanitizeHTML(`
             <div style="text-align: center; padding: 40px;">
                 <p style="color: hsl(var(--muted-foreground)); margin-bottom: 1rem;">Nicht genügend aktive Spieldaten für Team-Vergleich.</p>
                 <p style="font-size: 0.9rem; color: hsl(var(--muted-foreground)/0.7);">Mindestens 2 Spieler mit Toren oder Fehlwürfen benötigt.</p>
             </div>
-        `;
+        `);
     }
 }
 
@@ -283,7 +284,7 @@ export function closeSeasonOverview() {
 
 // Rendert Saison-Statistiken (Team Focused)
 export async function renderSeasonStats() {
-    const summary = getSeasonSummary();
+    const summary = await getSeasonSummary();
     const historie = await getHistorie();
     const seasonSummary = document.getElementById('seasonSummary');
     const seasonStatsContainer = document.getElementById('seasonStatsContainer');
@@ -338,26 +339,26 @@ export async function renderSeasonStats() {
     const efficiency = totalShots > 0 ? Math.round((totalGoalsFromPlayers / totalShots) * 100) : 0;
 
     // --- 2. Render KPI Cards ---
-    seasonSummary.innerHTML = `
+    seasonSummary.innerHTML = sanitizeHTML(`
         <div class="season-summary-grid" style="grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));">
             <div class="season-summary-card">
-                <strong>${points} : ${totalGames * 2 - points}</strong>
-                <small>Punkte (${wins}S / ${draws}U / ${losses}N)</small>
+                <strong>${escapeHTML(points)} : ${escapeHTML(totalGames * 2 - points)}</strong>
+                <small>Punkte (${escapeHTML(wins)}S / ${escapeHTML(draws)}U / ${escapeHTML(losses)}N)</small>
             </div>
              <div class="season-summary-card">
-                <strong style="color: ${winRate >= 50 ? '#4ade80' : '#f87171'}">${winRate}%</strong>
+                <strong style="color: ${winRate >= 50 ? '#4ade80' : '#f87171'}">${escapeHTML(winRate)}%</strong>
                 <small>Siegquote</small>
             </div>
             <div class="season-summary-card">
-                <strong>${goalsFor} : ${goalsAgainst}</strong>
-                <small>Tore (${diffSign}${goalDiff})</small>
+                <strong>${escapeHTML(goalsFor)} : ${escapeHTML(goalsAgainst)}</strong>
+                <small>Tore (${escapeHTML(diffSign)}${escapeHTML(goalDiff)})</small>
             </div>
              <div class="season-summary-card">
-                <strong>${efficiency}%</strong>
+                <strong>${escapeHTML(efficiency)}%</strong>
                 <small>Wurfquote Team</small>
             </div>
         </div>
-    `;
+    `);
 
     // --- 3. Render Dashboard Content (Charts & Lists) ---
     // Top Scorers logic
@@ -368,11 +369,11 @@ export async function renderSeasonStats() {
 
     let scorersHtml = '<div class="season-card-modern"><h3><i data-lucide="medal"></i> Top Torschützen</h3><ul class="simple-list">';
     topScorers.forEach((p, i) => {
-        scorersHtml += `
+        scorersHtml += sanitizeHTML(`
             <li style="display:flex; justify-content:space-between; padding: 8px 0; border-bottom: 1px solid #333;">
-                <span>${i + 1}. <strong>${p.name || '#' + p.number}</strong></span>
-                <span>${p.tore} Tore (${p.wurfQuote})</span>
-            </li>`;
+                <span>${escapeHTML(i + 1)}. <strong>${escapeHTML(p.name || '#' + p.number)}</strong></span>
+                <span>${escapeHTML(p.tore)} Tore (${escapeHTML(p.wurfQuote)})</span>
+            </li>`);
     });
     scorersHtml += '</ul></div>';
 
@@ -398,12 +399,12 @@ export async function renderSeasonStats() {
 
     // Build the grid
     // Build the grid
-    seasonStatsContainer.innerHTML = `
+    seasonStatsContainer.innerHTML = sanitizeHTML(`
         <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px;">
             ${scorersHtml}
             ${historyHtml}
         </div>
-    `;
+    `);
 
     // Re-create Icons
     if (typeof lucide !== 'undefined') lucide.createIcons();
@@ -411,8 +412,8 @@ export async function renderSeasonStats() {
 
 // Rendert Saison-Statistiken (Player List - ORIGINAL LOGIC RENAMED)
 // Rendert Saison-Statistiken (Player List)
-export function renderPlayerSeasonStats(targetContainer = null) {
-    const summary = getSeasonSummary();
+export async function renderPlayerSeasonStats(targetContainer = null) {
+    const summary = await getSeasonSummary();
     // Use passed container OR default to the submodule container
     const seasonStatsContainer = targetContainer || document.getElementById('playerStatsListContainer');
 
@@ -440,11 +441,11 @@ export function renderPlayerSeasonStats(targetContainer = null) {
         const toolbar = document.createElement('div');
         toolbar.className = 'season-sort-container';
         toolbar.style.marginBottom = '15px';
-        toolbar.innerHTML = `
+        toolbar.innerHTML = sanitizeHTML(`
              <span style="font-size: 0.85rem; font-weight: 600; color: hsl(var(--muted-foreground));">Sortieren nach:</span>
              <button id="sortByNumber" class="${sortMode === 'number' ? 'shadcn-btn-primary' : 'shadcn-btn-outline'}" style="height: 32px; font-size: 0.8rem; padding: 0 12px;">Nummer</button>
              <button id="sortByGoals" class="${sortMode === 'goals' ? 'shadcn-btn-primary' : 'shadcn-btn-outline'}" style="height: 32px; font-size: 0.8rem; padding: 0 12px;">Tore</button>
-        `;
+        `);
         seasonStatsContainer.appendChild(toolbar);
 
         // Bind Toolbar Events
@@ -603,7 +604,7 @@ async function renderGameHistoryList(player) {
 
     const table = document.createElement('table');
     table.className = 'season-table';
-    table.innerHTML = `
+    table.innerHTML = sanitizeHTML(`
         <thead>
             <tr>
                 <th>Datum</th>
@@ -614,7 +615,7 @@ async function renderGameHistoryList(player) {
             </tr>
         </thead>
         <tbody></tbody>
-    `;
+    `);
     const tbody = table.querySelector('tbody');
     let hasGames = false;
 
@@ -678,13 +679,13 @@ async function renderGameHistoryList(player) {
             if (hasField) btnHtml += `<button class="game-heatmap-btn shadcn-btn-secondary" data-mode="field" style="width: 32px; height: 32px; padding: 0; display:inline-flex; align-items:center; justify-content:center; vertical-align:middle;" title="Wurfbild"><i data-lucide="crosshair" style="width: 16px; height: 16px;"></i></button>`;
             if (has7m) btnHtml += `<button class="game-heatmap-btn shadcn-btn-outline" data-mode="7m" style="height: 32px; padding: 0 8px; font-size: 0.75rem; margin-left: 5px; border-color: #f59e0b; color: #f59e0b; display:inline-flex; align-items:center; vertical-align:middle;" title="7m Statistik">7m</button>`;
 
-            tr.innerHTML = `
-                <td>${dateStr}</td>
-                <td>${matchTitle}</td>
-                <td style="text-align: center;"><strong>${goals}</strong></td>
-                <td style="text-align: center;">${quote}</td>
+            tr.innerHTML = sanitizeHTML(`
+                <td>${escapeHTML(dateStr)}</td>
+                <td>${escapeHTML(matchTitle)}</td>
+                <td style="text-align: center;"><strong>${escapeHTML(goals)}</strong></td>
+                <td style="text-align: center;">${escapeHTML(quote)}</td>
                 <td style="text-align: center; display: flex; justify-content: center; gap: 4px;">${btnHtml}</td>
-            `;
+            `);
 
             // Attach listeners
             const btns = tr.querySelectorAll('.game-heatmap-btn');
@@ -720,13 +721,13 @@ function createPlayerCard(player, index) {
     // Calculate Feldtore for header display
     const headerFeldtore = player.tore - (player.siebenMeterTore || 0);
 
-    header.innerHTML = `
+    header.innerHTML = sanitizeHTML(`
         <div>
-            <div class="info-main">${displayName}</div>
-            <div class="info-sub">${player.totalGames} Spiele · Tore: ${player.tore} (Feld: ${headerFeldtore}, 7m: ${player.siebenMeterTore || 0}/${player.siebenMeterVersuche || 0}) · Quote: ${player.wurfQuote}</div>
+            <div class="info-main">${escapeHTML(displayName)}</div>
+            <div class="info-sub">${escapeHTML(player.totalGames)} Spiele · Tore: ${escapeHTML(player.tore)} (Feld: ${escapeHTML(headerFeldtore)}, 7m: ${escapeHTML(player.siebenMeterTore || 0)}/${escapeHTML(player.siebenMeterVersuche || 0)}) · Quote: ${escapeHTML(player.wurfQuote)}</div>
         </div>
         <span class="expand-icon" style="font-size: 1.2rem; transition: transform 0.2s ease;">▼</span>
-    `;
+    `);
 
     // Details (initially hidden)
     const details = document.createElement('div');
@@ -770,11 +771,11 @@ function createPlayerCard(player, index) {
  * Separate function to render detail content as it's now async
  */
 async function renderPlayerDetailsContent(details, player) {
-    details.innerHTML = '<div style="text-align:center; padding:20px;"><div class="loading-spinner" style="margin:0 auto;"></div><p style="font-size:0.8rem; margin-top:10px; color:var(--text-muted);">Lade Details...</p></div>';
+    details.innerHTML = sanitizeHTML('<div style="text-align:center; padding:20px;"><div class="loading-spinner" style="margin:0 auto;"></div><p style="font-size:0.8rem; margin-top:10px; color:var(--text-muted);">Lade Details...</p></div>');
     
     // 1. Stats Table
     const feldtore = player.tore - (player.siebenMeterTore || 0);
-    const statsTable = `
+    const statsTable = sanitizeHTML(`
         <div class="table-container">
             <table class="season-table">
                 <thead>
@@ -794,22 +795,22 @@ async function renderPlayerDetailsContent(details, player) {
                 </thead>
                 <tbody>
                     <tr>
-                        <td><strong>${player.tore}</strong></td>
-                        <td>${feldtore}</td>
-                        <td>${player.siebenMeterTore}/${player.siebenMeterVersuche}</td>
-                        <td>${player.fehlwurf}</td>
-                        <td>${player.assist || 0}</td>
-                        <td>${player.wurfQuote}</td>
-                        <td>${player.guteAktion}</td>
-                        <td>${player.techFehler}</td>
-                        <td>${player.gelb}</td>
-                        <td>${player.zweiMinuten}</td>
-                        <td>${player.rot}</td>
+                        <td><strong>${escapeHTML(player.tore)}</strong></td>
+                        <td>${escapeHTML(feldtore)}</td>
+                        <td>${escapeHTML(player.siebenMeterTore)}/${escapeHTML(player.siebenMeterVersuche)}</td>
+                        <td>${escapeHTML(player.fehlwurf)}</td>
+                        <td>${escapeHTML(player.assist || 0)}</td>
+                        <td>${escapeHTML(player.wurfQuote)}</td>
+                        <td>${escapeHTML(player.guteAktion)}</td>
+                        <td>${escapeHTML(player.techFehler)}</td>
+                        <td>${escapeHTML(player.gelb)}</td>
+                        <td>${escapeHTML(player.zweiMinuten)}</td>
+                        <td>${escapeHTML(player.rot)}</td>
                     </tr>
                 </tbody>
             </table>
         </div>
-    `;
+    `);
 
     // 2. PlayType Stats Table
     let playTypeStatsHtml = '';
@@ -825,17 +826,17 @@ async function renderPlayerDetailsContent(details, player) {
             const stats = player.playStats[type.key] || { tore: 0, fehlwurf: 0 };
             const attempts = stats.tore + stats.fehlwurf;
             const quote = attempts > 0 ? Math.round((stats.tore / attempts) * 100) + '%' : '-';
-            return `
+            return sanitizeHTML(`
                 <tr>
-                    <td style="text-align: left;">${type.label}</td>
-                    <td>${stats.tore}</td>
-                    <td>${attempts}</td>
-                    <td>${quote}</td>
+                    <td style="text-align: left;">${escapeHTML(type.label)}</td>
+                    <td>${escapeHTML(stats.tore)}</td>
+                    <td>${escapeHTML(attempts)}</td>
+                    <td>${escapeHTML(quote)}</td>
                 </tr>
-            `;
+            `);
         }).join('');
 
-        playTypeStatsHtml = `
+        playTypeStatsHtml = sanitizeHTML(`
             <div class="table-container" style="margin-top: 15px; margin-bottom: 15px;">
                 <h4 style="font-size: 0.85rem; margin-bottom: 8px; color: var(--text-muted);">Wurfquote nach Situation</h4>
                 <table class="season-table">
@@ -852,7 +853,7 @@ async function renderPlayerDetailsContent(details, player) {
                     </tbody>
                 </table>
             </div>
-        `;
+        `);
     }
 
     // 3. Heatmap Buttons

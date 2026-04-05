@@ -22,6 +22,10 @@ import { customConfirm, customAlert } from './customDialog.js';
 import { exportiereHistorieAlsPdf } from './export.js';
 import { getGameResult } from './utils.js';
 import { showLivePlayerDetails } from './ui.js';
+import { renderHomeStatsInHistory, renderOpponentStatsInHistory, openPlayerHistoryHeatmap } from './sharedViews.js';
+import { sanitizeHTML, escapeHTML } from './securityUtils.js';
+import { selectGameForAnalysis } from './videoAnalysis.js';
+import { navigateTo } from './router.js';
 
 // --- Export einzelnes Spiel ---
 export function exportiereEinzelnesSpiel(game) {
@@ -54,7 +58,10 @@ export async function handleSpielBeenden() {
             : spielstand.settings.teamNameHeim;
 
         const gameData = {
-            score: { ...spielstand.score },
+            score: { 
+                heim: spielstand.score.heim, 
+                gegner: spielstand.score.gegner 
+            },
             teams: { heim: spielstand.settings.teamNameHeim, gegner: spielstand.settings.teamNameGegner },
             gameLog: [...spielstand.gameLog],
             roster: [...spielstand.roster],
@@ -114,7 +121,7 @@ export async function handleSpielBeenden() {
 
 // --- Render History List ---
 export async function renderHistoryList() {
-    historieListe.innerHTML = '<div style="grid-column: 1/-1; text-align:center; padding:40px; color: var(--text-muted);"><div class="loading-spinner" style="margin: 0 auto 15px;"></div>Lade Spiele aus der Cloud...</div>';
+    historieListe.innerHTML = sanitizeHTML('<div style="grid-column: 1/-1; text-align:center; padding:40px; color: var(--text-muted);"><div class="loading-spinner" style="margin: 0 auto 15px;"></div>Lade Spiele aus der Cloud...</div>');
 
     // Ensure grid container class
     historieListe.className = 'history-grid';
@@ -125,7 +132,7 @@ export async function renderHistoryList() {
 
     if (!games || games.length === 0) {
         historieListe.style.display = 'block'; // Fallback for message
-        historieListe.innerHTML = '<p style="text-align:center; padding:20px; color: var(--text-muted);">Keine gespeicherten Spiele vorhanden.</p>';
+        historieListe.innerHTML = sanitizeHTML('<p style="text-align:center; padding:20px; color: var(--text-muted);">Keine gespeicherten Spiele vorhanden.</p>');
         return;
     }
 
@@ -135,8 +142,9 @@ export async function renderHistoryList() {
         div.setAttribute('role', 'button');
         div.setAttribute('tabindex', '0');
 
-        const heimScore = game.score.heim;
-        const gastScore = game.score.gegner;
+        const score = game.score || { heim: 0, gegner: 0 };
+        const heimScore = score.heim;
+        const gastScore = score.gegner;
         let statusColor = 'var(--text-muted)';
         let statusText = 'Unentschieden';
 
@@ -153,33 +161,36 @@ export async function renderHistoryList() {
 
         const date = new Date(game.date).toLocaleDateString();
 
-        div.innerHTML = `
+        div.innerHTML = sanitizeHTML(`
             <div class="history-card-header" style="pointer-events: none;">
-                <span style="font-weight: 600; color: ${statusColor}">${statusText}</span>
-                <span>${date}</span>
+                <span style="font-weight: 600; color: ${statusColor}">${escapeHTML(statusText)}</span>
+                <span>${escapeHTML(date)}</span>
             </div>
             
             <div class="history-card-body" style="pointer-events: none;">
                 <div class="history-card-teams">
-                    ${game.teams.heim} <span style="font-weight: 400; opacity: 0.6;">vs</span> ${game.teams.gegner}
+                    ${escapeHTML(game.teams.heim)} <span style="font-weight: 400; opacity: 0.6;">vs</span> ${escapeHTML(game.teams.gegner)}
                 </div>
                 <div class="history-card-score">
-                    ${heimScore} : ${gastScore}
+                    ${escapeHTML(heimScore)} : ${escapeHTML(gastScore)}
                 </div>
             </div>
 
-            <div style="display: flex; gap: 8px; margin-top: 4px;">
-                <button class="shadcn-btn-outline shadcn-btn-sm export-pdf-btn" data-id="${game.id}" style="padding: 6px 10px; flex: 1;" title="PDF">
+            <div style="display: flex; gap: 4px; margin-top: 4px; flex-wrap: wrap;">
+                <button class="shadcn-btn-outline shadcn-btn-sm video-analysis-btn" data-id="${escapeHTML(game.id)}" style="padding: 6px 8px; flex: 1; border-color: var(--primary); color: var(--primary);" title="Video Analyse">
+                    Video
+                </button>
+                <button class="shadcn-btn-outline shadcn-btn-sm export-pdf-btn" data-id="${escapeHTML(game.id)}" style="padding: 6px 8px; flex: 1;" title="PDF">
                     PDF
                 </button>
-                <button class="shadcn-btn-outline shadcn-btn-sm export-history-btn" data-id="${game.id}" style="padding: 6px 10px; flex: 1;" title="Export">
+                <button class="shadcn-btn-outline shadcn-btn-sm export-history-btn" data-id="${escapeHTML(game.id)}" style="padding: 6px 8px; flex: 1;" title="Export">
                     JSON
                 </button>
-                <button class="shadcn-btn-outline shadcn-btn-sm delete-history-btn" data-id="${game.id}" style="padding: 6px 10px; border-color: rgba(239, 68, 68, 0.2); color: #ef4444;" title="Löschen">
-                    Löschen
+                <button class="shadcn-btn-outline shadcn-btn-sm delete-history-btn" data-id="${escapeHTML(game.id)}" style="padding: 6px 8px; border-color: rgba(239, 68, 68, 0.2); color: #ef4444;" title="Löschen">
+                    Lösch
                 </button>
             </div>
-        `;
+        `);
 
         const triggerAction = (e) => {
             if (e.target.closest('button')) return;
@@ -192,6 +203,12 @@ export async function renderHistoryList() {
                 e.preventDefault();
                 triggerAction(e);
             }
+        });
+
+        div.querySelector('.video-analysis-btn').addEventListener('click', (e) => {
+            e.stopPropagation();
+            selectGameForAnalysis(game);
+            navigateTo('videoanalyse');
         });
 
         div.querySelector('.export-pdf-btn').addEventListener('click', (e) => {
@@ -219,298 +236,10 @@ export async function renderHistoryList() {
 
 
 
-// --- Render Home Stats in History ---
-export function renderHomeStatsInHistory(tbody, statsData, gameLog, isLive = false, stayInHeatmap = false, renderBound = null, onRowClick = null) {
-    if (onRowClick) isLive = true; // Use same logic as Opponent to enable clicks if callback provided
+// --- History Logic moved to sharedViews.js ---
+// renderHomeStatsInHistory, renderOpponentStatsInHistory, and openPlayerHistoryHeatmap 
+// are now imported from sharedViews.js to resolve circular dependencies.
 
-    tbody.innerHTML = '';
-
-    const toreMap = berechneTore(gameLog);
-
-    statsData.forEach(stats => {
-        const fieldGoals = toreMap.get(stats.number) || 0;
-        const sevenMGoals = stats.siebenMeterTore || 0;
-        const goals = fieldGoals + sevenMGoals; // Total Goals
-        const feldtore = fieldGoals;
-
-        // Quote = Field Goals / Field Attempts (Field Goals + Field Misses)
-        const fieldAttempts = fieldGoals + stats.fehlwurf;
-        const quote = fieldAttempts > 0 ? Math.round((fieldGoals / fieldAttempts) * 100) + '%' : '-';
-        const sevenMDisplay = (stats.siebenMeterVersuche > 0) ? `${stats.siebenMeterTore}/${stats.siebenMeterVersuche}` : "0/0";
-
-        const timeOnField = stats.timeOnField || 0;
-        const m = Math.floor(timeOnField / 60);
-        const s = timeOnField % 60;
-        const timeStr = `${m}:${s < 10 ? '0' + s : s}`;
-
-        // Check for heatmap data
-        // Filter log for this player
-        const playerLog = gameLog.filter(e => (e.playerId === stats.number || e.number === stats.number) && !e.action.startsWith('Gegner'));
-        const hasField = playerLog.some(e => !e.action.includes('7m'));
-        const has7m = playerLog.some(e => e.action.includes('7m'));
-
-        let buttonsHtml = '';
-        if (hasField) buttonsHtml += `<button class="heatmap-btn shadcn-btn-secondary" data-mode="field" style="padding: 0 4px; height: 20px; display:inline-flex; align-items:center; vertical-align:middle; font-size: 0.6rem; min-width: 20px;"><i data-lucide="crosshair" style="width: 12px; height: 12px;"></i></button>`;
-        if (has7m) buttonsHtml += `<button class="heatmap-btn shadcn-btn-outline" data-mode="7m" style="padding: 0 4px; height: 20px; font-size: 0.6rem; margin-left: 2px; border-color: #f59e0b; color: #f59e0b; display:inline-flex; align-items:center; vertical-align:middle; min-width: 20px;">7m</button>`;
-
-        const showTime = (!spielstand.gameMode || spielstand.gameMode !== 'simple');
-
-        const tr = document.createElement('tr');
-        if (isLive) {
-            tr.style.cursor = 'pointer';
-            tr.title = 'Klicken für Details und Wurfquote';
-            tr.addEventListener('click', () => {
-                if (onRowClick) {
-                    onRowClick(stats);
-                } else if (typeof showLivePlayerDetails === 'function') {
-                    showLivePlayerDetails(stats);
-                }
-            });
-        }
-
-
-        tr.innerHTML = `
-            <td>#${stats.number} ${stats.name}</td>
-            ${showTime ? `<td>${timeStr}</td>` : ''}
-            <td>${goals}</td>
-            <td>${feldtore}</td>
-            <td>${sevenMDisplay}</td>
-            <td>${stats.fehlwurf}</td>
-            <td>${stats.assist || 0}</td>
-            <td>${quote}</td>
-            <td>${stats.ballverlust}</td>
-            <td>${stats.stuermerfoul}</td>
-            <td>${stats.block}</td>
-            <td>${stats.gewonnen1v1}</td>
-            <td>${stats.oneOnOneLost}</td>
-            <td>${stats.rausgeholt7m}</td>
-            <td>${stats.rausgeholt2min}</td>
-            <td>${stats.gelb}</td>
-            <td>${stats.zweiMinuten}</td>
-            <td>${stats.rot}</td>
-            <td>${buttonsHtml}</td>
-        `;
-
-        const btns = tr.querySelectorAll('.heatmap-btn');
-        btns.forEach(btn => {
-            btn.addEventListener('click', (e) => {
-                e.stopPropagation();
-                const mode = btn.dataset.mode;
-                if (isLive) {
-                    // Navigate to Live Heatmap
-                    const navItem = document.querySelector('.nav-item[data-view="heatmap"]');
-
-                    // Force Team Toggle to Home (Unchecked)
-                    if (heatmapTeamToggle) {
-                        heatmapTeamToggle.setAttribute('data-state', 'unchecked');
-                        heatmapTeamToggle.setAttribute('aria-checked', 'false');
-                        if (heatmapHeimLabel) heatmapHeimLabel.style.color = 'hsl(var(--primary))';
-                        if (heatmapGegnerLabel) heatmapGegnerLabel.style.color = 'hsl(var(--muted-foreground))';
-                    }
-                    // Select Player
-                    if (heatmapPlayerSelect) {
-                        heatmapPlayerSelect.value = stats.number;
-                    }
-
-                    if (navItem) navItem.click();
-                } else if (stayInHeatmap) {
-                    // Update current heatmap context locally
-                    openPlayerHistoryHeatmap(gameLog, stats.number, 'heim', stats.name, mode, false);
-                    if (renderBound) renderBound();
-                    // Scroll to top of history detail
-                    if (historieDetailBereich) historieDetailBereich.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                } else {
-                    openPlayerHistoryHeatmap(gameLog, stats.number, 'heim', stats.name, mode);
-                }
-            });
-        });
-
-        tbody.appendChild(tr);
-    });
-    if (typeof lucide !== 'undefined') lucide.createIcons({ root: tbody });
-}
-
-// --- Render Opponent Stats in History ---
-export function renderOpponentStatsInHistory(tbody, statsData, gameLog, game = null, isLive = false, stayInHeatmap = false, renderBound = null, onRowClick = null) {
-    // Logic: If game is null (Live View) OR callback provided, assume Live/Clickable
-    // Also handle legacy signature where 4th arg (game) might be boolean true (isLive)
-    if (game === null || onRowClick || game === true) isLive = true;
-
-    tbody.innerHTML = '';
-
-    const toreMap = berechneTore(gameLog); // Needed if not already in statsData
-
-    statsData.forEach(stats => {
-        const goals = stats.tore || 0;
-        const sevenMGoals = stats.siebenMeterTore || 0;
-        const feldtore = goals - sevenMGoals;
-
-        const fieldAttempts = feldtore + stats.fehlwurf;
-        const quote = fieldAttempts > 0 ? Math.round((feldtore / fieldAttempts) * 100) + '%' : '-';
-        const sevenMDisplay = (stats.siebenMeterVersuche > 0) ? `${stats.siebenMeterTore}/${stats.siebenMeterVersuche}` : "0/0";
-
-        // Check for heatmap data
-        const has7m = stats.siebenMeterVersuche > 0;
-        const hasField = (goals + stats.fehlwurf) > stats.siebenMeterVersuche;
-
-        const timeOnField = stats.timeOnField || 0;
-        const m = Math.floor(timeOnField / 60);
-        const s = timeOnField % 60;
-        const timeStr = `${m}:${s < 10 ? '0' + s : s}`;
-
-        let buttonsHtml = '';
-        if (hasField || goals > 0) buttonsHtml += `<button class="heatmap-btn shadcn-btn-secondary" data-mode="field" style="padding: 0 4px; height: 20px; display:inline-flex; align-items:center; vertical-align:middle; font-size: 0.6rem; min-width: 20px;"><i data-lucide="crosshair" style="width: 12px; height: 12px;"></i></button>`;
-        if (has7m) buttonsHtml += `<button class="heatmap-btn shadcn-btn-outline" data-mode="7m" style="padding: 0 4px; height: 20px; font-size: 0.6rem; margin-left: 2px; border-color: #f59e0b; color: #f59e0b; display:inline-flex; align-items:center; vertical-align:middle; min-width: 20px;">7m</button>`;
-
-        const showTime = (!spielstand.gameMode || spielstand.gameMode !== 'simple');
-
-        const tr = document.createElement('tr');
-        if (isLive) {
-            tr.style.cursor = 'pointer';
-            tr.title = 'Klicken für Details und Wurfquote';
-            tr.addEventListener('click', () => {
-                if (onRowClick) {
-                    onRowClick(stats);
-                } else if (typeof showLivePlayerDetails === 'function') {
-                    showLivePlayerDetails(stats);
-                } else {
-                    console.error('No valid click handler found for Opponent stats');
-                }
-            });
-        }
-        tr.innerHTML = `
-            <td>${stats.name}</td>
-            ${showTime ? `<td>${timeStr}</td>` : ''}
-            <td>${goals}</td>
-            <td>${feldtore}</td>
-            <td>${sevenMDisplay}</td>
-            <td>${stats.fehlwurf}</td>
-            <td>${stats.assist || 0}</td>
-            <td>${quote}</td>
-            <td>${stats.ballverlust || 0}</td>
-            <td>${stats.stuermerfoul || 0}</td>
-            <td>${stats.block || 0}</td>
-            <td>${stats.gewonnen1v1 || 0}</td>
-            <td>${stats.oneOnOneLost || 0}</td>
-            <td>${stats.rausgeholt7m || 0}</td>
-            <td>${stats.rausgeholt2min || 0}</td>
-            <td>${stats.gelb}</td>
-            <td>${stats.zweiMinuten}</td>
-            <td>${stats.rot}</td>
-            <td>${buttonsHtml}</td>
-        `;
-
-        const btns = tr.querySelectorAll('.heatmap-btn');
-        btns.forEach(btn => {
-            btn.addEventListener('click', (e) => {
-                e.stopPropagation();
-                if (isLive) {
-                    // Navigate to Live Heatmap
-                    const navItem = document.querySelector('.nav-item[data-view="heatmap"]');
-
-                    // Force Team Toggle to Opponent (Checked)
-                    if (heatmapTeamToggle) {
-                        heatmapTeamToggle.setAttribute('data-state', 'checked');
-                        heatmapTeamToggle.setAttribute('aria-checked', 'true');
-                        if (heatmapHeimLabel) heatmapHeimLabel.style.color = 'hsl(var(--muted-foreground))';
-                        if (heatmapGegnerLabel) heatmapGegnerLabel.style.color = 'white'; // or appropriate contrast
-                    }
-                    // Select Player (if specific)
-                    if (heatmapPlayerSelect && stats.number && stats.number !== '?') {
-                        heatmapPlayerSelect.value = stats.number;
-                    }
-
-                    if (navItem) navItem.click();
-                } else if (stayInHeatmap) {
-                    const num = (stats.number && stats.number !== '?') ? stats.number : null;
-                    const mode = btn.dataset.mode;
-                    const teamName = (game && game.teams && game.teams.gegner) || stats.team || 'gegner';
-                    openPlayerHistoryHeatmap(gameLog, num, teamName, stats.name, mode, false);
-                    if (renderBound) renderBound();
-                    // Scroll to top of history detail
-                    if (historieDetailBereich) historieDetailBereich.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                } else {
-                    const num = (stats.number && stats.number !== '?') ? stats.number : null;
-                    const mode = btn.dataset.mode;
-                    const teamName = (game && game.teams && game.teams.gegner) || stats.team || 'gegner';
-                    openPlayerHistoryHeatmap(gameLog, num, teamName, stats.name, mode);
-                }
-            });
-        });
-
-        tbody.appendChild(tr);
-    });
-    if (typeof lucide !== 'undefined') lucide.createIcons({ root: tbody });
-}
-
-// --- Open Player History Heatmap ---
-export function openPlayerHistoryHeatmap(gameLog, identifier, team, playerName, mode = 'field', navigate = true) {
-    // Determine the title
-    const modeLabel = mode === '7m' ? `7m Grafik` : `Wurfbild`;
-    const myTeamName = (spielstand.settings.myTeamName || '').toLowerCase().trim();
-    const mappedLog = gameLog.map(e => ({
-        ...e,
-        isOpponent: team !== 'heim' && team !== 'Heim' // Correct: anything not Heim is opponent
-    }));
-
-    // Set Context
-    setCurrentHeatmapContext({
-        log: mappedLog,
-        title: `${modeLabel} - ${playerName} #${identifier}`,
-        filter: {
-            team: team, // 'heim' or 'gegner'
-            player: identifier
-        },
-        mode: mode,  // Add mode information
-        initialFilters: {  // Add initial filter states
-            tore: mode !== '7m',  // Feldtore only if not 7m mode
-            seven_m: mode === '7m',  // 7m only in 7m mode
-            missed: true  // Always show misses
-        },
-        type: 'history-detail'
-    });
-
-    // Default to 'tor' for the global view
-    setCurrentHeatmapTab('tor');
-
-    if (navigate) {
-        // Force Tab UI update (redundant but safe)
-        if (histTabProtokoll) histTabProtokoll.classList.remove('active');
-        if (histTabTorfolge) histTabTorfolge.classList.remove('active');
-
-        // Switch to the heatmap tab in history detail
-        if (histTabHeatmap) {
-            histTabHeatmap.classList.add('active');
-            histTabHeatmap.click();
-
-            // Explicitly force visibility of heatmap
-            if (histContentHeatmap) {
-                histContentHeatmap.classList.remove('versteckt');
-                histContentHeatmap.classList.remove('hide-heatmap-visuals');
-                // Scroll to heatmap content to ensure visibility
-                histContentHeatmap.scrollIntoView({ behavior: 'smooth', block: 'start' });
-            }
-            if (histContentProtokoll) histContentProtokoll.classList.add('versteckt');
-            if (histContentTorfolge) histContentTorfolge.classList.add('versteckt');
-        }
-    }
-
-    // Also update the player select if it exists
-    if (histHeatmapPlayerSelect && identifier !== null) {
-        // Use the sync helper if available
-        if (histHeatmapSvg && typeof histHeatmapSvg.syncControls === 'function') {
-            const isHeim = (team === 'heim');
-            histHeatmapSvg.syncControls(isHeim ? 'heim' : 'gegner', identifier, mode);
-        } else {
-            histHeatmapPlayerSelect.value = identifier;
-        }
-
-        // Trigger local update
-        if (histHeatmapSvg && typeof histHeatmapSvg.renderBound === 'function') {
-            histHeatmapSvg.renderBound();
-        }
-    }
-}
 
 // --- Open History Detail ---
 // --- Render Goal Sequence Chart ---
@@ -663,7 +392,7 @@ function renderHistoryProtocol(game) {
     container.innerHTML = '';
 
     if (!game.gameLog || game.gameLog.length === 0) {
-        container.innerHTML = '<p style="text-align:center; padding:20px; color: var(--text-muted);">Kein Protokoll vorhanden.</p>';
+        container.innerHTML = sanitizeHTML('<p style="text-align:center; padding:20px; color: var(--text-muted);">Kein Protokoll vorhanden.</p>');
         return;
     }
 
@@ -701,12 +430,12 @@ function renderHistoryProtocol(game) {
         }
 
         if (eintrag.kommentar) {
-            text += ` - ${eintrag.kommentar}`;
+            text += ` - ${escapeHTML(eintrag.kommentar)}`;
         }
 
-        contentHtml += `<span class="log-text"><strong>${text}</strong><span style="opacity: 0.6; margin-left:8px;">${spielstandText}</span></span>`;
+        contentHtml += `<span class="log-text"><strong>${escapeHTML(text)}</strong><span style="opacity: 0.6; margin-left:8px;">${escapeHTML(spielstandText)}</span></span>`;
 
-        div.innerHTML = contentHtml;
+        div.innerHTML = sanitizeHTML(contentHtml);
         container.appendChild(div);
     });
 }
@@ -736,22 +465,27 @@ export function openHistoryDetail(game) {
     // Render Score Card into Header
     if (historieHeader) {
         historieHeader.classList.remove('versteckt');
-        historieHeader.innerHTML = `
+        const dateStr = new Date(game.date).toLocaleDateString();
+        historieHeader.innerHTML = sanitizeHTML(`
             <div class="stats-card score-card" style="background: var(--bg-card); border-radius: 12px; padding: 20px; text-align: center; border: 1px solid var(--border-color); margin-bottom: 20px;">
-                <h2 class="card-title" style="margin: 0 0 15px 0; color: var(--text-muted); font-size: 0.9rem; text-transform: uppercase;">Endergebnis</h2>
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                    <h2 class="card-title" style="margin: 0; color: var(--text-muted); font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.05em;">Endergebnis</h2>
+                    <span style="color: var(--text-muted); font-size: 0.8rem; font-weight: 500;">${escapeHTML(dateStr)}</span>
+                </div>
                 <div class="score-display" style="display: flex; justify-content: center; align-items: center; gap: 30px;">
-                    <div class="score-team" style="text-align: right;">
-                        <span class="team-name" style="display: block; font-size: 1.1rem; font-weight: 700; color: var(--text-main);">${homeName}</span>
-                        <span class="team-score" style="display: block; font-size: 2.5rem; font-weight: 800; color: ${homeScore > oppScore ? '#4ade80' : (homeScore < oppScore ? '#f87171' : '#94a3b8')};">${homeScore}</span>
+                    <div class="score-team" style="text-align: right; flex: 1;">
+                        <span class="team-name" style="display: block; font-size: 1.1rem; font-weight: 700; color: var(--text-main); line-height: 1.2;">${escapeHTML(homeName)}</span>
+                        <span class="team-score" style="display: block; font-size: 2.8rem; font-weight: 800; color: ${homeScore > oppScore ? '#4ade80' : (homeScore < oppScore ? '#f87171' : '#94a3b8')};">${escapeHTML(homeScore)}</span>
                     </div>
-                    <span class="score-separator" style="font-size: 2rem; color: var(--text-muted); font-weight: 300;">:</span>
-                    <div class="score-team" style="text-align: left;">
-                        <span class="team-name" style="display: block; font-size: 1.1rem; font-weight: 700; color: var(--text-main);">${oppName}</span>
-                        <span class="team-score" style="display: block; font-size: 2.5rem; font-weight: 800; color: ${oppScore > homeScore ? '#4ade80' : (oppScore < homeScore ? '#f87171' : '#94a3b8')};">${oppScore}</span>
+                    <span class="score-separator" style="font-size: 2.5rem; color: var(--text-muted); font-weight: 200; opacity: 0.5;">:</span>
+                    <div class="score-team" style="text-align: left; flex: 1;">
+                        <span class="team-name" style="display: block; font-size: 1.1rem; font-weight: 700; color: var(--text-main); line-height: 1.2;">${escapeHTML(oppName)}</span>
+                        <span class="team-score" style="display: block; font-size: 2.8rem; font-weight: 800; color: ${oppScore > homeScore ? '#4ade80' : (oppScore < homeScore ? '#f87171' : '#94a3b8')};">${escapeHTML(oppScore)}</span>
                     </div>
                 </div>
             </div>
-        `;
+        `);
+        if (typeof lucide !== 'undefined') lucide.createIcons({ root: historieHeader });
     }
 
     // Populate data
@@ -834,7 +568,9 @@ export function openHistoryDetail(game) {
         if (histHeatmapGegnerTitle) histHeatmapGegnerTitle.textContent = oppName;
 
         renderHomeStatsInHistory(histHeatmapStatsBodyHome, homeStats, game.gameLog, false, true, renderBound, showLivePlayerDetails);
-        renderOpponentStatsInHistory(histHeatmapStatsBodyGegner, opponentStats, game.gameLog, game, false, true, renderBound, showLivePlayerDetails);
+        if (histHeatmapStatsBodyGegner) {
+            renderOpponentStatsInHistory(histHeatmapStatsBodyGegner, opponentStats, game.gameLog, game, false, true, renderBound, showLivePlayerDetails);
+        }
     }
 
     const histFilter = histContentHeatmap.querySelector('.heatmap-filter');

@@ -1,5 +1,6 @@
 import { createTeam, setActiveTeam, getAuthUid, getCurrentUserProfile, updateUserRosterName } from './firebase.js';
 import { spielstand, speichereSpielstand } from './state.js';
+import { sanitizeHTML, escapeHTML } from './securityUtils.js';
 
 /**
  * Show the team selection / creation overlay.
@@ -87,19 +88,19 @@ function renderCreateInitial(container, profile, onFinish, overlay) {
  * View for users to select from their teams.
  */
 function renderSelectionList(container, profile, onFinish, overlay, renderContent) {
-    let listHtml = profile.teams.map(t => `
-        <div class="team-item" data-id="${t.teamId}" style="
+    let listHtml = profile.teams.map(t => sanitizeHTML(`
+        <div class="team-item" data-id="${escapeHTML(t.teamId)}" style="
             padding: 1rem; border: 1px solid #334155; border-radius: 0.5rem; margin-bottom: 0.75rem;
             cursor: pointer; display: flex; justify-content: space-between; align-items: center;
             transition: background 0.2s;
         ">
             <div>
-                <div style="font-weight: 600;">${t.teamName || t.name || 'Unbekanntes Team'}</div>
-                <div style="font-size: 0.75rem; color: #94a3b8; text-transform: capitalize;">${t.role}</div>
+                <div style="font-weight: 600;">${escapeHTML(t.teamName || t.name || 'Unbekanntes Team')}</div>
+                <div style="font-size: 0.75rem; color: #94a3b8; text-transform: capitalize;">${escapeHTML(t.role)}</div>
             </div>
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: #64748b;"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
         </div>
-    `).join('');
+    `)).join('');
 
     container.innerHTML = `
         <h2 style="font-size: 1.5rem; font-weight: 600; margin-bottom: 0.5rem;">Deine Teams</h2>
@@ -238,18 +239,18 @@ export function showPlayerNameSelection(onComplete) {
     });
 
     const rosterHtml = availablePlayers.length > 0
-        ? availablePlayers.map(p => `
-            <button class="player-name-opt" data-name="${p.name}" style="
+        ? availablePlayers.map(p => sanitizeHTML(`
+            <button class="player-name-opt" data-name="${escapeHTML(p.name)}" style="
                 width: 100%; text-align: left; padding: 0.75rem 1rem;
                 border: 1px solid #334155; border-radius: 0.5rem;
                 background: transparent; color: white; cursor: pointer;
                 margin-bottom: 0.5rem; transition: background 0.15s; font-size: 0.9rem;
             ">
-                <span style="font-weight:600;">${p.name}</span>
-                <span style="color:#94a3b8; margin-left:6px;">${p.number ? `#${p.number}` : ''}</span>
+                <span style="font-weight:600;">${escapeHTML(p.name)}</span>
+                <span style="color:#94a3b8; margin-left:6px;">${p.number ? `#${escapeHTML(p.number)}` : ''}</span>
             </button>
-        `).join('')
-        : '<p style="color:#94a3b8; font-size:0.85rem; margin-bottom:1rem;">Kein Kader hinterlegt – bitte gib einfach deinen Namen ein.</p>';
+        `)).join('')
+        : sanitizeHTML('<p style="color:#94a3b8; font-size:0.85rem; margin-bottom:1rem;">Kein Kader hinterlegt – bitte gib einfach deinen Namen ein.</p>');
 
     card.innerHTML = `
         <h2 style="font-size: 1.3rem; font-weight: 700; margin-bottom: 0.4rem;">Wer bist du?</h2>

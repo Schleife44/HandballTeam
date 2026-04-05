@@ -5,6 +5,7 @@ import { spielstand } from './state.js';
 import { getBaseOptions, commonCenterTextPlugin, destroyChart } from './chartUtils.js';
 import { getAuthUid, getCurrentUserProfile } from './firebase.js';
 import { updateParticipation, getEventStats, showEventDetails, isPlayerAbsent } from './calendar.js';
+import { sanitizeHTML, escapeHTML } from './securityUtils.js';
 
 let dashboardCharts = [];
 let dashboardRenderId = 0;
@@ -59,32 +60,32 @@ export function renderDashNextEvents() {
             const isLast = index === next3.length - 1;
             const bottomStyles = isLast ? '' : 'margin-bottom: 15px; border-bottom: 1px solid var(--border-color);';
 
-            return `
+            return sanitizeHTML(`
             <div style="padding-bottom: 15px; ${bottomStyles}">
-                <div style="font-size: 1.1rem; font-weight: 700; margin-bottom: 4px;">${nextEv.title}</div>
+                <div style="font-size: 1.1rem; font-weight: 700; margin-bottom: 4px;">${escapeHTML(nextEv.title)}</div>
                 <div style="display:flex; align-items:center; gap:8px; justify-content:center; color: var(--text-muted); font-size: 0.9rem; margin-bottom: 6px;">
-                    <span style="font-weight:600; color:${typeColor}; background: ${typeColor}20; padding: 2px 8px; border-radius: 4px; font-size: 0.75rem;">${typeLabel}</span>
+                    <span style="font-weight:600; color:${typeColor}; background: ${typeColor}20; padding: 2px 8px; border-radius: 4px; font-size: 0.75rem;">${escapeHTML(typeLabel)}</span>
                 </div>
                 <div style="font-size: 0.95rem; font-weight: 500;">
-                    ${dayName}, ${dateFmt} <span style="margin: 0 4px; opacity:0.5;">|</span> ${nextEv.time} Uhr
+                    ${escapeHTML(dayName)}, ${escapeHTML(dateFmt)} <span style="margin: 0 4px; opacity:0.5;">|</span> ${escapeHTML(nextEv.time)} Uhr
                 </div>
-                ${nextEv.location ? `<div style="font-size: 0.85rem; color: var(--text-muted); margin-top: 4px; margin-bottom: 8px;"><i data-lucide="map-pin" style="width:12px; height:12px; vertical-align:text-top;"></i> ${nextEv.location}</div>` : ''}
+                ${nextEv.location ? `<div style="font-size: 0.85rem; color: var(--text-muted); margin-top: 4px; margin-bottom: 8px;"><i data-lucide="map-pin" style="width:12px; height:12px; vertical-align:text-top;"></i> ${escapeHTML(nextEv.location)}</div>` : ''}
                 
                 <div style="display:flex; justify-content:center; gap:8px; margin-top:12px;">
-                    <button class="dash-rsvp-btn" data-event-id="${nextEv.id}" data-status="going" style="border:1px solid ${myStatus === 'going' ? '#15803d' : '#22c55e'}; color:${myStatus === 'going' ? 'white' : '#22c55e'}; background:${myStatus === 'going' ? '#22c55e' : 'transparent'}; display:flex; align-items:center; gap:4px; padding:4px 12px; border-radius:4px; cursor:pointer; font-weight:600; font-size:0.85rem; transition:all 0.2s;">
-                        <i data-lucide="thumbs-up" style="width:14px; height:14px;"></i> ${stats.going}
+                    <button class="dash-rsvp-btn" data-event-id="${escapeHTML(nextEv.id)}" data-status="going" style="border:1px solid ${myStatus === 'going' ? '#15803d' : '#22c55e'}; color:${myStatus === 'going' ? 'white' : '#22c55e'}; background:${myStatus === 'going' ? '#22c55e' : 'transparent'}; display:flex; align-items:center; gap:4px; padding:4px 12px; border-radius:4px; cursor:pointer; font-weight:600; font-size:0.85rem; transition:all 0.2s;">
+                        <i data-lucide="thumbs-up" style="width:14px; height:14px;"></i> ${escapeHTML(stats.going)}
                     </button>
-                    <button class="dash-rsvp-btn" data-event-id="${nextEv.id}" data-status="maybe" style="border:1px solid ${myStatus === 'maybe' ? '#b45309' : '#f59e0b'}; color:${myStatus === 'maybe' ? 'white' : '#f59e0b'}; background:${myStatus === 'maybe' ? '#f59e0b' : 'transparent'}; display:flex; align-items:center; gap:4px; padding:4px 12px; border-radius:4px; cursor:pointer; font-weight:600; font-size:0.85rem; transition:all 0.2s;">
-                        <i data-lucide="help-circle" style="width:14px; height:14px;"></i> ${stats.maybe}
+                    <button class="dash-rsvp-btn" data-event-id="${escapeHTML(nextEv.id)}" data-status="maybe" style="border:1px solid ${myStatus === 'maybe' ? '#b45309' : '#f59e0b'}; color:${myStatus === 'maybe' ? 'white' : '#f59e0b'}; background:${myStatus === 'maybe' ? '#f59e0b' : 'transparent'}; display:flex; align-items:center; gap:4px; padding:4px 12px; border-radius:4px; cursor:pointer; font-weight:600; font-size:0.85rem; transition:all 0.2s;">
+                        <i data-lucide="help-circle" style="width:14px; height:14px;"></i> ${escapeHTML(stats.maybe)}
                     </button>
-                    <button class="dash-rsvp-btn" data-event-id="${nextEv.id}" data-status="not-going" style="border:1px solid ${myStatus === 'not-going' ? '#991b1b' : '#ef4444'}; color:${myStatus === 'not-going' ? 'white' : '#ef4444'}; background:${myStatus === 'not-going' ? '#ef4444' : 'transparent'}; display:flex; align-items:center; gap:4px; padding:4px 12px; border-radius:4px; cursor:pointer; font-weight:600; font-size:0.85rem; transition:all 0.2s;">
-                        <i data-lucide="thumbs-down" style="width:14px; height:14px;"></i> ${stats.missing}
+                    <button class="dash-rsvp-btn" data-event-id="${escapeHTML(nextEv.id)}" data-status="not-going" style="border:1px solid ${myStatus === 'not-going' ? '#991b1b' : '#ef4444'}; color:${myStatus === 'not-going' ? 'white' : '#ef4444'}; background:${myStatus === 'not-going' ? '#ef4444' : 'transparent'}; display:flex; align-items:center; gap:4px; padding:4px 12px; border-radius:4px; cursor:pointer; font-weight:600; font-size:0.85rem; transition:all 0.2s;">
+                        <i data-lucide="thumbs-down" style="width:14px; height:14px;"></i> ${escapeHTML(stats.missing)}
                     </button>
-                    <button class="dash-details-btn" data-event-id="${nextEv.id}" style="border:1px solid var(--border-color); color:var(--text-main); background:transparent; display:flex; align-items:center; gap:4px; padding:4px 12px; border-radius:4px; cursor:pointer; font-weight:600; font-size:0.85rem; transition:all 0.2s;">
+                    <button class="dash-details-btn" data-event-id="${escapeHTML(nextEv.id)}" style="border:1px solid var(--border-color); color:var(--text-main); background:transparent; display:flex; align-items:center; gap:4px; padding:4px 12px; border-radius:4px; cursor:pointer; font-weight:600; font-size:0.85rem; transition:all 0.2s;">
                         <i data-lucide="users" style="width:14px; height:14px;"></i>
                     </button>
                 </div>
-            </div>`;
+            </div>`);
         }).join('');
 
         if (window.lucide) window.lucide.createIcons();
@@ -134,6 +135,7 @@ export async function showDashboardInline() {
         dashboardBereich.className = 'content-section';
         document.getElementById('main-content').appendChild(dashboardBereich);
     }
+    dashboardBereich.classList.remove('versteckt');
 
     const history = await getHistorie();
 
@@ -423,20 +425,20 @@ export async function showDashboardInline() {
                 if (result === 'win') { badge = 'W'; cls = 'win'; }
                 if (result === 'loss') { badge = 'L'; cls = 'loss'; }
 
-                return `
+                return sanitizeHTML(`
                      <div class="last-result-item">
                          <div style="display:flex; align-items:center;">
-                             <div class="result-badge-square ${cls}">${badge}</div>
+                             <div class="result-badge-square ${cls}">${escapeHTML(badge)}</div>
                              <div>
-                                 <div style="font-weight:700;">${homeName}</div>
-                                 <div style="font-size:0.75rem; color:var(--text-muted);">${guestName}</div>
+                                 <div style="font-weight:700;">${escapeHTML(homeName)}</div>
+                                 <div style="font-size:0.75rem; color:var(--text-muted);">${escapeHTML(guestName)}</div>
                              </div>
                          </div>
                          <div style="display: flex; flex-direction: column; align-items: flex-end;">
-                            <div style="font-weight:700;">${h}:${ga}</div>
+                            <div style="font-weight:700;">${escapeHTML(h)}:${escapeHTML(ga)}</div>
                          </div>
-                     </div>`;
-            }).join('') || '<div style="text-align:center; color:var(--text-muted);">Keine Spiele</div>';
+                     </div>`);
+            }).join('') || sanitizeHTML('<div style="text-align:center; color:var(--text-muted);">Keine Spiele</div>');
         }
 
 

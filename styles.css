@@ -494,13 +494,46 @@ textarea:focus {
 }
 
 .nav-group-label {
-    padding: 0.4rem 1rem 0.2rem;
-    /* Reduced from 1.5rem 1rem 0.5rem */
+    padding: 0.8rem 1rem 0.4rem;
     font-size: 0.7rem;
     font-weight: 600;
     text-transform: uppercase;
     color: #71717a;
     letter-spacing: 0.05em;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    cursor: pointer;
+    transition: color 0.15s ease;
+    user-select: none;
+}
+
+.nav-group-label:hover {
+    color: #fafafa;
+}
+
+.nav-group-toggle {
+    width: 14px;
+    height: 14px;
+    transition: transform 0.2s ease;
+    opacity: 0.6;
+}
+
+.nav-group-toggle.rotated {
+    transform: rotate(-90deg);
+}
+
+.nav-group-content {
+    max-height: 500px;
+    overflow: hidden;
+    transition: max-height 0.3s cubic-bezier(0, 1, 0, 1);
+    opacity: 1;
+}
+
+.nav-group-content.collapsed {
+    max-height: 0;
+    opacity: 0;
+    pointer-events: none;
 }
 
 .sidebar-timer {
@@ -5992,3 +6025,95 @@ th {
     border-color: #991b1b;
 }
 
+
+/* --- GAME MODES (Simple vs Complex) --- */
+
+/* Simple Mode Styling (Unified Grid) */
+.is-simple-mode .game-split-view {
+    /* Uses the default grid layout from .game-split-view */
+    gap: 20px;
+}
+
+.is-simple-mode .game-roster-column {
+    width: 100%;
+}
+
+
+
+.is-simple-mode .roster-section-title {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    border-bottom: 2px solid var(--border-color);
+    margin-bottom: 12px;
+    padding-bottom: 5px;
+}
+
+.simple-player-card {
+    height: 100px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    border-radius: 12px;
+    background: var(--card-color, hsl(var(--primary)));
+    color: white;
+    border: 1px solid rgba(255,255,255,0.1);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    transition: transform 0.2s, box-shadow 0.2s, filter 0.2s;
+    cursor: pointer;
+    position: relative;
+    padding: 10px;
+    text-align: center;
+}
+
+.simple-player-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 8px 16px rgba(0,0,0,0.25);
+    filter: brightness(1.1);
+}
+
+.simple-player-card.my-team-btn {
+    --card-color: var(--team-primary-color, #dc3545);
+}
+
+.simple-player-card.gegner-button {
+    --card-color: var(--team-opponent-color, #2563eb);
+}
+
+.simple-player-card.suspended {
+    filter: grayscale(0.8) opacity(0.6);
+    border: 2px dashed #ef4444;
+}
+
+.simple-player-card.disqualified {
+    background: #450a0a !important;
+    filter: grayscale(1) opacity(0.5);
+    pointer-events: none;
+}
+
+.simple-player-card.add-btn {
+    background: hsl(var(--muted)/0.1);
+    color: var(--text-muted);
+    border: 2px dashed var(--border-color);
+    box-shadow: none;
+}
+
+.simple-player-card.add-btn:hover {
+    background: hsl(var(--muted)/0.2);
+    transform: none;
+}
+
+.is-simple-mode .game-controls-column {
+   margin-top: 20px;
+}
+
+/* Stats Table Fix */
+.modern-stats-table td {
+    vertical-align: middle;
+    white-space: nowrap;
+}
+
+#histHeatmapContainer {
+    scroll-margin-top: 100px;
+}

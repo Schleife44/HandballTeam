@@ -28,6 +28,8 @@ export const rosterSwapTeamsBtn = document.getElementById('rosterSwapTeamsBtn');
 // Main Content Sections
 export const rosterBereich = document.getElementById('rosterBereich');
 export const spielBereich = document.getElementById('spielBereich');
+export const gameModeSelection = document.getElementById('gameModeSelection');
+export const gameContent = document.getElementById('gameContent');
 export const liveOverviewBereich = document.getElementById('liveOverviewBereich');
 export const liveOverviewContent = document.getElementById('liveOverviewContent');
 export const seasonBereich = document.getElementById('seasonBereich');
@@ -42,6 +44,7 @@ export const exportContent = null; // Removed
 export const settingsBereich = document.getElementById('settingsBereich');
 export const historieBereich = document.getElementById('historieBereich');
 export const historieDetailBereich = document.getElementById('historieDetailBereich');
+export const historieHeader = document.getElementById('historieHeader');
 export const liveHeatmapBereich = document.getElementById('liveHeatmapBereich');
 export const protokollBereich = document.getElementById('protokollBereich');
 

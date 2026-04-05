@@ -11,7 +11,7 @@ import { getContrastTextColor } from './utils.js';
 import { updateRosterInputsForValidation } from './settingsManager.js';
 
 export async function addPlayer(e) {
-    e.preventDefault();
+    if (e && typeof e.preventDefault === 'function') e.preventDefault();
     const name = playerNameInput.value.trim();
     const number = parseInt(playerNumberInput.value, 10);
     const isGoalkeeper = playerTorwartInput.checked;
@@ -55,12 +55,14 @@ export async function addPlayer(e) {
             return;
         }
 
-        if (editIndex) {
-            const player = spielstand.roster[editIndex];
-            player.name = name;
-            player.number = number;
-            player.isGoalkeeper = isGoalkeeper;
-            schliesseEditModus();
+        if (editIndex !== "") {
+            const player = spielstand.roster[parseInt(editIndex, 10)];
+            if (player) {
+                player.name = name;
+                player.number = number;
+                player.isGoalkeeper = isGoalkeeper;
+                schliesseEditModus();
+            }
         } else {
             spielstand.roster.push({ name, number, isGoalkeeper });
         }
@@ -71,7 +73,7 @@ export async function addPlayer(e) {
         zeichneSpielerRaster();
     }
 
-    if (!editIndex) {
+    if (editIndex === "") {
         playerNameInput.value = '';
         playerNumberInput.value = '';
         playerTorwartInput.checked = false;
@@ -106,7 +108,8 @@ export function schliesseEditModus() {
 }
 
 export async function deleteEntireTeam() {
-    const isOpponentMode = document.getElementById('teamToggle').getAttribute('aria-checked') === 'true';
+    const teamToggle = document.getElementById('teamToggle');
+    const isOpponentMode = teamToggle && (teamToggle.checked || teamToggle.getAttribute('aria-checked') === 'true');
     const teamToDelete = isOpponentMode ? spielstand.knownOpponents : spielstand.roster;
     const teamName = isOpponentMode ? "Gegner" : "Spieler";
 
@@ -240,4 +243,68 @@ export function swapTeams() {
 
     // Update validation state for roster inputs (lock follows the team after swap)
     updateRosterInputsForValidation();
+}
+
+/**
+ * Handles inline player update from the roster list.
+ * Triggered by 'save-player' data-action.
+ */
+export async function updatePlayerInline(e) {
+    const btn = e.target.closest('[data-action="save-player"]');
+    if (!btn) return;
+
+    const index = parseInt(btn.dataset.index);
+    const isOpponent = btn.dataset.isOpponent === 'true';
+    
+    // Find the edit container
+    const card = btn.closest('.roster-player-card');
+    if (!card) return;
+
+    const nameInput = card.querySelector('.inline-name-input');
+    const numberInput = card.querySelector('.inline-number-input');
+    const twInput = card.querySelector('.inline-tw-input');
+
+    if (!numberInput) return;
+    
+    const newName = nameInput ? nameInput.value.trim() : '';
+    const newNumber = parseInt(numberInput.value, 10);
+    const isGoalkeeper = twInput ? twInput.checked : false;
+
+    if (isNaN(newNumber)) {
+        await customAlert("Ungültige Nummer.", "Fehler");
+        return;
+    }
+
+    // Update target array
+    if (isOpponent) {
+        // Check for duplicates (excluding current index)
+        if (spielstand.knownOpponents.some((p, i) => i !== index && p.number === newNumber)) {
+            await customAlert("Diese Nummer ist bereits vergeben.", "Nummer belegt");
+            return;
+        }
+        spielstand.knownOpponents[index] = {
+            ...spielstand.knownOpponents[index],
+            name: newName,
+            number: newNumber,
+            isGoalkeeper: isGoalkeeper
+        };
+        spielstand.knownOpponents.sort((a, b) => a.number - b.number);
+    } else {
+        // Check for duplicates
+        if (spielstand.roster.some((p, i) => i !== index && p.number === newNumber)) {
+            await customAlert("Diese Nummer ist bereits vergeben.", "Nummer belegt");
+            return;
+        }
+        spielstand.roster[index] = {
+            ...spielstand.roster[index],
+            name: newName,
+            number: newNumber,
+            isGoalkeeper: isGoalkeeper
+        };
+        spielstand.roster.sort((a, b) => a.number - b.number);
+    }
+
+    speichereSpielstand();
+    zeichneRosterListe(isOpponent);
+    zeichneSpielerRaster();
 }
