@@ -8,6 +8,8 @@ export function initDatePicker() {
     if (!datePickerEl) {
         datePickerEl = document.createElement('div');
         datePickerEl.className = 'shadcn-datepicker hidden';
+        // Prevent clicks inside the picker from bubbling to document and closing background modals
+        datePickerEl.addEventListener('click', e => e.stopPropagation());
         document.body.appendChild(datePickerEl);
 
         // click outside to close

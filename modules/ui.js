@@ -8,6 +8,23 @@ import { getAuthUid, getCurrentUserProfile, isUserTrainer } from './firebase.js'
 /**
  * Apply CSS classes based on selected Game Mode (Simple vs Complex)
  */
+/**
+ * Shared helper for 'No Game Active' state in Live views.
+ */
+function renderEmptyLiveState(container) {
+    if (!container) return;
+    container.innerHTML = sanitizeHTML(`
+        <div class="empty-state-card" style="display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 40px; text-align: center; color: var(--text-muted); min-height: 400px; background: var(--bg-card); border-radius: 12px; border: 1px dashed var(--border-color); margin: 20px 0;">
+            <div style="background: rgba(255,255,255,0.05); border-radius: 50%; padding: 30px; margin-bottom: 20px;">
+                <i data-lucide="play-circle" style="width: 64px; height: 64px; opacity: 0.5;"></i>
+            </div>
+            <h2 style="font-size: 1.5rem; font-weight: 700; margin-bottom: 10px; color: var(--text-main);">Kein Spiel aktiv</h2>
+            <p style="max-width: 400px; font-size: 1rem; line-height: 1.6;">Starten Sie ein neues Spiel im Bereich "Spiel", um Live-Statistiken und Analysen zu sehen.</p>
+        </div>
+    `);
+    if (window.lucide) window.lucide.createIcons();
+}
+
 export function applyGameMode() {
     const isSimple = spielstand.gameMode === 'simple';
     
@@ -304,6 +321,7 @@ export function zeichneSpielerRaster() {
         // Render player button
         const renderPlayerButton = (player, container, slotType, slotIndex) => {
             const btn = document.createElement('button');
+            btn.draggable = true;
             const index = player.originalIndex;
 
             const nameDisplay = player.name || '';
@@ -333,6 +351,13 @@ export function zeichneSpielerRaster() {
             btn.className = 'spieler-button action-btn lineup-slot filled';
             if (player.isGoalkeeper) btn.classList.add('torwart');
 
+            // Apply selected class if matched
+            const isSelected = (spielstand.selectedPlayer.team === teamKey) && (
+                (teamKey === 'myteam' && spielstand.selectedPlayer.index === index) ||
+                (teamKey === 'opponent' && spielstand.selectedPlayer.gegnerNummer == player.number)
+            );
+            if (isSelected) btn.classList.add('selected');
+
             if (player.disqualified) {
                 btn.classList.add('disqualified');
             }
@@ -353,15 +378,17 @@ export function zeichneSpielerRaster() {
             }
 
             btn.dataset.action = 'lineup-player';
+            btn.dataset.team = teamKey;
+            btn.dataset.teamKey = teamKey;
             btn.dataset.slotType = slotType;
             btn.dataset.slotIndex = slotIndex;
-            btn.dataset.teamKey = teamKey;
 
             container.appendChild(btn);
         };
 
         const renderEmptySlot = (container, slotType, slotIndex) => {
             const btn = document.createElement('button');
+            btn.draggable = true;
             btn.className = 'spieler-button action-btn lineup-slot empty';
             btn.innerHTML = `<div class="empty-slot-icon" style="font-size: 1.5rem; opacity: 0.5;">+</div>`;
             btn.style.border = '2px dashed rgba(255,255,255,0.1)';
@@ -376,6 +403,7 @@ export function zeichneSpielerRaster() {
         // Render bench player
         const renderBenchPlayer = (player, container) => {
             const btn = document.createElement('button');
+            btn.draggable = true;
             const index = player.originalIndex;
 
             const nameDisplay = player.name || '';
@@ -405,6 +433,13 @@ export function zeichneSpielerRaster() {
             btn.className = 'spieler-button action-btn bench-player';
             if (player.isGoalkeeper) btn.classList.add('torwart');
 
+            // Apply selected class if matched
+            const isSelected = (spielstand.selectedPlayer.team === teamKey) && (
+                (teamKey === 'myteam' && spielstand.selectedPlayer.index === index) ||
+                (teamKey === 'opponent' && spielstand.selectedPlayer.gegnerNummer == player.number)
+            );
+            if (isSelected) btn.classList.add('selected');
+
             // NEW: Check if suspended or disqualified
             const isSuspended = (spielstand.activeSuspensions || []).some(s => s.teamKey === teamKey && s.number == player.number);
             if (isSuspended) btn.classList.add('suspended');
@@ -421,12 +456,14 @@ export function zeichneSpielerRaster() {
                 btn.style.color = 'var(--our-text-color)';
                 btn.dataset.index = index;
                 btn.dataset.team = 'myteam';
+                btn.dataset.teamKey = 'myteam';
             } else {
                 btn.classList.add('gegner-button');
                 btn.style.backgroundColor = 'var(--team-opponent-color)';
                 btn.style.color = 'var(--opponent-text-color)';
                 btn.dataset.gegnerNummer = player.number;
                 btn.dataset.team = 'opponent';
+                btn.dataset.teamKey = 'opponent';
                 btn.dataset.index = index;
             }
 
@@ -1240,19 +1277,8 @@ export async function showLiveOverviewInline() {
 
     if (liveOverviewBereich) liveOverviewBereich.classList.remove('versteckt');
     
-    if (!spielstand.modeSelected || (spielstand.gameLog && spielstand.gameLog.length === 0)) {
-        if (liveOverviewContent) {
-            liveOverviewContent.innerHTML = `
-                <div class="no-game-placeholder" style="display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 60px 20px; text-align: center; color: var(--text-muted);">
-                    <div style="background: rgba(255,255,255,0.05); border-radius: 50%; padding: 30px; margin-bottom: 20px;">
-                        <i data-lucide="play-circle" style="width: 64px; height: 64px; opacity: 0.5;"></i>
-                    </div>
-                    <h2 style="font-size: 1.5rem; font-weight: 700; margin-bottom: 10px; color: var(--text-main);">Kein Spiel aktiv</h2>
-                    <p style="max-width: 400px; font-size: 1rem; line-height: 1.6;">Starten Sie ein neues Spiel im Bereich "Spiel", um Live-Statistiken und Analysen zu sehen.</p>
-                </div>
-            `;
-            if (window.lucide) window.lucide.createIcons();
-        }
+    if (!spielstand.isSpielAktiv) {
+        renderEmptyLiveState(liveOverviewContent);
         return;
     }
 
@@ -1383,6 +1409,11 @@ export async function showShotsInline() {
     if (shotsBereich) shotsBereich.classList.remove('versteckt');
     if (!shotsContent) return;
 
+    if (!spielstand.isSpielAktiv) {
+        renderEmptyLiveState(shotsContent);
+        return;
+    }
+
     const wurfbilder = berechneWurfbilder(spielstand.gameLog, spielstand.roster);
     shotsContent.innerHTML = '';
 
@@ -1454,6 +1485,13 @@ export async function showLiveHeatmapInline() {
     const { renderHeatmap, setCurrentHeatmapContext } = await import('./heatmap.js');
 
     if (liveHeatmapBereich) liveHeatmapBereich.classList.remove('versteckt');
+
+    if (!spielstand.isSpielAktiv) {
+        // Find container for heatmap
+        const heatmapContent = document.getElementById('heatmapContent'); // Assuming this exists or using a shared one
+        renderEmptyLiveState(heatmapContent || liveHeatmapBereich);
+        return;
+    }
 
     if (heatmapHeimLabel) heatmapHeimLabel.textContent = spielstand.settings.teamNameHeim || 'HEIM';
     if (heatmapGegnerLabel) heatmapGegnerLabel.textContent = spielstand.settings.teamNameGegner || 'GEGNER';

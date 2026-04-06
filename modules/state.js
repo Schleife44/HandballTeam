@@ -12,6 +12,7 @@ export let spielstand = {
     uiState: 'setup', // 'setup' oder 'game'
     gameMode: 'complex', // 'complex' = Dashboard, 'simple' = Modal (Old System)
     modeSelected: false, // Flag for Selection UI
+    selectedPlayer: { index: null, team: null, gegnerNummer: null, name: null }, // Current selection
     roster: [], // { name: 'Anna', number: 7 } - Name ist optional
     score: { heim: 0, gegner: 0 },
     gameLog: [],
@@ -122,15 +123,18 @@ export function ladeSpielstandDaten() {
 export function mergeRemoteSpielstand(remoteData) {
     if (!remoteData) return;
     try {
-        const fields = ['score', 'gameLog', 'timer', 'roster', 'knownOpponents',
-                        'settings', 'activeSuspensions', 'calendarEvents',
-                        'calendarSubscriptions', 'uiState', 'gameMode', 'modeSelected',
-                        'rosterAssignments'];
+        // --- CRITICAL FIX: Preserve Local Selection ---
+        // Stored local selection should not be overwritten by remote sync unless explicitly needed.
+        const localSelection = JSON.parse(JSON.stringify(spielstand.selectedPlayer || { index: null, team: null, gegnerNummer: null, name: null }));
+
         fields.forEach(key => {
             if (remoteData[key] !== undefined) {
                 spielstand[key] = remoteData[key];
             }
         });
+
+        // Restore local selection
+        spielstand.selectedPlayer = localSelection;
         // Also persist to localStorage so offline fallback is fresh
         localStorage.setItem(getStorageKey(), JSON.stringify(spielstand));
     } catch (e) {

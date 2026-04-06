@@ -380,58 +380,7 @@ export function registerEventListeners() {
     if (vorButton) vorButton.addEventListener('click', () => handleZeitSprung(30));
     if (neuesSpielButton) neuesSpielButton.addEventListener('click', starteNeuesSpiel);
     */
-
-
-    // === Dual Team Roster: Click Handlers for Substitution System ===
-    const handleRosterClick = (e) => {
-        const btn = e.target.closest('.spieler-button');
-        if (!btn) return;
-
-        // Handle "Add Player" logic if present (legacy or new)
-        if (btn.classList.contains('add-player-button')) return;
-
-        const slotType = btn.dataset.slotType;
-        const slotIndex = btn.dataset.slotIndex;
-        const teamKey = btn.dataset.teamKey;
-        const isEmpty = btn.dataset.empty === 'true';
-        const isBench = btn.dataset.isBench === 'true';
-        const index = btn.dataset.index;
-        const gegnerNummer = btn.dataset.gegnerNummer;
-        const team = btn.dataset.team;
-
-        // Import game.js handlers dynamically
-        import('./game.js').then(game => {
-            if (isBench) {
-                // Clicked a bench player
-                game.handleBenchPlayerClick(index ? parseInt(index) : null, teamKey, gegnerNummer);
-            } else if (slotType) {
-                // Clicked a lineup slot (filled or empty)
-                const playerIndex = index ? parseInt(index) : null;
-                game.handleLineupSlotClick(slotType, parseInt(slotIndex), teamKey, playerIndex, isEmpty);
-            } else {
-                // Fallback to old selection
-                const nameText = btn.querySelector('.spieler-name-display')?.textContent || '';
-                if (index !== undefined || gegnerNummer !== undefined) {
-                    selectPlayer(index, team, gegnerNummer, nameText);
-                }
-            }
-        });
-    };
-
-    // Attach to all roster containers
-    const heimGoalkeeperRoster = document.getElementById('heimGoalkeeperRoster');
-    const heimActiveRoster = document.getElementById('heimActiveRoster');
-    const heimBenchRoster = document.getElementById('heimBenchRoster');
-    const gastGoalkeeperRoster = document.getElementById('gastGoalkeeperRoster');
-    const gastActiveRoster = document.getElementById('gastActiveRoster');
-    const gastBenchRoster = document.getElementById('gastBenchRoster');
-
-    if (heimGoalkeeperRoster) heimGoalkeeperRoster.addEventListener('click', handleRosterClick);
-    if (heimActiveRoster) heimActiveRoster.addEventListener('click', handleRosterClick);
-    if (heimBenchRoster) heimBenchRoster.addEventListener('click', handleRosterClick);
-    if (gastGoalkeeperRoster) gastGoalkeeperRoster.addEventListener('click', handleRosterClick);
-    if (gastActiveRoster) gastActiveRoster.addEventListener('click', handleRosterClick);
-    if (gastBenchRoster) gastBenchRoster.addEventListener('click', handleRosterClick);
+    // Redundant handleRosterClick removed (Handled by events.js delegation)
 
     // === Add/Edit Player Button Handler (Simple Mode) ===
     const handleAddPlayerClick = (e) => {
@@ -455,57 +404,7 @@ export function registerEventListeners() {
     if (heimActiveRoster) heimActiveRoster.addEventListener('click', handleAddPlayerClick);
     if (gastActiveRoster) gastActiveRoster.addEventListener('click', handleAddPlayerClick);
 
-    // Close Action Dashboard (Simple Mode Modal)
-    const closeActionDashboardBtn = document.getElementById('closeActionDashboard');
-    if (closeActionDashboardBtn) {
-        closeActionDashboardBtn.addEventListener('click', () => {
-            deselectPlayer();
-        });
-    }
-
-    // Attach to containers (same as roster)
-    if (heimActiveRoster) heimActiveRoster.addEventListener('click', handleAddPlayerClick);
-    if (gastActiveRoster) gastActiveRoster.addEventListener('click', handleAddPlayerClick);
-
-
-    // === NEW: Action Dashboard ===
-    if (actionDashboard) {
-        actionDashboard.addEventListener('click', (e) => {
-            const btn = e.target.closest('.action-btn');
-            if (btn && !btn.disabled) {
-                // If it's a specific action button
-                const action = btn.dataset.action;
-                if (action) {
-                    executeAction(action);
-                } else if (btn.id === 'moreActionsBtn') {
-                    // Show "Other" actions (maybe modal or expanded menu)
-                    // For now reuse old 'Sonstiges' logic or custom alert
-                    // We need a way to show more actions. Maybe the old modal?
-                    // For now, let's use the old actionVorauswahl or simply implement "Sonstiges" directly if simple.
-                    if (kommentarBereich) {
-                        setAktuelleAktionTyp('Sonstiges');
-                        kommentarTitel.textContent = `Kommentar für: Sonstiges`;
-                        kommentarBereich.classList.remove('versteckt');
-                        kommentarInput.focus();
-                    }
-                }
-            }
-        });
-    }
-
-    // Undo Button
-    if (undoButton) {
-        undoButton.addEventListener('click', () => {
-            // loescheProtokollEintrag(0)? No, "Undo Last Action" usually means removing the top log.
-            if (spielstand.gameLog.length > 0) {
-                // Check if it's safe to undo (e.g. score).
-                // For now, just remove the top entry via loescheProtokollEintrag
-                loescheProtokollEintrag(0);
-            } else {
-                customAlert("Nichts rückgängig zu machen.");
-            }
-        });
-    }
+    // Redundant Game actions moved to events.js delegation hub
 
 
     // === Heatmap Filters (Main & Live Overview) ===
@@ -1344,7 +1243,7 @@ export function registerEventListeners() {
     // === Calendar ===
     if (prevMonthBtn) prevMonthBtn.addEventListener('click', handlePrevMonth);
     if (nextMonthBtn) nextMonthBtn.addEventListener('click', handleNextMonth);
-    if (addEventBtn) addEventBtn.addEventListener('click', () => openAddEventModal());
+    // Redundant listener removed - already handled by calendar.js with correct toggle/date logic
     if (closeEventModal) closeEventModal.addEventListener('click', closeAddEventModal);
     if (cancelEventBtn) cancelEventBtn.addEventListener('click', closeAddEventModal);
     if (saveEventBtn) saveEventBtn.addEventListener('click', saveEvent);

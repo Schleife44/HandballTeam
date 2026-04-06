@@ -21,21 +21,10 @@ import { customConfirm, customAlert } from './customDialog.js';
 import { toast } from './toast.js';
 import { sanitizeHTML, escapeHTML } from './securityUtils.js';
 
-export let aktuellerSpielerIndex = null;
 export let aktuelleAktionTyp = '';
 let currentGegnerActionType = 'tor'; // 'tor', '7m', '2min'
 
-// Verfolge, ob die aktuelle Aktion für den Gegner ist
-let istGegnerAktion = false;
-let aktuelleGegnernummer = null;
-
-// New Selection State
-let selectedPlayerState = {
-    index: null, // For My Team
-    gegnerNummer: null, // For Opponent
-    team: null, // 'myteam' or 'opponent'
-    name: null
-};
+// Verfolgt die aktuelle Auswahl (Verschoben nach spielstand.selectedPlayer)
 
 // Mobile Substitution State - pending bench player for swap
 let pendingBenchSwap = null; // { index, team, name }
@@ -290,18 +279,11 @@ export function selectPlayer(index, team, gegnerNummer, name, isOnBench = false)
 
 
     // 1. Update State
-    selectedPlayerState = { index, team, gegnerNummer, name };
+    spielstand.selectedPlayer = { index, team, gegnerNummer, name };
 
-    // Update Globals for logAktion compatibility
-    if (team === 'myteam') {
-        aktuellerSpielerIndex = parseInt(index, 10);
-        istGegnerAktion = false;
-        aktuelleGegnernummer = null;
-    } else {
-        aktuellerSpielerIndex = null; // or null?
-        istGegnerAktion = true;
-        aktuelleGegnernummer = parseInt(gegnerNummer, 10);
-    }
+
+    // 1. Internal Logging
+    console.log('[Game] selectPlayer called:', { index, team, gegnerNummer, name, isOnBench });
 
     // 2. Visual Feedback
     const allButtons = document.querySelectorAll('.spieler-button');
@@ -321,11 +303,20 @@ export function selectPlayer(index, team, gegnerNummer, name, isOnBench = false)
     pendingBenchSwap = null;
     document.querySelectorAll('.pending-swap').forEach(b => b.classList.remove('pending-swap'));
 
-    // If Complex Mode + Mobile: Handle swaps or show popup
+    // 0. DASHBOARD ACTIVATION (Primary Fix)
+    const dashboard = document.getElementById('actionDashboard');
+    const nameDisplay = document.getElementById('selectedPlayerName');
+
+    if (dashboard) dashboard.classList.remove('disabled');
+    if (nameDisplay) nameDisplay.textContent = name || (team === 'myteam' ? `Spieler #${spielstand.roster[index]?.number}` : `Gegner #${gegnerNummer}`);
+
+
+    // 1. MOBILE/DESKTOP FLOWS
     if (window.innerWidth <= 768) {
         // CASE 1: Clicking bench player - store for pending swap, no popup
         if (isOnBench) {
             pendingBenchSwap = { index: parseInt(index, 10), team, name };
+            const selectedBtn = document.querySelector(`.spieler-button[data-team="${team}"][data-index="${index}"]`);
             if (selectedBtn) selectedBtn.classList.add('pending-swap');
             return; 
         }
@@ -343,16 +334,6 @@ export function selectPlayer(index, team, gegnerNummer, name, isOnBench = false)
         return;
     }
 
-    // Clear pending swap state on desktop
-    pendingBenchSwap = null;
-
-    // 3. Update Dashboard UI
-    const dashboard = document.getElementById('actionDashboard');
-    const nameDisplay = document.getElementById('selectedPlayerName');
-
-    if (dashboard) dashboard.classList.remove('disabled');
-    if (nameDisplay) nameDisplay.textContent = name || (team === 'myteam' ? `Spieler #${spielstand.roster[index]?.number}` : `Gegner #${gegnerNummer}`);
-
     // Gehalten button is always enabled when a player is selected (unless on bench)
     const paradeBtn = document.getElementById('actionParadeBtn');
     if (paradeBtn) {
@@ -365,10 +346,10 @@ export function selectPlayer(index, team, gegnerNummer, name, isOnBench = false)
     const allowedBenchActions = ["2 Minuten", "Gelbe Karte", "Rote Karte", "Blaue Karte"];
 
     allActionBtns.forEach(btn => {
-        const action = btn.dataset.action;
+        const actionType = btn.dataset.type; // Use data-type (the action name)
         if (isOnBench) {
             // Disable if not in allowed list
-            if (!allowedBenchActions.includes(action)) {
+            if (!allowedBenchActions.includes(actionType)) {
                 btn.disabled = true;
                 btn.style.opacity = '0.3';
                 btn.style.cursor = 'not-allowed';
@@ -599,10 +580,7 @@ function showMobileActionPopup(name, team, index, gegnerNummer, isOnBench) {
 
 export function deselectPlayer() {
     // Reset state
-    selectedPlayerState = { index: null, team: null, gegnerNummer: null, name: null };
-    aktuellerSpielerIndex = null;
-    istGegnerAktion = false;
-    aktuelleGegnernummer = null;
+    spielstand.selectedPlayer = { index: null, team: null, gegnerNummer: null, name: null };
 
     // Also clear pending bench swap state
     pendingBenchSwap = null;
@@ -620,10 +598,13 @@ export function deselectPlayer() {
 }
 
 export function executeAction(actionType) {
-    if (!selectedPlayerState.team) {
+    if (!spielstand.selectedPlayer || !spielstand.selectedPlayer.team) {
+        console.error('[Game] executeAction failed: No player selected', spielstand.selectedPlayer);
         customAlert("Bitte wähle zuerst einen Spieler aus.");
         return;
     }
+
+    console.log('[Game] executeAction:', actionType, 'for player:', spielstand.selectedPlayer);
 
     // Reuse existing logAktion logic
     // Globals are already set in selectPlayer
@@ -678,17 +659,18 @@ export function logAktion(aktion, kommentar = null) {
     if (aktion === "Post Out") aktion = "Fehlwurf";
 
     // Prüfe, ob dies eine Gegner-Aktion ist
-    if (istGegnerAktion && aktuelleGegnernummer) {
+    if (spielstand.selectedPlayer.team === 'opponent' && spielstand.selectedPlayer.gegnerNummer) {
         handleGegnerAktion(aktion, kommentar);
         return;
     }
 
     // Behandle 7m-Aktion - zeige zuerst Ergebnis-Modal
     if (aktion === "7m") {
-        const player = (spielstand.roster && aktuellerSpielerIndex !== null) ? spielstand.roster[aktuellerSpielerIndex] : null;
+        const playerIndex = spielstand.selectedPlayer.index;
+        const player = (spielstand.roster && playerIndex !== null) ? spielstand.roster[playerIndex] : null;
         if (player) {
             spielstand.temp7mPlayer = {
-                index: aktuellerSpielerIndex,
+                index: playerIndex,
                 number: player.number,
                 name: player.name,
                 isOpponent: false
@@ -699,9 +681,8 @@ export function logAktion(aktion, kommentar = null) {
         return;
     }
 
-
-
-    const player = (spielstand.roster && aktuellerSpielerIndex !== null) ? spielstand.roster[aktuellerSpielerIndex] : null;
+    const playerIndex = spielstand.selectedPlayer.index;
+    const player = (spielstand.roster && playerIndex !== null) ? spielstand.roster[playerIndex] : null;
     if (!player) return;
 
     const aktuelleZeit = timerAnzeige ? timerAnzeige.textContent : "00:00";
@@ -765,13 +746,13 @@ export function logAktion(aktion, kommentar = null) {
                 oeffneWurfbildModal('standard');
             } else if (isBlockAction) {
                 // If no more shot modals, open attribution for block
-                oeffneAttributedPlayerModal(istGegnerAktion ? 'myteam' : 'opponent', "Blocker auswählen", "Wer hat den Wurf geblockt?");
+                oeffneAttributedPlayerModal((spielstand.selectedPlayer.team === 'opponent') ? 'myteam' : 'opponent', "Blocker auswählen", "Wer hat den Wurf geblockt?");
             }
         }
     } else if (aktion === "2min Provoziert" || aktion === "7m Provoziert" || aktion === "7m+2min" || aktion === "1und1") {
         spielstand.tempSourceAction = aktion;
         spielstand.tempSourcePlayer = player;
-        const targetTeam = istGegnerAktion ? 'myteam' : 'opponent';
+        const targetTeam = (spielstand.selectedPlayer.team === 'opponent') ? 'myteam' : 'opponent';
         let title = "Gegner auswählen";
         if (aktion === "2min Provoziert") title = "Wer hat die 2min erhalten?";
         else if (aktion === "7m Provoziert") title = "Wer hat den 7m verursacht?";
@@ -783,7 +764,7 @@ export function logAktion(aktion, kommentar = null) {
 }
 
 function handleGegnerAktion(aktion, kommentar) {
-    const gegnernummer = aktuelleGegnernummer;
+    const gegnernummer = spielstand.selectedPlayer.gegnerNummer;
     const aktuelleZeit = timerAnzeige.textContent;
 
     let mappedAction = '';
@@ -845,7 +826,7 @@ function handleGegnerAktion(aktion, kommentar) {
         action: mappedAction,
         kommentar: kommentar,
         score: aktuellerSpielstand,
-        gegnerNummer: gegnernummer,
+        gegnerNummer: spielstand.selectedPlayer.gegnerNummer,
         wurfbild: null,
         timestamp: Date.now()
     });
@@ -864,7 +845,7 @@ function handleGegnerAktion(aktion, kommentar) {
     if (isShotAction || isBlockAction) {
         // Prepare context for attribution if needed
         spielstand.tempSourceAction = mappedAction === "Gegner Block" ? "Block" : mappedAction;
-        spielstand.tempSourcePlayer = { number: gegnernummer, name: "Gegner", isOpponent: true };
+        spielstand.tempSourcePlayer = { number: spielstand.selectedPlayer.gegnerNummer, name: "Gegner", isOpponent: true };
 
         // Determine effective settings based on side
         const isAuswaerts = spielstand.settings.isAuswaertsspiel;
@@ -1101,7 +1082,7 @@ export function handle7mOutcome(outcome) {
 
     // Prüfe, ob dies ein Heim- oder Gegner-7m ist
     const temp7mPlayer = spielstand.temp7mPlayer;
-    const isOpponent = istGegnerAktion || (temp7mPlayer && temp7mPlayer.isOpponent) || (!temp7mPlayer);
+    const isOpponent = (spielstand.selectedPlayer.team === 'opponent') || (temp7mPlayer && temp7mPlayer.isOpponent) || (!temp7mPlayer);
 
     let aktion = "";
     let playerId = null;
@@ -1111,7 +1092,7 @@ export function handle7mOutcome(outcome) {
 
     if (isOpponent) {
         // Gegner-7m - opponent always scores on the opposite side
-        nummer = spielstand.tempGegnerNummer || aktuelleGegnernummer;
+        nummer = spielstand.tempGegnerNummer || spielstand.selectedPlayer.gegnerNummer;
         kommentar = nummer ? `(Nr. ${nummer})` : null;
 
         if (outcome === 'Tor') {
@@ -1386,10 +1367,14 @@ export function getActivePlayerCount(teamKey) {
 
 export function handleLineupSlotClick(slotType, slotIndex, teamKey, playerIndex, isEmpty) {
     const isAway = spielstand.settings.isAuswaertsspiel;
+    const playerList = (teamKey === 'myteam') ? spielstand.roster : (spielstand.knownOpponents || []);
 
     // Handle Substitution Logic
     if (substitutionState.active) {
         const source = substitutionState.sourceSlot;
+        
+        // Fix: Ensure we correctly access the list for the source team too
+        const sourceList = (source.teamKey === 'myteam') ? spielstand.roster : (spielstand.knownOpponents || []);
 
         // Second click on same slot = cancel
         if (source.slotType === slotType &&
@@ -1401,7 +1386,7 @@ export function handleLineupSlotClick(slotType, slotIndex, teamKey, playerIndex,
             // Same team - perform substitution
             // Source was a bench player, target is a lineup slot
             if (source.slotType === 'bench') {
-                const benchPlayer = playerList[source.playerIndex];
+                const benchPlayer = sourceList[source.playerIndex];
 
                 // Get the button element (target) for animation
                 const targetSelector = `[data-slot-type="${slotType}"][data-slot-index="${slotIndex}"][data-team-key="${teamKey}"]`;
@@ -1454,7 +1439,7 @@ export function handleLineupSlotClick(slotType, slotIndex, teamKey, playerIndex,
     if (window.innerWidth <= 768 && pendingBenchSwap && pendingBenchSwap.team === teamKey) {
         if (isEmpty) {
             const benchPlayer = playerList[pendingBenchSwap.index];
-
+            
             // CHECK 7-PLAYER LIMIT
             if (getActivePlayerCount(teamKey) >= 7) {
                 customAlert("Maximal 7 Personen (Spieler + Zeitstrafen) auf dem Feld erlaubt. Bitte zuerst einen Spieler vom Feld nehmen.");
@@ -1487,7 +1472,7 @@ export function handleLineupSlotClick(slotType, slotIndex, teamKey, playerIndex,
         const player = playerList[playerIndex];
         if (player) {
             // Toggle Deselect if already selected
-            if (selectedPlayerState.team === teamKey && selectedPlayerState.index === playerIndex) {
+            if (spielstand.selectedPlayer.team === teamKey && spielstand.selectedPlayer.index === playerIndex) {
                 deselectPlayer();
                 return;
             }

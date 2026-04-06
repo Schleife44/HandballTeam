@@ -71,6 +71,11 @@ export const eventRepeatInput = document.getElementById('eventRepeatInput');
 export const eventRepeatEndInput = document.getElementById('eventRepeatEndInput');
 export const recurrenceOptions = document.getElementById('recurrenceOptions');
 
+// Event Rule Inputs
+export const eventRequireReasonInput = document.getElementById('eventRequireReasonInput');
+export const eventDeadlineInput = document.getElementById('eventDeadlineInput');
+export const eventDefaultStatusInput = document.getElementById('eventDefaultStatusInput');
+
 // Event Details Modal
 export const eventDetailsModal = document.getElementById('eventDetailsModal');
 export const detailsTitle = document.getElementById('detailsTitle');

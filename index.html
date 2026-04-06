@@ -383,8 +383,9 @@
                         <button class="att-btn att-not-going" data-status="not-going" title="Absage">
                             <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 14V2"/><path d="M9 18.12 10 14H4.17a2 2 0 0 1-1.92-2.56l2.33-8A2 2 0 0 1 6.5 2H20a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2h-2.76a2 2 0 0 0-1.79 1.11L12 22h0a3.13 3.13 0 0 1-3-3.88Z"/></svg> <span>Absage</span>
                         </button>
-                        <button id="modalDetailsBtn" class="att-btn att-info" title="Teilnehmer" style="flex: 0 0 auto; width: 44px; padding: 6px 0;">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+                        <button id="modalDetailsBtn" class="att-btn att-info" title="Teilnehmer" style="flex: 0 0 auto; width: 44px; padding: 6px 4px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px;">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+                            <span id="modalDetailsBtnLabel" style="font-size: 0.65rem; line-height: 1;">Details</span>
                         </button>
                     </div>
 
@@ -515,10 +516,10 @@
                     <button id="exportTeamButton" class="shadcn-btn-outline">Team exportieren</button>
                     <button id="importTeamButton" class="shadcn-btn-outline">Team importieren</button>
                     <input type="file" id="importFileInput" class="versteckt" accept=".json">
-                    <button id="saveTeamButton" class="shadcn-btn-outline"
+                    <button id="saveTeamButton" data-action="team-save" class="shadcn-btn-outline"
                         style="border-color: #22c55e; color: #22c55e;">
                         Team speichern</button>
-                    <button id="loadTeamButton" class="shadcn-btn-outline"
+                    <button id="loadTeamButton" data-action="team-load-modal" class="shadcn-btn-outline"
                         style="border-color: #3b82f6; color: #3b82f6;">
                         Team laden</button>
                 </div>

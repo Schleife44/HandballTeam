@@ -76,13 +76,18 @@ export function renderHomeStatsInHistory(tbody, statsData, gameLog, isLive = fal
             <td>${buttonsHtml}</td>
         `);
 
-        const btns = tr.querySelectorAll('.heatmap-btn');
         btns.forEach(btn => {
             btn.addEventListener('click', (e) => {
                 e.stopPropagation();
                 const mode = btn.dataset.mode;
                 openPlayerHistoryHeatmap(gameLog, stats.number, 'heim', stats.name, mode, !stayInHeatmap);
                 if (renderBound) renderBound();
+                
+                // Scroll up correctly to the heatmap container
+                const container = document.getElementById('histHeatmapContainer');
+                if (container) {
+                    container.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                }
             });
         });
         tbody.appendChild(tr);

@@ -5,6 +5,8 @@ export function initTimePicker() {
     if (!timePickerEl) {
         timePickerEl = document.createElement('div');
         timePickerEl.className = 'shadcn-timepicker hidden';
+        // Prevent clicks inside the picker from bubbling to document and closing background modals
+        timePickerEl.addEventListener('click', e => e.stopPropagation());
         document.body.appendChild(timePickerEl);
 
         // Generate Slots

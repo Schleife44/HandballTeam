@@ -18,6 +18,8 @@ import {
     closeDetailsModal, closeDetailsBtn, deleteEventBtn, editEventBtn,
     attendanceReasonInput, attendanceReasonContainer, attendanceStats,
     attendanceFullList, modalDetailsBtn, saveAttendanceReasonBtn,
+    // Rules
+    eventRequireReasonInput, eventDeadlineInput, eventDefaultStatusInput,
     // Manage UI
     manageCalendarBtn, manageCalendarModal, closeManageBtn, manageUrlInput, addSubBtn, subsList, seriesList, addEventBtn
 } from './dom.js';
@@ -34,19 +36,6 @@ let attendanceListenersBound = false;
 let calendarInitialized = false;
 let editingEventId = null; // Store ID for edit action
 
-/**
- * Legacy Fallback: Users might have cached router logic calling this function.
- * It's replaced by setupAttendanceListeners() but preserved to avoid ReferenceErrors.
- */
-window.toggleAttendanceList = function() {
-    if (attendanceFullList) {
-        attendanceFullList.classList.toggle('versteckt');
-        if (modalDetailsBtn) {
-            modalDetailsBtn.textContent = attendanceFullList.classList.contains('versteckt') ? 'Details' : 'Schließen';
-        }
-    }
-};
-
 export function initCalendar() {
     if (calendarInitialized) return;
     calendarInitialized = true;
@@ -54,6 +43,20 @@ export function initCalendar() {
     if (!spielstand.absences) spielstand.absences = [];
     
     renderCalendar();
+
+    // Stable Modal Details Toggle (Only bind once)
+    if (modalDetailsBtn) {
+        modalDetailsBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            if (attendanceFullList) {
+                attendanceFullList.classList.toggle('versteckt');
+                const label = document.getElementById('modalDetailsBtnLabel');
+                if (label) {
+                    label.textContent = attendanceFullList.classList.contains('versteckt') ? 'Details' : 'Schließen';
+                }
+            }
+        });
+    }
 
     // Absence Modal Listeners
     setupAbsenceListeners();
@@ -105,6 +108,12 @@ export function initCalendar() {
         manageCalendarBtn.addEventListener('click', (e) => {
             e.stopPropagation();
             if (manageCalendarModal) {
+                // TOGGLE: If already open, close it
+                if (!manageCalendarModal.classList.contains('versteckt')) {
+                    closeManageModal();
+                    return;
+                }
+
                 // Exclusive access: Close other modals
                 closeAddEventModal();
                 closeEventDetails();
@@ -175,7 +184,16 @@ export function initCalendar() {
     if (addEventModal && typeof addEventBtn !== 'undefined' && addEventBtn) {
         addEventBtn.addEventListener('click', (e) => {
             e.stopPropagation();
-            openAddEventModal(null, e);
+            const isHidden = !addEventModal || addEventModal.classList.contains('versteckt');
+            if (!isHidden) {
+                console.log("[Calendar] Add Event Button: Closing existing modal");
+                closeAddEventModal();
+            } else {
+                console.log("[Calendar] Add Event Button: Opening for TODAY (Force Local Date)");
+                const now = new Date();
+                const todayLocal = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0') + '-' + String(now.getDate()).padStart(2, '0');
+                openAddEventModal(todayLocal, e);
+            }
         });
     }
 
@@ -203,6 +221,11 @@ function setupAbsenceListeners() {
     if (addAbsenceBtn) {
         addAbsenceBtn.onclick = (e) => {
             e.stopPropagation();
+            // TOGGLE: If already open, close it
+            if (absenceModal && !absenceModal.classList.contains('versteckt')) {
+                closeAbsenceModal();
+                return;
+            }
             openAbsenceModal();
         };
     }
@@ -332,20 +355,21 @@ export function isPlayerAbsent(dateStr, uid, playerName) {
     if (!spielstand.absences) return null;
     const date = new Date(dateStr);
     
-    return spielstand.absences.find(abs => {
-        // Match by UID or exactly by Name (for manual roster entries)
+    const abs = spielstand.absences.find(abs => {
         const isMe = (uid && abs.uid === uid) || (playerName && abs.playerName === playerName);
         if (!isMe) return false;
         
         const start = new Date(abs.startDate);
         const end = new Date(abs.endDate);
-        // Set all to 00:00:00 for clean comparison
         date.setHours(0,0,0,0);
         start.setHours(0,0,0,0);
         end.setHours(0,0,0,0);
         
         return date >= start && date <= end;
     });
+
+    if (abs) console.log(`[Calendar] Found absence for ${playerName || uid} on ${dateStr}:`, abs.reason);
+    return abs;
 }
 
 
@@ -362,14 +386,7 @@ function setupAttendanceListeners() {
         });
     });
 
-    if (modalDetailsBtn) {
-        modalDetailsBtn.addEventListener('click', () => {
-            if (attendanceFullList) {
-                attendanceFullList.classList.toggle('versteckt');
-                modalDetailsBtn.textContent = attendanceFullList.classList.contains('versteckt') ? 'Details' : 'Schließen';
-            }
-        });
-    }
+    // Logic moved to initCalendar for stability (Fix: icon loss)
 
     if (attendanceReasonInput) {
         attendanceReasonInput.addEventListener('change', () => {
@@ -450,6 +467,7 @@ export function renderCalendar() {
     for (let day = 1; day <= daysInMonth; day++) {
         const cell = document.createElement('div');
         cell.className = 'calendar-day';
+        cell.style.cursor = 'pointer'; // Make it obvious it's clickable
 
         // Check local date string YYYY-MM-DD
         const localDate = new Date(year, month, day);
@@ -457,6 +475,15 @@ export function renderCalendar() {
         const mStr = String(localDate.getMonth() + 1).padStart(2, '0');
         const dStr = String(localDate.getDate()).padStart(2, '0');
         const localDateStr = `${yStr}-${mStr}-${dStr}`;
+
+        // Add today class
+        const todayStr = new Date().toISOString().split('T')[0];
+        if (localDateStr === todayStr) cell.classList.add('is-today');
+
+        // Add past class
+        const now = new Date();
+        now.setHours(0, 0, 0, 0);
+        if (localDate < now) cell.classList.add('is-past');
 
         const header = document.createElement('div');
         header.className = 'day-header';
@@ -499,12 +526,28 @@ export function renderCalendar() {
 
         // Click to add event on this day
         cell.addEventListener('click', (e) => {
+            // If click is on an event pill, the pill's listener (with e.stopPropagation()) should have fired
+            // But just in case, we check here too
             if (e.target.closest('.event-pill')) return;
-            openAddEventModal(localDateStr, e);
+            
+            e.stopPropagation();
+            
+            const isOpen = addEventModal && !addEventModal.classList.contains('versteckt');
+            const isSameDay = eventDateInput && eventDateInput.value === localDateStr;
+            
+            if (isOpen && isSameDay) {
+                console.log("[Calendar] Same day clicked: Closing modal");
+                closeAddEventModal();
+            } else {
+                console.log("[Calendar] Day cell clicked:", localDateStr);
+                openAddEventModal(localDateStr, e);
+            }
         });
 
         calendarGrid.appendChild(cell);
     }
+
+    if (window.lucide) window.lucide.createIcons();
 }
 
 // --- CRUD ---
@@ -518,14 +561,55 @@ function updateModalTitle(dateStr) {
 }
 
 export function openAddEventModal(preselectDate = null, clickEvent = null, positionOverride = null) {
-    if (!positionOverride) closeEventDetails();
-    closeManageModal();
+    const isAlreadyOpen = addEventModal && !addEventModal.classList.contains('versteckt');
+    console.log("[Calendar] openAddEventModal called. preselectDate:", preselectDate, "isAlreadyOpen:", isAlreadyOpen);
+    
+    if (!positionOverride) {
+        try { closeEventDetails(); } catch(e) { console.warn("[Calendar] closeEventDetails failed:", e); }
+    }
+    try { closeManageModal(); } catch(e) { console.warn("[Calendar] closeManageModal failed:", e); }
 
-    if (addEventModal) {
-        document.body.appendChild(addEventModal);
+    if (!addEventModal) {
+        console.error("[Calendar] addEventModal is NULL!");
+        return;
+    }
+
+    try {
+        if (!isAlreadyOpen) {
+            document.body.appendChild(addEventModal);
+            // Default values ONLY if opening fresh
+            eventTitleInput.value = '';
+            eventTimeInput.value = '19:00';
+            eventLocationInput.value = '';
+            if (eventRepeatInput) eventRepeatInput.checked = false;
+            if (recurrenceOptions) recurrenceOptions.classList.add('versteckt');
+            if (eventRepeatEndInput) eventRepeatEndInput.value = '';
+            
+            // Rules Reset
+            if (eventRequireReasonInput) eventRequireReasonInput.checked = false;
+            if (eventDeadlineInput) eventDeadlineInput.value = 0;
+            if (eventDefaultStatusInput) eventDefaultStatusInput.checked = false;
+
+            // Reset Edit State
+            editingEventId = null;
+        }
+
+        // ALWAYS remove versteckt and set display, even if already open
+        // This handles cases where state might get out of sync
         addEventModal.classList.remove('versteckt');
+        addEventModal.style.display = 'block';
 
-        // Fix: Ensure modal doesn't leak out of screen
+        // Always update Date (even if already open)
+        // Fix: Use local time instead of UTC to avoid guest's date issues
+        const now = new Date();
+        const localToday = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0') + '-' + String(now.getDate()).padStart(2, '0');
+        const targetDate = preselectDate || localToday;
+        
+        console.log("[Calendar] Setting targetDate to:", targetDate);
+        eventDateInput.value = targetDate;
+        updateModalTitle(targetDate);
+
+        // Positioning
         Object.assign(addEventModal.style, {
             position: 'fixed',
             top: '50%',
@@ -534,43 +618,33 @@ export function openAddEventModal(preselectDate = null, clickEvent = null, posit
             maxHeight: '90vh',
             overflowY: 'auto',
             width: '450px',
-            zIndex: '1000'
+            zIndex: '1500' // Increased for priority
         });
 
-        // Reset Edit State
-        editingEventId = null;
+        if (!isAlreadyOpen) {
+            // Focus Title for quick entry
+            setTimeout(() => {
+                eventTitleInput?.focus();
+            }, 50);
 
-        // Default values
-        eventTitleInput.value = '';
-        eventTimeInput.value = '19:00';
-        eventLocationInput.value = '';
-
-        if (eventRepeatInput) eventRepeatInput.checked = false;
-        if (recurrenceOptions) recurrenceOptions.classList.add('versteckt');
-        if (eventRepeatEndInput) eventRepeatEndInput.value = '';
-
-        const targetDate = preselectDate || new Date().toISOString().slice(0, 10);
-        eventDateInput.value = targetDate;
-        updateModalTitle(targetDate);
-
-        // Rules Reset
-        if (document.getElementById('eventRequireReasonInput')) document.getElementById('eventRequireReasonInput').checked = false;
-        if (document.getElementById('eventDeadlineInput')) document.getElementById('eventDeadlineInput').value = 0;
-        if (document.getElementById('eventDefaultStatusInput')) document.getElementById('eventDefaultStatusInput').checked = false;
-
-        // Focus Title for quick entry
-        setTimeout(() => eventTitleInput.focus(), 50);
-
-        if (window.lucide) window.lucide.createIcons();
-        
-        setTimeout(() => {
-            document.addEventListener('click', handleAddOutsideClick);
-        }, 0);
+            if (window.lucide) window.lucide.createIcons();
+            
+            setTimeout(() => {
+                document.addEventListener('click', handleAddOutsideClick);
+            }, 0);
+        }
+        console.log("[Calendar] openAddEventModal completed.");
+    } catch (err) {
+        console.error("[Calendar] CRASH in openAddEventModal:", err);
     }
 }
 
 function handleAddOutsideClick(e) {
-    if (addEventModal && !addEventModal.contains(e.target) && !e.target.closest('.calendar-day') && !e.target.closest('.shadcn-datepicker') && !e.target.closest('.shadcn-timepicker')) {
+    if (addEventModal && 
+        !addEventModal.contains(e.target) && 
+        !e.target.closest('.calendar-container') && 
+        !e.target.closest('.shadcn-datepicker') && 
+        !e.target.closest('.shadcn-timepicker')) {
         closeAddEventModal();
     }
 }
@@ -616,9 +690,9 @@ export function saveEvent() {
         const index = spielstand.calendarEvents.findIndex(e => e.id === editingEventId);
         if (index !== -1) {
             const rules = {
-                requireReason: document.getElementById('eventRequireReasonInput')?.checked || false,
-                deadlineHours: parseInt(document.getElementById('eventDeadlineInput')?.value) || 0,
-                defaultStatus: document.getElementById('eventDefaultStatusInput')?.checked ? 'going' : 'none'
+                requireReason: eventRequireReasonInput?.checked || false,
+                deadlineHours: parseInt(eventDeadlineInput?.value) || 0,
+                defaultStatus: eventDefaultStatusInput?.checked ? 'going' : 'none'
             };
 
             const ev = spielstand.calendarEvents[index];
@@ -632,7 +706,8 @@ export function saveEvent() {
                     const hasVotedName = Object.values(ev.responses).find(r => r.name === name);
                     
                     if (!hasVotedUid && !hasVotedName) {
-                        const key = `manual_${name.replace(/\s+/g, '_')}`;
+                        const assignedUid = Object.keys(spielstand.rosterAssignments || {}).find(u => spielstand.rosterAssignments[u] === name);
+                        const key = assignedUid || `manual_${name.replace(/\s+/g, '_')}`;
                         ev.responses[key] = { status: 'going', name, updatedAt: Date.now(), isAutoGenerated: true };
                     }
                 });
@@ -670,10 +745,11 @@ export function saveEvent() {
                 safetyCounter++;
             }
         }
+
         const rules = {
-            requireReason: document.getElementById('eventRequireReasonInput')?.checked || false,
-            deadlineHours: parseInt(document.getElementById('eventDeadlineInput')?.value) || 0,
-            defaultStatus: document.getElementById('eventDefaultStatusInput')?.checked ? 'going' : 'none'
+            requireReason: eventRequireReasonInput?.checked || false,
+            deadlineHours: parseInt(eventDeadlineInput?.value) || 0,
+            defaultStatus: eventDefaultStatusInput?.checked ? 'going' : 'none'
         };
 
         datesToSave.forEach(dateStr => {
@@ -693,9 +769,13 @@ export function saveEvent() {
             // Apply default status if configured
             if (rules.defaultStatus === 'going') {
                 const roster = spielstand.roster || [];
+                const rosterAssignments = spielstand.rosterAssignments || {};
+                console.log(`[Calendar] Auto-RSVP (Going) enabled for new event: ${dateStr}. Processing roster...`);
+                
                 roster.forEach(p => {
-                    const name = p.name || `Spieler #${p.number}`;
-                    const key = `manual_${name.replace(/\s+/g, '_')}`;
+                    const name = (p.name || `Spieler #${p.number}`).trim();
+                    const assignedUid = Object.keys(rosterAssignments).find(u => rosterAssignments[u]?.trim() === name);
+                    const key = assignedUid || `manual_${name.replace(/\s+/g, '_')}`;
                     newEvent.responses[key] = { status: 'going', name, updatedAt: Date.now(), isAutoGenerated: true };
                 });
             }
@@ -734,14 +814,14 @@ function editEvent(id) {
     eventLocationInput.value = event.location || '';
 
     // Load Rules
-    if (document.getElementById('eventRequireReasonInput')) {
-        document.getElementById('eventRequireReasonInput').checked = event.rules?.requireReason || false;
+    if (eventRequireReasonInput) {
+        eventRequireReasonInput.checked = event.rules?.requireReason || false;
     }
-    if (document.getElementById('eventDeadlineInput')) {
-        document.getElementById('eventDeadlineInput').value = event.rules?.deadlineHours || 0;
+    if (eventDeadlineInput) {
+        eventDeadlineInput.value = event.rules?.deadlineHours || 0;
     }
-    if (document.getElementById('eventDefaultStatusInput')) {
-        document.getElementById('eventDefaultStatusInput').checked = event.rules?.defaultStatus === 'going';
+    if (eventDefaultStatusInput) {
+        eventDefaultStatusInput.checked = event.rules?.defaultStatus === 'going';
     }
 
     updateModalTitle(event.date);
@@ -753,6 +833,18 @@ function editEvent(id) {
 // --- DETAILS LOGIC ---
 
 export function showEventDetails(eventId, participantsOnly = false) {
+    const isAlreadyOpen = eventDetailsModal && !eventDetailsModal.classList.contains('versteckt');
+    const isSameEvent = currentEventId === eventId;
+
+    if (isAlreadyOpen && isSameEvent) {
+        console.log("[Calendar] showEventDetails: Toggling OFF (same event)");
+        closeEventDetails();
+        return;
+    }
+
+    // SWITCH: Close creation modal before opening details
+    closeAddEventModal();
+
     const event = spielstand.calendarEvents.find(e => e.id === eventId);
     if (!event) return;
 
@@ -840,39 +932,6 @@ export function showEventDetails(eventId, participantsOnly = false) {
                 modalDetailsBtn.classList.add('active');
                 modalDetailsBtn.style.display = 'flex'; // Ensure it's visible in compact mode
             }
-        } else {
-            attendanceFullList.classList.add('versteckt');
-            if (modalDetailsBtn) {
-                modalDetailsBtn.classList.remove('active');
-                modalDetailsBtn.style.display = 'flex';
-                // Bind click listener once
-                if (!modalDetailsBtn.dataset.bound) {
-                    modalDetailsBtn.onclick = (e) => {
-                        e.stopPropagation();
-                        // 1. Toggle the list
-                        const isNowHidden = attendanceFullList.classList.toggle('versteckt');
-                        
-                        // 2. Toggle active class on the button
-                        modalDetailsBtn.classList.toggle('active', !isNowHidden);
-
-                        // 3. Hide/Show the RSVP buttons (the first 3) based on whether list is visible
-                        const rsvpButtons = modalDetailsBtn.parentElement.querySelectorAll('.att-btn:not(#modalDetailsBtn)');
-                        rsvpButtons.forEach(btn => {
-                            btn.style.display = isNowHidden ? 'flex' : 'none';
-                        });
-                        
-                        // 4. Make the 4th button fill the space if others are hidden
-                        modalDetailsBtn.style.flex = isNowHidden ? '0 0 auto' : '1';
-                    };
-                    modalDetailsBtn.dataset.bound = "true";
-                }
-                
-                // Reset to default entry state: RSVP buttons visible, list hidden
-                const rsvpButtons = modalDetailsBtn.parentElement.querySelectorAll('.att-btn:not(#modalDetailsBtn)');
-                rsvpButtons.forEach(btn => { if(btn) btn.style.display = 'flex'; });
-                modalDetailsBtn.style.flex = '0 0 auto';
-                attendanceFullList.classList.add('versteckt');
-            }
         }
     }
 
@@ -889,57 +948,60 @@ function openEventDetails(event, clickEvent) {
 
 export function getEventStats(event) {
     let going = 0, missing = 0, maybe = 0;
-    const roster = spielstand.roster || [];
-    roster.forEach(player => {
-        const playerName = player.name || `Spieler #${player.number}`;
-        let resp = null;
-        const responses = event.responses || {};
-        
-        const assignedUid = Object.keys(spielstand.rosterAssignments || {}).find(u => spielstand.rosterAssignments[u] === playerName);
-        if (assignedUid && responses[assignedUid]) {
-            resp = responses[assignedUid];
-        } else {
-            const responseKey = Object.keys(responses).find(k => responses[k].name === playerName);
-            if (responseKey) resp = responses[responseKey];
+    const responses = event.responses || {};
+    const roster = spielstand.roster && spielstand.roster.length > 0 ? spielstand.roster : [];
+    const rosterAssignments = spielstand.rosterAssignments || {};
+
+    // Determine the list of people we care about
+    // Fallback: If no roster, use everyone who has assigned themselves a name and everyone who voted
+    const rosterPotential = roster.length > 0 ? roster.map(p => (p.name || '').trim()) : Object.values(rosterAssignments).map(n => n.trim());
+    const uniquePotential = [...new Set(rosterPotential)];
+
+    console.log(`[Calendar] Stats Summary:`, { 
+        event: event.title, 
+        roster: roster.length, 
+        assignments: Object.keys(rosterAssignments).length, 
+        uniquePotential: uniquePotential.length 
+    });
+
+    // 1. Process all responses (Manual + Auto)
+    const respondersIdx = new Set();
+    Object.keys(responses).forEach(key => {
+        const resp = responses[key];
+        let status = resp.status;
+        const name = (resp.name || '').trim();
+        if (name) respondersIdx.add(name);
+
+        // If it's an auto-generated response, a structural absence can still override it
+        if (resp.isAutoGenerated) {
+            const assignedUid = key.startsWith('manual_') ? null : key;
+            const absence = isPlayerAbsent(event.date, assignedUid, name);
+            if (absence) status = 'not-going';
         }
 
-        if (resp) {
-            // Priority: Manual Vote > Absence > Auto Vote
-            const isAuto = resp.isAutoGenerated === true;
-            
-            if (isAuto) {
-                const absence = isPlayerAbsent(event.date, assignedUid, playerName);
-                if (absence) {
-                    missing++; // Absence overrides Auto Vote
-                } else {
-                    if (resp.status === 'going') going++;
-                    else if (resp.status === 'maybe') maybe++;
-                    else if (resp.status === 'not-going') missing++;
-                }
-            } else {
-                // Manual vote always wins
-                if (resp.status === 'going') going++;
-                else if (resp.status === 'maybe') maybe++;
-                else if (resp.status === 'not-going') missing++;
-            }
-        } else {
-            // No response at all: Check for absence or default
-            const absence = isPlayerAbsent(event.date, assignedUid, playerName);
-            if (absence) {
-                missing++;
-            } else if (event.rules && event.rules.defaultStatus === 'going') {
-                going++;
-            }
+        if (status === 'going') going++;
+        else if (status === 'not-going') missing++;
+        else if (status === 'maybe') maybe++;
+    });
+
+    // 2. Count non-responders from potential team members
+    uniquePotential.forEach(name => {
+        // Find if any responder is linked to this name
+        const assignedUid = Object.keys(rosterAssignments).find(u => rosterAssignments[u]?.trim() === name);
+        
+        // If we have a response for this UID or this name, skip (already counted in Step 1)
+        if (respondersIdx.has(name)) return;
+        if (assignedUid && responses[assignedUid]) return;
+
+        const absence = isPlayerAbsent(event.date, assignedUid, name);
+        if (absence) {
+            missing++;
+        } else if (event.rules?.defaultStatus === 'going') {
+            going++;
         }
     });
 
-    if (roster.length === 0) {
-        const responses = event.responses || {};
-        going = Object.values(responses).filter(r => r.status === 'going').length;
-        missing = Object.values(responses).filter(r => r.status === 'not-going').length;
-        maybe = Object.values(responses).filter(r => r.status === 'maybe').length;
-    }
-
+    console.log(`[Calendar] Final Count: ${going} Dabei, ${missing} Absagen, ${maybe} ?`);
     return { going, missing, maybe };
 }
 
@@ -960,8 +1022,7 @@ function renderAttendanceUI(event) {
         }
     }
 
-    // 1. Highlight personal buttons (exclude the 4th details button)
-    // Derive effective status for current user (Absence > Auto-RSVP)
+    // 1. Highlight personal buttons
     let effectiveStatus = myResponse ? myResponse.status : null;
     const isAuto = myResponse?.isAutoGenerated === true;
     if (isAuto || !myResponse) {
@@ -981,7 +1042,6 @@ function renderAttendanceUI(event) {
     if (attendanceReasonContainer && attendanceReasonInput) {
         if (effectiveStatus === 'not-going' || effectiveStatus === 'maybe') {
             attendanceReasonContainer.classList.remove('versteckt');
-            // If it's an absence, show the absence reason if no manual reason exists
             if (effectiveStatus === 'not-going' && !myResponse?.reason) {
                  const abs = isPlayerAbsent(event.date, uid, rosterName);
                  attendanceReasonInput.value = abs ? `Abwesend: ${abs.reason}` : '';
@@ -994,134 +1054,102 @@ function renderAttendanceUI(event) {
         }
     }
 
-    // Calculate stats accurately based on active roster loop to avoid duplicate ghost records
-    const { going, missing, maybe } = getEventStats(event);
-    
     // 3. Stats Summary
+    const { going, missing, maybe } = getEventStats(event);
     if (attendanceStats) {
         attendanceStats.innerHTML = `<span style="color:#22c55e;">${going} Dabei</span> | <span style="color:#ef4444;">${missing} Absagen</span>` + (maybe > 0 ? ` | <span style="color:#f59e0b;">${maybe} ?</span>` : '');
     }
 
-    // 4. Detailed Player List
+    // 4. Build full participants list
     if (attendanceFullList) {
         attendanceFullList.innerHTML = '';
+        const responses = event.responses || {};
         const roster = spielstand.roster || [];
-        const isTrainer = isUserTrainer();
+        const rosterAssignments = spielstand.rosterAssignments || {};
 
-        if (roster.length === 0) {
-            attendanceFullList.innerHTML = '<div style="font-size:0.75rem; color:#888; text-align:center; padding:10px;">Kein Kader hinterlegt.</div>';
-        } else {
-            const voted = [];
-            const notVoted = [];
+        // Track who we've already rendered
+        const renderedNames = new Set();
 
-            roster.forEach(player => {
-                const playerName = player.name || `Spieler #${player.number}`;
-                let resp = null;
-                const responses = event.responses || {};
-                
-                const assignedUid = Object.keys(spielstand.rosterAssignments || {}).find(u => spielstand.rosterAssignments[u] === playerName);
-                if (assignedUid && responses[assignedUid]) {
-                    resp = responses[assignedUid];
-                } else {
-                    const responseKey = Object.keys(responses).find(k => responses[k].name === playerName);
-                    if (responseKey) resp = responses[responseKey];
-                }
-                // Personal Absence check with priority
-                // 1. Manual Vote wins
-                // 2. Absence wins over Auto Vote
-                // 3. Auto Vote wins if no absence
-                
-                const isAuto = resp?.isAutoGenerated === true;
-                const absence = (isAuto || !resp) ? isPlayerAbsent(event.date, assignedUid, playerName) : null;
-                
-                if (absence) {
-                    resp = { status: 'not-going', reason: absence.reason, isAbsence: true };
-                }
-
-                if (resp) voted.push({ player, resp, playerName, isAbsence: !!resp.isAbsence });
-                else notVoted.push({ player, playerName });
-            });
-
-            // Helper to render row
-            const createRow = (item, isPending = false) => {
-                const { player, resp, playerName, isAbsence } = item;
-                const row = document.createElement('div');
-                row.className = 'attendance-player-row';
-
-                let statusDotClass = 'status-none';
-                if (resp) {
-                    if (resp.status === 'going') statusDotClass = 'status-going';
-                    if (resp.status === 'maybe') statusDotClass = 'status-maybe';
-                    if (resp.status === 'not-going') {
-                        statusDotClass = isAbsence ? 'status-absence' : 'status-not-going';
-                    }
-                }
-
-                let trainerHtml = '';
-                if (isTrainer) {
-                    trainerHtml = `
-                        <div class="trainer-att-controls">
-                            <button class="trainer-att-btn att-going ${resp?.status === 'going' ? 'active' : ''}" data-status="going" data-player="${playerName}" title="Dabei" style="display:flex; justify-content:center; align-items:center;">
-                                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 10v12"/><path d="M15 5.88 14 10h5.83a2 2 0 0 1 1.92 2.56l-2.33 8A2 2 0 0 1 17.5 22H4a2 2 0 0 1-2-2v-8a2 2 0 0 1 2-2h2.76a2 2 0 0 0 1.79-1.11L12 2h0a3.13 3.13 0 0 1 3 3.88Z"/></svg>
-                            </button>
-                            <button class="trainer-att-btn att-maybe ${resp?.status === 'maybe' ? 'active' : ''}" data-status="maybe" data-player="${playerName}" title="Vielleicht" style="display:flex; justify-content:center; align-items:center;">
-                                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><path d="M12 17h.01"/></svg>
-                            </button>
-                            <button class="trainer-att-btn att-not-going ${resp?.status === 'not-going' ? 'active' : ''}" data-status="not-going" data-player="${playerName}" title="Absage" style="display:flex; justify-content:center; align-items:center;">
-                                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 14V2"/><path d="M9 18.12 10 14H4.17a2 2 0 0 1-1.92-2.56l2.33-8A2 2 0 0 1 6.5 2H20a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2h-2.76a2 2 0 0 0-1.79 1.11L12 22h0a3.13 3.13 0 0 1-3-3.88Z"/></svg>
-                            </button>
-                        </div>
-                    `;
-                }
-
-                const displayReason = isAbsence ? `Abwesend: ${resp.reason}` : resp?.reason;
-
-                row.innerHTML = `
-                    <div class="att-player-info">
-                        <div class="att-player-name">
-                            <span class="att-status-indicator ${statusDotClass}"></span>
-                            ${playerName} ${player.number ? `(${player.number})` : ''}
-                        </div>
-                        ${displayReason ? `<div class="att-player-reason">${displayReason}</div>` : ''}
-                    </div>
-                    ${trainerHtml}
-                `;
-
-                if (isTrainer) {
-                    row.querySelectorAll('.trainer-att-btn').forEach(btn => {
-                        btn.addEventListener('click', (e) => {
-                            e.stopPropagation();
-                            updateParticipation(event.id, btn.dataset.status, resp?.reason || '', playerName);
-                        });
-                    });
-                }
-                return row;
-            };
-
-            // Render Sections
-            if (voted.length > 0) {
-                const h = document.createElement('div');
-                h.style = 'font-size:0.7rem; font-weight:700; color:#94a3b8; text-transform:uppercase; margin:10px 0 5px 4px;';
-                h.textContent = 'Abgestimmt';
-                attendanceFullList.appendChild(h);
-                voted.forEach(item => attendanceFullList.appendChild(createRow(item)));
+        const getEffectivePlayerStatus = (pName, assignedUid) => {
+            let resp = null;
+            if (assignedUid && responses[assignedUid]) {
+                resp = responses[assignedUid];
+            } else {
+                const rKey = Object.keys(responses).find(k => (responses[k].name || '').trim() === pName);
+                if (rKey) resp = responses[rKey];
             }
 
-            if (notVoted.length > 0) {
-                const h = document.createElement('div');
-                h.style = 'font-size:0.7rem; font-weight:700; color:#94a3b8; text-transform:uppercase; margin:15px 0 5px 4px;';
-                h.textContent = 'Noch nicht abgestimmt';
-                attendanceFullList.appendChild(h);
-                notVoted.forEach(item => attendanceFullList.appendChild(createRow(item, true)));
-            }
-        }
+            const isManualOnly = resp && !resp.isAutoGenerated;
+            const absence = (!isManualOnly) ? isPlayerAbsent(event.date, assignedUid, pName) : null;
+            
+            if (isManualOnly) return { status: resp.status, reason: resp.reason };
+            if (absence) return { status: 'not-going', reason: `Abwesend: ${absence.reason}` };
+            if (resp) return { status: resp.status, reason: resp.reason || '(Automatisch)' };
+            if (event.rules?.defaultStatus === 'going') return { status: 'going', reason: '(Automatisch)' };
+            
+            return { status: 'none', reason: '' };
+        };
 
-        // Finally, create icons for everyone
-        if (window.lucide) {
-            window.lucide.createIcons();
-            // Backup for dynamic rendering lag
-            setTimeout(() => window.lucide.createIcons(), 50);
-        }
+        const renderRosterItem = (pName) => {
+            const assignedUid = Object.keys(rosterAssignments).find(u => rosterAssignments[u]?.trim() === pName);
+            const effective = getEffectivePlayerStatus(pName, assignedUid);
+            renderedNames.add(pName);
+
+            if (effective.status === 'none') return;
+
+            const div = document.createElement('div');
+            div.className = 'att-item';
+            div.style = 'display:flex; justify-content:space-between; align-items:center; padding:6px 0; font-size:0.8rem; border-bottom:1px solid rgba(255,255,255,0.05);';
+
+            let statusIcon = 'check-circle-2';
+            let statusColor = '#22c55e';
+            if (effective.status === 'not-going') { statusIcon = 'x-circle'; statusColor = '#ef4444'; }
+            if (effective.status === 'maybe') { statusIcon = 'help-circle'; statusColor = '#f59e0b'; }
+
+            div.innerHTML = `
+                <div style="display:flex; align-items:center; gap:8px;">
+                    <i data-lucide="${statusIcon}" style="width:14px; height:14px; color:${statusColor};"></i>
+                    <span style="font-weight:500;">${pName}</span>
+                    <span style="color:#888; font-size:0.7rem; margin-left:4px;">${effective.reason || ''}</span>
+                </div>
+            `;
+            attendanceFullList.appendChild(div);
+        };
+
+        // Priority 1: Current Roster
+        roster.forEach(player => renderRosterItem((player.name || '').trim()));
+
+        // Priority 2: Other Assignments (if not in roster)
+        Object.values(rosterAssignments).forEach(name => {
+            if (!renderedNames.has(name.trim())) renderRosterItem(name.trim());
+        });
+
+        // Add remaining non-roster responders (Trainers etc)
+        Object.keys(responses).forEach(key => {
+            const resp = responses[key];
+            const name = (resp.name || '').trim();
+            if (renderedNames.has(name) || !name) return;
+
+            const div = document.createElement('div');
+            div.className = 'att-item';
+            div.style = 'display:flex; justify-content:space-between; align-items:center; padding:6px 0; font-size:0.8rem; border-bottom:1px solid rgba(255,255,255,0.05);';
+
+            let statusIcon = 'check-circle-2';
+            let statusColor = '#22c55e';
+            if (resp.status === 'not-going') { statusIcon = 'x-circle'; statusColor = '#ef4444'; }
+            if (resp.status === 'maybe') { statusIcon = 'help-circle'; statusColor = '#f59e0b'; }
+
+            div.innerHTML = `
+                <div style="display:flex; align-items:center; gap:8px;">
+                    <i data-lucide="${statusIcon}" style="width:14px; height:14px; color:${statusColor};"></i>
+                    <span style="font-weight:500;">${name}</span>
+                    <span style="color:#888; font-size:0.7rem; margin-left:4px;">${resp.reason || ''}</span>
+                </div>
+            `;
+            attendanceFullList.appendChild(div);
+        });
+
+        if (window.lucide) window.lucide.createIcons();
     }
 }
 
@@ -1141,7 +1169,7 @@ export async function updateParticipation(eventId, status, reason = '', targetPl
     }
 
     let responseKey = uid;
-    let responseName = profile ? (profile.displayName || profile.email) : 'Anonym';
+    let responseName = profile ? (profile.rosterName || profile.displayName || profile.email) : 'Anonym';
     let checkKey = responseKey;
 
     if (!targetPlayerName && !event.responses[uid] && profile && profile.rosterName) {
@@ -1217,8 +1245,9 @@ export async function updateParticipation(eventId, status, reason = '', targetPl
     // Update UI if still open - Ensure ID comparison is safe
     if (String(currentEventId) === String(eventId)) {
         renderAttendanceUI(event);
+        renderCalendar();
+        if (window.lucide) window.lucide.createIcons();
     }
-    renderCalendar(); // Forces the calendar pills (the little boxes in the Grid) to update
     toast.success("Teilnahme aktualisiert", targetPlayerName ? `Status für ${targetPlayerName} geändert.` : "Deine Antwort wurde gespeichert.");
 }
 
@@ -1419,9 +1448,11 @@ export async function addSubscription(url, rules = { requireReason: false, deadl
             ev.responses = {};
             if (rules.defaultStatus === 'going') {
                 const roster = spielstand.roster || [];
+                const rosterAssignments = spielstand.rosterAssignments || {};
                 roster.forEach(p => {
-                    const name = p.name || `Spieler #${p.number}`;
-                    const key = `manual_${name.replace(/\s+/g, '_')}`;
+                    const name = (p.name || `Spieler #${p.number}`).trim();
+                    const assignedUid = Object.keys(rosterAssignments).find(u => rosterAssignments[u]?.trim() === name);
+                    const key = assignedUid || `manual_${name.replace(/\s+/g, '_')}`;
                     ev.responses[key] = { status: 'going', name, updatedAt: Date.now(), isAutoGenerated: true };
                 });
             }
