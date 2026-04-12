@@ -13,7 +13,8 @@ import {
     histHeatmapTeamToggle, histHeatTeamLabelHeim, histHeatTeamLabelGegner,
     heatmapTeamToggle, heatmapPlayerSelect, heatmapHeimLabel, heatmapGegnerLabel,
     histTabProtokoll, histContentProtokoll, histProtokollAusgabe,
-    histTabTorfolge, histContentTorfolge, histTorfolgeChart
+    histTabTorfolge, histContentTorfolge, histTorfolgeChart,
+    historieHeader
 } from './dom.js';
 import { berechneStatistiken, berechneGegnerStatistiken, berechneTore } from './stats.js';
 import { speichereSpielInHistorie, getHistorie, loescheSpielAusHistorie } from './history.js';
@@ -26,6 +27,11 @@ import { renderHomeStatsInHistory, renderOpponentStatsInHistory, openPlayerHisto
 import { sanitizeHTML, escapeHTML } from './securityUtils.js';
 import { selectGameForAnalysis } from './videoAnalysis.js';
 import { navigateTo } from './router.js';
+
+// Internal state for refreshing stats on sort
+let currentGameShowing = null;
+let currentRenderBound = null;
+
 
 // --- Export einzelnes Spiel ---
 export function exportiereEinzelnesSpiel(game) {
@@ -562,18 +568,10 @@ export function openHistoryDetail(game) {
     }
 
     // Initial populate of Heatmap Tab Stats
-    if (histHeatmapStatsArea) {
-        histHeatmapStatsArea.classList.remove('versteckt');
-        if (histHeatmapHomeTitle) histHeatmapHomeTitle.textContent = homeName;
-        if (histHeatmapGegnerTitle) histHeatmapGegnerTitle.textContent = oppName;
-
-        renderHomeStatsInHistory(histHeatmapStatsBodyHome, homeStats, game.gameLog, false, true, renderBound, showLivePlayerDetails);
-        if (histHeatmapStatsBodyGegner) {
-            renderOpponentStatsInHistory(histHeatmapStatsBodyGegner, opponentStats, game.gameLog, game, false, true, renderBound, showLivePlayerDetails);
-        }
-    }
+    renderHistoryStats(game, renderBound);
 
     const histFilter = histContentHeatmap.querySelector('.heatmap-filter');
+
     if (histFilter) histFilter.classList.remove('versteckt');
 
     // Populate Heatmap Player Select
@@ -651,4 +649,36 @@ export function openHistoryDetail(game) {
     renderGoalSequenceChart(game);
 
     renderBound();
+}
+
+/**
+ * Re-renders the history statistics tables based on the currently showing game.
+ * Used for table sorting.
+ */
+export function refreshHistoryStats() {
+    if (currentGameShowing) {
+        renderHistoryStats(currentGameShowing, currentRenderBound);
+    }
+}
+
+/**
+ * Helper to render history stats tables
+ */
+function renderHistoryStats(game, renderBound) {
+    currentGameShowing = game;
+    currentRenderBound = renderBound;
+
+    if (!histHeatmapStatsArea) return;
+
+    histHeatmapStatsArea.classList.remove('versteckt');
+    if (histHeatmapHomeTitle) histHeatmapHomeTitle.textContent = game.teams.heim;
+    if (histHeatmapGegnerTitle) histHeatmapGegnerTitle.textContent = game.teams.gegner;
+
+    const homeStats = berechneStatistiken(game.gameLog, game.roster);
+    const opponentStats = berechneGegnerStatistiken(game.gameLog);
+
+    renderHomeStatsInHistory(histHeatmapStatsBodyHome, homeStats, game.gameLog, false, true, renderBound, showLivePlayerDetails);
+    if (histHeatmapStatsBodyGegner) {
+        renderOpponentStatsInHistory(histHeatmapStatsBodyGegner, opponentStats, game.gameLog, game, false, true, renderBound, showLivePlayerDetails);
+    }
 }

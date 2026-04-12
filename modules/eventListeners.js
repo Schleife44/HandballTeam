@@ -59,7 +59,7 @@ import { exportTeam, handleFileImport, exportiereAlsPdf } from './export.js';
 import {
     applyTheme, applyViewSettings, updateScoreDisplay, updateProtokollAnzeige,
     schliesseWurfbildModal, zeigeWurfstatistik, zeichneSpielerRaster, oeffneWurfbildModal,
-    zeichneRosterListe, showLiveGameOverview
+    zeichneRosterListe, showLiveGameOverview, updateHeatmapPlayerSelect
 } from './ui.js';
 import { exportHistorie, importiereSpiel } from './history.js';
 import { handleSpielBeenden, renderHistoryList } from './historyView.js';
@@ -115,43 +115,7 @@ export function registerEventListeners() {
         });
     }
 
-    /* Redundant: Moved to events.js
-    if (saveTeamButton) {
-        saveTeamButton.addEventListener('click', saveCurrentTeam);
-    }
 
-    if (loadTeamButton) {
-        loadTeamButton.addEventListener('click', showLoadTeamModal);
-    }
-
-    if (loadTeamCancel) {
-        loadTeamCancel.addEventListener('click', () => {
-            loadTeamModal.classList.add('versteckt');
-        });
-    }
-    */
-
-    // Event delegation for dynamically created load/delete buttons
-    if (savedTeamsList) {
-        savedTeamsList.addEventListener('click', (e) => {
-            if (e.target.classList.contains('load-team-btn')) {
-                const teamKey = e.target.dataset.key;
-                const index = parseInt(e.target.dataset.index);
-                loadSavedTeam(teamKey, index);
-            } else if (e.target.classList.contains('delete-saved-team-btn')) {
-                const teamKey = e.target.dataset.key;
-                const index = parseInt(e.target.dataset.index);
-                deleteSavedTeam(teamKey, index);
-            } else if (e.target.classList.contains('view-team-btn')) {
-                const teamKey = e.target.dataset.key;
-                const index = parseInt(e.target.dataset.index);
-                viewTeam(teamKey, index);
-            } else if (e.target.classList.contains('load-history-team-btn')) {
-                const index = parseInt(e.target.dataset.index);
-                loadHistoryTeam(index);
-            }
-        });
-    }
 
     // View Team Modal
     if (saveTeamChanges) {
@@ -259,23 +223,6 @@ export function registerEventListeners() {
         });
     }
 
-    // === History Buttons ===
-    /* Redundant: Moved to router.js and events.js
-    if (historyButton) {
-        historyButton.addEventListener('click', () => {
-             // ...
-        });
-    }
-
-    // === Season Overview ===
-    if (seasonOverviewButton) {
-        seasonOverviewButton.addEventListener('click', openSeasonOverview);
-    }
-
-    if (seasonOverviewClose) {
-        seasonOverviewClose.addEventListener('click', closeSeasonOverview);
-    }
-    */
 
     // Event delegation for heatmap buttons in season view
     if (seasonStatsContainer) {
@@ -329,11 +276,6 @@ export function registerEventListeners() {
             historieBereich.classList.remove('versteckt');
         });
     }
-    /* Redundant: Moved to events.js
-    if (spielBeendenButton) {
-        spielBeendenButton.addEventListener('click', handleSpielBeenden);
-    }
-    */
 
     // === History Detail Tabs ===
     if (histTabHeatmap && histTabProtokoll && histTabTorfolge) {
@@ -484,94 +426,11 @@ export function registerEventListeners() {
         });
     }
 
-    // === Einstellungen (Inline) ===
-    if (toggleDarkMode) {
-        toggleDarkMode.addEventListener('change', (e) => {
-            if (!spielstand.settings) spielstand.settings = {};
-            spielstand.settings.darkMode = e.target.checked;
-            applyTheme();
-            speichereSpielstand();
-        });
-    }
+    // Settings page listeners moved to settingsManager.js
 
-    if (myTeamNameInput) {
-        myTeamNameInput.addEventListener('input', (e) => {
-            saveMyTeamName(e.target.value);
-        });
-    }
+    // Note: Most settings-page listeners have been moved to settingsManager.js (initSettingsPage)
+    // to ensure visual state and saving are always synchronized.
 
-    const myTeamColorInput = document.getElementById('myTeamColorInput');
-    if (myTeamColorInput) {
-        myTeamColorInput.addEventListener('input', (e) => {
-            saveMyTeamColor(e.target.value);
-        });
-    }
-
-    const toggleValidationBtn = document.getElementById('toggleValidationBtn');
-    if (toggleValidationBtn) {
-        toggleValidationBtn.addEventListener('click', () => {
-            toggleValidation();
-        });
-    }
-
-    if (inputTeamNameHeim) {
-        inputTeamNameHeim.addEventListener('input', (e) => {
-            if (!spielstand.settings) spielstand.settings = {};
-            spielstand.settings.teamNameHeim = e.target.value.trim();
-            speichereSpielstand();
-        });
-    }
-
-    if (inputTeamNameGegner) {
-        inputTeamNameGegner.addEventListener('input', (e) => {
-            if (!spielstand.settings) spielstand.settings = {};
-            spielstand.settings.teamNameGegner = e.target.value.trim();
-            speichereSpielstand();
-        });
-    }
-
-
-
-    if (toggleWurfbildHeim) {
-        toggleWurfbildHeim.addEventListener('change', (e) => {
-            if (!spielstand.settings) spielstand.settings = {};
-            spielstand.settings.showWurfbildHeim = e.target.checked;
-            speichereSpielstand();
-        });
-    }
-
-    if (toggleWurfbildGegner) {
-        toggleWurfbildGegner.addEventListener('change', (e) => {
-            if (!spielstand.settings) spielstand.settings = {};
-            spielstand.settings.showWurfbildGegner = e.target.checked;
-            speichereSpielstand();
-        });
-    }
-
-    if (toggleWurfpositionHeim) {
-        toggleWurfpositionHeim.addEventListener('change', (e) => {
-            if (!spielstand.settings) spielstand.settings = {};
-            spielstand.settings.showWurfpositionHeim = e.target.checked;
-            speichereSpielstand();
-        });
-    }
-
-    if (toggleWurfpositionGegner) {
-        toggleWurfpositionGegner.addEventListener('change', (e) => {
-            if (!spielstand.settings) spielstand.settings = {};
-            spielstand.settings.showWurfpositionGegner = e.target.checked;
-            speichereSpielstand();
-        });
-    }
-
-    // === Combined Throw Mode Toggle ===
-    if (toggleCombinedThrow) {
-        toggleCombinedThrow.addEventListener('change', (e) => {
-            if (!spielstand.settings) spielstand.settings = {};
-            spielstand.settings.combinedThrowMode = e.target.checked;
-            speichereSpielstand();
-        });
-    }
 
     // === Auswärtsspiel Toggle ===
 
@@ -1193,16 +1052,17 @@ export function registerEventListeners() {
     // === Filter changes (Main View) ===
     if (heatmapTeamToggle) {
         heatmapTeamToggle.addEventListener('click', () => {
-            // RESET PLAYER SELECT when switching teams
-            if (heatmapPlayerSelect) {
-                heatmapPlayerSelect.value = 'all';
-            }
+            // TOGGLE STATE manually (since it's a custom button, not a real checkbox)
+            const isChecked = heatmapTeamToggle.getAttribute('aria-checked') === 'true';
+            const newState = !isChecked;
+            heatmapTeamToggle.setAttribute('aria-checked', newState ? 'true' : 'false');
+            heatmapTeamToggle.dataset.state = newState ? 'checked' : 'unchecked';
 
-            // Note: A generic listener seems to handle the visual toggle.
-            // We just ensure the heatmap re-renders.
-            setTimeout(() => {
-                renderHeatmap(heatmapSvg, null, false);
-            }, 0);
+            // RE-POPULATE PLAYER SELECT when switching teams
+            updateHeatmapPlayerSelect();
+
+            // RE-RENDER
+            renderHeatmap(heatmapSvg, null, false);
         });
     }
 
@@ -1212,30 +1072,10 @@ export function registerEventListeners() {
         }
     });
 
-    // === Mobile Sidebar Toggle ===
-    if (mobileMenuBtn && sidebar && sidebarOverlay) {
-        mobileMenuBtn.addEventListener('click', () => {
-            sidebar.classList.toggle('active');
-            sidebarOverlay.classList.toggle('active');
-        });
-
-        sidebarOverlay.addEventListener('click', () => {
-            sidebar.classList.remove('active');
-            sidebarOverlay.classList.remove('active');
-        });
-
-        // Close sidebar when a nav item is clicked (on mobile)
-        if (navItems) {
-            navItems.forEach(item => {
-                item.addEventListener('click', () => {
-                    if (window.innerWidth <= 768) {
-                        sidebar.classList.remove('active');
-                        sidebarOverlay.classList.remove('active');
-                    }
-                });
-            });
-        }
+    if (heatmapPlayerSelect) {
+        heatmapPlayerSelect.addEventListener('change', () => renderHeatmap(heatmapSvg, null, false));
     }
+
     if (rosterSwapTeamsBtn) {
         rosterSwapTeamsBtn.addEventListener('click', swapTeams);
     }

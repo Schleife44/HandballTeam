@@ -13,6 +13,8 @@ export const playerTorwartInput = document.getElementById('playerTorwartInput');
 export const editPlayerIndex = document.getElementById('editPlayerIndex');
 export const cancelEditButton = document.getElementById('cancelEditButton');
 export const rosterListe = document.getElementById('rosterListe');
+export const rosterTabHeim = document.getElementById('rosterTabHeim');
+export const rosterTabGegner = document.getElementById('rosterTabGegner');
 
 export const deleteTeamButton = document.getElementById('deleteTeamButton');
 export const teamToggle = document.getElementById('teamToggle');

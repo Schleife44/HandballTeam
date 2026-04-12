@@ -29,6 +29,7 @@ import { initRouter } from './modules/router.js';
 import { initEventListeners } from './modules/events.js';
 import { showTeamSelectionOverlay } from './modules/teamsView.js';
 import { getActiveTeamId } from './modules/firebase.js';
+import { initTableSorting } from './modules/sharedViews.js';
 
 /**
  * App Initialization
@@ -72,6 +73,22 @@ function initApp(skipLocalLoad = false) {
     
     // Register legacy listeners (to be phased out)
     registerEventListeners();
+
+    // Initialize Table Sorting
+    initTableSorting(() => {
+        const hash = window.location.hash || '#roster';
+        if (hash === '#overview') {
+             import('./modules/ui.js').then(m => m.showLiveOverviewInline());
+        } else if (hash === '#seasonStats') {
+             import('./modules/seasonStats.js').then(m => m.loadSeasonStats());
+        } else {
+             // For history detail, we need to check if the detail section is visible
+             const histDetail = document.getElementById('historieDetailBereich');
+             if (histDetail && !histDetail.classList.contains('versteckt')) {
+                 import('./modules/historyView.js').then(m => m.refreshHistoryStats());
+             }
+        }
+    });
 
     console.log('[Main] App Initialized.');
 }

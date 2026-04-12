@@ -32,6 +32,8 @@ export function unlockTeamSettings() {
     spielstand.settings.teamSettingsValidated = false;
     speichereSpielstand();
     updateSettingsUI();
+    // Also update roster inputs if they exist on the page
+    updateRosterInputsForValidation();
 }
 
 /**
@@ -127,25 +129,175 @@ export function updateSettingsUI() {
 }
 
 /**
- * Initializes the settings page
+ * Initializes the settings page and syncs UI with spielstand.settings
  */
 export function initSettingsPage() {
+    console.log('[Settings] Initializing Settings Page UI...');
+    
     const myTeamNameInput = document.getElementById('myTeamNameInput');
     const myTeamColorInput = document.getElementById('myTeamColorInput');
     const myTeamColorIcon = document.getElementById('myTeamColorIcon');
+    
+    // Toggles
+    const toggleDarkMode = document.getElementById('set_toggleDarkMode');
+    const toggleWurfbildHeim = document.getElementById('set_toggleWurfbildHeim');
+    const toggleWurfbildGegner = document.getElementById('set_toggleWurfbildGegner');
+    const toggleWurfpositionHeim = document.getElementById('set_toggleWurfpositionHeim');
+    const toggleWurfpositionGegner = document.getElementById('set_toggleWurfpositionGegner');
+    const toggleCombinedThrow = document.getElementById('set_toggleCombinedThrowMode');
 
-    // Load current values
+    // Attendance Settings (Modal Sub)
+    const modalSubRequireReason = document.getElementById('subRequireReason');
+    const modalSubDeadlineHours = document.getElementById('subDeadlineHours');
+    const modalSubDefaultStatus = document.getElementById('subDefaultStatus');
+
+    // 1. Sync Values from State to UI
+    if (myTeamNameInput) myTeamNameInput.value = spielstand.settings.myTeamName || '';
+    if (myTeamColorInput) myTeamColorInput.value = spielstand.settings.myTeamColor || '#dc3545';
+    if (myTeamColorIcon) myTeamColorIcon.style.color = spielstand.settings.myTeamColor || '#dc3545';
+
+    if (toggleDarkMode) toggleDarkMode.checked = !!spielstand.settings.darkMode;
+    if (toggleWurfbildHeim) toggleWurfbildHeim.checked = !!spielstand.settings.showWurfbildHeim;
+    if (toggleWurfbildGegner) toggleWurfbildGegner.checked = !!spielstand.settings.showWurfbildGegner;
+    if (toggleWurfpositionHeim) toggleWurfpositionHeim.checked = !!spielstand.settings.showWurfpositionHeim;
+    if (toggleWurfpositionGegner) toggleWurfpositionGegner.checked = !!spielstand.settings.showWurfpositionGegner;
+    if (toggleCombinedThrow) toggleCombinedThrow.checked = !!spielstand.settings.combinedThrowMode;
+
+    // Sync Attendance
+    if (spielstand.settings.calendar) {
+        if (modalSubRequireReason) modalSubRequireReason.checked = !!spielstand.settings.calendar.requireReason;
+        if (modalSubDeadlineHours) modalSubDeadlineHours.value = spielstand.settings.calendar.deadlineHours || 0;
+        if (modalSubDefaultStatus) modalSubDefaultStatus.checked = (spielstand.settings.calendar.defaultStatus === 'going');
+    }
+
+    // 2. Attach Event Listeners for Real-time Saving
+    const attachChange = (el, key, isCheckbox = true, subKey = null) => {
+        if (!el) return;
+        el.onchange = () => {
+            if (subKey) {
+                if (!spielstand.settings[subKey]) spielstand.settings[subKey] = {};
+                spielstand.settings[subKey][key] = isCheckbox ? el.checked : el.value;
+            } else {
+                spielstand.settings[key] = isCheckbox ? el.checked : el.value;
+            }
+            
+            // Special handling for Dark Mode
+            if (key === 'darkMode') {
+                import('./ui.js').then(ui => ui.applyTheme());
+            }
+
+            speichereSpielstand();
+            console.log(`[Settings] Saved ${key}:`, el.checked || el.value);
+        };
+    };
+
+    attachChange(toggleDarkMode, 'darkMode');
+    attachChange(toggleWurfbildHeim, 'showWurfbildHeim');
+    attachChange(toggleWurfbildGegner, 'showWurfbildGegner');
+    attachChange(toggleWurfpositionHeim, 'showWurfpositionHeim');
+    attachChange(toggleWurfpositionGegner, 'showWurfpositionGegner');
+    
+    // Combined Mode has special logic for locking others
+    if (toggleCombinedThrow) {
+        toggleCombinedThrow.onchange = () => {
+            spielstand.settings.combinedThrowMode = toggleCombinedThrow.checked;
+            updateCombinedModeVisuals();
+            speichereSpielstand();
+            console.log(`[Settings] Saved combinedThrowMode:`, toggleCombinedThrow.checked);
+        };
+    }
+
+    /**
+     * Helper to handle visual locking of sub-settings when combined mode is on
+     */
+    function updateCombinedModeVisuals() {
+        const isCombined = !!spielstand.settings.combinedThrowMode;
+        const subToggles = [
+            toggleWurfbildHeim, 
+            toggleWurfbildGegner, 
+            toggleWurfpositionHeim, 
+            toggleWurfpositionGegner
+        ];
+        const subKeys = [
+            'showWurfbildHeim',
+            'showWurfbildGegner',
+            'showWurfpositionHeim',
+            'showWurfpositionGegner'
+        ];
+
+        subToggles.forEach((el, index) => {
+            if (!el) return;
+            const key = subKeys[index];
+            const row = el.closest('.setting-row');
+
+            if (isCombined) {
+                // Force visual state
+                el.checked = true;
+                el.disabled = true;
+                if (row) {
+                    row.style.opacity = '0.5';
+                    row.style.pointerEvents = 'none';
+                }
+            } else {
+                // Restore from actual state
+                el.checked = !!spielstand.settings[key];
+                el.disabled = false;
+                if (row) {
+                    row.style.opacity = '1';
+                    row.style.pointerEvents = 'auto';
+                }
+            }
+        });
+    }
+
+    // Initial run
+    updateCombinedModeVisuals();
+
+    // Team Name/Color Listeners
     if (myTeamNameInput) {
-        myTeamNameInput.value = spielstand.settings.myTeamName || '';
+        myTeamNameInput.oninput = (e) => saveMyTeamName(e.target.value);
     }
-
     if (myTeamColorInput) {
-        myTeamColorInput.value = spielstand.settings.myTeamColor || '#dc3545';
+        myTeamColorInput.oninput = (e) => saveMyTeamColor(e.target.value);
     }
 
-    // Set shirt icon color to match selected color
-    if (myTeamColorIcon) {
-        myTeamColorIcon.style.color = spielstand.settings.myTeamColor || '#dc3545';
+    // Attendance Listeners
+    if (modalSubRequireReason) {
+        modalSubRequireReason.onchange = () => {
+            if (!spielstand.settings.calendar) spielstand.settings.calendar = {};
+            spielstand.settings.calendar.requireReason = modalSubRequireReason.checked;
+            speichereSpielstand();
+        };
+    }
+    if (modalSubDeadlineHours) {
+        modalSubDeadlineHours.oninput = () => {
+            if (!spielstand.settings.calendar) spielstand.settings.calendar = {};
+            spielstand.settings.calendar.deadlineHours = parseInt(modalSubDeadlineHours.value) || 0;
+            speichereSpielstand();
+        };
+    }
+    if (modalSubDefaultStatus) {
+        modalSubDefaultStatus.onchange = () => {
+            if (!spielstand.settings.calendar) spielstand.settings.calendar = {};
+            spielstand.settings.calendar.defaultStatus = modalSubDefaultStatus.checked ? 'going' : 'none';
+            speichereSpielstand();
+        };
+    }
+
+    const toggleValidationBtn = document.getElementById('toggleValidationBtn');
+    if (toggleValidationBtn) {
+        toggleValidationBtn.onclick = () => {
+            toggleValidation();
+        };
+    }
+
+    // Save button for sub-settings
+    const saveSubBtn = document.getElementById('saveSubSettingsBtn');
+    if (saveSubBtn) {
+        saveSubBtn.onclick = () => {
+            const modal = document.getElementById('subSettingsModal');
+            if (modal) modal.classList.add('versteckt');
+        };
     }
 
     // Update UI based on validation state
@@ -309,7 +461,12 @@ export function initInviteUI() {
  * Saves team name changes
  */
 export function saveMyTeamName(name) {
-    spielstand.settings.myTeamName = name.trim();
+    const newName = name.trim();
+    // If the name changed and settings were locked, unlock them
+    if (newName !== spielstand.settings.myTeamName && spielstand.settings.teamSettingsValidated) {
+        unlockTeamSettings();
+    }
+    spielstand.settings.myTeamName = newName;
     speichereSpielstand();
 }
 
@@ -317,6 +474,10 @@ export function saveMyTeamName(name) {
  * Saves team color changes and updates UI
  */
 export function saveMyTeamColor(color) {
+    // If the color changed and settings were locked, unlock them
+    if (color !== spielstand.settings.myTeamColor && spielstand.settings.teamSettingsValidated) {
+        unlockTeamSettings();
+    }
     spielstand.settings.myTeamColor = color;
     speichereSpielstand();
 

@@ -225,7 +225,7 @@ export async function deleteSavedTeam(teamKey, index) {
 
 // Load opponent team from game history
 export async function loadHistoryTeam(index) {
-    const historyTeams = getOpponentTeamsFromHistory();
+    const historyTeams = await getOpponentTeamsFromHistory();
     const team = historyTeams[index];
 
     if (!team) return;
@@ -257,7 +257,10 @@ export async function loadHistoryTeam(index) {
 
     // Update toggle switch UI
     const teamToggle = document.getElementById('teamToggle');
-    if (teamToggle) teamToggle.checked = true;
+    if (teamToggle) {
+        teamToggle.setAttribute('aria-checked', 'true');
+        teamToggle.dataset.state = 'checked';
+    }
 
     speichereSpielstand();
 
@@ -294,8 +297,8 @@ export async function showLoadTeamModal() {
         // Show Home Teams
         if (homeTeams.length > 0) {
             const homeHeader = document.createElement('h4');
-            homeHeader.textContent = '🏠 Heim Teams';
-            homeHeader.style.cssText = 'margin: 10px 0; color: var(--text-main);';
+            homeHeader.innerHTML = '<i data-lucide="home" style="width: 18px; height: 18px; margin-right: 8px; vertical-align: bottom;"></i> Heim Teams';
+            homeHeader.style.cssText = 'margin: 10px 0; color: var(--text-main); display: flex; align-items: center;';
             savedTeamsList.appendChild(homeHeader);
 
             homeTeams.forEach((team, index) => {
@@ -306,8 +309,8 @@ export async function showLoadTeamModal() {
         // Show Opponent Teams
         if (opponentTeams.length > 0) {
             const opponentHeader = document.createElement('h4');
-            opponentHeader.textContent = '🚌 Gegner Teams';
-            opponentHeader.style.cssText = 'margin: 20px 0 10px 0; color: var(--text-main);';
+            opponentHeader.innerHTML = '<i data-lucide="bus" style="width: 18px; height: 18px; margin-right: 8px; vertical-align: bottom;"></i> Gegner Teams';
+            opponentHeader.style.cssText = 'margin: 20px 0 10px 0; color: var(--text-main); display: flex; align-items: center;';
             savedTeamsList.appendChild(opponentHeader);
 
             opponentTeams.forEach((team, index) => {
@@ -320,8 +323,8 @@ export async function showLoadTeamModal() {
     const historyTeams = await getOpponentTeamsFromHistory();
     if (historyTeams.length > 0) {
         const historyHeader = document.createElement('h4');
-        historyHeader.textContent = '📜 Teams aus vergangenen Spielen';
-        historyHeader.style.cssText = 'margin: 20px 0 10px 0; color: var(--text-main);';
+        historyHeader.innerHTML = '<i data-lucide="history" style="width: 18px; height: 18px; margin-right: 8px; vertical-align: bottom;"></i> Teams aus vergangenen Spielen';
+        historyHeader.style.cssText = 'margin: 20px 0 10px 0; color: var(--text-main); display: flex; align-items: center;';
         savedTeamsList.appendChild(historyHeader);
 
         historyTeams.forEach((team, index) => {
@@ -333,14 +336,16 @@ export async function showLoadTeamModal() {
     if (totalTeams === 0 && historyTeams.length > 0) {
         savedTeamsList.innerHTML = '';
         const historyHeader = document.createElement('h4');
-        historyHeader.textContent = '📜 Teams aus vergangenen Spielen';
-        historyHeader.style.cssText = 'margin: 20px 0 10px 0; color: var(--text-main);';
+        historyHeader.innerHTML = '<i data-lucide="history" style="width: 18px; height: 18px; margin-right: 8px; vertical-align: bottom;"></i> Teams aus vergangenen Spielen';
+        historyHeader.style.cssText = 'margin: 20px 0 10px 0; color: var(--text-main); display: flex; align-items: center;';
         savedTeamsList.appendChild(historyHeader);
 
         historyTeams.forEach((team, index) => {
             savedTeamsList.appendChild(createHistoryTeamCard(team, index));
         });
     }
+
+    if (window.lucide) window.lucide.createIcons({ root: savedTeamsList });
 
     loadTeamModal.classList.remove('versteckt');
 }
@@ -406,7 +411,10 @@ function createHistoryTeamCard(team, index) {
     teamCard.innerHTML = `
         <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
             <div style="flex: 1; min-width: 150px;">
-                <strong>📜 ${team.name}</strong><br>
+                <div style="display: flex; align-items: center; gap: 6px;">
+                    <i data-lucide="history" style="width: 16px; height: 16px; color: var(--text-muted);"></i>
+                    <strong style="font-size: 1rem;">${team.name}</strong>
+                </div>
                 <small style="color: #666;">${team.players.length} Spieler · Spiel vom ${gameDate}</small>
             </div>
             <div style="display: flex; gap: 5px; flex-wrap: wrap;">
@@ -433,12 +441,15 @@ function createTeamCard(team, index, teamKey) {
         minute: '2-digit'
     });
 
-    const typeLabel = teamKey === 'home' ? '🏠' : '🚌';
+    const iconName = teamKey === 'home' ? 'home' : 'bus';
 
     teamCard.innerHTML = `
         <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
             <div style="flex: 1; min-width: 150px;">
-                <strong>${typeLabel} ${team.name}</strong><br>
+                <div style="display: flex; align-items: center; gap: 6px;">
+                    <i data-lucide="${iconName}" style="width: 16px; height: 16px; color: var(--text-muted);"></i>
+                    <strong style="font-size: 1rem;">${team.name}</strong>
+                </div>
                 <small style="color: #666;">${team.players.length} Spieler · ${savedDate}</small>
             </div>
             <div style="display: flex; gap: 5px; flex-wrap: wrap;">
@@ -479,9 +490,12 @@ export function viewTeam(teamKey, index) {
     viewTeamModal.dataset.teamIndex = index;
 
     // Set title and name
-    const typeLabel = teamKey === 'home' ? '🏠 Heim' : '🚌 Gegner';
-    viewTeamTitle.textContent = `${typeLabel} Team bearbeiten`;
+    const iconName = teamKey === 'home' ? 'home' : 'bus';
+    const typeName = teamKey === 'home' ? 'Heim' : 'Gegner';
+    viewTeamTitle.innerHTML = `<i data-lucide="${iconName}" style="width: 20px; height: 20px; margin-right: 8px; vertical-align: bottom;"></i> ${typeName} Team bearbeiten`;
     editTeamNameInput.value = team.name;
+    
+    if (window.lucide) window.lucide.createIcons({ root: viewTeamTitle });
 
     // Display players
     viewTeamPlayersList.innerHTML = '';

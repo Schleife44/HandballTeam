@@ -15,7 +15,8 @@ import { schliesseEditModus, deleteEntireTeam } from './roster.js';
 import { exportTeam } from './export.js';
 import { 
     saveCurrentTeam, showLoadTeamModal, loadSavedTeam, 
-    deleteSavedTeam, viewTeam, updateTeam 
+    deleteSavedTeam, viewTeam, updateTeam, loadHistoryTeam,
+    deletePlayerFromSavedTeam, deleteCurrentTeam
 } from './teamStorage.js';
 import { firebaseLogout } from './firebase.js';
 import { executeAction } from './game.js';
@@ -27,14 +28,90 @@ import { spielstand, speichereSpielstand } from './state.js';
  * Central event delegation hub.
  * Listens for all clicks and dispatches to appropriate handlers based on data-action.
  */
+let listenersInitialized = false;
+
 export function initEventListeners() {
+    if (listenersInitialized) return;
+    listenersInitialized = true;
+
+    // --- DRAG & DROP HANDLERS (Registered once) ---
+    document.body.addEventListener('dragstart', (e) => {
+        const target = e.target.closest('[draggable="true"]');
+        if (target) {
+            const params = target.dataset;
+            const data = {
+                index: params.index,
+                teamKey: params.teamKey,
+                slotType: params.slotType,
+                slotIndex: params.slotIndex,
+                isBench: params.isBench
+            };
+            e.dataTransfer.setData('application/json', JSON.stringify(data));
+            e.dataTransfer.effectAllowed = 'move';
+            target.classList.add('dragging');
+        }
+    });
+
+    document.body.addEventListener('dragend', (e) => {
+        const target = e.target.closest('[draggable="true"]');
+        if (target) target.classList.remove('dragging');
+        document.querySelectorAll('.drag-over').forEach(el => el.classList.remove('drag-over'));
+    });
+
+    document.body.addEventListener('dragover', (e) => {
+        const target = e.target.closest('.spieler-button');
+        if (target) {
+            e.preventDefault();
+            e.dataTransfer.dropEffect = 'move';
+            target.classList.add('drag-over');
+        }
+    });
+
+    document.body.addEventListener('dragleave', (e) => {
+        const target = e.target.closest('.spieler-button');
+        if (target) target.classList.remove('drag-over');
+    });
+
+    document.body.addEventListener('drop', async (e) => {
+        e.preventDefault();
+        const target = e.target.closest('.spieler-button');
+        document.querySelectorAll('.drag-over').forEach(el => el.classList.remove('drag-over'));
+        
+        if (target) {
+            try {
+                const sourceData = JSON.parse(e.dataTransfer.getData('application/json'));
+                const targetParams = target.dataset;
+                
+                // Handle Swap logic (Complex Mode only)
+                if (spielstand.gameMode === 'complex' && sourceData.teamKey === targetParams.teamKey) {
+                    const { handleLineupSlotClick, handleBenchPlayerClick } = await import('./game.js');
+                    
+                    if (sourceData.isBench === 'true') {
+                        if (targetParams.slotType) {
+                            handleLineupSlotClick(targetParams.slotType, parseInt(targetParams.slotIndex), targetParams.teamKey, parseInt(sourceData.index), targetParams.empty === 'true');
+                        }
+                    } else if (sourceData.slotType) {
+                        if (targetParams.isBench === 'true') {
+                            handleBenchPlayerClick(parseInt(targetParams.index), targetParams.teamKey);
+                            handleLineupSlotClick(sourceData.slotType, parseInt(sourceData.slotIndex), sourceData.teamKey);
+                        } else if (targetParams.slotType) {
+                            handleLineupSlotClick(targetParams.slotType, parseInt(targetParams.slotIndex), targetParams.teamKey, parseInt(sourceData.index), targetParams.empty === 'true');
+                        }
+                    }
+                }
+            } catch (err) {
+                console.error('[Events] Drop failed:', err);
+            }
+        }
+    });
+
+    // --- CLICK HANDLER ---
     document.body.addEventListener('click', async (e) => {
         const target = e.target.closest('[data-action]');
         
         // --- Outside Click Modal Closing ---
         const activeModal = document.querySelector('.modal-overlay:not(.versteckt), .event-popover:not(.versteckt)');
         if (activeModal && !e.target.closest('.shadcn-modal-content, .event-popover, .modal-content, .dashboard-overlay-content')) {
-            // Only close if we didn't just click an opener or a data-action (unless it's close)
             if (!target || target.dataset.action === 'close-modal') {
                 activeModal.classList.add('versteckt');
                 return;
@@ -48,92 +125,10 @@ export function initEventListeners() {
 
         console.log(`[Events] Action: ${action}`, params);
         
-        // Diagnostic Log for Game Actions
         if (action === 'game-btn') {
             console.log('[Events] Game button clicked. Current Selection State:', 
                 spielstand.selectedPlayer ? JSON.parse(JSON.stringify(spielstand.selectedPlayer)) : 'NULL');
         }
-
-        // --- DRAG & DROP HANDLERS ---
-        document.body.addEventListener('dragstart', (e) => {
-            const target = e.target.closest('[draggable="true"]');
-            if (target) {
-                const params = target.dataset;
-                const data = {
-                    index: params.index,
-                    teamKey: params.teamKey,
-                    slotType: params.slotType,
-                    slotIndex: params.slotIndex,
-                    isBench: params.isBench
-                };
-                e.dataTransfer.setData('application/json', JSON.stringify(data));
-                e.dataTransfer.effectAllowed = 'move';
-                target.classList.add('dragging');
-            }
-        });
-
-        document.body.addEventListener('dragend', (e) => {
-            const target = e.target.closest('[draggable="true"]');
-            if (target) target.classList.remove('dragging');
-            document.querySelectorAll('.drag-over').forEach(el => el.classList.remove('drag-over'));
-        });
-
-        document.body.addEventListener('dragover', (e) => {
-            const target = e.target.closest('.spieler-button');
-            if (target) {
-                e.preventDefault();
-                e.dataTransfer.dropEffect = 'move';
-                target.classList.add('drag-over');
-            }
-        });
-
-        document.body.addEventListener('dragleave', (e) => {
-            const target = e.target.closest('.spieler-button');
-            if (target) target.classList.remove('drag-over');
-        });
-
-        document.body.addEventListener('drop', async (e) => {
-            e.preventDefault();
-            const target = e.target.closest('.spieler-button');
-            document.querySelectorAll('.drag-over').forEach(el => el.classList.remove('drag-over'));
-            
-            if (target) {
-                try {
-                    const sourceData = JSON.parse(e.dataTransfer.getData('application/json'));
-                    const targetParams = target.dataset;
-                    
-                    // console.log('Drop!', { sourceData, targetParams });
-                    
-                    // Handle Swap logic (Complex Mode only)
-                    if (spielstand.gameMode === 'complex' && sourceData.teamKey === targetParams.teamKey) {
-                        const { handleLineupSlotClick, handleBenchPlayerClick } = await import('./game.js');
-                        
-                        // We trick the existing click handlers to perform the swap
-                        // Source => Target
-                        if (sourceData.isBench === 'true') {
-                            // Dragging bench player to a slot or another bench player
-                            if (targetParams.slotType) {
-                                // Drop on slot: Perform swap
-                                handleLineupSlotClick(targetParams.slotType, parseInt(targetParams.slotIndex), targetParams.teamKey, parseInt(sourceData.index), targetParams.empty === 'true');
-                            }
-                        } else if (sourceData.slotType) {
-                            // Dragging slot player to bench or another slot
-                            if (targetParams.isBench === 'true') {
-                                // Drop on bench: Just select the slot first, then swap will be handled by game.js logic?
-                                // Better: Manual swap logic implementation 
-                                handleBenchPlayerClick(parseInt(targetParams.index), targetParams.teamKey);
-                                handleLineupSlotClick(sourceData.slotType, parseInt(sourceData.slotIndex), sourceData.teamKey);
-                            } else if (targetParams.slotType) {
-                                // Slot to Slot swap
-                                handleLineupSlotClick(targetParams.slotType, parseInt(targetParams.slotIndex), targetParams.teamKey, parseInt(sourceData.index), targetParams.empty === 'true');
-                            }
-                        }
-                    }
-                } catch (err) {
-                    console.error('[Events] Drop failed:', err);
-                }
-            }
-        });
 
         switch (action) {
             // --- Navigation ---
@@ -142,6 +137,7 @@ export function initEventListeners() {
                 break;
             
             case 'toggle-mobile-menu':
+                console.log('[Events] Toggling Mobile Menu');
                 toggleMobileMenu();
                 break;
 
@@ -173,13 +169,15 @@ export function initEventListeners() {
                 exportTeam();
                 break;
             case 'roster-save-team':
+            case 'team-save':
                 saveCurrentTeam();
                 break;
             case 'roster-load-team-modal':
+            case 'team-load-modal':
                 showLoadTeamModal();
                 break;
-            case 'team-load':
-                loadSavedTeam(params.key, parseInt(params.index));
+            case 'delete-current-team':
+                deleteCurrentTeam();
                 break;
             case 'team-delete':
                 deleteSavedTeam(params.key, parseInt(params.index));
@@ -238,23 +236,14 @@ export function initEventListeners() {
                 }
                 break;
             
-            case 'team-save':
-                await import('./teamStorage.js').then(m => m.saveCurrentTeam());
-                break;
-            case 'team-load-modal':
-                await import('./teamStorage.js').then(m => m.showLoadTeamModal());
-                break;
-            case 'delete-current-team':
-                await import('./roster.js').then(m => m.deleteEntireTeam());
-                break;
             case 'team-load':
-                await import('./teamStorage.js').then(m => m.loadSavedTeam(params.key, parseInt(params.index)));
+                loadSavedTeam(params.key, parseInt(params.index));
                 break;
             case 'team-delete':
-                await import('./teamStorage.js').then(m => m.deleteSavedTeam(params.key, parseInt(params.index)));
+                deleteSavedTeam(params.key, parseInt(params.index));
                 break;
             case 'team-view':
-                await import('./teamStorage.js').then(m => m.viewTeam(params.key, parseInt(params.index)));
+                viewTeam(params.key, parseInt(params.index));
                 break;
             case 'delete-player':
                 if (params.index !== undefined) {
@@ -267,10 +256,10 @@ export function initEventListeners() {
                 }
                 break;
             case 'load-history-team':
-                await import('./teamStorage.js').then(m => m.loadHistoryTeam(parseInt(params.index)));
+                loadHistoryTeam(parseInt(params.index));
                 break;
             case 'delete-player-from-saved-team':
-                await import('./teamStorage.js').then(m => m.deletePlayerFromSavedTeam(parseInt(params.playerIndex)));
+                deletePlayerFromSavedTeam(parseInt(params.playerIndex));
                 break;
 
             // --- Roster ---
@@ -311,6 +300,7 @@ export function initEventListeners() {
                 if (params.mode) {
                     spielstand.gameMode = params.mode;
                     spielstand.modeSelected = true;
+                    spielstand.isSpielAktiv = false; // Reset to false until match start
                     
                     // Save state
                     speichereSpielstand();
@@ -367,10 +357,16 @@ export function initEventListeners() {
 }
 
 function toggleMobileMenu() {
-    if (sidebar) {
-        const isActive = sidebar.classList.toggle('active');
-        if (sidebarOverlay) {
-            sidebarOverlay.classList.toggle('active', isActive);
+    const sb = sidebar || document.getElementById('sidebar');
+    const overlay = sidebarOverlay || document.getElementById('sidebarOverlay');
+    
+    if (sb) {
+        const isActive = sb.classList.toggle('active');
+        console.log('[Events] Sidebar active state:', isActive);
+        if (overlay) {
+            overlay.classList.toggle('active', isActive);
         }
+    } else {
+        console.error('[Events] Sidebar element not found!');
     }
 }

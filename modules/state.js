@@ -12,6 +12,7 @@ export let spielstand = {
     uiState: 'setup', // 'setup' oder 'game'
     gameMode: 'complex', // 'complex' = Dashboard, 'simple' = Modal (Old System)
     modeSelected: false, // Flag for Selection UI
+    isSpielAktiv: false, // NEW: Tracking if a match is currently running
     selectedPlayer: { index: null, team: null, gegnerNummer: null, name: null }, // Current selection
     roster: [], // { name: 'Anna', number: 7 } - Name ist optional
     score: { heim: 0, gegner: 0 },
@@ -27,7 +28,7 @@ export let spielstand = {
     settings: {
         darkMode: false,
 
-        showWurfbildHeim: false,
+        showWurfbildHeim: true,
         showWurfbildGegner: true,
         showWurfpositionHeim: true,
         showWurfpositionGegner: true,
@@ -36,7 +37,7 @@ export let spielstand = {
         teamColor: '#dc3545', // Default Red
         teamColorGegner: '#2563eb', // Default Blue
         isAuswaertsspiel: false,
-        combinedThrowMode: false, // false = hintereinander, true = kombiniert
+        combinedThrowMode: true, // false = hintereinander, true = kombiniert
 
         // Team identity settings (cross-game)
         teamSettingsValidated: false,
@@ -83,22 +84,33 @@ export function ladeSpielstandDaten() {
 
         if (typeof spielstand.settings.darkMode === 'undefined') spielstand.settings.darkMode = false;
 
-        if (typeof spielstand.settings.showWurfbildHeim === 'undefined') spielstand.settings.showWurfbildHeim = false;
-        if (typeof spielstand.settings.showWurfbildGegner === 'undefined') spielstand.settings.showWurfbildGegner = false;
-        if (typeof spielstand.settings.showWurfpositionHeim === 'undefined') spielstand.settings.showWurfpositionHeim = false;
-        if (typeof spielstand.settings.showWurfpositionGegner === 'undefined') spielstand.settings.showWurfpositionGegner = false;
+        if (typeof spielstand.settings.showWurfbildHeim === 'undefined') spielstand.settings.showWurfbildHeim = true;
+        if (typeof spielstand.settings.showWurfbildGegner === 'undefined') spielstand.settings.showWurfbildGegner = true;
+        if (typeof spielstand.settings.showWurfpositionHeim === 'undefined') spielstand.settings.showWurfpositionHeim = true;
+        if (typeof spielstand.settings.showWurfpositionGegner === 'undefined') spielstand.settings.showWurfpositionGegner = true;
         if (!spielstand.settings.teamNameHeim) spielstand.settings.teamNameHeim = 'Heim';
         if (!spielstand.settings.teamNameGegner) spielstand.settings.teamNameGegner = 'Gegner';
         if (typeof spielstand.settings.isAuswaertsspiel === 'undefined') spielstand.settings.isAuswaertsspiel = false;
-        if (typeof spielstand.settings.combinedThrowMode === 'undefined') spielstand.settings.combinedThrowMode = false;
+        if (typeof spielstand.settings.combinedThrowMode === 'undefined') spielstand.settings.combinedThrowMode = true;
 
         // Team identity defaults
         if (typeof spielstand.settings.teamSettingsValidated === 'undefined') spielstand.settings.teamSettingsValidated = false;
         if (!spielstand.settings.myTeamName) spielstand.settings.myTeamName = '';
         if (!spielstand.settings.myTeamColor) spielstand.settings.myTeamColor = '#dc3545';
+        
+        // --- SANITY CHECK: isSpielAktiv vs gamePhase ---
+        // 1=Vor Spiel, 2=1. HZ, 3=Halbzeit, 4=2. HZ, 5=Beendet
+        const phase = spielstand.timer?.gamePhase || 1;
+        if (phase === 1 || phase === 5) {
+            if (spielstand.isSpielAktiv) {
+                console.log('[DEBUG] state.js: isSpielAktiv was true but phase was %s. Resetting to false.', phase);
+                spielstand.isSpielAktiv = false;
+            }
+        }
 
         if (!spielstand.knownOpponents) spielstand.knownOpponents = [];
         if (!spielstand.rosterAssignments) spielstand.rosterAssignments = {};
+        if (typeof spielstand.isSpielAktiv === 'undefined') spielstand.isSpielAktiv = false;
 
         // Migration: Konvertiere alte Gegner-Nummern zu Objekt-Format
         if (spielstand.knownOpponents.length > 0 && typeof spielstand.knownOpponents[0] === 'number') {
@@ -127,7 +139,15 @@ export function mergeRemoteSpielstand(remoteData) {
         // Stored local selection should not be overwritten by remote sync unless explicitly needed.
         const localSelection = JSON.parse(JSON.stringify(spielstand.selectedPlayer || { index: null, team: null, gegnerNummer: null, name: null }));
 
-        fields.forEach(key => {
+        // Synchronize all keys from remote to local
+        const syncFields = [
+            'score', 'gameLog', 'timer', 'roster', 'knownOpponents', 
+            'settings', 'activeSuspensions', 'calendarEvents', 'calendarSubscriptions',
+            'uiState', 'gameMode', 'modeSelected', 'rosterAssignments', 
+            'absences', 'isSpielAktiv'
+        ];
+
+        syncFields.forEach(key => {
             if (remoteData[key] !== undefined) {
                 spielstand[key] = remoteData[key];
             }

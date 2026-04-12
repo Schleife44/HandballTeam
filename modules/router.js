@@ -151,6 +151,7 @@ export function navigateTo(view) {
  */
 export async function handleRouting() {
     const hash = window.location.hash.substring(1) || 'dashboard';
+    console.log('[DEBUG] handleRouting: Hash is "%s", isSpielAktiv: %s', hash, spielstand.isSpielAktiv);
     
     // Support nested or specialized routes if needed in future
     const routeAction = routes[hash] || routes['dashboard'];
@@ -189,6 +190,7 @@ function closeMobileSidebar() {
  * Initializes the router.
  */
 export function initRouter() {
+    console.log('[DEBUG] Initializing router. Initial hash:', window.location.hash);
     window.addEventListener('hashchange', handleRouting);
     // Trigger initial route
     handleRouting();

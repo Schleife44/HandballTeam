@@ -707,6 +707,7 @@ function buildFirestorePayload(spielstand) {
         modeSelected: clean.modeSelected || false,
         rosterAssignments: clean.rosterAssignments || {},
         absences: clean.absences || [],
+        isSpielAktiv: clean.isSpielAktiv || false,
         lastUpdated: Date.now()
     };
 }

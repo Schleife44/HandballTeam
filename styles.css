@@ -60,6 +60,15 @@
     --chart-4: 43 74% 66%;
     --chart-5: 27 87% 67%;
 
+    /* ACTION COLORS (Refined Shadcn Style) */
+    --action-goal: 142 71% 45%;     /* green-600 */
+    --action-save: 262 83% 58%;     /* violet-600 */
+    --action-post: 217 91% 60%;     /* blue-500 */
+    --action-lost: 190 90% 40%;     /* cyan-600 (not brown) */
+    --action-yellow: 48 96% 53%;    /* yellow-500 */
+    --action-red: 0 84% 60%;        /* red-600 */
+    --action-blue: 217 91% 60%;     /* blue-500 */
+
     /* Specific Areas */
     --bg-body: hsl(var(--background));
     --text-main: hsl(var(--foreground));
@@ -104,6 +113,14 @@ body.dark-mode {
     --border: 240 3.7% 15.9%;
     --input: 240 3.7% 15.9%;
     --ring: 240 4.9% 83.9%;
+
+    --action-goal: 142 69% 35%;
+    --action-save: 262 83% 45%;
+    --action-post: 217 91% 50%;
+    --action-lost: 190 90% 30%;
+    --action-yellow: 48 96% 40%;
+    --action-red: 0 84% 50%;
+    --action-blue: 217 91% 50%;
 
     /* Mappings */
     --btn-primary: hsl(var(--primary));
@@ -286,6 +303,30 @@ button.shadcn-btn-ghost {
 button.shadcn-btn-ghost:hover {
     background-color: hsl(var(--accent));
     color: hsl(var(--accent-foreground));
+}
+
+button.shadcn-btn-destructive {
+    background-color: hsl(var(--destructive));
+    color: hsl(var(--destructive-foreground));
+    border: none;
+}
+
+button.shadcn-btn-destructive:hover {
+    background-color: hsl(var(--destructive) / 0.9);
+}
+
+.badge-tw {
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: var(--team-primary-color, #dc3545);
+    border: 1px solid var(--team-primary-color, #dc3545);
+    border-radius: 4px;
+    padding: 1px 4px;
+}
+
+.badge-tw-opponent {
+    color: var(--team-opponent-color, #2563eb);
+    border: 1px solid var(--team-opponent-color, #2563eb);
 }
 
 #spielBeendenButton:hover {
@@ -1010,6 +1051,32 @@ tr:hover td {
         linear-gradient(90deg, transparent 24%, #e5e7eb 25%, #e5e7eb 26%, transparent 27%, transparent 74%, #e5e7eb 75%, #e5e7eb 76%, transparent 77%, transparent);
     background-size: 20px 20px;
     box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+/* --- CARDS & SECTIONS --- */
+.content-section {
+    padding: 1.5rem;
+    border-radius: var(--radius);
+    background-color: transparent;
+}
+
+.shadcn-card {
+    background-color: hsl(var(--card));
+    color: hsl(var(--card-foreground));
+    border-radius: var(--radius);
+    border: 1px solid hsl(var(--border) / 0.6);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    padding: 1.25rem;
+    transition: box-shadow 0.2s ease, border-color 0.2s ease;
+}
+
+.shadcn-card:hover {
+    border-color: hsl(var(--border));
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+}
+
+.settings-card {
+    margin-top: 1.25rem;
 }
 
 #torNetz {
@@ -3263,11 +3330,20 @@ body.dark-mode .heatmap-tab.white-style:not(.active) {
     cursor: pointer;
     transition: transform 0.1s, box-shadow 0.1s;
     height: 42px;
-    /* Reduced from 50px */
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
     display: flex;
     align-items: center;
     justify-content: center;
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    transition: transform 0.1s, box-shadow 0.2s, filter 0.2s;
+}
+
+.action-btn:hover {
+    filter: brightness(1.1);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+    transform: translateY(-1px);
 }
 
 .action-btn:active {
@@ -3275,23 +3351,27 @@ body.dark-mode .heatmap-tab.white-style:not(.active) {
 }
 
 .btn-goal {
-    background: #16a34a;
+    background: hsl(var(--action-goal));
     color: white;
+    gap: 8px;
 }
 
 .btn-save {
-    background: #6b7c3f;
+    background: hsl(var(--action-save));
     color: white;
+    gap: 8px;
 }
 
 .btn-post {
-    background: #2563eb;
+    background: hsl(var(--action-post));
     color: white;
+    gap: 8px;
 }
 
 .btn-lost {
-    background: #b45309;
+    background: hsl(var(--action-lost));
     color: white;
+    gap: 8px;
 }
 
 .btn-outline {
@@ -3311,18 +3391,18 @@ body.dark-mode .heatmap-tab.white-style:not(.active) {
 }
 
 .btn-yellow {
-    background: #facc15;
-    color: black;
-    border: 1px solid #eab308;
+    background: hsl(var(--action-yellow));
+    color: white;
+    border: 1px solid hsl(var(--action-yellow) / 0.2);
 }
 
 .btn-red {
-    background: #dc2626;
+    background: hsl(var(--action-red));
     color: white;
 }
 
 .btn-blue {
-    background: #2563eb;
+    background: hsl(var(--action-blue));
     color: white;
 }
 
@@ -6069,11 +6149,16 @@ th {
 
 
 .is-simple-mode .roster-section-title {
-    font-size: 0.75rem;
-    color: var(--text-muted);
-    border-bottom: 2px solid var(--border-color);
-    margin-bottom: 12px;
-    padding-bottom: 5px;
+    display: none;
+}
+
+.is-simple-mode .roster-section:has(div:empty),
+.is-simple-mode .roster-section:empty {
+    display: none;
+}
+
+.is-simple-mode .roster-section {
+    padding: 5px 0;
 }
 
 .simple-player-card {
@@ -6144,4 +6229,33 @@ th {
 
 #histHeatmapContainer {
     scroll-margin-top: 100px;
+}
+/* --- TABLE SORTING --- */
+th[data-sort] {
+    position: relative;
+    user-select: none;
+    transition: background-color 0.2s;
+}
+
+th[data-sort]:hover {
+    background-color: hsl(var(--muted) / 0.8);
+}
+
+th[data-sort]::after {
+    content: '↕';
+    font-size: 0.7rem;
+    margin-left: 5px;
+    opacity: 0.3;
+}
+
+th[data-sort].sorted-asc::after {
+    content: '↑';
+    opacity: 1;
+    color: var(--heim-color, #dc3545);
+}
+
+th[data-sort].sorted-desc::after {
+    content: '↓';
+    opacity: 1;
+    color: var(--heim-color, #dc3545);
 }

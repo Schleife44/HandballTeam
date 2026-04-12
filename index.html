@@ -17,9 +17,6 @@
     <!-- Mobile Menu Toggle Button -->
     <button id="mobileMenuBtn" class="mobile-menu-btn" data-action="toggle-mobile-menu">☰</button>
 
-    <!-- Sidebar Overlay -->
-    <div id="sidebarOverlay" class="sidebar-overlay" data-action="toggle-mobile-menu"></div>
-
     <!-- Sidebar Navigation -->
     <div id="sidebar">
         <div class="sidebar-header">
@@ -137,6 +134,7 @@
             </div>
         </nav>
     </div>
+    <div id="sidebarOverlay" class="sidebar-overlay" data-action="toggle-mobile-menu"></div>
 
     <!-- Main Content Area -->
     <div id="main-content">
@@ -545,6 +543,7 @@
                 <!-- Danger Zone -->
                 <div style="margin-top: 40px; border-top: 1px solid var(--border-color); padding-top: 20px;">
                     <button id="deleteTeamButton" class="shadcn-btn-outline roster-delete-btn"
+                        data-action="delete-current-team"
                         style="width: 100%; max-width: 300px; margin: 0 auto; height: 44px;">Aktuelles Team
                         löschen</button>
                 </div>
@@ -554,6 +553,7 @@
         <!-- Live Overview Page Section -->
         <div id="liveOverviewBereich" class="content-section versteckt">
             <div id="liveOverviewContent"></div>
+            <div id="liveOverviewEmptyState" class="versteckt"></div>
         </div>
 
         <!-- Season Overview Page Section (Legacy/Table) -->
@@ -590,7 +590,33 @@
             <!-- Sub-Tab 2: Spieler Statistiken (Player Roster Table) -->
             <div id="seasonPlayersTab" class="season-subtab-content versteckt">
                 <div id="playerStatsListContainer">
-                    <!-- JS Populated (will be moved from seasonView.js) -->
+                    <div class="table-container" style="overflow-x: auto;">
+                        <table class="modern-stats-table" style="width:100%; border-collapse: collapse;">
+                            <thead>
+                                <tr style="text-align: left; color: var(--text-muted); font-size: 0.8rem;">
+                                    <th data-sort="name" style="padding: 8px; cursor:pointer;">Spieler</th>
+                                    <th data-sort="timeOnField" style="padding: 8px; cursor:pointer;" title="Spielzeit">Zeit</th>
+                                    <th data-sort="tore" style="padding: 8px; cursor:pointer;" title="Tore Gesamt">T</th>
+                                    <th data-sort="feldtore" style="padding: 8px; cursor:pointer;" title="Feldtore">F</th>
+                                    <th data-sort="siebenMeter" style="padding: 8px; cursor:pointer;" title="7 Meter">7m</th>
+                                    <th data-sort="fehlwurf" style="padding: 8px; cursor:pointer;">FEHL</th>
+                                    <th data-sort="assist" style="padding: 8px; cursor:pointer;" title="Assists">A</th>
+                                    <th data-sort="quote" style="padding: 8px; cursor:pointer;">QUOTE</th>
+                                    <th data-sort="ballverlust" style="padding: 8px; cursor:pointer;">BALL</th>
+                                    <th data-sort="stuermerfoul" style="padding: 8px; cursor:pointer;">FOUL</th>
+                                    <th data-sort="block" style="padding: 8px; cursor:pointer;">BLK</th>
+                                    <th data-sort="gewonnen1v1" style="padding: 8px; cursor:pointer;">1v1+</th>
+                                    <th data-sort="oneOnOneLost" style="padding: 8px; cursor:pointer;">1v1-</th>
+                                    <th data-sort="rausgeholt7m" style="padding: 8px; cursor:pointer;">7m+</th>
+                                    <th data-sort="rausgeholt2min" style="padding: 8px; cursor:pointer;">2m+</th>
+                                    <th data-sort="gelb" style="padding: 8px; cursor:pointer;">G</th>
+                                    <th data-sort="zweiMinuten" style="padding: 8px; cursor:pointer;">2'</th>
+                                    <th data-sort="rot" style="padding: 8px; cursor:pointer;">R</th>
+                                </tr>
+                            </thead>
+                            <tbody id="statistikTabelleBody"></tbody>
+                        </table>
+                    </div>
                 </div>
             </div>
 
@@ -612,13 +638,13 @@
 
         <!-- Shot Charts Page Section -->
         <div id="shotsBereich" class="content-section versteckt">
-            <h2>Wurfbilder</h2>
             <div id="shotsContent"></div>
+            <div id="shotsEmptyState" class="versteckt"></div>
         </div>
 
         <!-- Live Heatmap Page Section -->
         <div id="liveHeatmapBereich" class="content-section versteckt">
-            <div class="heatmap-view-container">
+            <div id="heatmapContent" class="heatmap-view-container">
                 <div class="heatmap-view-header">
                     <h1>Live Heatmap-Analyse</h1>
                 </div>
@@ -673,18 +699,19 @@
                     <svg id="heatmapSvg" viewBox="0 0 300 200" width="600" height="400"></svg>
                 </div>
             </div>
+            <div id="heatmapEmptyState" class="versteckt"></div>
         </div>
 
         <!-- Protocol Page Section -->
         <div id="protokollBereich" class="content-section versteckt">
             <div style="max-width: 1000px; margin: 0 auto; padding: 20px;">
-                <h1>Spielprotokoll</h1>
                 <div id="protokoll" class="protocol-card">
                     <div class="protocol-header">
                         <h3 class="player-card-title">Live Ticker</h3>
                     </div>
                     <div id="protokollAusgabe"></div>
                 </div>
+                <div id="protokollEmptyState" class="versteckt"></div>
             </div>
         </div>
 
@@ -713,7 +740,7 @@
                             style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
                             <label for="toggleDarkMode" style="cursor: pointer;">Dark Mode</label>
                             <label class="switch">
-                                <input type="checkbox" id="toggleDarkMode">
+                                <input type="checkbox" id="set_toggleDarkMode">
                                 <span class="slider round"></span>
                             </label>
                         </div>
@@ -781,17 +808,16 @@
                 </div>
 
                 <!-- Card 5: Wurfbilder -->
-                <div class="settings-card"
-                    style="background: var(--bg-container); padding: 20px; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); margin-top: 20px;">
+                <div class="settings-card shadcn-card">
                     <h4
                         style="margin-top: 0; margin-bottom: 15px; border-bottom: 2px solid var(--btn-danger); padding-bottom: 10px; display: inline-block;">
                         Wurfbilder (Popups)</h4>
                     <div style="display: flex; flex-direction: column; gap: 12px;">
                         <div class="setting-row"
                             style="display: flex; justify-content: space-between; align-items: center;">
-                            <label for="toggleWurfbildHeim" style="cursor: pointer;">Wurfbild: Heim</label>
+                            <label for="set_toggleWurfbildHeim" style="cursor: pointer;">Wurfbild: Heim</label>
                             <label class="switch">
-                                <input type="checkbox" id="toggleWurfbildHeim">
+                                <input type="checkbox" id="set_toggleWurfbildHeim">
                                 <span class="slider round"></span>
                             </label>
                         </div>
@@ -800,35 +826,33 @@
                             <label for="toggleWurfbildGegner" style="cursor: pointer;">Wurfbild:
                                 Gast</label>
                             <label class="switch">
-                                <input type="checkbox" id="toggleWurfbildGegner">
+                                <input type="checkbox" id="set_toggleWurfbildGegner">
                                 <span class="slider round"></span>
                             </label>
                         </div>
                         <div style="height: 1px; background: var(--border-color); margin: 5px 0;"></div>
                         <div class="setting-row"
                             style="display: flex; justify-content: space-between; align-items: center;">
-                            <label for="toggleWurfpositionHeim" style="cursor: pointer;">Position:
-                                Heim</label>
+                            <label for="set_toggleWurfpositionHeim" style="cursor: pointer;">Position: Heim</label>
                             <label class="switch">
-                                <input type="checkbox" id="toggleWurfpositionHeim">
+                                <input type="checkbox" id="set_toggleWurfpositionHeim">
                                 <span class="slider round"></span>
                             </label>
                         </div>
                         <div class="setting-row"
                             style="display: flex; justify-content: space-between; align-items: center;">
-                            <label for="toggleWurfpositionGegner" style="cursor: pointer;">Position:
-                                Gast</label>
+                            <label for="set_toggleWurfpositionGegner" style="cursor: pointer;">Position: Gast</label>
                             <label class="switch">
-                                <input type="checkbox" id="toggleWurfpositionGegner">
+                                <input type="checkbox" id="set_toggleWurfpositionGegner">
                                 <span class="slider round"></span>
                             </label>
                         </div>
                         <div style="height: 1px; background: var(--border-color); margin: 5px 0;"></div>
                         <div class="setting-row"
                             style="display: flex; justify-content: space-between; align-items: center;">
-                            <label for="toggleCombinedThrow" style="cursor: pointer;">Kombinierte Ansicht</label>
+                            <label for="set_toggleCombinedThrowMode" style="cursor: pointer;">Kombinierte Ansicht</label>
                             <label class="switch">
-                                <input type="checkbox" id="toggleCombinedThrow">
+                                <input type="checkbox" id="set_toggleCombinedThrowMode">
                                 <span class="slider round"></span>
                             </label>
                         </div>
@@ -839,8 +863,8 @@
                 </div>
 
                 <!-- Card 4: Team-Verwaltung (Gefahrenzone) -->
-                <div class="settings-card"
-                    style="background: var(--bg-container); padding: 20px; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); margin-top: 20px; border: 1px solid rgba(239, 68, 68, 0.2);">
+                <div class="settings-card shadcn-card"
+                    style="border: 1px solid hsl(0 84.2% 60.2% / 0.2);">
                     <h4
                         style="margin-top: 0; margin-bottom: 15px; border-bottom: 2px solid #ef4444; padding-bottom: 10px; display: inline-block; color: #ef4444;">
                         Team-Verwaltung</h4>
@@ -1040,8 +1064,7 @@
                                 <h4 class="action-section-title">ERGEBNIS</h4>
                                 <div class="action-buttons-row">
                                     <button class="action-btn btn-goal" data-action="game-btn" data-type="Tor">TOR</button>
-                                    <button class="action-btn btn-save" data-action="game-btn" data-type="Gehalten"
-                                        id="actionParadeBtn">GEHALTEN</button>
+                                    <button class="action-btn btn-save" data-action="game-btn" data-type="Gehalten" id="actionParadeBtn">GEHALTEN</button>
                                     <button class="action-btn btn-post" data-action="game-btn" data-type="Fehlwurf">FEHLWURF</button>
                                     <button class="action-btn btn-lost" data-action="game-btn" data-type="Block">GEBLOCKT</button>
                                 </div>
@@ -1052,16 +1075,13 @@
                                 <h4 class="action-section-title">AKTIONEN</h4>
                                 <div class="action-buttons-row">
                                     <button class="action-btn btn-outline" data-action="game-btn" data-type="Foul">STÜRMERFOUL</button>
-                                    <button class="action-btn btn-outline"
-                                        data-action="game-btn" data-type="Ballverlust">BALLVERLUST</button>
+                                    <button class="action-btn btn-outline" data-action="game-btn" data-type="Ballverlust">BALLVERLUST</button>
                                 </div>
                                 <div class="action-buttons-row">
-                                    <button class="action-btn btn-outline" data-action="game-btn" data-type="2min Provoziert">2 MIN
-                                        HERAUSGEHOLT</button>
-                                    <button class="action-btn btn-outline" data-action="game-btn" data-type="7m Provoziert">7m
-                                        HERAUSGEHOLT</button>
-                                    <button class="action-btn btn-outline" data-action="game-btn" data-type="1und1">1 v 1 GEWONNEN</button>
-                                    <button class="action-btn btn-outline" data-action="game-btn" data-type="7m+2min">7m + 2 MIN</button>
+                                    <button class="action-btn btn-outline" data-action="game-btn" data-type="2min Provoziert">2 MIN+</button>
+                                    <button class="action-btn btn-outline" data-action="game-btn" data-type="7m Provoziert">7m+</button>
+                                    <button class="action-btn btn-outline" data-action="game-btn" data-type="1und1">1v1</button>
+                                    <button class="action-btn btn-outline" data-action="game-btn" data-type="7m+2min">7m/2m</button>
                                 </div>
                             </div>
 
@@ -1070,9 +1090,9 @@
                                 <h4 class="action-section-title">STRAFEN</h4>
                                 <div class="action-buttons-row">
                                     <button class="action-btn btn-2min" data-action="game-btn" data-type="2 Minuten">2 MIN</button>
-                                    <button class="action-btn btn-yellow" data-action="game-btn" data-type="Gelbe Karte">GELBE KARTE</button>
-                                    <button class="action-btn btn-red" data-action="game-btn" data-type="Rote Karte">ROTE KARTE</button>
-                                    <button class="action-btn btn-blue" data-action="game-btn" data-type="Blaue Karte">BLAUE KARTE</button>
+                                    <button class="action-btn btn-yellow" data-action="game-btn" data-type="Gelbe Karte">GELB</button>
+                                    <button class="action-btn btn-red" data-action="game-btn" data-type="Rote Karte">ROT</button>
+                                    <button class="action-btn btn-blue" data-action="game-btn" data-type="Blaue Karte">BLAU</button>
                                 </div>
                             </div>
                         </div>
@@ -1193,24 +1213,24 @@
                             <table class="modern-stats-table" style="width: 100%; border-collapse: collapse;">
                                 <thead>
                                     <tr style="text-align: left; color: var(--text-muted); font-size: 0.8rem;">
-                                        <th style="padding: 10px;">Spieler</th>
-                                        <th style="padding: 10px;" title="Spielzeit">Zeit</th>
-                                        <th style="padding: 10px;" title="Tore Gesamt">T</th>
-                                        <th style="padding: 10px;" title="Feldtore">F</th>
-                                        <th style="padding: 10px;" title="Assists">A</th>
-                                        <th style="padding: 10px;" title="7 Meter">7m</th>
-                                        <th style="padding: 10px;">Fehl</th>
-                                        <th style="padding: 10px;">Quote</th>
-                                        <th style="padding: 10px;">Gut</th>
-                                        <th style="padding: 10px;">BV</th>
-                                        <th style="padding: 10px;">SF</th>
-                                        <th style="padding: 10px;">Blk</th>
-                                        <th style="padding: 10px;">1v1</th>
-                                        <th style="padding: 10px;">7m+</th>
-                                        <th style="padding: 10px;">2m+</th>
-                                        <th style="padding: 10px;">G</th>
-                                        <th style="padding: 10px;">2'</th>
-                                        <th style="padding: 10px;">R</th>
+                                        <th data-sort="name" style="padding: 10px; cursor:pointer;">Spieler</th>
+                                        <th data-sort="timeOnField" style="padding: 10px; cursor:pointer;" title="Spielzeit">Zeit</th>
+                                        <th data-sort="tore" style="padding: 10px; cursor:pointer;" title="Tore Gesamt">T</th>
+                                        <th data-sort="feldtore" style="padding: 10px; cursor:pointer;" title="Feldtore">F</th>
+                                        <th data-sort="assist" style="padding: 10px; cursor:pointer;" title="Assists">A</th>
+                                        <th data-sort="siebenMeter" style="padding: 10px; cursor:pointer;" title="7 Meter">7m</th>
+                                        <th data-sort="fehlwurf" style="padding: 10px; cursor:pointer;">Fehl</th>
+                                        <th data-sort="quote" style="padding: 10px; cursor:pointer;">Quote</th>
+                                        <th data-sort="guteAktion" style="padding: 10px; cursor:pointer;">Gut</th>
+                                        <th data-sort="ballverlust" style="padding: 10px; cursor:pointer;">BV</th>
+                                        <th data-sort="stuermerfoul" style="padding: 10px; cursor:pointer;">SF</th>
+                                        <th data-sort="block" style="padding: 10px; cursor:pointer;">Blk</th>
+                                        <th data-sort="gewonnen1v1" style="padding: 10px; cursor:pointer;">1v1</th>
+                                        <th data-sort="rausgeholt7m" style="padding: 10px; cursor:pointer;">7m+</th>
+                                        <th data-sort="rausgeholt2min" style="padding: 10px; cursor:pointer;">2m+</th>
+                                        <th data-sort="gelb" style="padding: 10px; cursor:pointer;">G</th>
+                                        <th data-sort="zweiMinuten" style="padding: 10px; cursor:pointer;">2'</th>
+                                        <th data-sort="rot" style="padding: 10px; cursor:pointer;">R</th>
                                         <th style="padding: 10px;"></th>
                                     </tr>
                                 </thead>
@@ -1228,24 +1248,24 @@
                             <table class="modern-stats-table" style="width: 100%; border-collapse: collapse;">
                                 <thead>
                                     <tr style="text-align: left; color: var(--text-muted); font-size: 0.8rem;">
-                                        <th style="padding: 10px;">Name</th>
-                                        <th style="padding: 10px;" title="Spielzeit">Zeit</th>
-                                        <th style="padding: 10px;" title="Tore Gesamt">T</th>
-                                        <th style="padding: 10px;" title="Feldtore">F</th>
-                                        <th style="padding: 10px;" title="Assists">A</th>
-                                        <th style="padding: 10px;" title="7 Meter">7m</th>
-                                        <th style="padding: 10px;">Fehl</th>
-                                        <th style="padding: 10px;">Quote</th>
-                                        <th style="padding: 10px;">Gut</th>
-                                        <th style="padding: 10px;">BV</th>
-                                        <th style="padding: 10px;">SF</th>
-                                        <th style="padding: 10px;">Blk</th>
-                                        <th style="padding: 10px;">1v1</th>
-                                        <th style="padding: 10px;">7m+</th>
-                                        <th style="padding: 10px;">2m+</th>
-                                        <th style="padding: 10px;">G</th>
-                                        <th style="padding: 10px;">2'</th>
-                                        <th style="padding: 10px;">R</th>
+                                        <th data-sort="name" style="padding: 10px; cursor:pointer;">Name</th>
+                                        <th data-sort="timeOnField" style="padding: 10px; cursor:pointer;" title="Spielzeit">Zeit</th>
+                                        <th data-sort="tore" style="padding: 10px; cursor:pointer;" title="Tore Gesamt">T</th>
+                                        <th data-sort="feldtore" style="padding: 10px; cursor:pointer;" title="Feldtore">F</th>
+                                        <th data-sort="assist" style="padding: 10px; cursor:pointer;" title="Assists">A</th>
+                                        <th data-sort="siebenMeter" style="padding: 10px; cursor:pointer;" title="7 Meter">7m</th>
+                                        <th data-sort="fehlwurf" style="padding: 10px; cursor:pointer;">Fehl</th>
+                                        <th data-sort="quote" style="padding: 10px; cursor:pointer;">Quote</th>
+                                        <th data-sort="guteAktion" style="padding: 10px; cursor:pointer;">Gut</th>
+                                        <th data-sort="ballverlust" style="padding: 10px; cursor:pointer;">BV</th>
+                                        <th data-sort="stuermerfoul" style="padding: 10px; cursor:pointer;">SF</th>
+                                        <th data-sort="block" style="padding: 10px; cursor:pointer;">Blk</th>
+                                        <th data-sort="gewonnen1v1" style="padding: 10px; cursor:pointer;">1v1</th>
+                                        <th data-sort="rausgeholt7m" style="padding: 10px; cursor:pointer;">7m+</th>
+                                        <th data-sort="rausgeholt2min" style="padding: 10px; cursor:pointer;">2m+</th>
+                                        <th data-sort="gelb" style="padding: 10px; cursor:pointer;">G</th>
+                                        <th data-sort="zweiMinuten" style="padding: 10px; cursor:pointer;">2'</th>
+                                        <th data-sort="rot" style="padding: 10px; cursor:pointer;">R</th>
                                         <th style="padding: 10px;"></th>
                                     </tr>
                                 </thead>
@@ -1673,7 +1693,7 @@
                     </div>
                 </div>
                 <div class="shadcn-modal-footer">
-                    <button class="shadcn-btn-outline" id="loadTeamCancel">Abbrechen</button>
+                    <button class="shadcn-btn-outline" id="loadTeamCancel" data-action="close-modal">Abbrechen</button>
                 </div>
             </div>
         </div>

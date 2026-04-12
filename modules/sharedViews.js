@@ -8,6 +8,11 @@ import {
 } from './dom.js';
 import { setCurrentHeatmapTab, setCurrentHeatmapContext } from './heatmap.js';
 
+export let currentSort = {
+    column: 'number',
+    direction: 'asc'
+};
+
 /**
  * Shared rendering of the team's statistics table rows (for both History and Live views).
  */
@@ -16,7 +21,10 @@ export function renderHomeStatsInHistory(tbody, statsData, gameLog, isLive = fal
     tbody.innerHTML = '';
     const toreMap = berechneTore(gameLog);
 
-    statsData.forEach(stats => {
+    // Apply Sorting
+    const sortedData = sortStatsData([...statsData], currentSort.column, currentSort.direction, toreMap);
+
+    sortedData.forEach(stats => {
         const fieldGoals = toreMap.get(stats.number) || 0;
         const sevenMGoals = stats.siebenMeterTore || 0;
         const goals = fieldGoals + sevenMGoals; 
@@ -25,9 +33,8 @@ export function renderHomeStatsInHistory(tbody, statsData, gameLog, isLive = fal
         const quote = fieldAttempts > 0 ? Math.round((fieldGoals / fieldAttempts) * 100) + '%' : '-';
         const sevenMDisplay = (stats.siebenMeterVersuche > 0) ? `${stats.siebenMeterTore}/${stats.siebenMeterVersuche}` : "0/0";
 
-        const timeOnField = stats.timeOnField || 0;
-        const m = Math.floor(timeOnField / 60);
-        const s = timeOnField % 60;
+        const m = Math.floor((stats.timeOnField || 0) / 60);
+        const s = (stats.timeOnField || 0) % 60;
         const timeStr = `${m}:${s < 10 ? '0' + s : s}`;
 
         const playerLog = gameLog.filter(e => (e.playerId === stats.number || e.number === stats.number) && !e.action.startsWith('Gegner'));
@@ -38,7 +45,6 @@ export function renderHomeStatsInHistory(tbody, statsData, gameLog, isLive = fal
         if (hasField) buttonsHtml += `<button class="heatmap-btn shadcn-btn-secondary" data-mode="field" style="padding: 0 4px; height: 20px; display:inline-flex; align-items:center; font-size: 0.6rem; min-width: 20px;"><i data-lucide="crosshair" style="width: 12px; height: 12px;"></i></button>`;
         if (has7m) buttonsHtml += `<button class="heatmap-btn shadcn-btn-outline" data-mode="7m" style="padding: 0 4px; height: 20px; font-size: 0.6rem; margin-left: 2px; border-color: #f59e0b; color: #f59e0b; display:inline-flex; align-items:center; min-width: 20px;">7m</button>`;
 
-        const showTime = (!spielstand.gameMode || spielstand.gameMode !== 'simple');
         const tr = document.createElement('tr');
         if (isLive) {
             tr.style.cursor = 'pointer';
@@ -46,7 +52,6 @@ export function renderHomeStatsInHistory(tbody, statsData, gameLog, isLive = fal
             tr.addEventListener('click', () => {
                 if (onRowClick) onRowClick(stats);
                 else {
-                    // Dynamic import to avoid top-level circular dependency
                     import('./ui.js').then(ui => {
                         if (ui.showLivePlayerDetails) ui.showLivePlayerDetails(stats);
                     });
@@ -54,9 +59,9 @@ export function renderHomeStatsInHistory(tbody, statsData, gameLog, isLive = fal
             });
         }
 
-        tr.innerHTML = sanitizeHTML(`
+        tr.innerHTML = `
             <td>#${escapeHTML(stats.number)} ${escapeHTML(stats.name)}</td>
-            <td>${stats.timeOnField || 0}</td>
+            <td>${escapeHTML(timeStr)}</td>
             <td>${escapeHTML(goals)}</td>
             <td>${escapeHTML(feldtore)}</td>
             <td>${escapeHTML(stats.assist || 0)}</td>
@@ -74,8 +79,9 @@ export function renderHomeStatsInHistory(tbody, statsData, gameLog, isLive = fal
             <td>${escapeHTML(stats.zweiMinuten || 0)}</td>
             <td>${escapeHTML(stats.rot || 0)}</td>
             <td>${buttonsHtml}</td>
-        `);
+        `;
 
+        const btns = tr.querySelectorAll('.heatmap-btn');
         btns.forEach(btn => {
             btn.addEventListener('click', (e) => {
                 e.stopPropagation();
@@ -83,7 +89,6 @@ export function renderHomeStatsInHistory(tbody, statsData, gameLog, isLive = fal
                 openPlayerHistoryHeatmap(gameLog, stats.number, 'heim', stats.name, mode, !stayInHeatmap);
                 if (renderBound) renderBound();
                 
-                // Scroll up correctly to the heatmap container
                 const container = document.getElementById('histHeatmapContainer');
                 if (container) {
                     container.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -95,20 +100,24 @@ export function renderHomeStatsInHistory(tbody, statsData, gameLog, isLive = fal
     if (typeof lucide !== 'undefined') lucide.createIcons({ root: tbody });
 }
 
-/**
- * Shared rendering of the opponent statistics table rows.
- */
 export function renderOpponentStatsInHistory(tbody, statsData, gameLog, game = null, isLive = false, stayInHeatmap = false, renderBound = null, onRowClick = null) {
     if (game === null || onRowClick || game === true) isLive = true;
     tbody.innerHTML = '';
 
-    statsData.forEach(stats => {
+    // Apply Sorting
+    const sortedData = sortStatsData([...statsData], currentSort.column, currentSort.direction);
+
+    sortedData.forEach(stats => {
         const goals = stats.tore || 0;
         const sevenMGoals = stats.siebenMeterTore || 0;
         const feldtore = goals - sevenMGoals;
         const fieldAttempts = feldtore + stats.fehlwurf;
         const quote = fieldAttempts > 0 ? Math.round((feldtore / fieldAttempts) * 100) + '%' : '-';
         const sevenMDisplay = (stats.siebenMeterVersuche > 0) ? `${stats.siebenMeterTore}/${stats.siebenMeterVersuche}` : "0/0";
+
+        const m = Math.floor((stats.timeOnField || 0) / 60);
+        const s = (stats.timeOnField || 0) % 60;
+        const timeStr = `${m}:${s < 10 ? '0' + s : s}`;
 
         const has7m = stats.siebenMeterVersuche > 0;
         const hasField = (goals + stats.fehlwurf) > stats.siebenMeterVersuche;
@@ -129,9 +138,9 @@ export function renderOpponentStatsInHistory(tbody, statsData, gameLog, game = n
                 }
             });
         }
-        tr.innerHTML = sanitizeHTML(`
+        tr.innerHTML = `
             <td>#${escapeHTML(stats.number)} ${escapeHTML(stats.name)}</td>
-            <td>${stats.timeOnField || 0}</td>
+            <td>${escapeHTML(timeStr)}</td>
             <td>${escapeHTML(goals)}</td>
             <td>${escapeHTML(feldtore)}</td>
             <td>${escapeHTML(stats.assist || 0)}</td>
@@ -149,7 +158,7 @@ export function renderOpponentStatsInHistory(tbody, statsData, gameLog, game = n
             <td>${escapeHTML(stats.zweiMinuten || 0)}</td>
             <td>${escapeHTML(stats.rot || 0)}</td>
             <td>${buttonsHtml}</td>
-        `);
+        `;
 
         const btns = tr.querySelectorAll('.heatmap-btn');
         btns.forEach(btn => {
@@ -159,6 +168,11 @@ export function renderOpponentStatsInHistory(tbody, statsData, gameLog, game = n
                 const teamName = (game && game.teams && game.teams.gegner) || stats.team || 'gegner';
                 openPlayerHistoryHeatmap(gameLog, stats.number, teamName, stats.name, mode, !stayInHeatmap);
                 if (renderBound) renderBound();
+                
+                const container = document.getElementById('histHeatmapContainer');
+                if (container) {
+                    container.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                }
             });
         });
         tbody.appendChild(tr);
@@ -189,7 +203,7 @@ export function openPlayerHistoryHeatmap(gameLog, identifier, team, playerName, 
         type: 'history-detail'
     });
 
-    setCurrentHeatmapTab('tor');
+    setCurrentHeatmapTab('kombiniert');
 
     if (navigate) {
         if (histTabProtokoll) histTabProtokoll.classList.remove('active');
@@ -223,4 +237,107 @@ export function openPlayerHistoryHeatmap(gameLog, identifier, team, playerName, 
             histHeatmapSvg.renderBound();
         }
     }
+}
+
+/**
+ * Sorting logic for player data
+ */
+function sortStatsData(data, column, direction, toreMap = null) {
+    const factor = direction === 'asc' ? 1 : -1;
+    
+    return data.sort((a, b) => {
+        let valA, valB;
+        
+        switch(column) {
+            case 'name':
+                valA = (a.name || '').toLowerCase();
+                valB = (b.name || '').toLowerCase();
+                if (valA === valB) {
+                    valA = a.number;
+                    valB = b.number;
+                }
+                break;
+            case 'number':
+                valA = a.number || 0;
+                valB = b.number || 0;
+                break;
+            case 'timeOnField':
+                valA = a.timeOnField || 0;
+                valB = b.timeOnField || 0;
+                break;
+            case 'tore':
+                if (toreMap) {
+                    valA = (toreMap.get(a.number) || 0) + (a.siebenMeterTore || 0);
+                    valB = (toreMap.get(b.number) || 0) + (b.siebenMeterTore || 0);
+                } else {
+                    valA = a.tore || 0;
+                    valB = b.tore || 0;
+                }
+                break;
+            case 'feldtore':
+                if (toreMap) {
+                    valA = toreMap.get(a.number) || 0;
+                    valB = toreMap.get(b.number) || 0;
+                } else {
+                    valA = (a.tore || 0) - (a.siebenMeterTore || 0);
+                    valB = (b.tore || 0) - (b.siebenMeterTore || 0);
+                }
+                break;
+            case 'siebenMeter':
+                valA = a.siebenMeterTore || 0;
+                valB = b.siebenMeterTore || 0;
+                break;
+            case 'quote':
+                const getQuote = (p) => {
+                    const attempts = (toreMap ? (toreMap.get(p.number) || 0) : (p.tore || 0)) + (p.fehlwurf || 0);
+                    return attempts > 0 ? ((toreMap ? (toreMap.get(p.number) || 0) : (p.tore || 0)) / attempts) : 0;
+                };
+                valA = getQuote(a);
+                valB = getQuote(b);
+                break;
+            case 'assist':
+                valA = a.assist || 0;
+                valB = b.assist || 0;
+                break;
+            case 'fehlwurf':
+                valA = a.fehlwurf || 0;
+                valB = b.fehlwurf || 0;
+                break;
+            default:
+                valA = a[column] || 0;
+                valB = b[column] || 0;
+        }
+        
+        if (typeof valA === 'string' && typeof valB === 'string') {
+            return valA.localeCompare(valB) * factor;
+        }
+        return (valA - valB) * factor;
+    });
+}
+
+/**
+ * Global listener for sorting headers
+ */
+export function initTableSorting(renderCallback) {
+    document.addEventListener('click', (e) => {
+        const th = e.target.closest('th[data-sort]');
+        if (!th) return;
+        
+        const column = th.dataset.sort;
+        if (currentSort.column === column) {
+            currentSort.direction = currentSort.direction === 'asc' ? 'desc' : 'asc';
+        } else {
+            currentSort.column = column;
+            currentSort.direction = 'desc'; // Default to desc for stats
+        }
+        
+        // Visual feedback (optional but good)
+        const table = th.closest('table');
+        if (table) {
+            table.querySelectorAll('th[data-sort]').forEach(el => el.classList.remove('sorted-asc', 'sorted-desc'));
+            th.classList.add(currentSort.direction === 'asc' ? 'sorted-asc' : 'sorted-desc');
+        }
+        
+        if (renderCallback) renderCallback();
+    });
 }

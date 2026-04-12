@@ -187,7 +187,9 @@ export function handleGamePhaseClick() {
     if (phase === 5) return;
 
     if (phase === 1) {
+        console.log('[DEBUG] Game start! Setting isSpielAktiv to true');
         spielstand.timer.gamePhase = 2;
+        spielstand.isSpielAktiv = true;
         gamePhaseButton.textContent = 'Halbzeit';
 
         // Start video analysis timer (continuous, uninterrupted)
@@ -209,6 +211,7 @@ export function handleGamePhaseClick() {
 
     } else if (phase === 1.5) {
         spielstand.timer.gamePhase = 2;
+        spielstand.isSpielAktiv = true;
         gamePhaseButton.textContent = 'Halbzeit';
 
         // Start video analysis timer (simple mode start)
@@ -237,7 +240,9 @@ export function handleGamePhaseClick() {
         pauseButton.disabled = false;
 
     } else if (phase === 4) {
+        console.log('[DEBUG] Game end! Setting isSpielAktiv to false');
         spielstand.timer.gamePhase = 5;
+        spielstand.isSpielAktiv = false;
         gamePhaseButton.textContent = 'Beendet';
         gamePhaseButton.disabled = true;
         gamePhaseButton.classList.add('beendet');
@@ -1211,9 +1216,12 @@ export async function loescheProtokollEintrag(index) {
 
 
 export async function starteNeuesSpiel() {
+    console.log('[DEBUG] starteNeuesSpiel called. Confirming...');
     const confirmed = await customConfirm("Bist du sicher? Das löscht das gesamte Spielprotokoll, aber dein Team bleibt gespeichert.", "Neues Spiel?");
     if (confirmed) {
+        console.log('[DEBUG] starteNeuesSpiel: Confirmed. Resetting state and setting isSpielAktiv to false');
         stoppTimer(); // Stop timer first to prevent glitches
+        spielstand.isSpielAktiv = false;
 
         spielstand.gameLog = [];
         spielstand.score = { heim: 0, gegner: 0 };
