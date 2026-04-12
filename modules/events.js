@@ -18,10 +18,10 @@ import {
     deleteSavedTeam, viewTeam, updateTeam, loadHistoryTeam,
     deletePlayerFromSavedTeam, deleteCurrentTeam
 } from './teamStorage.js';
-import { firebaseLogout } from './firebase.js';
+import { firebaseLogout, getActiveTeamId } from './firebase.js';
 import { executeAction } from './game.js';
 import { addPlayer, oeffneOpponentEditModus } from './roster.js';
-import { zeichneSpielerRaster, applyGameMode } from './ui.js';
+import { zeichneSpielerRaster, applyGameMode, setInlineEditing } from './ui.js';
 import { spielstand, speichereSpielstand } from './state.js';
 
 /**
@@ -182,6 +182,42 @@ export function initEventListeners() {
             case 'team-delete':
                 deleteSavedTeam(params.key, parseInt(params.index));
                 break;
+            case 'leave-team': {
+                const teamId = getActiveTeamId();
+                if (teamId) {
+                    const { customConfirm } = await import('./customDialog.js');
+                    const confirmed = await customConfirm('Team verlassen', 'Möchtest du dieses Team wirklich verlassen? Du hast dann keinen Zugriff mehr auf die Daten.');
+                    if (confirmed) {
+                        const { leaveTeam } = await import('./firebase.js');
+                        const res = await leaveTeam(teamId);
+                        if (res.success) {
+                            window.location.href = window.location.origin + window.location.pathname;
+                        } else {
+                            const { customAlert } = await import('./customDialog.js');
+                            customAlert('Fehler', res.error);
+                        }
+                    }
+                }
+                break;
+            }
+            case 'delete-team': {
+                const teamId = getActiveTeamId();
+                if (teamId) {
+                    const { customConfirm } = await import('./customDialog.js');
+                    const confirmed = await customConfirm('Team löschen', 'Möchtest du dieses Team WIRKLICH endgültig löschen? Alle Daten und Wurfbilder gehen verloren. Diese Aktion kann nicht rückgängig gemacht werden.');
+                    if (confirmed) {
+                        const { deleteTeam } = await import('./firebase.js');
+                        const res = await deleteTeam(teamId);
+                        if (res.success) {
+                            window.location.href = window.location.origin + window.location.pathname;
+                        } else {
+                            const { customAlert } = await import('./customDialog.js');
+                            customAlert('Fehler', res.error);
+                        }
+                    }
+                }
+                break;
+            }
             case 'team-view':
                 viewTeam(params.key, parseInt(params.index));
                 break;
@@ -244,6 +280,34 @@ export function initEventListeners() {
                 break;
             case 'team-view':
                 viewTeam(params.key, parseInt(params.index));
+                break;
+            case 'edit-player':
+                if (params.index !== undefined) {
+                    setInlineEditing(parseInt(params.index), params.isOpponent);
+                }
+                break;
+            case 'cancel-inline-edit':
+                setInlineEditing(null, null);
+                break;
+            case 'save-inline-edit':
+                if (params.index !== undefined) {
+                    const card = target.closest('.roster-player-card');
+                    if (card) {
+                        const nameInput = card.querySelector('.inline-edit-name');
+                        const numInput = card.querySelector('.inline-edit-number');
+                        const inactiveInput = card.querySelector('.inline-edit-inactive');
+                        if (nameInput && numInput) {
+                            const roster = await import('./roster.js');
+                            roster.saveInlinePlayer(
+                                parseInt(params.index), 
+                                nameInput.value, 
+                                numInput.value, 
+                                params.isOpponent === 'true',
+                                inactiveInput ? inactiveInput.checked : false
+                            );
+                        }
+                    }
+                }
                 break;
             case 'delete-player':
                 if (params.index !== undefined) {

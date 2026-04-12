@@ -5,6 +5,9 @@ import { drawGoalHeatmap, drawFieldHeatmap, renderHeatmap, setCurrentHeatmapTab,
 import { spielstand, speichereSpielstand, getOpponentLabel, getMyTeamLabel } from './state.js';
 import { getAuthUid, getCurrentUserProfile, isUserTrainer } from './firebase.js';
 
+let inlineEditingIndex = null;
+let inlineEditingIsOpp = null;
+
 /**
  * Shared helper for 'No Game Active' state in Live views.
  */
@@ -125,15 +128,21 @@ export function zeichneSpielerRaster() {
 
     const renderTeam = (players, teamKey, gkCont, actCont, benchCont) => {
         const isOpponent = teamKey === 'opponent';
-        players.forEach((p, idx) => {
+        // Filter out inactive players
+        const activePlayers = players.filter(p => p.isInactive !== true);
+
+        activePlayers.forEach((p, idx) => {
+            const actualIndexInList = players.findIndex(orig => orig === p);
             const btn = document.createElement('button');
             btn.className = `spieler-button action-btn ${p.isGoalkeeper ? 'torwart' : ''}`;
             const timeStr = `${Math.floor((p.timeOnField || 0) / 60)}:${((p.timeOnField || 0) % 60).toString().padStart(2, '0')}`;
-            btn.innerHTML = sanitizeHTML(`<div class="player-time-display">${timeStr}</div><div class="spieler-nummer-display">${p.number}</div><span class="spieler-name-display">${escapeHTML(p.name || '')}</span>`);
             
-            btn.dataset.index = idx; // Set for both teams
+            const numberDisplay = p.number ? `<div class="spieler-nummer-display">${p.number}</div>` : '';
+            btn.innerHTML = sanitizeHTML(`<div class="player-time-display">${timeStr}</div>${numberDisplay}<span class="spieler-name-display">${escapeHTML(p.name || '')}</span>`);
+            
+            btn.dataset.index = actualIndexInList;
             if (isOpponent) {
-                btn.dataset.gegnerNummer = p.number;
+                btn.dataset.gegnerNummer = p.number || '';
                 btn.dataset.isOpponent = 'true';
             } else {
                 btn.dataset.isOpponent = 'false';
@@ -172,7 +181,21 @@ export function zeichneSpielerRaster() {
 export function updateProtokollAnzeige() {
     if (!protokollAusgabe) return;
     protokollAusgabe.innerHTML = '';
-    if (!spielstand.isSpielAktiv) return;
+    
+    const protokollContent = document.getElementById('protokollWrapper');
+    const emptyState = document.getElementById('protokollEmptyState');
+
+    if (!spielstand.isSpielAktiv) {
+        if (protokollContent) protokollContent.classList.add('versteckt');
+        if (emptyState) {
+            emptyState.classList.remove('versteckt');
+            renderEmptyLiveState(emptyState);
+        }
+        return;
+    }
+
+    if (protokollContent) protokollContent.classList.remove('versteckt');
+    if (emptyState) emptyState.classList.add('versteckt');
 
     spielstand.gameLog.slice().reverse().forEach((e, i) => {
         const div = document.createElement('div');
@@ -190,22 +213,86 @@ export function showLivePlayerDetails(stats) {
     customAlert(`Details für #${stats.number}: ${stats.tore} Tore, ${stats.assist} Assists`);
 }
 
+export function setInlineEditing(index, isOpp) {
+    inlineEditingIndex = index;
+    inlineEditingIsOpp = (isOpp === 'true' || isOpp === true);
+    zeichneRosterListe(showGastTabState);
+}
+
+let showGastTabState = false;
+
 export function zeichneRosterListe(showGastTab = false) {
+    showGastTabState = showGastTab;
     if (!rosterListe) return;
     rosterListe.innerHTML = '';
     const isAway = spielstand.settings.isAuswaertsspiel;
     const isOpp = showGastTab ? !isAway : isAway;
     const list = isOpp ? (spielstand.knownOpponents || []) : (spielstand.roster || []);
 
+    const uid = getAuthUid();
+    const isTrainer = isUserTrainer();
+    const currentUserRosterName = (uid && spielstand.rosterAssignments && spielstand.rosterAssignments[uid]) 
+                                    ? spielstand.rosterAssignments[uid] 
+                                    : null;
+
     list.forEach((p, idx) => {
         const div = document.createElement('div');
         div.className = 'roster-player-card';
-        div.innerHTML = sanitizeHTML(`
-            <div class="roster-player-info"><div class="roster-player-number">${p.number}</div><div>${escapeHTML(p.name || 'Ohne Name')}</div></div>
-            <div class="roster-player-actions"><button class="delete-player" data-index="${idx}" data-is-opponent="${isOpp}">Löschen</button></div>
-        `);
+        
+        const isEditing = (inlineEditingIndex === idx && inlineEditingIsOpp === isOpp);
+
+        if (isEditing) {
+            div.classList.add('is-editing');
+            div.innerHTML = sanitizeHTML(`
+                <div class="roster-player-info">
+                    <input type="number" class="inline-edit-number" value="${p.number || ''}" title="Rückennummer" placeholder="#">
+                    <input type="text" class="inline-edit-name" value="${escapeHTML(p.name || '')}" placeholder="Spielername">
+                </div>
+                <div style="display: flex; align-items: center; gap: 8px; margin: 8px 0; padding: 0 4px;">
+                    <label style="font-size: 0.75rem; color: var(--text-muted); cursor: pointer; display: flex; align-items: center; gap: 6px;">
+                        <input type="checkbox" class="inline-edit-inactive" ${p.isInactive ? 'checked' : ''} style="accent-color: var(--btn-primary);">
+                        Inaktiv im Spielbetrieb
+                    </label>
+                </div>
+                <div class="roster-player-actions">
+                    <button class="shadcn-btn-outline" data-action="save-inline-edit" data-index="${idx}" data-is-opponent="${isOpp}" style="color: #10b981; border-color: #10b981; padding: 4px;" title="Speichern"><i data-lucide="check" style="width: 14px; height: 14px;"></i></button>
+                    <button class="shadcn-btn-outline" data-action="cancel-inline-edit" style="color: #ef4444; border-color: #ef4444; padding: 4px;" title="Abbrechen"><i data-lucide="x" style="width: 14px; height: 14px;"></i></button>
+                </div>
+            `);
+        } else {
+            // Check permissions
+            const canEdit = isOpp ? isTrainer : (isTrainer || p.name === currentUserRosterName);
+            const canDelete = isTrainer;
+
+            let actionsHtml = '';
+            if (canEdit) {
+                actionsHtml += `<button class="edit-player shadcn-btn-outline" data-action="edit-player" data-index="${idx}" data-is-opponent="${isOpp}" style="padding: 4px; margin-right: 4px;" title="Bearbeiten"><i data-lucide="edit-2" style="width: 14px; height: 14px;"></i></button>`;
+            }
+            if (canDelete) {
+                actionsHtml += `<button class="delete-player shadcn-btn-outline" data-action="delete-player" data-index="${idx}" data-is-opponent="${isOpp}" style="padding: 4px; color: #ef4444; border-color: #ef4444;" title="Löschen"><i data-lucide="trash-2" style="width: 14px; height: 14px;"></i></button>`;
+            }
+
+            const isInactive = p.isInactive === true;
+            div.style.opacity = isInactive ? '0.6' : '1';
+            if (isInactive) div.title = 'Inaktiv im Spielbetrieb';
+
+            const numDisplay = p.number ? `#${p.number}` : '';
+            
+            div.innerHTML = sanitizeHTML(`
+                <div class="roster-player-info">
+                    <div class="roster-player-number ${!p.number ? 'is-empty' : ''}">${p.number || '-'}</div>
+                    <div style="display: flex; flex-direction: column;">
+                        <div style="font-weight: 600;">${escapeHTML(p.name || 'Ohne Name')}</div>
+                        ${isInactive ? '<div style="font-size: 0.65rem; color: #ef4444; font-weight: 700;">INAKTIV (SPIEL)</div>' : ''}
+                    </div>
+                </div>
+                <div class="roster-player-actions">${actionsHtml}</div>
+            `);
+        }
         rosterListe.appendChild(div);
     });
+
+    if (window.lucide) window.lucide.createIcons();
 }
 
 export function oeffneWurfbildModal(modus) {
@@ -279,10 +366,20 @@ export async function showLiveOverviewInline() {
     const { setCurrentHeatmapContext } = await import('./heatmap.js');
 
     if (liveOverviewBereich) liveOverviewBereich.classList.remove('versteckt');
+    
+    const emptyState = document.getElementById('liveOverviewEmptyState');
+
     if (!spielstand.isSpielAktiv) {
-        if (liveOverviewContent) renderEmptyLiveState(document.getElementById('liveOverviewEmptyState'));
+        if (liveOverviewContent) liveOverviewContent.classList.add('versteckt');
+        if (emptyState) {
+            emptyState.classList.remove('versteckt');
+            renderEmptyLiveState(emptyState);
+        }
         return;
     }
+    
+    if (liveOverviewContent) liveOverviewContent.classList.remove('versteckt');
+    if (emptyState) emptyState.classList.add('versteckt');
 
     const homeStats = berechneStatistiken(spielstand.gameLog, spielstand.roster);
     const opponentStats = berechneGegnerStatistiken(spielstand.gameLog, spielstand.knownOpponents);
@@ -364,10 +461,20 @@ export async function showShotsInline() {
 
     if (shotsBereich) shotsBereich.classList.remove('versteckt');
     if (!shotsContent) return;
+    
+    const emptyState = document.getElementById('shotsEmptyState');
+
     if (!spielstand.isSpielAktiv) {
-        renderEmptyLiveState(document.getElementById('shotsEmptyState'));
+        shotsContent.classList.add('versteckt');
+        if (emptyState) {
+            emptyState.classList.remove('versteckt');
+            renderEmptyLiveState(emptyState);
+        }
         return;
     }
+    
+    shotsContent.classList.remove('versteckt');
+    if (emptyState) emptyState.classList.add('versteckt');
 
     const wurfbilder = berechneWurfbilder(spielstand.gameLog, spielstand.roster);
     shotsContent.innerHTML = '';
@@ -412,10 +519,21 @@ export async function showLiveHeatmapInline() {
     const { renderHeatmap, setCurrentHeatmapContext } = await import('./heatmap.js');
 
     if (liveHeatmapBereich) liveHeatmapBereich.classList.remove('versteckt');
+    
+    const heatmapContent = document.getElementById('heatmapContent');
+    const emptyState = document.getElementById('heatmapEmptyState');
+
     if (!spielstand.isSpielAktiv) {
-        renderEmptyLiveState(document.getElementById('heatmapEmptyState'));
+        if (heatmapContent) heatmapContent.classList.add('versteckt');
+        if (emptyState) {
+            emptyState.classList.remove('versteckt');
+            renderEmptyLiveState(emptyState);
+        }
         return;
     }
+    
+    if (heatmapContent) heatmapContent.classList.remove('versteckt');
+    if (emptyState) emptyState.classList.add('versteckt');
 
     if (heatmapHeimLabel) heatmapHeimLabel.textContent = spielstand.settings.teamNameHeim || 'HEIM';
     if (heatmapGegnerLabel) heatmapGegnerLabel.textContent = spielstand.settings.teamNameGegner || 'GEGNER';

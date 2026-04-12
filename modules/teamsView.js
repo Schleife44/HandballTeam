@@ -333,3 +333,68 @@ function assignPlayerName(name, overlay, onComplete) {
     overlay.remove();
     onComplete();
 }
+
+/**
+ * Shows a full-screen overlay when access to a team is denied.
+ * Allows the user to remove the team from their profile.
+ */
+export function showAccessDeniedOverlay(teamId) {
+    if (document.getElementById('accessDeniedOverlay')) return;
+
+    const overlay = document.createElement('div');
+    overlay.id = 'accessDeniedOverlay';
+    Object.assign(overlay.style, {
+        position: 'fixed', inset: '0', zIndex: '100002',
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        background: 'rgba(0,0,0,0.9)', backdropFilter: 'blur(15px)'
+    });
+
+    const card = document.createElement('div');
+    card.className = 'shadcn-modal-content';
+    Object.assign(card.style, {
+        width: '100%', maxWidth: '400px', padding: '2.5rem',
+        background: 'hsl(222.2, 84%, 4.9%)', border: '1px solid #ef4444',
+        borderRadius: '1rem', color: 'white', textAlign: 'center'
+    });
+
+    card.innerHTML = `
+        <div style="margin-bottom: 1.5rem; color: #ef4444;">
+            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
+        </div>
+        <h2 style="font-size: 1.5rem; font-weight: 700; margin-bottom: 0.75rem;">Zugriff verweigert</h2>
+        <p style="color: #94a3b8; font-size: 0.95rem; margin-bottom: 2rem; line-height: 1.5;">
+            Du hast keine Berechtigung mehr für dieses Team. Möglicherweise wurdest du entfernt oder das Team wurde gelöscht.
+        </p>
+        
+        <div style="display: flex; flex-direction: column; gap: 0.75rem;">
+            <button id="removeGhostTeamBtn" class="shadcn-btn-destructive" style="width: 100%; height: 2.75rem; font-weight: 600;">
+                Team aus meinem Profil löschen
+            </button>
+            <button id="backToSelectionBtn" class="shadcn-btn-outline" style="width: 100%; height: 2.75rem;">
+                Zurück zur Team-Auswahl
+            </button>
+        </div>
+    `;
+
+    overlay.appendChild(card);
+    document.body.appendChild(overlay);
+
+    const { leaveTeam } = import('./firebase.js'); // Deferred import to avoid circular dep issues if any
+
+    card.querySelector('#removeGhostTeamBtn').onclick = async () => {
+        const btn = card.querySelector('#removeGhostTeamBtn');
+        btn.disabled = true;
+        btn.textContent = 'Wird entfernt...';
+        
+        const { leaveTeam: leaveFn } = await import('./firebase.js');
+        await leaveFn(teamId);
+        
+        overlay.remove();
+        window.location.reload(); // Hard reload to clear all states
+    };
+
+    card.querySelector('#backToSelectionBtn').onclick = () => {
+        overlay.remove();
+        window.location.reload(); // Safest way to reset app state
+    };
+}

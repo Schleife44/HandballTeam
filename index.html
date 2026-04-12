@@ -151,7 +151,7 @@
                     <button id="manageCalendarBtn" class="shadcn-btn-outline" title="Kalender verwalten">
                         <i data-lucide="settings"></i> <span class="mobile-hidden">Verwalten</span>
                     </button>
-                    <button id="addAbsenceBtn" class="shadcn-btn-outline" style="color: #f59e0b; border-color: #f59e0b;">
+                    <button id="addAbsenceBtn" class="shadcn-btn-outline" style="color: #6366f1; border-color: #6366f1;">
                         <i data-lucide="user-x"></i> <span class="mobile-hidden">Abwesenheit</span>
                     </button>
                     <button id="addEventBtn" class="shadcn-btn-primary">
@@ -704,15 +704,15 @@
 
         <!-- Protocol Page Section -->
         <div id="protokollBereich" class="content-section versteckt">
-            <div style="max-width: 1000px; margin: 0 auto; padding: 20px;">
+            <div id="protokollWrapper" style="max-width: 1000px; margin: 0 auto; padding: 20px;">
                 <div id="protokoll" class="protocol-card">
                     <div class="protocol-header">
                         <h3 class="player-card-title">Live Ticker</h3>
                     </div>
                     <div id="protokollAusgabe"></div>
                 </div>
-                <div id="protokollEmptyState" class="versteckt"></div>
             </div>
+            <div id="protokollEmptyState" class="versteckt"></div>
         </div>
 
         <!-- Export Page Section -->
@@ -873,11 +873,11 @@
                     </p>
                     
                     <div style="display: flex; gap: 10px; flex-wrap: wrap;">
-                        <button id="leaveTeamBtn" class="shadcn-btn-outline" style="border-color: #ef4444; color: #ef4444; min-width: 150px; display: inline-flex;">
+                        <button id="leaveTeamBtn" data-action="leave-team" class="shadcn-btn-outline" style="border-color: #ef4444; color: #ef4444; min-width: 150px; display: inline-flex;">
                             <i data-lucide="log-out" style="width: 16px; height: 16px; margin-right: 8px;"></i>
                             Team verlassen
                         </button>
-                        <button id="deleteTeamBtn" class="shadcn-btn-primary" style="background: #ef4444; display: none; min-width: 150px;">
+                        <button id="deleteTeamBtn" data-action="delete-team" class="shadcn-btn-primary" style="background: #ef4444; display: none; min-width: 150px;">
                             <i data-lucide="trash-2" style="width: 16px; height: 16px; margin-right: 8px;"></i>
                             Team löschen
                         </button>
@@ -2154,20 +2154,43 @@
                 <label class="form-label">Grund</label>
                 <input type="text" id="absenceReasonInput" class="shadcn-input" placeholder="z.B. Urlaub, Verletzt, Arbeit...">
             </div>
+            
             <div class="form-section">
+                <label class="form-label">Typ der Abwesenheit</label>
+                <div style="display: flex; gap: 8px; margin-bottom: 12px;">
+                    <button id="absenceTypeRange" class="shadcn-btn-outline active" style="flex: 1; font-size: 0.75rem; padding: 6px;">Zeitraum</button>
+                    <button id="absenceTypeWeekly" class="shadcn-btn-outline" style="flex: 1; font-size: 0.75rem; padding: 6px;">Ein Tag in der Woche</button>
+                </div>
+            </div>
+
+            <div id="absenceRangeSettings" class="form-section">
                 <div class="form-row-2">
                     <div class="input-group">
                         <label class="form-label">Von</label>
                         <input type="date" id="absenceStartDate" class="shadcn-input">
                     </div>
                     <div class="input-group">
-                        <label class="form-label">Bis (inklusive)</label>
-                        <input type="date" id="absenceEndDate" class="shadcn-input">
+                        <label class="form-label">Bis (optional)</label>
+                        <input type="date" id="absenceEndDate" class="shadcn-input" placeholder="unbefristet">
                     </div>
                 </div>
+                <div style="font-size: 0.65rem; color: var(--text-muted); margin-top: 4px;">Tipp: Ohne Enddatum gilt die Abwesenheit dauerhaft ab dem Start.</div>
+            </div>
+
+            <div id="absenceWeeklySettings" class="form-section versteckt">
+                <label class="form-label">Jeden ...</label>
+                <select id="absenceWeekdaySelect" class="shadcn-input">
+                    <option value="1">Montag</option>
+                    <option value="2">Dienstag</option>
+                    <option value="3">Mittwoch</option>
+                    <option value="4">Donnerstag</option>
+                    <option value="5">Freitag</option>
+                    <option value="6">Samstag</option>
+                    <option value="0">Sonntag</option>
+                </select>
             </div>
             <div class="modal-footer" style="padding:0; margin-top:20px;">
-                <button id="saveAbsenceBtn" class="shadcn-btn-primary" style="width:100%; background:#f59e0b; border-color:#f59e0b;">Speichern</button>
+                <button id="saveAbsenceBtn" class="shadcn-btn-primary" style="width:100%; background:#6366f1; border-color:#6366f1;">Speichern</button>
             </div>
             
             <div id="absenceListContainer" style="margin-top:20px; border-top:1px solid var(--border-color); padding-top:15px;">

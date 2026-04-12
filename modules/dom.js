@@ -103,6 +103,11 @@ export const closeAbsenceBtn = document.getElementById('closeAbsenceBtn');
 export const absenceReasonInput = document.getElementById('absenceReasonInput');
 export const absenceStartDate = document.getElementById('absenceStartDate');
 export const absenceEndDate = document.getElementById('absenceEndDate');
+export const absenceTypeRange = document.getElementById('absenceTypeRange');
+export const absenceTypeWeekly = document.getElementById('absenceTypeWeekly');
+export const absenceRangeSettings = document.getElementById('absenceRangeSettings');
+export const absenceWeeklySettings = document.getElementById('absenceWeeklySettings');
+export const absenceWeekdaySelect = document.getElementById('absenceWeekdaySelect');
 export const saveAbsenceBtn = document.getElementById('saveAbsenceBtn');
 export const absenceList = document.getElementById('absenceList');
 

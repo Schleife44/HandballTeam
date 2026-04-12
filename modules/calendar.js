@@ -11,6 +11,12 @@ import {
     getActiveTeamId
 } from './firebase.js';
 import {
+    // Personal Absence Modal
+    addAbsenceBtn, absenceModal, closeAbsenceBtn, absenceReasonInput, 
+    absenceStartDate, absenceEndDate, saveAbsenceBtn, absenceList,
+    absenceTypeRange, absenceTypeWeekly, absenceRangeSettings, 
+    absenceWeeklySettings, absenceWeekdaySelect,
+    // Calendar UI
     calendarGrid, currentMonthLabel, addEventModal, addEventModalTitle,
     eventTitleInput, eventDateInput, eventTimeInput, eventLocationInput,
     eventRepeatInput, eventRepeatEndInput, recurrenceOptions,
@@ -221,7 +227,6 @@ function setupAbsenceListeners() {
     if (addAbsenceBtn) {
         addAbsenceBtn.onclick = (e) => {
             e.stopPropagation();
-            // TOGGLE: If already open, close it
             if (absenceModal && !absenceModal.classList.contains('versteckt')) {
                 closeAbsenceModal();
                 return;
@@ -229,18 +234,34 @@ function setupAbsenceListeners() {
             openAbsenceModal();
         };
     }
+    
     if (closeAbsenceBtn) closeAbsenceBtn.onclick = closeAbsenceModal;
     if (saveAbsenceBtn) saveAbsenceBtn.onclick = saveAbsence;
+
+    if (absenceTypeRange) {
+        absenceTypeRange.onclick = () => {
+            absenceTypeRange.classList.add('active');
+            absenceTypeWeekly.classList.remove('active');
+            absenceRangeSettings.classList.remove('versteckt');
+            absenceWeeklySettings.classList.add('versteckt');
+        };
+    }
+    if (absenceTypeWeekly) {
+        absenceTypeWeekly.onclick = () => {
+            absenceTypeWeekly.classList.add('active');
+            absenceTypeRange.classList.remove('active');
+            absenceWeeklySettings.classList.remove('versteckt');
+            absenceRangeSettings.classList.add('versteckt');
+        };
+    }
 }
 
 function openAbsenceModal() {
     if (!absenceModal) return;
-    // Keep detail modals open in background as requested
     
     document.body.appendChild(absenceModal);
     absenceModal.classList.remove('versteckt');
     
-    // Position fixed center
     Object.assign(absenceModal.style, {
         position: 'fixed',
         top: '50%',
@@ -253,7 +274,10 @@ function openAbsenceModal() {
     absenceReasonInput.value = '';
     const today = new Date().toISOString().split('T')[0];
     absenceStartDate.value = today;
-    absenceEndDate.value = today;
+    absenceEndDate.value = ''; // Optional
+    
+    // Default to range
+    if (absenceTypeRange) absenceTypeRange.click();
 
     renderAbsenceList();
 }
@@ -264,12 +288,28 @@ function closeAbsenceModal() {
 
 function saveAbsence() {
     const reason = absenceReasonInput.value.trim();
-    const start = absenceStartDate.value;
-    const end = absenceEndDate.value;
+    const type = absenceTypeRange.classList.contains('active') ? 'range' : 'recurring';
     
-    if (!start || !end) {
-        toast.error("Fehler", "Bitte Start- und Enddatum angeben.");
-        return;
+    const absence = {
+        id: Date.now().toString(),
+        uid: getAuthUid(),
+        playerName: null, // Filled below
+        reason: reason || 'Abwesend',
+        type: type,
+        createdAt: Date.now()
+    };
+
+    if (type === 'range') {
+        const start = absenceStartDate.value;
+        const end = absenceEndDate.value;
+        if (!start) {
+            toast.error("Fehler", "Bitte Startdatum angeben.");
+            return;
+        }
+        absence.startDate = start;
+        absence.endDate = end || null; // Null means infinity
+    } else {
+        absence.weekday = parseInt(absenceWeekdaySelect.value, 10);
     }
     
     const profile = getCurrentUserProfile();
@@ -277,17 +317,8 @@ function saveAbsence() {
         toast.error("Profil fehlt", "Bitte setze erst deinen Namen im Profil.");
         return;
     }
+    absence.playerName = profile.rosterName;
 
-    const uid = getAuthUid();
-    const absence = {
-        id: Date.now().toString(),
-        uid: uid,
-        playerName: profile.rosterName,
-        reason: reason || 'Abwesend',
-        startDate: start,
-        endDate: end,
-        createdAt: Date.now()
-    };
     
     if (!spielstand.absences) spielstand.absences = [];
     spielstand.absences.push(absence);
@@ -311,18 +342,35 @@ function renderAbsenceList() {
         return;
     }
 
-    // Sort by start date (descending)
-    myAbsences.sort((a, b) => b.startDate.localeCompare(a.startDate));
+    // Sort by type (recurring first) then start date
+    myAbsences.sort((a, b) => {
+        if (a.type !== b.type) return a.type === 'recurring' ? -1 : 1;
+        if (a.type === 'recurring') return (a.weekday || 0) - (b.weekday || 0);
+        return (b.startDate || "").localeCompare(a.startDate || "");
+    });
 
     myAbsences.forEach(abs => {
         const item = document.createElement('div');
         item.style = 'display:flex; justify-content:space-between; align-items:center; background:rgba(0,0,0,0.03); padding:6px 10px; border-radius:4px; font-size:0.8rem;';
         
-        const dateRange = `<b>${abs.startDate}</b> bis <b>${abs.endDate}</b>`;
+        let displayStr = '';
+        if (abs.type === 'recurring') {
+            const days = ["Sonntags", "Montags", "Dienstags", "Mittwochs", "Donnerstags", "Freitags", "Samstags"];
+            displayStr = `Jeden <b>${days[abs.weekday]}</b>`;
+        } else {
+            if (!abs.endDate) {
+                displayStr = `Ab <b>${abs.startDate}</b> (unbefristet)`;
+            } else if (abs.startDate === abs.endDate) {
+                displayStr = `Am <b>${abs.startDate}</b>`;
+            } else {
+                displayStr = `<b>${abs.startDate}</b> bis <b>${abs.endDate}</b>`;
+            }
+        }
+
         item.innerHTML = `
             <div>
-                <div>${dateRange}</div>
-                <div style="font-size:0.7rem; color:#666;">${abs.reason}</div>
+                <div>${displayStr}</div>
+                <div style="font-size:0.7rem; color:#666;">${escapeHTML(abs.reason)}</div>
             </div>
             <button class="delete-abs-btn" style="background:transparent; border:none; color:#ef4444; cursor:pointer; padding:4px;">
                 <i data-lucide="trash-2" style="width:14px; height:14px;"></i>
@@ -356,16 +404,28 @@ export function isPlayerAbsent(dateStr, uid, playerName) {
     const date = new Date(dateStr);
     
     const abs = spielstand.absences.find(abs => {
-        const isMe = (uid && abs.uid === uid) || (playerName && abs.playerName === playerName);
-        if (!isMe) return false;
+        const isUserMatch = (uid && abs.uid === uid) || (playerName && abs.playerName === playerName);
+        if (!isUserMatch) return false;
         
-        const start = new Date(abs.startDate);
-        const end = new Date(abs.endDate);
-        date.setHours(0,0,0,0);
-        start.setHours(0,0,0,0);
-        end.setHours(0,0,0,0);
-        
-        return date >= start && date <= end;
+        if (abs.type === 'recurring') {
+            return date.getDay() === abs.weekday;
+        } else {
+            // Type range (legacy or explicit)
+            const start = new Date(abs.startDate);
+            date.setHours(0,0,0,0);
+            start.setHours(0,0,0,0);
+            
+            if (date < start) return false;
+            
+            if (abs.endDate) {
+                const end = new Date(abs.endDate);
+                end.setHours(0,0,0,0);
+                return date <= end;
+            }
+            
+            // No end date means for ever
+            return true;
+        }
     });
 
     if (abs) console.log(`[Calendar] Found absence for ${playerName || uid} on ${dateStr}:`, abs.reason);
@@ -1128,7 +1188,11 @@ function renderAttendanceUI(event) {
         Object.keys(responses).forEach(key => {
             const resp = responses[key];
             const name = (resp.name || '').trim();
-            if (renderedNames.has(name) || !name) return;
+            if (renderedNames.has(name)) return;
+
+            const displayName = name || 'Neuer Benutzer';
+            if (renderedNames.has(displayName)) return;
+            renderedNames.add(displayName);
 
             const div = document.createElement('div');
             div.className = 'att-item';
@@ -1142,7 +1206,7 @@ function renderAttendanceUI(event) {
             div.innerHTML = `
                 <div style="display:flex; align-items:center; gap:8px;">
                     <i data-lucide="${statusIcon}" style="width:14px; height:14px; color:${statusColor};"></i>
-                    <span style="font-weight:500;">${name}</span>
+                    <span style="font-weight:500;">${displayName}</span>
                     <span style="color:#888; font-size:0.7rem; margin-left:4px;">${resp.reason || ''}</span>
                 </div>
             `;

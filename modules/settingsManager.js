@@ -358,46 +358,6 @@ function initTeamManagementUI() {
         console.warn('[Settings] Profile data not ready. Keeping Leave fallback.');
     }
 
-    // Assign events
-    deleteBtn.onclick = async () => {
-        const confirmed = await customConfirm('Team löschen', 'Möchtest du dieses Team WIRKLICH endgültig löschen? Alle Daten und Wurfbilder gehen verloren. Diese Aktion kann nicht rückgängig gemacht werden.');
-        if (confirmed) {
-            deleteBtn.disabled = true;
-            const originalText = deleteBtn.innerHTML;
-            deleteBtn.innerHTML = '<i data-lucide="loader" class="spin" style="width: 16px; height: 16px; margin-right: 8px;"></i> Lösche...';
-            if (window.lucide) window.lucide.createIcons();
-            
-            const res = await deleteTeam(teamId);
-            if (res.success) {
-                window.location.href = window.location.origin + window.location.pathname; // Clear state and go to selection
-            } else {
-                customAlert('Fehler', res.error);
-                deleteBtn.disabled = false;
-                deleteBtn.innerHTML = originalText;
-                if (window.lucide) window.lucide.createIcons();
-            }
-        }
-    };
-
-    leaveBtn.onclick = async () => {
-        const confirmed = await customConfirm('Team verlassen', 'Möchtest du dieses Team wirklich verlassen? Du hast dann keinen Zugriff mehr auf die Daten.');
-        if (confirmed) {
-            leaveBtn.disabled = true;
-            const originalText = leaveBtn.innerHTML;
-            leaveBtn.innerHTML = '<i data-lucide="loader" class="spin" style="width: 16px; height: 16px; margin-right: 8px;"></i> Verlasse...';
-            if (window.lucide) window.lucide.createIcons();
-
-            const res = await leaveTeam(teamId);
-            if (res.success) {
-                window.location.href = window.location.origin + window.location.pathname;
-            } else {
-                customAlert('Fehler', res.error);
-                leaveBtn.disabled = false;
-                leaveBtn.innerHTML = originalText;
-                if (window.lucide) window.lucide.createIcons();
-            }
-        }
-    };
 }
 
 /**

@@ -377,18 +377,32 @@ button.shadcn-btn-sm {
 /* INPUTS */
 input[type="text"],
 input[type="number"],
-select,
 textarea {
     display: flex;
     height: 2.5rem;
-    /* h-10 */
     width: 100%;
+}
+
+select {
+    display: block; /* Select doesn't like flex in many browsers */
+    height: 2.5rem;
+    width: 100%;
+}
+
+input[type="text"],
+input[type="number"],
+select,
+textarea {
     border-radius: var(--radius);
     border: 1px solid hsl(var(--input));
-    background-color: transparent;
-    /* or var(--background) */
     padding: 0.5rem 0.75rem;
     font-size: 0.875rem;
+    color: hsl(var(--foreground)) !important;
+    background-color: hsl(var(--background)) !important;
+}
+
+select option {
+    background-color: hsl(var(--background));
     color: hsl(var(--foreground));
 }
 
@@ -453,6 +467,7 @@ textarea:focus {
     top: 0;
     width: 200px;
     height: 100vh;
+    height: 100dvh;
     /* Dark Zinc Sidebar usually preferred for contrast, or Card color */
     background-color: #09090b;
     /* Zinc 950 */
@@ -464,6 +479,7 @@ textarea:focus {
     display: flex;
     flex-direction: column;
     overflow-y: auto;
+    padding-bottom: env(safe-area-inset-bottom);
 }
 
 #sidebar.active {
@@ -484,8 +500,8 @@ textarea:focus {
 }
 
 .sidebar-nav {
-    padding: 0.5rem 0;
-    /* Reduced from 1rem */
+    padding: 0.5rem 0 3rem 0;
+    /* Extra padding at bottom to prevent cutoff on mobile */
     flex: 1;
 }
 
@@ -6005,8 +6021,8 @@ th {
     height: 14px;
 }
 
-.att-btn.att-going { border-color: #22c55e; color: #22c55e; }
 .att-btn.att-maybe { border-color: #f59e0b; color: #f59e0b; }
+.att-btn.att-going { border-color: #22c55e; color: #22c55e; }
 .att-btn.att-not-going { border-color: #ef4444; color: #ef4444; }
 .att-btn.att-info { border-color: var(--border-color); color: var(--text-main); }
 
@@ -6079,7 +6095,7 @@ th {
 .status-going { background: #22c55e; }
 .status-maybe { background: #f59e0b; }
 .status-not-going { background: #ef4444; }
-.status-absence { background: #f59e0b; border: 1px solid #d97706; }
+.status-absence { background: #6366f1; border: 1px solid #4f46e5; }
 .status-none { background: #94a3b8; opacity: 0.5; }
 
 .trainer-att-controls {
@@ -6258,4 +6274,115 @@ th[data-sort].sorted-desc::after {
     content: '↓';
     opacity: 1;
     color: var(--heim-color, #dc3545);
+}
+
+/* --- ROSTER LIST & PLAYER CARDS --- */
+.roster-player-card {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 16px;
+    background: hsl(var(--card));
+    border: 1px solid hsl(var(--border));
+    border-radius: var(--radius);
+    margin-bottom: 8px;
+    transition: all 0.2s ease;
+}
+
+.roster-player-card:hover {
+    border-color: hsl(var(--primary) / 0.5);
+    background: hsl(var(--muted) / 0.3);
+}
+
+.roster-player-card.is-editing {
+    border: 2px solid hsl(var(--primary));
+    background: hsl(var(--primary) / 0.05);
+    box-shadow: 0 0 15px hsl(var(--primary) / 0.1);
+    transform: scale(1.01);
+}
+
+.roster-player-info {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex: 1;
+}
+
+.roster-player-number {
+    width: 32px;
+    height: 32px;
+    background: hsl(var(--muted));
+    color: hsl(var(--foreground));
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    font-size: 0.85rem;
+    flex-shrink: 0;
+}
+
+.inline-edit-number, .inline-edit-name {
+    background: hsl(var(--background));
+    color: hsl(var(--foreground));
+    border: 1px solid hsl(var(--border));
+    font-family: inherit;
+    border-radius: 4px;
+    padding: 4px 8px;
+    transition: border-color 0.2s;
+}
+
+.inline-edit-number {
+    flex: 0 0 58px !important;
+    width: 58px !important;
+    text-align: center;
+    font-weight: 700;
+    /* Hide spin buttons */
+    -webkit-appearance: none;
+    -moz-appearance: textfield;
+}
+
+.inline-edit-number::-webkit-outer-spin-button,
+.inline-edit-number::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+}
+
+.inline-edit-name {
+    flex: 1;
+    min-width: 100px;
+}
+
+.inline-edit-number:focus, .inline-edit-name:focus {
+    outline: none;
+    border-color: hsl(var(--primary));
+    box-shadow: 0 0 0 2px hsl(var(--primary) / 0.2);
+}
+
+.roster-player-actions {
+    display: flex;
+    gap: 6px;
+}
+
+/* Inactive / Staff indicators */
+.roster-player-card.is-inactive {
+    opacity: 0.6;
+}
+
+.roster-player-number.is-empty {
+    background: transparent;
+    border: 1.5px dashed hsl(var(--muted));
+    color: hsl(var(--muted-foreground));
+    font-size: 0.75rem;
+}
+
+/* Absence Modal UI */
+.shadcn-btn-outline.active {
+    background-color: hsl(var(--primary));
+    color: hsl(var(--primary-foreground));
+    border-color: hsl(var(--primary));
+}
+
+#absenceWeeklySettings select {
+    width: 100%;
 }

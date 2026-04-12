@@ -6,7 +6,9 @@ import {
     mergeRemoteSpielstand, resetSpielstand 
 } from './modules/state.js';
 import { 
-    onAuthChange, firebaseLogin, firebaseRegister, loginWithGoogle 
+    onAuthChange, firebaseLogin, firebaseRegister, loginWithGoogle, redeemInviteToken,
+    startSpielstandListener, linkMemberToRoster, checkIfOnboardingNeeded, 
+    verifyMembership, handleAccessDenied
 } from './modules/firebase.js';
 import {
     toggleDarkMode, 
@@ -24,7 +26,7 @@ import {
 } from './modules/ui.js';
 import { sanitizeHTML, escapeHTML } from './modules/utils.js';
 import { registerEventListeners } from './modules/eventListeners.js';
-import { initCustomDialogs } from './modules/customDialog.js';
+import { initCustomDialogs, customAlert, customPrompt } from './modules/customDialog.js';
 import { initRouter } from './modules/router.js';
 import { initEventListeners } from './modules/events.js';
 import { showTeamSelectionOverlay } from './modules/teamsView.js';
@@ -109,21 +111,76 @@ window.sanitizeHTML = sanitizeHTML;
 window.escapeHTML = escapeHTML;
 window.applyGameMode = applyGameMode;
 
+/**
+ * Starts the realtime syncing with Firebase for the active team.
+ */
+function initRealtimeSync() {
+    import('./modules/firebase.js').then(m => {
+        console.log('[Main] Starting Realtime Sync...');
+        let firstLoad = true;
+        m.startSpielstandListener((remoteData) => {
+            mergeRemoteSpielstand(remoteData);
+            refreshUIFromState();
+            if (firstLoad) {
+                firstLoad = false;
+                // Force router to re-evaluate so roster/calendar render with loaded data
+                window.dispatchEvent(new Event('hashchange'));
+            }
+        });
+    });
+}
+
 // Start Authentication Flow which handles hiding/showing login and initApp
 onAuthChange(
-    (user, profile) => {
+    async (user, profile) => {
         // Logged in
         const overlay = document.getElementById('firebaseLoginOverlay');
         if (overlay) overlay.style.display = 'none';
         initCustomDialogs();
-        initApp();
+
+        // Redeem pending invite if any
+        const pendingInvite = sessionStorage.getItem('pendingInviteToken');
+        if (pendingInvite) {
+            sessionStorage.removeItem('pendingInviteToken');
+            const res = await redeemInviteToken(pendingInvite);
+            if (res.success) {
+                await customAlert(`Erfolgreich dem Team "${res.teamName}" beigetreten!`, 'Willkommen!');
+            } else {
+                customAlert(`Einladung konnte nicht eingelöst werden: ${res.error}`);
+            }
+        }
 
         // Ensure team is selected if not restored
-        if (!getActiveTeamId()) {
-            showTeamSelectionOverlay(profile, (teamId) => {
-                // Team selected, refresh UI
+        const restoredId = getActiveTeamId();
+
+        if (!restoredId) {
+            initApp(true); // Initialize without local data first
+            showTeamSelectionOverlay(profile, async (teamId) => {
+                // Team selected, check if onboarding needed
+                const needsOnboarding = await checkIfOnboardingNeeded(teamId);
+                if (needsOnboarding) {
+                    const name = await customPrompt('Willkommen im Team! Wie heißt du? (Wird im Kader angezeigt)', 'Dein Name');
+                    if (name && name.trim()) {
+                        await linkMemberToRoster(teamId, name.trim());
+                        await customAlert(`Du wurdest als "${name}" im Kader eingetragen.`, 'Erfolg ✓');
+                    }
+                }
+
+                // Refresh UI and start sync
                 refreshUIFromState();
+                initRealtimeSync();
             });
+        } else {
+            // Already have a team, just start sync but verify membership first
+            (async () => {
+                const isStillMember = await verifyMembership(restoredId);
+                if (!isStillMember) {
+                    await handleAccessDenied();
+                } else {
+                    initApp(); // Now safe to initialize with data
+                    initRealtimeSync();
+                }
+            })();
         }
     },
     () => {
@@ -135,6 +192,15 @@ onAuthChange(
 
 // Setup Login Form Listeners
 document.addEventListener('DOMContentLoaded', () => {
+    // Check for invite token in URL and save it
+    const urlParams = new URLSearchParams(window.location.search);
+    const inviteToken = urlParams.get('invite');
+    if (inviteToken) {
+        sessionStorage.setItem('pendingInviteToken', inviteToken);
+        const newUrl = window.location.origin + window.location.pathname + window.location.hash;
+        window.history.replaceState(null, '', newUrl);
+    }
+
     const loginBtn = document.getElementById('loginSubmitBtn');
     const googleBtn = document.getElementById('googleLoginBtn');
     const toggleModeBtn = document.getElementById('toggleAuthMode');

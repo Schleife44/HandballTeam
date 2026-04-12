@@ -27,6 +27,7 @@ import { renderHomeStatsInHistory, renderOpponentStatsInHistory, openPlayerHisto
 import { sanitizeHTML, escapeHTML } from './securityUtils.js';
 import { selectGameForAnalysis } from './videoAnalysis.js';
 import { navigateTo } from './router.js';
+import { saveSpielstandToFirestoreImmediate } from './firebase.js';
 
 // Internal state for refreshing stats on sort
 let currentGameShowing = null;
@@ -104,6 +105,7 @@ export async function handleSpielBeenden() {
         };
 
         spielstand.uiState = 'roster';
+        spielstand.isSpielAktiv = false;
         spielstand.activeSuspensions = [];
 
         // Reset Player Times
@@ -120,7 +122,10 @@ export async function handleSpielBeenden() {
         // Reset Mode Selection for next game
         spielstand.modeSelected = false;
 
-        speichereSpielstand();
+        // Immediate sync to ensure Firestore is updated before the reload
+        await saveSpielstandToFirestoreImmediate(spielstand);
+        
+        speichereSpielstand(); // Update local storage too
         location.reload();
     }
 }

@@ -9,18 +9,15 @@ import { zeichneRosterListe, zeichneSpielerRaster, oeffneEditModusUI, schliesseE
 import { customAlert, customConfirm } from './customDialog.js';
 import { getContrastTextColor } from './utils.js';
 import { updateRosterInputsForValidation } from './settingsManager.js';
+import { kickMemberFromTeam, getActiveTeamId, getAuthUid } from './firebase.js';
 
 export async function addPlayer(e) {
     if (e && typeof e.preventDefault === 'function') e.preventDefault();
     const name = playerNameInput.value.trim();
-    const number = parseInt(playerNumberInput.value, 10);
+    const rawNumber = playerNumberInput.value.trim();
+    const number = (rawNumber === '' || isNaN(rawNumber)) ? null : parseInt(rawNumber, 10);
     const isGoalkeeper = playerTorwartInput.checked;
     const editIndex = editPlayerIndex.value;
-
-    if (isNaN(number)) {
-        await customAlert("Bitte gib eine gültige Nummer ein.", "Eingabefehler");
-        return;
-    }
 
     // Check if editing opponent
     if (editIndex && editIndex.startsWith('opponent_')) {
@@ -35,24 +32,33 @@ export async function addPlayer(e) {
 
     if (isOpponentMode) {
         // Add to opponent team (Opponents don't have goalie flag yet, or maybe they strictly don't need it)
-        const existingOpponent = spielstand.knownOpponents.find((opp, i) => opp.number === number && i != editIndex);
-        if (existingOpponent) {
-            await customAlert("Diese Nummer ist bereits beim Gegner-Team vergeben.", "Nummer belegt");
-            return;
+        if (number !== null) {
+            const existingOpponent = spielstand.knownOpponents.find((opp, i) => opp.number === number && i != editIndex);
+            if (existingOpponent) {
+                await customAlert("Diese Nummer ist bereits beim Gegner-Team vergeben.", "Nummer belegt");
+                return;
+            }
         }
 
         const isGoalkeeper = playerTorwartInput.checked;
         spielstand.knownOpponents.push({ number, name: name || '', isGoalkeeper });
-        spielstand.knownOpponents.sort((a, b) => a.number - b.number);
+        spielstand.knownOpponents.sort((a, b) => {
+            if (a.number === null && b.number === null) return 0;
+            if (a.number === null) return 1;
+            if (b.number === null) return -1;
+            return a.number - b.number;
+        });
         speichereSpielstand();
         zeichneRosterListe(true);
         zeichneSpielerRaster();
     } else {
         // Add to home team
-        const existierenderSpieler = spielstand.roster.find((p, i) => p.number === number && i != editIndex);
-        if (existierenderSpieler) {
-            await customAlert("Diese Nummer ist bereits vergeben.", "Nummer belegt");
-            return;
+        if (number !== null) {
+            const existierenderSpieler = spielstand.roster.find((p, i) => p.number === number && i != editIndex);
+            if (existierenderSpieler) {
+                await customAlert("Diese Nummer ist bereits vergeben.", "Nummer belegt");
+                return;
+            }
         }
 
         if (editIndex !== "") {
@@ -67,7 +73,12 @@ export async function addPlayer(e) {
             spielstand.roster.push({ name, number, isGoalkeeper });
         }
 
-        spielstand.roster.sort((a, b) => a.number - b.number);
+        spielstand.roster.sort((a, b) => {
+            if (a.number === null && b.number === null) return 0;
+            if (a.number === null) return 1;
+            if (b.number === null) return -1;
+            return a.number - b.number;
+        });
         speichereSpielstand();
         zeichneRosterListe(false);
         zeichneSpielerRaster();
@@ -85,18 +96,116 @@ export async function deletePlayer(index) {
     const player = spielstand.roster[index];
     const confirmed = await customConfirm(`Spieler "${player.name}" wirklich löschen?`, "Spieler löschen?");
     if (confirmed) {
+        let kickSuccess = true;
+        
         // Remove rosterAssignment for this player so the name is freed
+        let uidToDelete = null;
         if (spielstand.rosterAssignments) {
-            const uid = Object.keys(spielstand.rosterAssignments).find(
+            uidToDelete = Object.keys(spielstand.rosterAssignments).find(
                 k => spielstand.rosterAssignments[k] === player.name
             );
-            if (uid) delete spielstand.rosterAssignments[uid];
+            
+            if (uidToDelete) {
+                // Fully kick the user from the team if they are not deleting themselves
+                if (uidToDelete !== getAuthUid()) {
+                    const kickRes = await kickMemberFromTeam(getActiveTeamId(), uidToDelete);
+                    if (!kickRes.success) {
+                        await customAlert(`Fehler beim Kick: ${kickRes.error}`);
+                        kickSuccess = false;
+                    }
+                }
+            }
         }
-        spielstand.roster.splice(index, 1);
-        speichereSpielstand();
-        zeichneRosterListe();
-        zeichneSpielerRaster();
+
+        if (kickSuccess) {
+            // Find ALL UIDs associated with this player name (in case of duplicates)
+            const allUids = spielstand.rosterAssignments 
+                ? Object.keys(spielstand.rosterAssignments).filter(k => spielstand.rosterAssignments[k] === player.name)
+                : [];
+
+            // Cleanup attendance in calendar events
+            if (spielstand.calendarEvents && Array.isArray(spielstand.calendarEvents)) {
+                const manualKey = `manual_${player.name.replace(/\s+/g, '_')}`;
+                
+                spielstand.calendarEvents.forEach(event => {
+                    if (event.responses) {
+                        // 1. Delete by known keys
+                        if (event.responses[manualKey]) delete event.responses[manualKey];
+                        allUids.forEach(uid => {
+                            if (event.responses[uid]) delete event.responses[uid];
+                        });
+
+                        // 2. Search deeper: delete any response where the internal name matches
+                        Object.keys(event.responses).forEach(key => {
+                            const resp = event.responses[key];
+                            if (resp && resp.name === player.name) {
+                                delete event.responses[key];
+                            }
+                        });
+                    }
+                });
+            }
+
+            // Cleanup absences
+            if (spielstand.absences && Array.isArray(spielstand.absences)) {
+                spielstand.absences = spielstand.absences.filter(abs => {
+                    const isNameMatch = abs.name === player.name;
+                    const isUidMatch = uidToDelete && abs.uid === uidToDelete;
+                    return !(isNameMatch || isUidMatch);
+                });
+            }
+
+            // Finally, clean up the assignment and the roster entry
+            if (uidToDelete && spielstand.rosterAssignments) {
+                delete spielstand.rosterAssignments[uidToDelete];
+            }
+            spielstand.roster.splice(index, 1);
+
+            speichereSpielstand();
+            zeichneRosterListe();
+            zeichneSpielerRaster();
+        }
     }
+}
+
+export async function saveInlinePlayer(index, newName, newNumber, isOpponent, isInactive = false) {
+    const list = isOpponent ? spielstand.knownOpponents : spielstand.roster;
+    const player = list[index];
+    if (!player) return;
+
+    const oldName = player.name;
+    const oldNumber = player.number;
+
+    // Normalize number
+    const normalizedNumber = (newNumber === '' || isNaN(newNumber)) ? null : parseInt(newNumber, 10);
+
+    // Check if number is already taken by someone else
+    if (normalizedNumber !== null) {
+        const exists = list.find((p, i) => i !== index && p.number === normalizedNumber);
+        if (exists) {
+            await customAlert(`Die Nummer #${normalizedNumber} ist bereits vergeben.`, "Nummer belegt");
+            return;
+        }
+    }
+
+    player.name = newName.trim();
+    player.number = normalizedNumber;
+    player.isInactive = isInactive;
+
+    if (!isOpponent && spielstand.rosterAssignments && oldName !== player.name) {
+        // Update rosterAssignments if name changed
+        const uid = Object.keys(spielstand.rosterAssignments).find(k => spielstand.rosterAssignments[k] === oldName);
+        if (uid) {
+            spielstand.rosterAssignments[uid] = player.name;
+        }
+    }
+
+    list.sort((a,b) => a.number - b.number);
+    speichereSpielstand();
+    
+    const { setInlineEditing } = await import('./ui.js');
+    setInlineEditing(null, null); // Redraws list automatically
+    zeichneSpielerRaster();
 }
 
 export function oeffneEditModus(index) {
