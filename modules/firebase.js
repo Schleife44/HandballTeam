@@ -48,6 +48,7 @@ let activeTeamId = null;
 let activeGameId = 'current';
 
 let saveDebounceTimer = null;
+let staticSaveDebounceTimer = null; // Separate timer for large/static data
 let teamsSaveDebounceTimer = null;
 let snapshotUnsubscribe = null;
 let isReceivingRemoteUpdate = false;
@@ -777,8 +778,8 @@ export async function saveSpielstandToFirestoreImmediate(spielstand) {
     if (!activeTeamId) return;
     try {
         updateStatusIndicator('saving');
-        const payload = buildFirestorePayload(spielstand);
-        await setDoc(getGameDoc(activeTeamId, activeGameId), payload);
+        const payload = buildFirestorePayload(spielstand, 'all');
+        await updateDoc(getGameDoc(activeTeamId, activeGameId), payload);
         updateStatusIndicator('online');
     } catch (err) {
         console.error('[Firebase] Immediate save error:', err);
@@ -788,26 +789,44 @@ export async function saveSpielstandToFirestoreImmediate(spielstand) {
 }
 
 /**
- * Save spielstand to Firestore (debounced by 500ms to avoid thundering writes).
- * @param {Object} spielstand - The full game state object
+ * Optimized Save: Splits data into groups to reduce writes and bandwidth.
  */
 export function saveSpielstandToFirestore(spielstand) {
     if (!isOnline || isReceivingRemoteUpdate || !activeTeamId) return;
 
+    // ─── 1. Volatile Data (High Frequency) ───
+    // Includes Score, Timer (sync events), and active suspensions.
     clearTimeout(saveDebounceTimer);
     saveDebounceTimer = setTimeout(async () => {
         if (isReceivingRemoteUpdate) return;
-        
         try {
             updateStatusIndicator('saving');
-            const payload = buildFirestorePayload(spielstand);
-            await setDoc(getGameDoc(activeTeamId, activeGameId), payload);
+            const payload = buildFirestorePayload(spielstand, 'volatile');
+            await updateDoc(getGameDoc(activeTeamId, activeGameId), payload);
             updateStatusIndicator('online');
         } catch (err) {
-            console.error('[Firebase] Save error:', err);
+            console.error('[Firebase] Volatile save error:', err);
+            // Fallback: If doc doesn't exist yet, use setDoc
+            if (err.code === 'not-found') {
+                await setDoc(getGameDoc(activeTeamId, activeGameId), buildFirestorePayload(spielstand, 'all'));
+            }
             updateStatusIndicator('error');
         }
-    }, 500);
+    }, 800); // Slightly increased debounce for cost saving
+
+    // ─── 2. Static/Large Data (Low Frequency) ───
+    // Includes Roster, GameLog, Settings, Calendar.
+    clearTimeout(staticSaveDebounceTimer);
+    staticSaveDebounceTimer = setTimeout(async () => {
+        if (isReceivingRemoteUpdate) return;
+        try {
+            console.log('[Firebase] Saving static/large data chunk...');
+            const payload = buildFirestorePayload(spielstand, 'static');
+            await updateDoc(getGameDoc(activeTeamId, activeGameId), payload);
+        } catch (err) {
+            console.error('[Firebase] Static save error:', err);
+        }
+    }, 5000); // Save large data only every 5 seconds max
 }
 
 /**
@@ -953,30 +972,47 @@ export function startTeamsListener(callback) {
 // ─── Helper: Build Firestore Payload ──────────────────────────────────────────
 /**
  * Build a clean, Firestore-safe payload from spielstand.
- * Strips non-serializable values and adds lastUpdated timestamp.
+ * @param {Object} spielstand
+ * @param {'volatile'|'static'|'all'} category
  */
-function buildFirestorePayload(spielstand) {
-    // Deep clone and strip undefined values (Firestore doesn't like them)
+function buildFirestorePayload(spielstand, category = 'all') {
     const clean = JSON.parse(JSON.stringify(spielstand));
+    const payload = {};
 
-    return {
-        score: clean.score || { heim: 0, gegner: 0 },
-        gameLog: clean.gameLog || [],
-        timer: clean.timer || {},
-        roster: clean.roster || [],
-        knownOpponents: clean.knownOpponents || [],
-        settings: clean.settings || {},
-        activeSuspensions: clean.activeSuspensions || [],
-        calendarEvents: clean.calendarEvents || [],
-        calendarSubscriptions: clean.calendarSubscriptions || [],
-        uiState: clean.uiState || 'setup',
-        gameMode: clean.gameMode || 'complex',
-        modeSelected: clean.modeSelected || false,
-        rosterAssignments: clean.rosterAssignments || {},
-        absences: clean.absences || [],
-        isSpielAktiv: clean.isSpielAktiv || false,
-        lastUpdated: Date.now()
-    };
+    if (category === 'volatile' || category === 'all') {
+        payload.score = clean.score || { heim: 0, gegner: 0 };
+        payload.activeSuspensions = clean.activeSuspensions || [];
+        payload.isSpielAktiv = clean.isSpielAktiv || false;
+        payload.uiState = clean.uiState || 'setup';
+        
+        // Timer sync: Only send if paused or reset to minimize "clock jitter" saves
+        // while allowing remote devices to know the state.
+        if (clean.timer) {
+            payload.timer = {
+                gamePhase: clean.timer.gamePhase,
+                istPausiert: clean.timer.istPausiert,
+                verstricheneSekundenBisher: clean.timer.verstricheneSekundenBisher
+            };
+        }
+    }
+
+    if (category === 'static' || category === 'all') {
+        payload.gameLog = clean.gameLog || [];
+        payload.roster = clean.roster || [];
+        payload.knownOpponents = clean.knownOpponents || [];
+        payload.settings = clean.settings || {};
+        payload.calendarEvents = clean.calendarEvents || [];
+        payload.calendarSubscriptions = clean.calendarSubscriptions || [];
+        payload.rosterAssignments = clean.rosterAssignments || {};
+        payload.absences = clean.absences || [];
+        payload.gameMode = clean.gameMode || 'complex';
+        payload.modeSelected = clean.modeSelected || false;
+    }
+
+    payload.lastUpdated = Date.now();
+    payload.saveCategory = category;
+
+    return payload;
 }
 
 // ─── UI: Status Indicator ──────────────────────────────────────────────────────

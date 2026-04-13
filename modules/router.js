@@ -4,7 +4,7 @@ import {
     rosterBereich, spielBereich, calendarBereich,
     seasonBereich, historieBereich, settingsBereich,
     liveOverviewBereich, shotsBereich, liveHeatmapBereich,
-    protokollBereich,
+    protokollBereich, socialMediaBereich,
     sidebar, sidebarOverlay
 } from './dom.js';
 import {
@@ -12,7 +12,7 @@ import {
     applyTheme, updateProtokollAnzeige, zeichneRosterListe
 } from './ui.js';
 import { showDashboardInline } from './dashboardView.js';
-import { updateRosterInputsForValidation, initSettingsPage } from './settingsManager.js';
+import { updateRosterInputsForValidation, initSettingsPage, initSocialMediaSettings } from './settingsManager.js';
 import { renderHistoryList } from './historyView.js';
 import { openSeasonOverview } from './seasonView.js';
 
@@ -113,6 +113,11 @@ const routes = {
         const tbBereich = document.getElementById('tacticalBoardBereich');
         if (tbBereich) tbBereich.classList.remove('versteckt');
         import('./tacticalBoardView.js').then(mod => mod.initTacticalBoard());
+    },
+    'socialmedia': () => {
+        hideAllSections();
+        if (socialMediaBereich) socialMediaBereich.classList.remove('versteckt');
+        initSocialMediaSettings();
     }
 };
 
@@ -129,6 +134,7 @@ function hideAllSections() {
         document.getElementById('videoAnalyseBereich'),
         document.getElementById('tacticalBoardBereich'),
         document.getElementById('dashboardBereich'),
+        socialMediaBereich,
         historieDetailBereich
     ];
     sections.forEach(s => {

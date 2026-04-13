@@ -95,6 +95,11 @@
 
             <div class="nav-group-label">System</div>
 
+            <div class="nav-item" data-action="nav" data-view="socialmedia">
+                <span class="nav-icon"><i data-lucide="camera"></i></span>
+                <span class="nav-label">Social Media</span>
+            </div>
+
             <div class="nav-item" data-action="nav" data-view="settings">
                 <span class="nav-icon"><i data-lucide="settings"></i></span>
                 <span class="nav-label">Einstellungen</span>
@@ -725,12 +730,128 @@
         </div>
 
         <!-- Settings Page Section -->
+        <!-- SECTION: SOCIAL MEDIA -->
+        <div id="socialMediaBereich" class="content-section versteckt" style="max-width: 800px; margin: 0 auto;">
+            <div class="section-header" style="text-align: center;">
+                <h1>Social Media</h1>
+                <p class="text-muted">Designe und teile deine Spielergebnisse</p>
+            </div>
+
+            <div class="settings-grid" style="display: flex; justify-content: center; gap: 20px;">
+                <!-- Card: Design-Konfiguration -->
+                <div class="settings-card shadcn-card">
+                    <h4 style="margin-top: 0; margin-bottom: 15px; border-bottom: 2px solid #e1306c; padding-bottom: 10px; display: inline-block;">
+                        Ergebnisbild-Konfiguration
+                    </h4>
+                    <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 15px;">
+                        Konfiguriere das automatische Instagram-Ergebnisbild.
+                    </p>
+                    <div style="display: flex; flex-direction: column; gap: 16px;">
+
+                        <!-- Background Image Upload -->
+                        <div class="setting-row" style="display: flex; flex-direction: column; gap: 6px;">
+                            <label style="font-weight: 500;">Hintergrundbild</label>
+                            <div style="display: flex; gap: 8px; align-items: center;">
+                                <button id="smBgUploadBtn" class="shadcn-btn-outline" style="flex: 1; font-size: 0.8rem;">
+                                    <i data-lucide="image" style="width: 14px; height: 14px; margin-right: 6px;"></i>
+                                    Bild wählen
+                                </button>
+                                <input type="file" id="smBgFileInput" class="versteckt" accept="image/*">
+                                <div id="smBgPreview" class="sm-image-preview" style="width: 50px; height: 50px; border-radius: 8px; background: var(--bg-secondary); border: 1px solid var(--border-color); overflow: hidden; display: flex; align-items: center; justify-content: center;">
+                                    <i data-lucide="image-off" style="width: 18px; height: 18px; color: var(--text-muted);"></i>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Team Logo Upload -->
+                        <div class="setting-row" style="display: flex; flex-direction: column; gap: 6px;">
+                            <label style="font-weight: 500;">Team-Logo</label>
+                            <div style="display: flex; gap: 8px; align-items: center;">
+                                <button id="smLogoUploadBtn" class="shadcn-btn-outline" style="flex: 1; font-size: 0.8rem;">
+                                    <i data-lucide="shield" style="width: 14px; height: 14px; margin-right: 6px;"></i>
+                                    Logo wählen
+                                </button>
+                                <input type="file" id="smLogoFileInput" class="versteckt" accept="image/*">
+                                <div id="smLogoPreview" class="sm-image-preview" style="width: 50px; height: 50px; border-radius: 8px; background: var(--bg-secondary); border: 1px solid var(--border-color); overflow: hidden; display: flex; align-items: center; justify-content: center;">
+                                    <i data-lucide="shield-off" style="width: 18px; height: 18px; color: var(--text-muted);"></i>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Font Family -->
+                        <div class="setting-row" style="display: flex; justify-content: space-between; align-items: center;">
+                            <label for="smFontFamily" style="font-weight: 500;">Schriftart</label>
+                            <select id="smFontFamily" class="shadcn-input" style="width: 160px; font-size: 0.85rem;">
+                                <option value="Oswald">Oswald</option>
+                                <option value="Bebas Neue">Bebas Neue</option>
+                                <option value="Montserrat">Montserrat</option>
+                                <option value="Inter">Inter</option>
+                                <option value="Roboto Condensed">Roboto Condensed</option>
+                            </select>
+                        </div>
+
+                        <!-- Season Name -->
+                        <div class="setting-row" style="display: flex; justify-content: space-between; align-items: center;">
+                            <label for="smSeasonName" style="font-weight: 500;">Saison</label>
+                            <input type="text" id="smSeasonName" class="shadcn-input" placeholder="25/26" style="width: 120px; text-align: center;">
+                        </div>
+
+                        <!-- Team Label -->
+                        <div class="setting-row" style="display: flex; justify-content: space-between; align-items: center;">
+                            <label for="smTeamLabel" style="font-weight: 500;">Mannschaft</label>
+                            <input type="text" id="smTeamLabel" class="shadcn-input" placeholder="1. Herren" style="width: 160px;">
+                        </div>
+
+                        <!-- Overlay Opacity -->
+                        <div class="setting-row" style="display: flex; flex-direction: column; gap: 6px;">
+                            <div style="display: flex; justify-content: space-between; align-items: center;">
+                                <label style="font-weight: 500;">Bild verdunkeln</label>
+                                <span id="smOverlayValue" style="font-size: 0.8rem; color: var(--text-muted);">55%</span>
+                            </div>
+                            <input type="range" id="smOverlayOpacity" min="0" max="100" value="55" style="width: 100%; accent-color: var(--btn-primary);">
+                        </div>
+
+                        <!-- Team Colors -->
+                        <div style="display: flex; gap: 12px;">
+                            <div class="setting-row" style="display: flex; align-items: center; gap: 8px; flex: 1;">
+                                <label style="font-weight: 500; font-size: 0.85rem;">Heim Farbe</label>
+                                <input type="color" id="smOwnTeamColor" value="#ffffff" style="width: 32px; height: 32px; border: none; cursor: pointer; border-radius: 6px;">
+                            </div>
+                            <div class="setting-row" style="display: flex; align-items: center; gap: 8px; flex: 1;">
+                                <label style="font-weight: 500; font-size: 0.85rem;">Gast Farbe</label>
+                                <input type="color" id="smOpponentColor" value="#ef4444" style="width: 32px; height: 32px; border: none; cursor: pointer; border-radius: 6px;">
+                            </div>
+                        </div>
+
+                        <!-- Editor Button -->
+                        <div style="margin-top: 8px; display: flex; gap: 8px;">
+                            <button id="openSmEditorBtn" class="shadcn-btn-primary" style="flex: 2;">
+                                <i data-lucide="layout-template" style="width: 16px; height: 16px; margin-right: 8px;"></i>
+                                Layout im Editor anpassen
+                            </button>
+                            <button id="manageSmDesignsBtn" class="shadcn-btn-outline" style="flex: 1; padding: 0 8px;" title="Gespeicherte Designs">
+                                <i data-lucide="library" style="width: 16px; height: 16px; margin-right: 4px;"></i>
+                                Designs
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- SECTION: SETTINGS -->
         <div id="settingsBereich" class="versteckt">
             <div style="padding: 20px; max-width: 800px; margin: 0 auto;">
-                <h2>Einstellungen</h2>
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                    <h2 style="margin: 0;">Einstellungen</h2>
+                    <button id="saveAllSettingsBtn" class="shadcn-btn-primary" style="display: flex; align-items: center; gap: 8px;">
+                        <i data-lucide="save" style="width: 18px; height: 18px;"></i>
+                        Speichern
+                    </button>
+                </div>
 
                 <div
-                    style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; margin-top: 20px;">
+                    style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px;">
 
 
                     <!-- Card 2: General Settings -->
@@ -889,105 +1010,7 @@
                     </div>
                 </div>
 
-                <!-- Card 6: Social Media -->
-                <div class="settings-card shadcn-card">
-                    <h4
-                        style="margin-top: 0; margin-bottom: 15px; border-bottom: 2px solid #e1306c; padding-bottom: 10px; display: inline-block;">
-                        📱 Social Media</h4>
-                    <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 15px;">
-                        Konfiguriere das automatische Instagram-Ergebnisbild.
-                    </p>
-                    <div style="display: flex; flex-direction: column; gap: 16px;">
 
-                        <!-- Background Image Upload -->
-                        <div class="setting-row" style="display: flex; flex-direction: column; gap: 6px;">
-                            <label style="font-weight: 500;">Hintergrundbild</label>
-                            <div style="display: flex; gap: 8px; align-items: center;">
-                                <button id="smBgUploadBtn" class="shadcn-btn-outline" style="flex: 1; font-size: 0.8rem;">
-                                    <i data-lucide="image" style="width: 14px; height: 14px; margin-right: 6px;"></i>
-                                    Bild wählen
-                                </button>
-                                <input type="file" id="smBgFileInput" class="versteckt" accept="image/*">
-                                <div id="smBgPreview" class="sm-image-preview" style="width: 50px; height: 50px; border-radius: 8px; background: var(--bg-secondary); border: 1px solid var(--border-color); overflow: hidden; display: flex; align-items: center; justify-content: center;">
-                                    <i data-lucide="image-off" style="width: 18px; height: 18px; color: var(--text-muted);"></i>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Team Logo Upload -->
-                        <div class="setting-row" style="display: flex; flex-direction: column; gap: 6px;">
-                            <label style="font-weight: 500;">Team-Logo</label>
-                            <div style="display: flex; gap: 8px; align-items: center;">
-                                <button id="smLogoUploadBtn" class="shadcn-btn-outline" style="flex: 1; font-size: 0.8rem;">
-                                    <i data-lucide="shield" style="width: 14px; height: 14px; margin-right: 6px;"></i>
-                                    Logo wählen
-                                </button>
-                                <input type="file" id="smLogoFileInput" class="versteckt" accept="image/*">
-                                <div id="smLogoPreview" class="sm-image-preview" style="width: 50px; height: 50px; border-radius: 8px; background: var(--bg-secondary); border: 1px solid var(--border-color); overflow: hidden; display: flex; align-items: center; justify-content: center;">
-                                    <i data-lucide="shield-off" style="width: 18px; height: 18px; color: var(--text-muted);"></i>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Font Family -->
-                        <div class="setting-row" style="display: flex; justify-content: space-between; align-items: center;">
-                            <label for="smFontFamily" style="font-weight: 500;">Schriftart</label>
-                            <select id="smFontFamily" class="shadcn-input" style="width: 160px; font-size: 0.85rem;">
-                                <option value="Oswald">Oswald</option>
-                                <option value="Bebas Neue">Bebas Neue</option>
-                                <option value="Montserrat">Montserrat</option>
-                                <option value="Inter">Inter</option>
-                                <option value="Roboto Condensed">Roboto Condensed</option>
-                            </select>
-                        </div>
-
-                        <!-- Season Name -->
-                        <div class="setting-row" style="display: flex; justify-content: space-between; align-items: center;">
-                            <label for="smSeasonName" style="font-weight: 500;">Saison</label>
-                            <input type="text" id="smSeasonName" class="shadcn-input" placeholder="25/26" style="width: 120px; text-align: center;">
-                        </div>
-
-                        <!-- Team Label -->
-                        <div class="setting-row" style="display: flex; justify-content: space-between; align-items: center;">
-                            <label for="smTeamLabel" style="font-weight: 500;">Mannschaft</label>
-                            <input type="text" id="smTeamLabel" class="shadcn-input" placeholder="1. Herren" style="width: 160px;">
-                        </div>
-
-                        <!-- Overlay Opacity -->
-                        <div class="setting-row" style="display: flex; flex-direction: column; gap: 6px;">
-                            <div style="display: flex; justify-content: space-between; align-items: center;">
-                                <label style="font-weight: 500;">Bild verdunkeln</label>
-                                <span id="smOverlayValue" style="font-size: 0.8rem; color: var(--text-muted);">55%</span>
-                            </div>
-                            <input type="range" id="smOverlayOpacity" min="0" max="100" value="55" style="width: 100%; accent-color: var(--btn-primary);">
-                        </div>
-
-                        <!-- Team Colors -->
-                        <div style="display: flex; gap: 12px;">
-                            <div class="setting-row" style="display: flex; align-items: center; gap: 8px; flex: 1;">
-                                <label style="font-weight: 500; font-size: 0.85rem;">Eig. Team Farbe</label>
-                                <input type="color" id="smOwnTeamColor" value="#ffffff" style="width: 32px; height: 32px; border: none; cursor: pointer; border-radius: 6px;">
-                            </div>
-                            <div class="setting-row" style="display: flex; align-items: center; gap: 8px; flex: 1;">
-                                <label style="font-weight: 500; font-size: 0.85rem;">Gegner Farbe</label>
-                                <input type="color" id="smOpponentColor" value="#ef4444" style="width: 32px; height: 32px; border: none; cursor: pointer; border-radius: 6px;">
-                            </div>
-                        </div>
-
-                        <!-- Editor Button -->
-                        <div style="margin-top: 8px; display: flex; gap: 8px;">
-                            <button id="openSmEditorBtn" class="shadcn-btn-primary" style="flex: 2;">
-                                <i data-lucide="layout-template" style="width: 16px; height: 16px; margin-right: 8px;"></i>
-                                Layout im Editor anpassen
-                            </button>
-                            <button id="manageSmDesignsBtn" class="shadcn-btn-outline" style="flex: 1; padding: 0 8px;" title="Gespeicherte Designs">
-                                <i data-lucide="library" style="width: 16px; height: 16px; margin-right: 4px;"></i>
-                                Designs
-                            </button>
-                        </div>
-
-                    </div>
-                </div>
 
                 <!-- Card 4: Team-Verwaltung (Gefahrenzone) -->
                 <div class="settings-card shadcn-card"

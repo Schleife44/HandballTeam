@@ -229,31 +229,41 @@ export function zeichneSpielerRaster() {
 
 export function updateProtokollAnzeige() {
     if (!protokollAusgabe) return;
-    protokollAusgabe.innerHTML = '';
-    
-    const protokollContent = document.getElementById('protokollWrapper');
-    const emptyState = document.getElementById('protokollEmptyState');
+    try {
+        protokollAusgabe.innerHTML = '';
+        
+        const protokollContent = document.getElementById('protokollWrapper');
+        const emptyState = document.getElementById('protokollEmptyState');
 
-    if (!spielstand.isSpielAktiv) {
-        if (protokollContent) protokollContent.classList.add('versteckt');
-        if (emptyState) {
-            emptyState.classList.remove('versteckt');
-            renderEmptyLiveState(emptyState);
+        if (!spielstand.isSpielAktiv) {
+            if (protokollContent) protokollContent.classList.add('versteckt');
+            if (emptyState) {
+                emptyState.classList.remove('versteckt');
+                renderEmptyLiveState(emptyState);
+            }
+            return;
         }
-        return;
+
+        if (protokollContent) protokollContent.classList.remove('versteckt');
+        if (emptyState) emptyState.classList.add('versteckt');
+
+        if (!Array.isArray(spielstand.gameLog)) {
+            console.warn('[UI] gameLog is not an array, resetting to empty.');
+            spielstand.gameLog = [];
+        }
+
+        spielstand.gameLog.slice().reverse().forEach((e, i) => {
+            if (!e) return;
+            const div = document.createElement('div');
+            div.className = 'log-entry';
+            const num = e.playerId || e.gegnerNummer || '?';
+            const name = e.playerName || (e.gegnerNummer ? `Gegner #${e.gegnerNummer}` : '');
+            div.innerHTML = sanitizeHTML(`<span class="log-time">${e.time || '--:--'}</span><span class="log-text"><strong>#${num} ${name}</strong>: ${e.action || ''}</span>`);
+            protokollAusgabe.appendChild(div);
+        });
+    } catch (err) {
+        console.error('[UI] Failed to update Protokoll:', err);
     }
-
-    if (protokollContent) protokollContent.classList.remove('versteckt');
-    if (emptyState) emptyState.classList.add('versteckt');
-
-    spielstand.gameLog.slice().reverse().forEach((e, i) => {
-        const div = document.createElement('div');
-        div.className = 'log-entry';
-        const num = e.playerId || e.gegnerNummer || '?';
-        const name = e.playerName || (e.gegnerNummer ? `Gegner #${e.gegnerNummer}` : '');
-        div.innerHTML = sanitizeHTML(`<span class="log-time">${e.time}</span><span class="log-text"><strong>#${num} ${name}</strong>: ${e.action}</span>`);
-        protokollAusgabe.appendChild(div);
-    });
 }
 
 export function zeichneStatistikTabelle(statsData) {}

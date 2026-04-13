@@ -49,6 +49,7 @@ export const historieDetailBereich = document.getElementById('historieDetailBere
 export const historieHeader = document.getElementById('historieHeader');
 export const liveHeatmapBereich = document.getElementById('liveHeatmapBereich');
 export const protokollBereich = document.getElementById('protokollBereich');
+export const socialMediaBereich = document.getElementById('socialMediaBereich');
 
 export const historyButtonInline = null;
 export const seasonOverviewButtonInline = null;

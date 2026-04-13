@@ -1,4 +1,4 @@
-import { spielstand, speichereSpielstand } from './state.js';
+import { spielstand, speichereSpielstand, speichereSpielstandSofort } from './state.js';
 import { customAlert, customConfirm } from './customDialog.js';
 import { createInviteToken, getActiveTeamId, getCurrentUserProfile, leaveTeam, deleteTeam } from './firebase.js';
 
@@ -148,6 +148,36 @@ export function updateSettingsUI() {
  * Initializes the settings page and syncs UI with spielstand.settings
  */
 export function initSettingsPage() {
+    const saveAllSettingsBtn = document.getElementById('saveAllSettingsBtn');
+    if (saveAllSettingsBtn) {
+        saveAllSettingsBtn.onclick = async () => {
+            try {
+                saveAllSettingsBtn.disabled = true;
+                const originalContent = saveAllSettingsBtn.innerHTML;
+                saveAllSettingsBtn.innerHTML = '<i data-lucide="loader-2" class="animate-spin" style="width: 18px; height: 18px;"></i> Speichern...';
+                
+                await speichereSpielstandSofort();
+                
+                // Success visual feedback
+                saveAllSettingsBtn.innerHTML = '<i data-lucide="check" style="width: 18px; height: 18px;"></i> Gespeichert';
+                saveAllSettingsBtn.classList.remove('shadcn-btn-primary');
+                saveAllSettingsBtn.classList.add('shadcn-btn-success');
+                
+                setTimeout(() => {
+                    saveAllSettingsBtn.innerHTML = originalContent;
+                    saveAllSettingsBtn.classList.remove('shadcn-btn-success');
+                    saveAllSettingsBtn.classList.add('shadcn-btn-primary');
+                    saveAllSettingsBtn.disabled = false;
+                    if (window.lucide) window.lucide.createIcons();
+                }, 2000);
+            } catch (err) {
+                console.error('[Settings] Manual save failed:', err);
+                saveAllSettingsBtn.disabled = false;
+                saveAllSettingsBtn.innerHTML = '<i data-lucide="alert-circle" style="width: 18px; height: 18px;"></i> Fehler';
+            }
+        };
+    }
+
     console.log('[Settings] Initializing Settings Page UI...');
     
     const myTeamNameInput = document.getElementById('myTeamNameInput');
@@ -384,7 +414,7 @@ export function initSettingsPage() {
 /**
  * Social Media Settings (Instagram Ergebnisbild)
  */
-function initSocialMediaSettings() {
+export function initSocialMediaSettings() {
     // Ensure defaults
     const { ensureSocialMediaSettings } = importSocialMedia();
     

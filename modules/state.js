@@ -1,5 +1,5 @@
 import { formatiereZeit } from './utils.js';
-import { saveSpielstandToFirestore, getAuthUid } from './firebase.js';
+import { saveSpielstandToFirestore, saveSpielstandToFirestoreImmediate, getAuthUid } from './firebase.js';
 
 export const SPEICHER_KEY_BASE = 'handballTeamState';
 
@@ -66,6 +66,12 @@ export function speichereSpielstand() {
     localStorage.setItem(getStorageKey(), JSON.stringify(spielstand));
     // Also sync to Firestore (debounced, non-blocking)
     saveSpielstandToFirestore(spielstand);
+}
+
+export async function speichereSpielstandSofort() {
+    localStorage.setItem(getStorageKey(), JSON.stringify(spielstand));
+    // Force immediate sync to Firestore (ignoring debounces)
+    await saveSpielstandToFirestoreImmediate(spielstand);
 }
 
 export function ladeSpielstandDaten() {
@@ -151,9 +157,25 @@ export function mergeRemoteSpielstand(remoteData) {
             'absences', 'isSpielAktiv'
         ];
 
+        const category = remoteData.saveCategory || 'all';
+        const volatileFields = ['score', 'timer', 'activeSuspensions', 'isSpielAktiv', 'uiState'];
+
         syncFields.forEach(key => {
             if (remoteData[key] !== undefined) {
-                spielstand[key] = remoteData[key];
+                // If the update was specific to a category, only sync those fields
+                // to avoid clobbering local changes in the other category.
+                if (category === 'volatile' && !volatileFields.includes(key)) return;
+                if (category === 'static' && volatileFields.includes(key)) return;
+
+                // --- PATCH: Granular merging for objects like timer ---
+                if (key === 'timer' && typeof remoteData[key] === 'object' && remoteData[key] !== null) {
+                    spielstand.timer = { ...spielstand.timer, ...remoteData[key] };
+                } else if (key === 'settings' && typeof remoteData[key] === 'object' && remoteData[key] !== null) {
+                    // Deep merge settings to avoid losing local-only keys
+                    spielstand.settings = { ...spielstand.settings, ...remoteData[key] };
+                } else {
+                    spielstand[key] = remoteData[key];
+                }
             }
         });
 
