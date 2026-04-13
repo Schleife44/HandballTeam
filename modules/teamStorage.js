@@ -2,7 +2,7 @@ import { spielstand, speichereSpielstand } from './state.js';
 import { zeichneRosterListe, zeichneSpielerRaster, applyTheme } from './ui.js';
 import { customAlert, customConfirm } from './customDialog.js';
 import { getHistorie } from './history.js';
-import { saveTeamsToFirestore } from './firebase.js';
+import { saveTeamsToFirestore, isUserTrainer } from './firebase.js';
 
 const SAVED_TEAMS_KEY = 'handball_saved_teams';
 
@@ -173,6 +173,10 @@ export async function loadSavedTeam(teamKey, index) {
  * Clear the current active team roster
  */
 export async function deleteCurrentTeam() {
+    if (!isUserTrainer()) {
+        await customAlert("Nur Trainer können den aktuellen Kader löschen.", "Berechtigung verweigert");
+        return;
+    }
     const teamToggle = document.getElementById('teamToggle');
     const isOpponentMode = teamToggle && (teamToggle.checked || teamToggle.getAttribute('aria-checked') === 'true');
     const targetType = isOpponentMode ? 'Gegner' : 'Heim';

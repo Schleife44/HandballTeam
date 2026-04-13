@@ -5,6 +5,7 @@ import { drawGoalHeatmap, drawFieldHeatmap, renderHeatmap, setCurrentHeatmapTab,
 import { spielstand, speichereSpielstand, getOpponentLabel, getMyTeamLabel } from './state.js';
 import { getAuthUid, getCurrentUserProfile, isUserTrainer } from './firebase.js';
 
+
 let inlineEditingIndex = null;
 let inlineEditingIsOpp = null;
 
@@ -54,7 +55,8 @@ import {
     liveOverviewHeatmapSvg, liveOverviewTabStats, liveOverviewTabHeatmap,
     liveOverviewContentStats, liveOverviewContentHeatmap, closeLiveGameOverview,
     liveOverviewSubTabTor, liveOverviewSubTabFeld, liveOverviewSubTabKombi,
-    neueGegnerName, neueGegnerTorwart, teamHeaderTitle, teamToggle
+    neueGegnerName, neueGegnerTorwart, teamHeaderTitle, teamToggle,
+    deleteTeamButton, exportTeamButton, importTeamButton, saveTeamButton, loadTeamButton
 } from './dom.js';
 import { renderHomeStatsInHistory, renderOpponentStatsInHistory, openPlayerHistoryHeatmap, currentSort } from './sharedViews.js';
 
@@ -235,6 +237,17 @@ export function zeichneRosterListe(showGastTab = false) {
                                     ? spielstand.rosterAssignments[uid] 
                                     : null;
 
+    // Permissions for global actions
+    const manageDisplay = isTrainer ? 'block' : 'none';
+    if (deleteTeamButton) deleteTeamButton.style.display = manageDisplay;
+    if (exportTeamButton) exportTeamButton.style.display = manageDisplay;
+    if (importTeamButton) importTeamButton.style.display = manageDisplay;
+    if (saveTeamButton) saveTeamButton.style.display = manageDisplay;
+    if (loadTeamButton) loadTeamButton.style.display = manageDisplay;
+
+    // Cache the set of assigned names for quick lookup
+    const assignedNames = new Set(Object.values(spielstand.rosterAssignments || {}));
+
     list.forEach((p, idx) => {
         const div = document.createElement('div');
         div.className = 'roster-player-card';
@@ -244,9 +257,12 @@ export function zeichneRosterListe(showGastTab = false) {
         if (isEditing) {
             div.classList.add('is-editing');
             div.innerHTML = sanitizeHTML(`
-                <div class="roster-player-info">
-                    <input type="number" class="inline-edit-number" value="${p.number || ''}" title="Rückennummer" placeholder="#">
-                    <input type="text" class="inline-edit-name" value="${escapeHTML(p.name || '')}" placeholder="Spielername">
+                <div class="roster-player-info" style="flex-direction: column; align-items: flex-start; gap: 8px;">
+                    <div style="display: flex; gap: 8px; width: 100%;">
+                        <input type="number" class="inline-edit-number" value="${p.number || ''}" title="Rückennummer" placeholder="#">
+                        <input type="text" class="inline-edit-name" value="${escapeHTML(p.name || '')}" placeholder="Spielername">
+                    </div>
+                    <input type="email" class="inline-edit-email" value="${escapeHTML(p.email || '')}" placeholder="E-Mail für Verknüpfung">
                 </div>
                 <div style="display: flex; align-items: center; gap: 8px; margin: 8px 0; padding: 0 4px;">
                     <label style="font-size: 0.75rem; color: var(--text-muted); cursor: pointer; display: flex; align-items: center; gap: 6px;">
@@ -287,6 +303,10 @@ export function zeichneRosterListe(showGastTab = false) {
                     </div>
                 </div>
                 <div class="roster-player-actions">${actionsHtml}</div>
+                ${!isOpp ? `
+                    <div class="account-marker ${p.email || Array.from(assignedNames).some(name => (name || '').trim().toLowerCase() === (p.name || '').trim().toLowerCase()) ? 'linked' : 'not-linked'}" 
+                         title="${p.email || Array.from(assignedNames).some(name => (name || '').trim().toLowerCase() === (p.name || '').trim().toLowerCase()) ? 'Konto verknüpft / E-Mail hinterlegt' : 'Kein Konto verknüpft'}"></div>
+                ` : ''}
             `);
         }
         rosterListe.appendChild(div);

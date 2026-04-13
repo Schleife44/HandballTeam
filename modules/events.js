@@ -296,6 +296,7 @@ export function initEventListeners() {
                         const nameInput = card.querySelector('.inline-edit-name');
                         const numInput = card.querySelector('.inline-edit-number');
                         const inactiveInput = card.querySelector('.inline-edit-inactive');
+                        const emailInput = card.querySelector('.inline-edit-email');
                         if (nameInput && numInput) {
                             const roster = await import('./roster.js');
                             roster.saveInlinePlayer(
@@ -303,7 +304,8 @@ export function initEventListeners() {
                                 nameInput.value, 
                                 numInput.value, 
                                 params.isOpponent === 'true',
-                                inactiveInput ? inactiveInput.checked : false
+                                inactiveInput ? inactiveInput.checked : false,
+                                emailInput ? emailInput.value : ''
                             );
                         }
                     }

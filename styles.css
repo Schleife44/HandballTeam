@@ -6182,18 +6182,6 @@ th {
     display: flex;
     flex-direction: column;
     align-items: center;
-    justify-content: center;
-    gap: 6px;
-    border-radius: 12px;
-    background: var(--card-color, hsl(var(--primary)));
-    color: white;
-    border: 1px solid rgba(255,255,255,0.1);
-    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-    transition: transform 0.2s, box-shadow 0.2s, filter 0.2s;
-    cursor: pointer;
-    position: relative;
-    padding: 10px;
-    text-align: center;
 }
 
 .simple-player-card:hover {
@@ -6436,3 +6424,13 @@ body.dark-mode .field-zones-group:not(.versteckt) .field-zone-path:hover {
     stroke: #2563eb !important;
     stroke-width: 2px !important;
 }
+
+/* Account Status Marker */
+.roster-player-card { position: relative; }
+.account-marker { position: absolute; top: 8px; right: 8px; width: 8px; height: 8px; border-radius: 50%; z-index: 10; box-shadow: 0 0 4px rgba(0,0,0,0.3); }
+.account-marker.linked { background-color: #22c55e; box-shadow: 0 0 8px rgba(34, 197, 94, 0.4); }
+.account-marker.not-linked { background-color: #ef4444; box-shadow: 0 0 8px rgba(239, 68, 68, 0.3); }
+
+/* Inline Edit Email Styles */
+.inline-edit-email { background: hsl(var(--background)); color: hsl(var(--foreground)); border: 1px solid hsl(var(--border)); font-family: inherit; border-radius: 4px; padding: 4px 8px; transition: border-color 0.2s; width: 100% !important; margin-top: 8px; font-size: 0.85rem; }
+.inline-edit-email:focus { outline: none; border-color: hsl(var(--primary)); box-shadow: 0 0 0 2px hsl(var(--primary) / 0.2); }

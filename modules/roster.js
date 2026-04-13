@@ -9,7 +9,7 @@ import { zeichneRosterListe, zeichneSpielerRaster, oeffneEditModusUI, schliesseE
 import { customAlert, customConfirm } from './customDialog.js';
 import { getContrastTextColor } from './utils.js';
 import { updateRosterInputsForValidation } from './settingsManager.js';
-import { kickMemberFromTeam, getActiveTeamId, getAuthUid } from './firebase.js';
+import { kickMemberFromTeam, getActiveTeamId, getAuthUid, updateUserRosterName } from './firebase.js';
 
 export async function addPlayer(e) {
     if (e && typeof e.preventDefault === 'function') e.preventDefault();
@@ -64,9 +64,15 @@ export async function addPlayer(e) {
         if (editIndex !== "") {
             const player = spielstand.roster[parseInt(editIndex, 10)];
             if (player) {
+                const oldName = player.name;
                 player.name = name;
                 player.number = number;
                 player.isGoalkeeper = isGoalkeeper;
+                
+                if (oldName !== name) {
+                    await handlePlayerRename(oldName, name);
+                }
+                
                 schliesseEditModus();
             }
         } else {
@@ -168,7 +174,68 @@ export async function deletePlayer(index) {
     }
 }
 
-export async function saveInlinePlayer(index, newName, newNumber, isOpponent, isInactive = false) {
+export async function handlePlayerRename(oldName, newName) {
+    if (!oldName || !newName || oldName === newName) return;
+
+    if (!spielstand.rosterAssignments) spielstand.rosterAssignments = {};
+    
+    // Find uid associated with oldName
+    const uid = Object.keys(spielstand.rosterAssignments).find(k => spielstand.rosterAssignments[k] === oldName);
+    
+    if (uid) {
+        spielstand.rosterAssignments[uid] = newName;
+        
+        // If current user, update global profile
+        if (uid === getAuthUid()) {
+            try {
+                await updateUserRosterName(newName);
+            } catch (err) {
+                console.error("[Roster] Failed to update global profile after rename:", err);
+            }
+        }
+    }
+
+    // Update Calendar Events
+    if (spielstand.calendarEvents && Array.isArray(spielstand.calendarEvents)) {
+        const oldManualKey = `manual_${oldName.replace(/\\s+/g, '_')}`;
+        const newManualKey = `manual_${newName.replace(/\\s+/g, '_')}`;
+
+        spielstand.calendarEvents.forEach(event => {
+            if (event.responses) {
+                // Update by UID
+                if (uid && event.responses[uid]) {
+                    event.responses[uid].name = newName;
+                }
+                
+                // Update by manual key
+                if (event.responses[oldManualKey]) {
+                    event.responses[newManualKey] = event.responses[oldManualKey];
+                    event.responses[newManualKey].name = newName;
+                    delete event.responses[oldManualKey];
+                }
+                
+                // Search deeper for any remnants
+                Object.keys(event.responses).forEach(key => {
+                    const resp = event.responses[key];
+                    if (resp && resp.name === oldName) {
+                        resp.name = newName;
+                    }
+                });
+            }
+        });
+    }
+
+    // Update Absences
+    if (spielstand.absences && Array.isArray(spielstand.absences)) {
+        spielstand.absences.forEach(abs => {
+            if (abs.name === oldName || (uid && abs.uid === uid)) {
+                abs.name = newName;
+            }
+        });
+    }
+}
+
+export async function saveInlinePlayer(index, newName, newNumber, isOpponent, isInactive = false, newEmail = '') {
     const list = isOpponent ? spielstand.knownOpponents : spielstand.roster;
     const player = list[index];
     if (!player) return;
@@ -191,13 +258,10 @@ export async function saveInlinePlayer(index, newName, newNumber, isOpponent, is
     player.name = newName.trim();
     player.number = normalizedNumber;
     player.isInactive = isInactive;
+    player.email = newEmail.trim();
 
-    if (!isOpponent && spielstand.rosterAssignments && oldName !== player.name) {
-        // Update rosterAssignments if name changed
-        const uid = Object.keys(spielstand.rosterAssignments).find(k => spielstand.rosterAssignments[k] === oldName);
-        if (uid) {
-            spielstand.rosterAssignments[uid] = player.name;
-        }
+    if (!isOpponent && oldName !== player.name) {
+        await handlePlayerRename(oldName, player.name);
     }
 
     list.sort((a,b) => a.number - b.number);
@@ -217,6 +281,10 @@ export function schliesseEditModus() {
 }
 
 export async function deleteEntireTeam() {
+    if (!isUserTrainer()) {
+        await customAlert("Nur Trainer können das gesamte Team löschen.", "Berechtigung verweigert");
+        return;
+    }
     const teamToggle = document.getElementById('teamToggle');
     const isOpponentMode = teamToggle && (teamToggle.checked || teamToggle.getAttribute('aria-checked') === 'true');
     const teamToDelete = isOpponentMode ? spielstand.knownOpponents : spielstand.roster;
@@ -404,6 +472,9 @@ export async function updatePlayerInline(e) {
             await customAlert("Diese Nummer ist bereits vergeben.", "Nummer belegt");
             return;
         }
+        
+        const oldName = spielstand.roster[index].name;
+        
         spielstand.roster[index] = {
             ...spielstand.roster[index],
             name: newName,
@@ -411,6 +482,10 @@ export async function updatePlayerInline(e) {
             isGoalkeeper: isGoalkeeper
         };
         spielstand.roster.sort((a, b) => a.number - b.number);
+        
+        if (oldName !== newName) {
+            await handlePlayerRename(oldName, newName);
+        }
     }
 
     speichereSpielstand();

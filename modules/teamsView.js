@@ -207,9 +207,36 @@ export function showPlayerNameSelection(onComplete) {
         return;
     }
 
-    // 2. NEW: Check if global profile HAS A NAME we can reuse
+    // 2. NEW: Check if global profile HAS A NAME or EMAIL we can reuse
     const profile = getCurrentUserProfile();
+    let nameExistsInRoster = false;
+    let matchedByEmail = null;
+
+    // Check if the trainer mapped an email directly to a player
+    if (profile && profile.email) {
+        const pEmailStr = profile.email.trim().toLowerCase();
+        matchedByEmail = (spielstand.roster || []).find(
+            p => p.email && p.email.trim().toLowerCase() === pEmailStr
+        );
+    }
+
+    if (matchedByEmail) {
+        console.log('[App] Auto-assigning via mapped email:', matchedByEmail.name);
+        if (!spielstand.rosterAssignments) spielstand.rosterAssignments = {};
+        spielstand.rosterAssignments[uid] = matchedByEmail.name;
+        speichereSpielstand();
+        onComplete();
+        return;
+    }
+
     if (profile && profile.rosterName) {
+        const pNameLowerCase = profile.rosterName.trim().toLowerCase();
+        nameExistsInRoster = (spielstand.roster || []).some(
+            p => (p.name || '').trim().toLowerCase() === pNameLowerCase
+        );
+    }
+
+    if (profile && profile.rosterName && nameExistsInRoster) {
         console.log('[App] Auto-assigning name from profile:', profile.rosterName);
         if (!spielstand.rosterAssignments) spielstand.rosterAssignments = {};
         spielstand.rosterAssignments[uid] = profile.rosterName;
@@ -217,6 +244,7 @@ export function showPlayerNameSelection(onComplete) {
         onComplete();
         return;
     }
+
 
     // Get taken names
     const takenNames = Object.values(spielstand.rosterAssignments || {});
