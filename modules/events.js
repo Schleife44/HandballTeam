@@ -111,7 +111,7 @@ export function initEventListeners() {
         
         // --- Outside Click Modal Closing ---
         const activeModal = document.querySelector('.modal-overlay:not(.versteckt), .event-popover:not(.versteckt)');
-        if (activeModal && !e.target.closest('.shadcn-modal-content, .event-popover, .modal-content, .dashboard-overlay-content')) {
+        if (activeModal && !e.target.closest('.shadcn-modal-content, .event-popover, .modal-content, .dashboard-overlay-content, .result-image-modal-content')) {
             if (!target || target.dataset.action === 'close-modal') {
                 activeModal.classList.add('versteckt');
                 return;

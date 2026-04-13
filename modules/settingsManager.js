@@ -376,6 +376,343 @@ export function initSettingsPage() {
 
     // Initialize Team Management UI
     initTeamManagementUI();
+
+    // Initialize Social Media Settings
+    initSocialMediaSettings();
+}
+
+/**
+ * Social Media Settings (Instagram Ergebnisbild)
+ */
+function initSocialMediaSettings() {
+    // Ensure defaults
+    const { ensureSocialMediaSettings } = importSocialMedia();
+    
+    const sm = ensureSocialMediaSettings();
+
+    // --- Image Uploads ---
+    const setupImageUpload = (btnId, fileInputId, previewId, settingsKey) => {
+        const btn = document.getElementById(btnId);
+        const fileInput = document.getElementById(fileInputId);
+        const preview = document.getElementById(previewId);
+        if (!btn || !fileInput) return;
+
+        btn.onclick = () => fileInput.click();
+        fileInput.onchange = (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = (ev) => {
+                const img = new Image();
+                img.onload = () => {
+                    // Resize to max 1200px to save space in Firestore/LocalStorage
+                    const MAX_SIZE = 1200;
+                    let width = img.width;
+                    let height = img.height;
+                    
+                    if (width > height && width > MAX_SIZE) {
+                        height *= MAX_SIZE / width;
+                        width = MAX_SIZE;
+                    } else if (height > MAX_SIZE) {
+                        width *= MAX_SIZE / height;
+                        height = MAX_SIZE;
+                    }
+
+                    const canvas = document.createElement('canvas');
+                    canvas.width = width;
+                    canvas.height = height;
+                    const ctx = canvas.getContext('2d');
+                    ctx.drawImage(img, 0, 0, width, height);
+                    
+                    // Compress to JPEG to save space
+                    const base64 = canvas.toDataURL('image/jpeg', 0.7);
+
+                    if (!spielstand.settings.socialMedia) spielstand.settings.socialMedia = {};
+                    spielstand.settings.socialMedia[settingsKey] = base64;
+                    speichereSpielstand();
+                    
+                    // Update preview
+                    if (preview) {
+                        preview.innerHTML = '';
+                        const previewImg = document.createElement('img');
+                        previewImg.src = base64;
+                        previewImg.style.cssText = 'width: 100%; height: 100%; object-fit: cover;';
+                        preview.appendChild(previewImg);
+                    }
+                    console.log(`[SocialMedia] Saved ${settingsKey}, size: ${Math.round(base64.length / 1024)} KB`);
+                };
+                img.src = ev.target.result;
+            };
+            reader.readAsDataURL(file);
+        };
+
+        // Restore preview from saved state
+        if (sm[settingsKey] && preview) {
+            preview.innerHTML = '';
+            const img = document.createElement('img');
+            img.src = sm[settingsKey];
+            img.style.cssText = 'width: 100%; height: 100%; object-fit: cover;';
+            preview.appendChild(img);
+        }
+    };
+
+    setupImageUpload('smBgUploadBtn', 'smBgFileInput', 'smBgPreview', 'backgroundImage');
+    setupImageUpload('smLogoUploadBtn', 'smLogoFileInput', 'smLogoPreview', 'teamLogo');
+
+    // --- Font Family ---
+    const fontSelect = document.getElementById('smFontFamily');
+    if (fontSelect) {
+        fontSelect.value = sm.fontFamily || 'Oswald';
+        fontSelect.onchange = () => {
+            if (!spielstand.settings.socialMedia) spielstand.settings.socialMedia = {};
+            spielstand.settings.socialMedia.fontFamily = fontSelect.value;
+            speichereSpielstand();
+        };
+    }
+
+    // --- Season Name ---
+    const seasonInput = document.getElementById('smSeasonName');
+    if (seasonInput) {
+        seasonInput.value = sm.seasonName || '';
+        seasonInput.oninput = () => {
+            if (!spielstand.settings.socialMedia) spielstand.settings.socialMedia = {};
+            spielstand.settings.socialMedia.seasonName = seasonInput.value;
+            speichereSpielstand();
+        };
+    }
+
+    // --- Team Label ---
+    const teamLabelInput = document.getElementById('smTeamLabel');
+    if (teamLabelInput) {
+        teamLabelInput.value = sm.teamLabel || '';
+        teamLabelInput.oninput = () => {
+            if (!spielstand.settings.socialMedia) spielstand.settings.socialMedia = {};
+            spielstand.settings.socialMedia.teamLabel = teamLabelInput.value;
+            speichereSpielstand();
+        };
+    }
+
+    // --- Overlay Opacity ---
+    const opacitySlider = document.getElementById('smOverlayOpacity');
+    const opacityValue = document.getElementById('smOverlayValue');
+    if (opacitySlider) {
+        const pct = Math.round((sm.overlayOpacity ?? 0.55) * 100);
+        opacitySlider.value = pct;
+        if (opacityValue) opacityValue.textContent = `${pct}%`;
+        opacitySlider.oninput = () => {
+            if (!spielstand.settings.socialMedia) spielstand.settings.socialMedia = {};
+            spielstand.settings.socialMedia.overlayOpacity = parseInt(opacitySlider.value) / 100;
+            if (opacityValue) opacityValue.textContent = `${opacitySlider.value}%`;
+            speichereSpielstand();
+        };
+    }
+
+    // --- Team Colors ---
+    const ownTeamColorInput = document.getElementById('smOwnTeamColor');
+    if (ownTeamColorInput) {
+        ownTeamColorInput.value = sm.ownTeamColor || sm.winColor || '#ffffff';
+        ownTeamColorInput.oninput = () => {
+            sm.ownTeamColor = ownTeamColorInput.value;
+            speichereSpielstand();
+        };
+    }
+
+    const opponentColorInput = document.getElementById('smOpponentColor');
+    if (opponentColorInput) {
+        opponentColorInput.value = sm.opponentColor || sm.lossColor || '#ef4444';
+        opponentColorInput.oninput = () => {
+            sm.opponentColor = opponentColorInput.value;
+            speichereSpielstand();
+        };
+    }
+
+    // --- Editor Button ---
+    const editorBtn = document.getElementById('openSmEditorBtn');
+    if (editorBtn) {
+        editorBtn.onclick = async () => {
+            const { showResultImageModal } = await import(`./resultImage.js?v=${Date.now()}`);
+            // Create dummy game data for the editor preview
+            const dummyGame = {
+                id: 'dummy_editor',
+                score: { heim: 27, gegner: 24 },
+                teams: { heim: spielstand.settings.myTeamName || 'Heim', gegner: 'TSV Muster' },
+                date: new Date().toISOString(),
+                settings: { isAuswaertsspiel: false }
+            };
+            showResultImageModal(dummyGame, true);
+        };
+    }
+
+    // --- Designs Management Modal ---
+    const manageDesignsBtn = document.getElementById('manageSmDesignsBtn');
+    console.log('[Settings] manageDesignsBtn found:', !!manageDesignsBtn);
+    if (manageDesignsBtn) {
+        manageDesignsBtn.onclick = (e) => {
+            e.stopPropagation(); // Prevent outside-click handler from closing modals
+            console.log('[Settings] Designs button clicked!');
+            const modal = document.getElementById('smDesignsModal');
+            const list = document.getElementById('smDesignsList');
+            console.log('[Settings] smDesignsModal found:', !!modal, 'smDesignsList found:', !!list);
+            if (!modal || !list) return;
+
+            const sm = importSocialMedia().ensureSocialMediaSettings();
+            const presets = sm.presets || [];
+
+            if (presets.length === 0) {
+                list.innerHTML = `<div style="text-align: center; padding: 40px; color: var(--text-muted); font-size: 0.9rem;">Keine gespeicherten Designs gefunden.</div>`;
+            } else {
+                list.innerHTML = '';
+                presets.forEach(p => {
+                    const item = document.createElement('div');
+                    item.className = 'shadcn-card';
+                    item.style.padding = '12px 16px';
+                    item.style.display = 'flex';
+                    item.style.justifyContent = 'space-between';
+                    item.style.alignItems = 'center';
+                    item.style.background = 'hsl(var(--muted) / 0.1)';
+                    item.style.border = '1px solid var(--border-color)';
+                    item.style.borderRadius = '8px';
+
+                    item.innerHTML = `
+                        <div style="display: flex; flex-direction: column;">
+                            <span style="font-weight: 600; font-size: 0.95rem;">${p.name}</span>
+                            <span style="font-size: 0.75rem; color: var(--text-muted);">Erstellt: ${new Date(parseInt(p.id)).toLocaleDateString()}</span>
+                        </div>
+                        <div style="display: flex; gap: 8px;">
+                            <button class="activate-preset-btn shadcn-btn-primary" data-id="${p.id}" style="height: 32px; padding: 0 12px; font-size: 0.8rem;">Aktivieren</button>
+                            <button class="delete-preset-btn shadcn-btn-outline" data-id="${p.id}" style="height: 32px; width: 32px; padding: 0; color: #ef4444; border-color: rgba(239,68,68,0.2);"><i data-lucide="trash-2" style="width: 14px; height: 14px;"></i></button>
+                        </div>
+                    `;
+                    list.appendChild(item);
+                });
+
+                if (window.lucide) window.lucide.createIcons();
+
+                // Attach listeners
+                list.querySelectorAll('.activate-preset-btn').forEach(btn => {
+                    btn.onclick = async () => {
+                        const id = btn.dataset.id;
+                        const preset = presets.find(pr => pr.id === id);
+                        if (preset) {
+                            const confirmed = await customConfirm(`Möchtest du das Design "${preset.name}" aktivieren? Dies überschreibt deine aktuellen Einstellungen.`, 'Design laden');
+                            if (confirmed) {
+                                // Keep the presets list!
+                                const currentPresets = sm.presets;
+                                spielstand.settings.socialMedia = JSON.parse(JSON.stringify(preset.data));
+                                spielstand.settings.socialMedia.presets = currentPresets;
+                                
+                                speichereSpielstand();
+                                
+                                // Refresh settings UI
+                                initSocialMediaSettings();
+                                modal.classList.add('versteckt');
+                                await customAlert(`Design "${preset.name}" wurde geladen.`, 'Erfolg');
+                            }
+                        }
+                    };
+                });
+
+                list.querySelectorAll('.delete-preset-btn').forEach(btn => {
+                    btn.onclick = async () => {
+                        const id = btn.dataset.id;
+                        const presetIndex = presets.findIndex(pr => pr.id === id);
+                        if (presetIndex !== -1) {
+                            const confirmed = await customConfirm(`Soll das Design "${presets[presetIndex].name}" wirklich gelöscht werden?`, 'Design löschen');
+                            if (confirmed) {
+                                presets.splice(presetIndex, 1);
+                                speichereSpielstand();
+                                manageDesignsBtn.click(); // Refresh list
+                            }
+                        }
+                    };
+                });
+            }
+
+            modal.classList.remove('versteckt');
+        };
+    }
+}
+
+/**
+ * Lazy import helper for resultImage module (avoids circular deps)
+ */
+function importSocialMedia() {
+    // Use a synchronous shim; the actual module is loaded when needed
+    let cachedModule = null;
+    return {
+        ensureSocialMediaSettings: () => {
+            const defaultPositions = {
+                ergebnisLabel: { x: 80, y: 960, fontSize: 110, bold: true },
+                seasonLabel: { x: 155, y: 960, fontSize: 28, bold: false },
+                statusGroup: { x: 1000, y: 160, fontSize: 72, bold: true },
+                dateLabel: { x: 1000, y: 300, fontSize: 24, bold: false },
+                vsLabel: { x: 660, y: 560, fontSize: 26, bold: false },
+                ourScore: { x: 680, y: 460, fontSize: 160, bold: true },
+                theirScore: { x: 680, y: 610, fontSize: 130, bold: true },
+                teamLabel: { x: 540, y: 935, fontSize: 22, bold: false },
+                logo: { x: 500, y: 950 }
+            };
+
+            if (!spielstand.settings.socialMedia) {
+                spielstand.settings.socialMedia = {
+                    backgroundImage: null,
+                    teamLogo: null,
+                    fontFamily: 'Oswald',
+                    seasonName: '25/26',
+                    teamLabel: '1. Herren',
+                    overlayOpacity: 0.55,
+                    ownTeamColor: '#ffffff',
+                    opponentColor: '#ef4444',
+                    customElements: [],
+                    positions: JSON.parse(JSON.stringify(defaultPositions))
+                };
+            }
+            const defaults = {
+                backgroundImage: null, teamLogo: null, fontFamily: 'Oswald',
+                seasonName: '25/26', teamLabel: '1. Herren', overlayOpacity: 0.55,
+                ownTeamColor: '#ffffff', opponentColor: '#ef4444',
+            };
+            for (const key in defaults) {
+                if (spielstand.settings.socialMedia[key] === undefined) {
+                    spielstand.settings.socialMedia[key] = defaults[key];
+                }
+            }
+            if (spielstand.settings.socialMedia.customElements === undefined) {
+                spielstand.settings.socialMedia.customElements = [];
+            }
+            if (!spielstand.settings.socialMedia.positions) {
+                spielstand.settings.socialMedia.positions = JSON.parse(JSON.stringify(defaultPositions));
+            } else {
+                // Ensure all position keys exist with fontSize/bold defaults
+                for (const posKey in defaultPositions) {
+                    if (!spielstand.settings.socialMedia.positions[posKey]) {
+                        spielstand.settings.socialMedia.positions[posKey] = { ...defaultPositions[posKey] };
+                    } else {
+                        // Ensure fontSize/bold exist on existing positions
+                        const p = spielstand.settings.socialMedia.positions[posKey];
+                        const d = defaultPositions[posKey];
+                        if (p.fontSize === undefined && d.fontSize !== undefined) p.fontSize = d.fontSize;
+                        if (p.bold === undefined && d.bold !== undefined) p.bold = d.bold;
+                    }
+                }
+            }
+            return spielstand.settings.socialMedia;
+        },
+        getDefaultPositions: () => {
+            return {
+                ergebnisLabel: { x: 80, y: 960, fontSize: 110, bold: true },
+                seasonLabel: { x: 155, y: 960, fontSize: 28, bold: false },
+                statusGroup: { x: 1000, y: 160, fontSize: 72, bold: true },
+                dateLabel: { x: 1000, y: 300, fontSize: 24, bold: false },
+                vsLabel: { x: 660, y: 580, fontSize: 26, bold: false },
+                ourScore: { x: 680, y: 460, fontSize: 160, bold: true },
+                theirScore: { x: 680, y: 610, fontSize: 130, bold: true },
+                teamLabel: { x: 540, y: 935, fontSize: 22, bold: false },
+                logo: { x: 500, y: 950 }
+            };
+        }
+    };
 }
 
 /**

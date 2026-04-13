@@ -5752,8 +5752,12 @@ th {
     background-color: hsl(var(--primary) / 0.1);
 }
 
-#customConfirmModal {
-    z-index: 9999 !important;
+#smDesignsModal {
+    z-index: 10006 !important;
+}
+
+#customConfirmModal, #customAlertModal, #customPromptModal {
+    z-index: 10020 !important;
 }
 
 .draggable-source.active-spawn {
@@ -5860,8 +5864,12 @@ th {
     background-color: hsl(var(--destructive) / 0.1);
 }
 
-#customConfirmModal {
-    z-index: 9999 !important;
+#smDesignsModal {
+    z-index: 10006 !important;
+}
+
+#customConfirmModal, #customAlertModal, #customPromptModal {
+    z-index: 10020 !important;
 }
 
 /* ===========================
@@ -6486,4 +6494,58 @@ body.dark-mode .field-zones-group:not(.versteckt) .field-zone-path:hover {
     background: rgba(234, 179, 8, 0.15);
     color: #eab308;
     border-color: rgba(234, 179, 8, 0.3);
+}
+
+/* === RESULT IMAGE MODAL === */
+.result-image-modal-content {
+    background: var(--bg-card, #1a1a2e);
+    border-radius: 16px;
+    max-width: 560px;
+    width: 92%;
+    margin: auto;
+    overflow: hidden;
+    box-shadow: 0 25px 60px rgba(0,0,0,0.5);
+    border: 1px solid var(--border-color, rgba(255,255,255,0.1));
+    animation: modalSlideUp 0.3s ease-out;
+}
+
+@keyframes modalSlideUp {
+    from { transform: translateY(30px); opacity: 0; }
+    to { transform: translateY(0); opacity: 1; }
+}
+
+.result-image-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 16px 20px;
+    border-bottom: 1px solid var(--border-color, rgba(255,255,255,0.1));
+}
+
+.result-image-canvas-wrapper {
+    padding: 16px;
+    display: flex;
+    justify-content: center;
+}
+
+.result-image-canvas-wrapper canvas {
+    width: 100%;
+    max-width: 500px;
+    height: auto;
+    border-radius: 8px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+}
+
+.result-image-actions {
+    display: flex;
+    gap: 8px;
+    padding: 16px 20px;
+    border-top: 1px solid var(--border-color, rgba(255,255,255,0.1));
+}
+
+/* === SOCIAL MEDIA SETTINGS PREVIEWS === */
+.sm-image-preview img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
 }

@@ -188,6 +188,9 @@ export async function renderHistoryList() {
             </div>
 
             <div style="display: flex; gap: 4px; margin-top: 4px; flex-wrap: wrap;">
+                <button class="shadcn-btn-outline shadcn-btn-sm insta-btn" data-id="${escapeHTML(game.id)}" style="padding: 6px 8px; flex: 1; border-color: #e1306c; color: #e1306c;" title="Instagram Bild">
+                    Insta
+                </button>
                 <button class="shadcn-btn-outline shadcn-btn-sm video-analysis-btn" data-id="${escapeHTML(game.id)}" style="padding: 6px 8px; flex: 1; border-color: var(--primary); color: var(--primary);" title="Video Analyse">
                     Video
                 </button>
@@ -214,6 +217,12 @@ export async function renderHistoryList() {
                 e.preventDefault();
                 triggerAction(e);
             }
+        });
+
+        div.querySelector('.insta-btn').addEventListener('click', async (e) => {
+            e.stopPropagation();
+            const { showResultImageModal } = await import(`./resultImage.js?v=${Date.now()}`);
+            showResultImageModal(game);
         });
 
         div.querySelector('.video-analysis-btn').addEventListener('click', (e) => {

@@ -6,6 +6,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Team-Tracker</title>
     <link rel="stylesheet" href="styles.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Anton&family=Bebas+Neue&family=Chakra+Petch:wght@400;700&family=Inter:wght@400;700&family=Kanit:wght@400;700&family=Lobster&family=Montserrat:wght@400;700&family=Oswald:wght@400;700&family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=Righteous&family=Roboto+Condensed:wght@400;700&family=Saira+Extra+Condensed:wght@400;700&family=Teko:wght@400;700&family=Titillium+Web:wght@400;700&display=swap" rel="stylesheet">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
@@ -883,6 +886,106 @@
                         <p style="font-size: 0.75rem; color: var(--text-muted); margin: 5px 0 0 0;">
                             Teilt das Feld in 9 funktionale Zonen (LA, RA, Kreis, Rückraum) ein
                         </p>
+                    </div>
+                </div>
+
+                <!-- Card 6: Social Media -->
+                <div class="settings-card shadcn-card">
+                    <h4
+                        style="margin-top: 0; margin-bottom: 15px; border-bottom: 2px solid #e1306c; padding-bottom: 10px; display: inline-block;">
+                        📱 Social Media</h4>
+                    <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 15px;">
+                        Konfiguriere das automatische Instagram-Ergebnisbild.
+                    </p>
+                    <div style="display: flex; flex-direction: column; gap: 16px;">
+
+                        <!-- Background Image Upload -->
+                        <div class="setting-row" style="display: flex; flex-direction: column; gap: 6px;">
+                            <label style="font-weight: 500;">Hintergrundbild</label>
+                            <div style="display: flex; gap: 8px; align-items: center;">
+                                <button id="smBgUploadBtn" class="shadcn-btn-outline" style="flex: 1; font-size: 0.8rem;">
+                                    <i data-lucide="image" style="width: 14px; height: 14px; margin-right: 6px;"></i>
+                                    Bild wählen
+                                </button>
+                                <input type="file" id="smBgFileInput" class="versteckt" accept="image/*">
+                                <div id="smBgPreview" class="sm-image-preview" style="width: 50px; height: 50px; border-radius: 8px; background: var(--bg-secondary); border: 1px solid var(--border-color); overflow: hidden; display: flex; align-items: center; justify-content: center;">
+                                    <i data-lucide="image-off" style="width: 18px; height: 18px; color: var(--text-muted);"></i>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Team Logo Upload -->
+                        <div class="setting-row" style="display: flex; flex-direction: column; gap: 6px;">
+                            <label style="font-weight: 500;">Team-Logo</label>
+                            <div style="display: flex; gap: 8px; align-items: center;">
+                                <button id="smLogoUploadBtn" class="shadcn-btn-outline" style="flex: 1; font-size: 0.8rem;">
+                                    <i data-lucide="shield" style="width: 14px; height: 14px; margin-right: 6px;"></i>
+                                    Logo wählen
+                                </button>
+                                <input type="file" id="smLogoFileInput" class="versteckt" accept="image/*">
+                                <div id="smLogoPreview" class="sm-image-preview" style="width: 50px; height: 50px; border-radius: 8px; background: var(--bg-secondary); border: 1px solid var(--border-color); overflow: hidden; display: flex; align-items: center; justify-content: center;">
+                                    <i data-lucide="shield-off" style="width: 18px; height: 18px; color: var(--text-muted);"></i>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Font Family -->
+                        <div class="setting-row" style="display: flex; justify-content: space-between; align-items: center;">
+                            <label for="smFontFamily" style="font-weight: 500;">Schriftart</label>
+                            <select id="smFontFamily" class="shadcn-input" style="width: 160px; font-size: 0.85rem;">
+                                <option value="Oswald">Oswald</option>
+                                <option value="Bebas Neue">Bebas Neue</option>
+                                <option value="Montserrat">Montserrat</option>
+                                <option value="Inter">Inter</option>
+                                <option value="Roboto Condensed">Roboto Condensed</option>
+                            </select>
+                        </div>
+
+                        <!-- Season Name -->
+                        <div class="setting-row" style="display: flex; justify-content: space-between; align-items: center;">
+                            <label for="smSeasonName" style="font-weight: 500;">Saison</label>
+                            <input type="text" id="smSeasonName" class="shadcn-input" placeholder="25/26" style="width: 120px; text-align: center;">
+                        </div>
+
+                        <!-- Team Label -->
+                        <div class="setting-row" style="display: flex; justify-content: space-between; align-items: center;">
+                            <label for="smTeamLabel" style="font-weight: 500;">Mannschaft</label>
+                            <input type="text" id="smTeamLabel" class="shadcn-input" placeholder="1. Herren" style="width: 160px;">
+                        </div>
+
+                        <!-- Overlay Opacity -->
+                        <div class="setting-row" style="display: flex; flex-direction: column; gap: 6px;">
+                            <div style="display: flex; justify-content: space-between; align-items: center;">
+                                <label style="font-weight: 500;">Bild verdunkeln</label>
+                                <span id="smOverlayValue" style="font-size: 0.8rem; color: var(--text-muted);">55%</span>
+                            </div>
+                            <input type="range" id="smOverlayOpacity" min="0" max="100" value="55" style="width: 100%; accent-color: var(--btn-primary);">
+                        </div>
+
+                        <!-- Team Colors -->
+                        <div style="display: flex; gap: 12px;">
+                            <div class="setting-row" style="display: flex; align-items: center; gap: 8px; flex: 1;">
+                                <label style="font-weight: 500; font-size: 0.85rem;">Eig. Team Farbe</label>
+                                <input type="color" id="smOwnTeamColor" value="#ffffff" style="width: 32px; height: 32px; border: none; cursor: pointer; border-radius: 6px;">
+                            </div>
+                            <div class="setting-row" style="display: flex; align-items: center; gap: 8px; flex: 1;">
+                                <label style="font-weight: 500; font-size: 0.85rem;">Gegner Farbe</label>
+                                <input type="color" id="smOpponentColor" value="#ef4444" style="width: 32px; height: 32px; border: none; cursor: pointer; border-radius: 6px;">
+                            </div>
+                        </div>
+
+                        <!-- Editor Button -->
+                        <div style="margin-top: 8px; display: flex; gap: 8px;">
+                            <button id="openSmEditorBtn" class="shadcn-btn-primary" style="flex: 2;">
+                                <i data-lucide="layout-template" style="width: 16px; height: 16px; margin-right: 8px;"></i>
+                                Layout im Editor anpassen
+                            </button>
+                            <button id="manageSmDesignsBtn" class="shadcn-btn-outline" style="flex: 1; padding: 0 8px;" title="Gespeicherte Designs">
+                                <i data-lucide="library" style="width: 16px; height: 16px; margin-right: 4px;"></i>
+                                Designs
+                            </button>
+                        </div>
+
                     </div>
                 </div>
 
@@ -2034,7 +2137,7 @@
 
         <!-- Custom Confirm/Alert Modal -->
         <!-- Custom Confirm/Alert Modal (Shadcn Style) -->
-        <div id="customConfirmModal" class="modal-overlay versteckt">
+        <div id="customConfirmModal" class="modal-overlay versteckt" style="z-index: 10005;">
             <div class="shadcn-modal-content">
                 <div class="shadcn-modal-header">
                     <h3 id="customConfirmTitle">Bestätigung</h3>
@@ -2049,7 +2152,7 @@
 
         <!-- Custom Alert Modal (nur OK Button) -->
         <!-- Custom Alert Modal (Shadcn Style) -->
-        <div id="customAlertModal" class="modal-overlay versteckt">
+        <div id="customAlertModal" class="modal-overlay versteckt" style="z-index: 10005;">
             <div class="shadcn-modal-content">
                 <div class="shadcn-modal-header">
                     <h3 id="customAlertTitle">Hinweis</h3>
@@ -2334,6 +2437,144 @@
             });
         }
     </script>
+
+    <!-- Result Image Modal -->
+    <div id="resultImageModal" class="modal-overlay versteckt" style="z-index: 10000;">
+        <div class="result-image-modal-content">
+            <div class="result-image-header">
+                <h3 style="margin: 0; font-size: 1.1rem;">Instagram Ergebnisbild</h3>
+                <button data-action="close-modal" class="shadcn-btn-outline" style="padding: 4px 8px; border: none;">
+                    <i data-lucide="x" style="width: 18px; height: 18px;"></i>
+                </button>
+            </div>
+
+            <!-- New Toolbar above Canvas for Editor Controls -->
+            <div id="smEditorToolbar" class="versteckt" style="padding: 10px 16px; background: rgba(0,0,0,0.3); border-bottom: 1px solid var(--border-color); display: flex; flex-direction: column; gap: 8px;">
+                <div style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
+                    <div style="background: rgba(59, 130, 246, 0.1); color: #3b82f6; padding: 4px 12px; border-radius: 20px; font-size: 0.75rem; border: 1px solid rgba(59, 130, 246, 0.2);">
+                        <i data-lucide="move" style="width: 14px; height: 14px; display: inline-block; vertical-align: -2px; margin-right: 4px;"></i>
+                        Verschieben aktiv (20px Raster)
+                    </div>
+                    <div style="display: flex; gap: 4px;">
+                        <button id="smAddTextBtn" class="shadcn-btn-outline" style="height: 28px; padding: 0 10px; font-size: 0.75rem; border-radius: 6px; background: rgba(255,255,255,0.05);">+ Text</button>
+                        <button id="smAddLineBtn" class="shadcn-btn-outline" style="height: 28px; padding: 0 10px; font-size: 0.75rem; border-radius: 6px; background: rgba(255,255,255,0.05);">+ Linie</button>
+                    </div>
+                </div>
+
+                <!-- Element Properties (shown when element selected) -->
+                <div id="smElementPropsPanel" class="versteckt" style="display: flex; gap: 12px; align-items: center; background: rgba(255,255,255,0.05); padding: 8px 12px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.1); flex-wrap: wrap;">
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                        <label style="font-size: 0.75rem; color: var(--text-muted); white-space: nowrap;">Schriftgröße:</label>
+                        <input type="range" id="smElFontSize" min="10" max="250" value="24" style="width: 100px; height: 18px; accent-color: #3b82f6;">
+                        <span id="smElFontSizeVal" style="font-size: 0.75rem; color: white; min-width: 25px; font-weight: 500;">24</span>
+                    </div>
+                    <div style="height: 20px; width: 1px; background: rgba(255,255,255,0.1);"></div>
+                    <select id="smElFontFamily" style="height: 28px; font-size: 0.75rem; border-radius: 6px; background: rgba(0,0,0,0.8); border: 1px solid rgba(255,255,255,0.2); color: white; cursor: pointer; padding: 0 4px; outline: none; width: 140px;">
+                        <option value="Oswald" style="font-family: 'Oswald'; background: #1a1a1a;">Oswald</option>
+                        <option value="Inter" style="font-family: 'Inter'; background: #1a1a1a;">Inter</option>
+                        <option value="Bebas Neue" style="font-family: 'Bebas Neue'; background: #1a1a1a;">Bebas Neue</option>
+                        <option value="Anton" style="font-family: 'Anton'; background: #1a1a1a;">Anton</option>
+                        <option value="Montserrat" style="font-family: 'Montserrat'; background: #1a1a1a;">Montserrat</option>
+                        <option value="Roboto Condensed" style="font-family: 'Roboto Condensed'; background: #1a1a1a;">Roboto Condensed</option>
+                        <option value="Titillium Web" style="font-family: 'Titillium Web'; background: #1a1a1a;">Titillium Web</option>
+                        <option value="Teko" style="font-family: 'Teko'; background: #1a1a1a;">Teko</option>
+                        <option value="Kanit" style="font-family: 'Kanit'; background: #1a1a1a;">Kanit</option>
+                        <option value="Chakra Petch" style="font-family: 'Chakra Petch'; background: #1a1a1a;">Chakra Petch</option>
+                        <option value="Righteous" style="font-family: 'Righteous'; background: #1a1a1a;">Righteous</option>
+                        <option value="Saira Extra Condensed" style="font-family: 'Saira Extra Condensed'; background: #1a1a1a;">Saira Condensed</option>
+                        <option value="Lobster" style="font-family: 'Lobster'; background: #1a1a1a;">Lobster</option>
+                        <option value="Playfair Display" style="font-family: 'Playfair Display'; background: #1a1a1a;">Playfair Display</option>
+                    </select>
+                    <button id="smElBoldToggle" class="shadcn-btn-outline" style="height: 28px; width: 32px; padding: 0; font-weight: bold;" title="Fett">B</button>
+                    <button id="smElDeleteBtn" class="shadcn-btn-outline" style="height: 28px; width: 32px; padding: 0; color: #ef4444; border-color: rgba(239,68,68,0.2);" title="Element löschen">✕</button>
+                </div>
+            </div>
+
+            <div class="result-image-canvas-wrapper" style="position: relative;">
+                <canvas id="resultImageCanvas" width="1080" height="1080"></canvas>
+                <div id="resultImageEditorOverlay" class="versteckt" style="position: absolute; top: 16px; left: 16px; right: 16px; display: flex; flex-direction: column; gap: 8px; pointer-events: none;">
+                    <div style="display: flex; justify-content: flex-end; width: 100%;">
+                        <div style="display: flex; gap: 4px; pointer-events: auto;">
+                            <button class="sm-sandbox-btn" data-mock="home-win" title="Heimsieg testen" style="height: 28px; padding: 0 10px; font-size: 0.75rem; border-radius: 14px; background: rgba(0,0,0,0.7); border: 1px solid rgba(255,255,255,0.2); color: white; margin: 0;">Heim</button>
+                            <button class="sm-sandbox-btn" data-mock="draw" title="Unentschieden testen" style="height: 28px; padding: 0 10px; font-size: 0.75rem; border-radius: 14px; background: rgba(0,0,0,0.7); border: 1px solid rgba(255,255,255,0.2); color: white; margin: 0;">Remis</button>
+                            <button class="sm-sandbox-btn" data-mock="away-win" title="Niederlage testen" style="height: 28px; padding: 0 10px; font-size: 0.75rem; border-radius: 14px; background: rgba(0,0,0,0.7); border: 1px solid rgba(255,255,255,0.2); color: white; margin: 0;">Gast</button>
+                            <button class="sm-sandbox-btn" data-mock="away-loss" title="Auswärtssieg testen" style="height: 28px; padding: 0 10px; font-size: 0.75rem; border-radius: 14px; background: rgba(0,0,0,0.7); border: 1px solid rgba(255,255,255,0.2); color: white; margin: 0;">A-Sieg</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div id="resultImageEditorControlsArea" class="result-image-editor-controls" style="padding: 12px 20px; border-top: 1px solid var(--border-color, rgba(255,255,255,0.1)); display: flex; gap: 8px; background: rgba(0,0,0,0.2);">
+                <button id="toggleImageEditorBtn" class="shadcn-btn-outline" style="flex: 1; font-size: 0.85rem; padding: 6px;">
+                    <i data-lucide="edit-3" style="width: 16px; height: 16px; margin-right: 6px;"></i> Layout bearbeiten
+                </button>
+                <button id="saveStandardLayoutBtn" class="shadcn-btn-primary versteckt" style="font-size: 0.85rem; padding: 6px 12px;" title="Aktuelles Layout als Standard speichern">
+                    <i data-lucide="check" style="width: 16px; height: 16px; margin-right: 6px;"></i> Speichern
+                </button>
+                <button id="saveImageLayoutBtn" class="shadcn-btn-outline" style="font-size: 0.85rem; padding: 6px 12px;" title="Als neues Design speichern">
+                    <i data-lucide="save" style="width: 16px; height: 16px; margin-right: 6px;"></i> Als Design speichern
+                </button>
+                <button id="resetImageLayoutBtn" class="shadcn-btn-outline" style="font-size: 0.85rem; padding: 6px 12px; color: var(--text-muted);" title="Positionen zurücksetzen">
+                    <i data-lucide="rotate-ccw" style="width: 16px; height: 16px;"></i>
+                </button>
+            </div>
+
+            <!-- Correction Panel (hidden by default) -->
+            <div id="smDataCorrectionPanel" class="versteckt" style="padding: 12px 20px; border-top: 1px solid var(--border-color); background: rgba(0,0,0,0.3); animation: slideDown 0.2s ease;">
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+                    <div>
+                        <label style="font-size: 0.75rem; color: var(--text-muted); display: block; margin-bottom: 4px;">Ergebnis Korrigieren</label>
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <input type="number" id="corrScoreHeim" style="width: 50px; background: rgba(255,255,255,0.05); border: 1px solid var(--border-color); color: white; border-radius: 4px; padding: 4px;" placeholder="Heim">
+                            <span style="color: var(--text-muted)">:</span>
+                            <input type="number" id="corrScoreGegner" style="width: 50px; background: rgba(255,255,255,0.05); border: 1px solid var(--border-color); color: white; border-radius: 4px; padding: 4px;" placeholder="Gast">
+                        </div>
+                    </div>
+                    <div>
+                        <label style="font-size: 0.75rem; color: var(--text-muted); display: block; margin-bottom: 4px;">Anpfiff Korrigieren</label>
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <input type="date" id="corrDate" style="background: rgba(255,255,255,0.05); border: 1px solid var(--border-color); color: white; border-radius: 4px; padding: 4px; font-size: 0.75rem;">
+                            <input type="time" id="corrTime" style="background: rgba(255,255,255,0.05); border: 1px solid var(--border-color); color: white; border-radius: 4px; padding: 4px; font-size: 0.75rem;">
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="resultImageDownloadControlsArea" class="result-image-actions" style="padding: 12px 20px; display: flex; gap: 8px;">
+                <button id="toggleDataCorrectionBtn" class="shadcn-btn-outline" style="font-size: 0.85rem; padding: 6px 12px;">
+                    <i data-lucide="settings-2" style="width: 16px; height: 16px; margin-right: 6px;"></i> Daten anpassen
+                </button>
+                <button id="downloadResultImage" class="shadcn-btn-primary" style="flex: 1;">
+                    <i data-lucide="download" style="width: 16px; height: 16px; margin-right: 8px;"></i>
+                    Bild speichern
+                </button>
+                <button data-action="close-modal" class="shadcn-btn-outline" style="flex: 1;">Schließen</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- SM Designs Presets Modal -->
+    <div id="smDesignsModal" class="modal-overlay versteckt" style="z-index: 10006;">
+        <div class="shadcn-modal-content" style="max-width: 500px; width: 95%;">
+            <div class="shadcn-modal-header" style="flex-direction: column; align-items: flex-start; padding: 20px;">
+                <h3 style="margin: 0; font-size: 1.25rem;">Gespeicherte Designs</h3>
+                <p style="margin: 4px 0 0 0; font-size: 0.85rem; color: var(--text-muted);">Verwalte deine Layout-Vorlagen für Instagram.</p>
+            </div>
+            <div id="smDesignsList" style="max-height: 400px; overflow-y: auto; padding: 0 20px 20px 20px; display: flex; flex-direction: column; gap: 10px;">
+                <!-- List items injected via JS -->
+                <div style="text-align: center; padding: 40px; color: var(--text-muted); font-size: 0.9rem;">
+                    Keine gespeicherten Designs gefunden.
+                </div>
+            </div>
+            <div class="shadcn-modal-footer" style="padding: 15px 20px; background: rgba(0,0,0,0.1); border-top: 1px solid var(--border-color);">
+                <button class="shadcn-btn-outline" data-action="close-modal" style="width: 100%;">Schließen</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Google Fonts for Social Media Images -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Montserrat:wght@400;700;900&family=Oswald:wght@400;700&family=Roboto+Condensed:wght@400;700&display=swap" rel="stylesheet">
 </body>
 
 </html>
