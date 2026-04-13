@@ -237,6 +237,9 @@ export function zeichneRosterListe(showGastTab = false) {
                                     ? spielstand.rosterAssignments[uid] 
                                     : null;
 
+    // Available roles (easy to extend later)
+    const AVAILABLE_ROLES = ['Spieler', 'Trainer', 'Betreuer', 'Kassenwart'];
+
     // Permissions for global actions
     const manageDisplay = isTrainer ? 'block' : 'none';
     if (deleteTeamButton) deleteTeamButton.style.display = manageDisplay;
@@ -256,6 +259,20 @@ export function zeichneRosterListe(showGastTab = false) {
 
         if (isEditing) {
             div.classList.add('is-editing');
+            const playerRoles = p.roles || ['Spieler'];
+            const roleCheckboxesHtml = !isOpp ? `
+                <div style="margin-top: 8px;">
+                    <div style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 4px;">Rollen</div>
+                    <div style="display: flex; flex-wrap: wrap; gap: 8px;">
+                        ${AVAILABLE_ROLES.map(role => `
+                            <label style="font-size: 0.8rem; cursor: pointer; display: flex; align-items: center; gap: 4px;">
+                                <input type="checkbox" class="inline-edit-role" value="${escapeHTML(role)}" ${playerRoles.includes(role) ? 'checked' : ''} style="accent-color: var(--btn-primary);">
+                                ${escapeHTML(role)}
+                            </label>
+                        `).join('')}
+                    </div>
+                </div>
+            ` : '';
             div.innerHTML = sanitizeHTML(`
                 <div class="roster-player-info" style="flex-direction: column; align-items: flex-start; gap: 8px;">
                     <div style="display: flex; gap: 8px; width: 100%;">
@@ -263,6 +280,7 @@ export function zeichneRosterListe(showGastTab = false) {
                         <input type="text" class="inline-edit-name" value="${escapeHTML(p.name || '')}" placeholder="Spielername">
                     </div>
                     <input type="email" class="inline-edit-email" value="${escapeHTML(p.email || '')}" placeholder="E-Mail für Verknüpfung">
+                    ${roleCheckboxesHtml}
                 </div>
                 <div style="display: flex; align-items: center; gap: 8px; margin: 8px 0; padding: 0 4px;">
                     <label style="font-size: 0.75rem; color: var(--text-muted); cursor: pointer; display: flex; align-items: center; gap: 6px;">
@@ -297,8 +315,13 @@ export function zeichneRosterListe(showGastTab = false) {
             div.innerHTML = sanitizeHTML(`
                 <div class="roster-player-info">
                     <div class="roster-player-number ${!p.number ? 'is-empty' : ''}">${p.number || '-'}</div>
-                    <div style="display: flex; flex-direction: column;">
+                    <div style="display: flex; flex-direction: column; gap: 2px;">
                         <div style="font-weight: 600;">${escapeHTML(p.name || 'Ohne Name')}</div>
+                        ${!isOpp && (p.roles && p.roles.length) ? `
+                            <div class="player-role-badges">
+                                ${p.roles.map(r => `<span class="role-badge ${r === 'Trainer' ? 'role-badge--trainer' : r === 'Betreuer' ? 'role-badge--betreuer' : r === 'Kassenwart' ? 'role-badge--kassenwart' : ''} ">${escapeHTML(r)}</span>`).join('')}
+                            </div>
+                        ` : ''}
                         ${isInactive ? '<div style="font-size: 0.65rem; color: #ef4444; font-weight: 700;">INAKTIV (SPIEL)</div>' : ''}
                     </div>
                 </div>

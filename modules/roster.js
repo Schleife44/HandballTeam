@@ -235,7 +235,7 @@ export async function handlePlayerRename(oldName, newName) {
     }
 }
 
-export async function saveInlinePlayer(index, newName, newNumber, isOpponent, isInactive = false, newEmail = '') {
+export async function saveInlinePlayer(index, newName, newNumber, isOpponent, isInactive = false, newEmail = '', newRoles = null) {
     const list = isOpponent ? spielstand.knownOpponents : spielstand.roster;
     const player = list[index];
     if (!player) return;
@@ -259,6 +259,12 @@ export async function saveInlinePlayer(index, newName, newNumber, isOpponent, is
     player.number = normalizedNumber;
     player.isInactive = isInactive;
     player.email = newEmail.trim();
+    // Only update roles for home team (opponents don't have roles)
+    if (!isOpponent && newRoles !== null) {
+        player.roles = newRoles.length > 0 ? newRoles : ['Spieler'];
+    } else if (!isOpponent && !player.roles) {
+        player.roles = ['Spieler'];
+    }
 
     if (!isOpponent && oldName !== player.name) {
         await handlePlayerRename(oldName, player.name);

@@ -39,6 +39,9 @@ import { initTableSorting } from './modules/sharedViews.js';
 function initApp(skipLocalLoad = false) {
     console.log('[Main] Initializing App...');
     
+    // Expose spielstand as a global bridge for cross-module role checks (e.g. firebase.js isUserTrainer)
+    window.__spielstand__ = { spielstand };
+
     if (!skipLocalLoad) {
         ladeSpielstandDaten();
     }

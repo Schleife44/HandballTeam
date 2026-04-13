@@ -297,6 +297,8 @@ export function initEventListeners() {
                         const numInput = card.querySelector('.inline-edit-number');
                         const inactiveInput = card.querySelector('.inline-edit-inactive');
                         const emailInput = card.querySelector('.inline-edit-email');
+                        const roleCheckboxes = card.querySelectorAll('.inline-edit-role:checked');
+                        const selectedRoles = Array.from(roleCheckboxes).map(cb => cb.value);
                         if (nameInput && numInput) {
                             const roster = await import('./roster.js');
                             roster.saveInlinePlayer(
@@ -305,7 +307,8 @@ export function initEventListeners() {
                                 numInput.value, 
                                 params.isOpponent === 'true',
                                 inactiveInput ? inactiveInput.checked : false,
-                                emailInput ? emailInput.value : ''
+                                emailInput ? emailInput.value : '',
+                                selectedRoles.length > 0 ? selectedRoles : null
                             );
                         }
                     }

@@ -391,29 +391,51 @@ export function getCurrentUserProfile() {
 export function isUserTrainer() {
     if (!currentUserProfile || !activeTeamId) return false;
     
-    // 1. Check user profile for explicit trainer role
+    // 1. Check user profile for explicit trainer role (Firebase-level)
     const teamRecord = currentUserProfile.teams.find(t => {
         const tid = String(t.teamId || t.id);
         const aid = String(activeTeamId);
         return tid === aid;
     });
     
-    // Trainers or Owners are the same in terms of UI permissions
-    const isTrainer = teamRecord && (
+    const isFirebaseTrainer = teamRecord && (
         teamRecord.role === 'trainer' || 
         teamRecord.role === 'owner' || 
         teamRecord.role === 'Creator' ||
         teamRecord.role === 'coach'
     );
 
-    if (!isTrainer) {
+    if (isFirebaseTrainer) return true;
+
+    // 2. Check roster-based roles (dynamic, set by trainer in player card)
+    // Import spielstand lazily to avoid circular deps
+    try {
+        const stateModule = /** @type {any} */ (window.__spielstand__);
+        if (stateModule) {
+            const { spielstand, rosterAssignments } = stateModule;
+            const uid = currentUserProfile.uid;
+            const assignedName = (spielstand?.rosterAssignments || {})[uid];
+            if (assignedName) {
+                const player = (spielstand?.roster || []).find(
+                    p => (p.name || '').trim().toLowerCase() === assignedName.trim().toLowerCase()
+                );
+                if (player?.roles && player.roles.includes('Trainer')) {
+                    return true;
+                }
+            }
+        }
+    } catch (e) {
+        // Silent fail – roster check is supplementary
+    }
+
+    if (!isFirebaseTrainer) {
         console.warn('[Firebase] isUserTrainer: Permission denied or Team not found.', {
             activeTeamId,
             userTeams: currentUserProfile.teams
         });
     }
 
-    return isTrainer;
+    return false;
 }
 
 // ─── Team Invitations ─────────────────────────────────────────────────────────
