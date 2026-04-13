@@ -739,6 +739,13 @@ export function logAktion(aktion, kommentar = null) {
 
         // Check if combined mode is enabled and both are needed
         if (spielstand.settings.combinedThrowMode && (showPos || showBild)) {
+            // Reset markers and highlights before opening
+            document.querySelectorAll('.goal-zone-rect').forEach(r => r.classList.remove('selected-zone'));
+            const marker = document.getElementById('combinedGoalMarker');
+            const fieldMarker = document.getElementById('combinedFieldMarker');
+            if (marker) marker.style.display = 'none';
+            if (fieldMarker) fieldMarker.style.display = 'none';
+
             combinedThrowModal.classList.remove('versteckt');
             // Populate assist player list
             if (typeof window.populateAssistPlayerList === 'function') {
@@ -862,6 +869,13 @@ function handleGegnerAktion(aktion, kommentar) {
 
         // Check if combined mode is enabled
         if (spielstand.settings.combinedThrowMode && (showPos || showWurfbild)) {
+            // Reset markers and highlights before opening
+            document.querySelectorAll('.goal-zone-rect').forEach(r => r.classList.remove('selected-zone'));
+            const marker = document.getElementById('combinedGoalMarker');
+            const fieldMarker = document.getElementById('combinedFieldMarker');
+            if (marker) marker.style.display = 'none';
+            if (fieldMarker) fieldMarker.style.display = 'none';
+
             spielstand.tempGegnerNummer = gegnernummer;
             combinedThrowModal.classList.remove('versteckt');
             // Populate assist player list (hidden for opponent actions)

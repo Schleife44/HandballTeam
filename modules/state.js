@@ -38,6 +38,8 @@ export let spielstand = {
         teamColorGegner: '#2563eb', // Default Blue
         isAuswaertsspiel: false,
         combinedThrowMode: true, // false = hintereinander, true = kombiniert
+        useGoalZones: false, // New: Use 9-zone grid for shooting
+        useFieldZones: false, // New: Use 9 functional zones for field positions
 
         // Team identity settings (cross-game)
         teamSettingsValidated: false,
@@ -92,6 +94,8 @@ export function ladeSpielstandDaten() {
         if (!spielstand.settings.teamNameGegner) spielstand.settings.teamNameGegner = 'Gegner';
         if (typeof spielstand.settings.isAuswaertsspiel === 'undefined') spielstand.settings.isAuswaertsspiel = false;
         if (typeof spielstand.settings.combinedThrowMode === 'undefined') spielstand.settings.combinedThrowMode = true;
+        if (typeof spielstand.settings.useGoalZones === 'undefined') spielstand.settings.useGoalZones = false;
+        if (typeof spielstand.settings.useFieldZones === 'undefined') spielstand.settings.useFieldZones = false;
 
         // Team identity defaults
         if (typeof spielstand.settings.teamSettingsValidated === 'undefined') spielstand.settings.teamSettingsValidated = false;

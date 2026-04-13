@@ -2,6 +2,7 @@
 // All Event Listener Registrations
 
 import { spielstand, speichereSpielstand } from './state.js';
+import { calculateGoalZone, calculateFieldZone } from './utils.js';
 
 import {
     addPlayerForm, cancelEditButton, exportTeamButton,
@@ -470,11 +471,49 @@ export function registerEventListeners() {
             const scaleX = rect.width / viewBoxWidth;
             const scaleY = rect.height / viewBoxHeight;
 
-            const x = (clickXOffset / scaleX) / viewBoxWidth * 100;
-            const y = (clickYOffset / scaleY) / viewBoxHeight * 100;
+            const svgX = clickXOffset / scaleX;
+            const svgY = clickYOffset / scaleY;
+
+            let finalX, finalY, zoneId;
+
+            // Zone Mode
+            if (spielstand.settings.useFieldZones) {
+                const zonePath = e.target.closest('.field-zone-path');
+                if (zonePath) {
+                    zoneId = parseInt(zonePath.getAttribute('data-zone'));
+                    
+                    // Tactical Snap Points
+                    const snapPoints = {
+                        1: { x: 60, y: 45 },
+                        2: { x: 75, y: 95 },
+                        3: { x: 150, y: 115 },
+                        4: { x: 225, y: 95 },
+                        5: { x: 240, y: 45 },
+                        6: { x: 40, y: 180 },
+                        7: { x: 150, y: 180 },
+                        8: { x: 260, y: 180 },
+                        9: { x: 150, y: 280 }
+                    };
+
+                    const point = snapPoints[zoneId] || { x: 150, y: 200 };
+                    finalX = ((point.x - 10) / 280) * 100;
+                    finalY = ((point.y - 10) / 380) * 100;
+                }
+            }
+
+            if (finalX === undefined) {
+                // Exact Mode
+                finalX = ((svgX - 10) / 280) * 100;
+                finalY = ((svgY - 10) / 380) * 100;
+                zoneId = calculateFieldZone(finalX, finalY);
+            }
 
             if (spielstand.gameLog.length > 0) {
-                spielstand.gameLog[0].wurfposition = { x: x.toFixed(1), y: y.toFixed(1) };
+                spielstand.gameLog[0].wurfposition = { 
+                    x: finalX.toFixed(1), 
+                    y: finalY.toFixed(1),
+                    zone: zoneId
+                };
                 speichereSpielstand();
             }
 
@@ -584,19 +623,48 @@ export function registerEventListeners() {
             const svgX = clickXOffset / scaleX;
             const svgY = clickYOffset / scaleY;
 
-            // Map to Goal Inner Rect (x=25, y=10, w=250, h=180)
-            const x = ((svgX - 25) / 250) * 100;
-            const y = ((svgY - 10) / 180) * 100;
+            let finalX, finalY, zoneId;
 
-            // Clamp values strictly to 0-100? Or allow slight margin?
-            // Heatmap clamps display, so allowing slight margin is fine, but maybe clamping is safer for clean data.
-            // Let's not clamp tightly, as long as it's reasonable. User clicks where they click.
+            // Check if Zone mode is active
+            if (spielstand.settings.useGoalZones) {
+                const zoneRect = e.target.closest('.goal-zone-rect');
+                if (zoneRect) {
+                    zoneId = parseInt(zoneRect.getAttribute('data-zone'));
+                    // Center of the zone rect
+                    finalX = parseFloat(zoneRect.getAttribute('x')) + (parseFloat(zoneRect.getAttribute('width')) / 2);
+                    finalY = parseFloat(zoneRect.getAttribute('y')) + (parseFloat(zoneRect.getAttribute('height')) / 2);
+                    
+                    // Convert back to percentages (0-100)
+                    finalX = ((finalX - 25) / 250) * 100;
+                    finalY = ((finalY - 10) / 180) * 100;
+                }
+            }
+
+            if (finalX === undefined) {
+                // Exact mode (or click outside zones)
+                finalX = ((svgX - 25) / 250) * 100;
+                finalY = ((svgY - 10) / 180) * 100;
+                zoneId = calculateGoalZone(finalX, finalY);
+            }
 
             if (spielstand.gameLog.length > 0) {
                 const lastEntry = spielstand.gameLog[0];
                 // Explicitly set color to null so heatmap.js uses dynamic logic
-                lastEntry.wurfbild = { x: x.toFixed(1), y: y.toFixed(1), color: null };
+                lastEntry.wurfbild = { 
+                    x: finalX.toFixed(1), 
+                    y: finalY.toFixed(1), 
+                    zone: zoneId,
+                    color: null 
+                };
                 speichereSpielstand();
+            }
+
+            // Visual highlight (optional here as modal closes, but for consistency)
+            const zoneRect = e.target.closest('.goal-zone-rect');
+            if (zoneRect) {
+                const parent = zoneRect.closest('svg');
+                parent.querySelectorAll('.goal-zone-rect').forEach(r => r.classList.remove('selected-zone'));
+                zoneRect.classList.add('selected-zone');
             }
 
             spielstand.tempGegnerNummer = null;
@@ -628,16 +696,65 @@ export function registerEventListeners() {
 
             const svgX = svgPt.x;
             const svgY = svgPt.y;
-            const x = ((svgX - 10) / 280) * 100;
-            const y = ((svgY - 10) / 380) * 100;
 
-            tempCombinedField = { x: x.toFixed(1), y: y.toFixed(1) };
+            let finalX, finalY, zoneId, markerX = svgX, markerY = svgY;
 
-            // Show marker at exact click position
-            if (combinedFieldMarker) {
-                combinedFieldMarker.setAttribute('cx', svgX);
-                combinedFieldMarker.setAttribute('cy', svgY);
-                combinedFieldMarker.style.display = 'block';
+            // Zone Mode
+            if (spielstand.settings.useFieldZones) {
+                const zonePath = e.target.closest('.field-zone-path');
+                if (zonePath) {
+                    zoneId = parseInt(zonePath.getAttribute('data-zone'));
+                    
+                    // Tactical Snap Points
+                    const snapPoints = {
+                        1: { x: 60, y: 45 },
+                        2: { x: 75, y: 95 },
+                        3: { x: 150, y: 115 },
+                        4: { x: 225, y: 95 },
+                        5: { x: 240, y: 45 },
+                        6: { x: 40, y: 180 },
+                        7: { x: 150, y: 180 },
+                        8: { x: 260, y: 180 },
+                        9: { x: 150, y: 280 }
+                    };
+
+                    const point = snapPoints[zoneId];
+                    if (point) {
+                        markerX = point.x;
+                        markerY = point.y;
+                    }
+
+                    finalX = ((markerX - 10) / 280) * 100;
+                    finalY = ((markerY - 10) / 380) * 100;
+                }
+            }
+
+            if (finalX === undefined) {
+                // Exact Mode
+                finalX = ((svgX - 10) / 280) * 100;
+                finalY = ((svgY - 10) / 380) * 100;
+                zoneId = calculateFieldZone(finalX, finalY);
+            }
+
+            tempCombinedField = { 
+                x: finalX.toFixed(1), 
+                y: finalY.toFixed(1),
+                zone: zoneId
+            };
+
+            // Reset marker and highlights
+            if (combinedFieldMarker) combinedFieldMarker.style.display = 'none';
+            svg.querySelectorAll('.field-zone-path').forEach(p => p.classList.remove('selected-zone'));
+
+            if (spielstand.settings.useFieldZones) {
+                const zonePath = e.target.closest('.field-zone-path');
+                if (zonePath) zonePath.classList.add('selected-zone');
+            } else {
+                if (combinedFieldMarker) {
+                    combinedFieldMarker.setAttribute('cx', markerX);
+                    combinedFieldMarker.setAttribute('cy', markerY);
+                    combinedFieldMarker.style.display = 'block';
+                }
             }
         });
     }
@@ -655,16 +772,55 @@ export function registerEventListeners() {
 
             const svgX = svgPt.x;
             const svgY = svgPt.y;
-            const x = ((svgX - 25) / 250) * 100;
-            const y = ((svgY - 10) / 180) * 100;
+            
+            let finalX, finalY, zoneId, markerX = svgX, markerY = svgY;
 
-            tempCombinedGoal = { x: x.toFixed(1), y: y.toFixed(1) };
+            // Check if Zone mode is active
+            if (spielstand.settings.useGoalZones) {
+                const zoneRect = e.target.closest('.goal-zone-rect');
+                if (zoneRect) {
+                    zoneId = parseInt(zoneRect.getAttribute('data-zone'));
+                    // Center of the zone rect
+                    markerX = parseFloat(zoneRect.getAttribute('x')) + (parseFloat(zoneRect.getAttribute('width')) / 2);
+                    markerY = parseFloat(zoneRect.getAttribute('y')) + (parseFloat(zoneRect.getAttribute('height')) / 2);
+                    
+                    // Convert back to percentages (0-100)
+                    finalX = ((markerX - 25) / 250) * 100;
+                    finalY = ((markerY - 10) / 180) * 100;
+                }
+            }
 
-            // Show marker at exact click position
-            if (combinedGoalMarker) {
-                combinedGoalMarker.setAttribute('cx', svgX);
-                combinedGoalMarker.setAttribute('cy', svgY);
-                combinedGoalMarker.style.display = 'block';
+            if (finalX === undefined) {
+                // Exact mode
+                finalX = ((svgX - 25) / 250) * 100;
+                finalY = ((svgY - 10) / 180) * 100;
+                zoneId = calculateGoalZone(finalX, finalY);
+            }
+
+            tempCombinedGoal = { 
+                x: finalX.toFixed(1), 
+                y: finalY.toFixed(1),
+                zone: zoneId
+            };
+
+            // Reset marker and zone highlights
+            if (combinedGoalMarker) combinedGoalMarker.style.display = 'none';
+            const allRects = svg.querySelectorAll('.goal-zone-rect');
+            allRects.forEach(r => r.classList.remove('selected-zone'));
+
+            // Show highlight OR marker based on mode
+            if (spielstand.settings.useGoalZones) {
+                const zoneRect = e.target.closest('.goal-zone-rect');
+                if (zoneRect) {
+                    zoneRect.classList.add('selected-zone');
+                }
+            } else {
+                // Exact mode: Show marker
+                if (combinedGoalMarker) {
+                    combinedGoalMarker.setAttribute('cx', markerX);
+                    combinedGoalMarker.setAttribute('cy', markerY);
+                    combinedGoalMarker.style.display = 'block';
+                }
             }
         });
     }

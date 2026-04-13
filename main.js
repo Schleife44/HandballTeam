@@ -95,6 +95,8 @@ function initApp(skipLocalLoad = false) {
     console.log('[Main] App Initialized.');
 }
 
+import { syncSettingsVisuals } from './modules/settingsManager.js';
+
 /**
  * Modern refresh call for UI based on state changes.
  */
@@ -104,6 +106,7 @@ export function refreshUIFromState() {
     zeichneSpielerRaster();
     updateSuspensionDisplay();
     updateProtokollAnzeige();
+    syncSettingsVisuals();
 }
 
 // Global Fallbacks

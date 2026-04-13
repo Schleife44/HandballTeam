@@ -2,6 +2,22 @@ import { spielstand, speichereSpielstand } from './state.js';
 import { customAlert, customConfirm } from './customDialog.js';
 import { createInviteToken, getActiveTeamId, getCurrentUserProfile, leaveTeam, deleteTeam } from './firebase.js';
 
+export function syncSettingsVisuals() {
+    if (!spielstand || !spielstand.settings) return;
+    
+    const isGoalZonesActive = !!spielstand.settings.useGoalZones;
+    document.querySelectorAll('.goal-zones-group').forEach(g => {
+        if (isGoalZonesActive) g.classList.remove('versteckt');
+        else g.classList.add('versteckt');
+    });
+
+    const isFieldZonesActive = !!spielstand.settings.useFieldZones;
+    document.querySelectorAll('.field-zones-group').forEach(g => {
+        if (isFieldZonesActive) g.classList.remove('versteckt');
+        else g.classList.add('versteckt');
+    });
+}
+
 /**
  * Validates and locks the team settings
  */
@@ -145,6 +161,8 @@ export function initSettingsPage() {
     const toggleWurfpositionHeim = document.getElementById('set_toggleWurfpositionHeim');
     const toggleWurfpositionGegner = document.getElementById('set_toggleWurfpositionGegner');
     const toggleCombinedThrow = document.getElementById('set_toggleCombinedThrowMode');
+    const toggleGoalZones = document.getElementById('set_toggleGoalZones');
+    const toggleFieldZones = document.getElementById('set_toggleFieldZones');
 
     // Attendance Settings (Modal Sub)
     const modalSubRequireReason = document.getElementById('subRequireReason');
@@ -162,6 +180,8 @@ export function initSettingsPage() {
     if (toggleWurfpositionHeim) toggleWurfpositionHeim.checked = !!spielstand.settings.showWurfpositionHeim;
     if (toggleWurfpositionGegner) toggleWurfpositionGegner.checked = !!spielstand.settings.showWurfpositionGegner;
     if (toggleCombinedThrow) toggleCombinedThrow.checked = !!spielstand.settings.combinedThrowMode;
+    if (toggleGoalZones) toggleGoalZones.checked = !!spielstand.settings.useGoalZones;
+    if (toggleFieldZones) toggleFieldZones.checked = !!spielstand.settings.useFieldZones;
 
     // Sync Attendance
     if (spielstand.settings.calendar) {
@@ -250,8 +270,56 @@ export function initSettingsPage() {
         });
     }
 
-    // Initial run
+    // Initial run to sync UI state
     updateCombinedModeVisuals();
+    updateGoalZonesVisuals();
+    updateFieldZonesVisuals();
+
+    // Goal Zones Sync
+    if (toggleGoalZones) {
+        toggleGoalZones.onchange = () => {
+            spielstand.settings.useGoalZones = toggleGoalZones.checked;
+            updateGoalZonesVisuals();
+            speichereSpielstand();
+            console.log(`[Settings] Saved useGoalZones:`, toggleGoalZones.checked);
+        };
+    }
+
+    if (toggleFieldZones) {
+        toggleFieldZones.onchange = () => {
+            spielstand.settings.useFieldZones = toggleFieldZones.checked;
+            updateFieldZonesVisuals();
+            speichereSpielstand();
+            console.log(`[Settings] Saved useFieldZones:`, toggleFieldZones.checked);
+        };
+    }
+
+    /**
+     * Shows/Hides the goal zones grid overlay in modals
+     */
+    function updateGoalZonesVisuals() {
+        const isActive = !!spielstand.settings.useGoalZones;
+        const groups = document.querySelectorAll('.goal-zones-group');
+        groups.forEach(g => {
+            if (isActive) g.classList.remove('versteckt');
+            else g.classList.add('versteckt');
+        });
+    }
+
+    /**
+     * Shows/Hides the field zones overlay in modals
+     */
+    function updateFieldZonesVisuals() {
+        const isActive = !!spielstand.settings.useFieldZones;
+        const groups = document.querySelectorAll('.field-zones-group');
+        groups.forEach(g => {
+            if (isActive) g.classList.remove('versteckt');
+            else g.classList.add('versteckt');
+        });
+    }
+
+    updateGoalZonesVisuals();
+    updateFieldZonesVisuals();
 
     // Team Name/Color Listeners
     if (myTeamNameInput) {

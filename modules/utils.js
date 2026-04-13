@@ -114,3 +114,64 @@ export function sanitizeHTML(html) {
 
     return temp.innerHTML;
 }
+
+/**
+ * Calculates the goal zone (1-9) based on relative percentage coordinates.
+ * @param {number} xPercent - Percent from left (0-100)
+ * @param {number} yPercent - Percent from top (0-100)
+ * @returns {number} - Zone ID (1-9)
+ */
+export function calculateGoalZone(xPercent, yPercent) {
+    const col = Math.min(2, Math.floor(xPercent / (100 / 3)));
+    const row = Math.min(2, Math.floor(yPercent / (100 / 3)));
+    return (row * 3) + col + 1;
+}
+
+/**
+ * Calculates the functional field zone (1-9) based on relative percentage coordinates.
+ * Using mathematical boundaries matching the 6m/9m arcs and radial dividers.
+ * @param {number} xPercent - Percent from left (0-100)
+ * @param {number} yPercent - Percent from top (0-100)
+ * @returns {number} - Zone ID (1-9)
+ */
+export function calculateFieldZone(xPercent, yPercent) {
+    // Convert percentages to ViewBox coordinates (300x400 mapping, active 10-290, 10-390)
+    const vbX = 10 + (xPercent / 100) * 280;
+    const vbY = 10 + (yPercent / 100) * 380;
+
+    // Midfield zone
+    if (vbY >= 220) return 9;
+
+    // Check if outside 9m arc based on mapped symmetric X
+    const xSym = 150 - Math.abs(150 - vbX);
+    let y9m = 18;
+    if (xSym >= 37) {
+        // Approximate 9m bezier curve Y at given X
+        const t = Math.sqrt((xSym - 37) / 113);
+        y9m = 18 * Math.pow(1 - t, 2) + 150 * (2 * t - t * t);
+    }
+    
+    const isOutside9m = vbY > y9m || xSym < 37;
+
+    // Diver 2/3 (separating wings/half from center)
+    const xDiv2 = 111.8 - 0.355 * (vbY - 83.5);
+    const xDiv3 = 300 - xDiv2;
+
+    if (isOutside9m) {
+        // Zones 6, 7, 8
+        if (vbX < xDiv2) return 6;
+        if (vbX > xDiv3) return 8;
+        return 7;
+    } else {
+        // Zones 1, 2, 3, 4, 5 (Between arcs, or even inside 6m assigned outward)
+        // Diver 1/4 (separating deep wings from half)
+        const xDiv1 = 81.8 - 1.13 * (vbY - 54.7);
+        const xDiv4 = 300 - xDiv1;
+        
+        if (vbX < xDiv1) return 1;
+        if (vbX < xDiv2) return 2;
+        if (vbX < xDiv3) return 3;
+        if (vbX < xDiv4) return 4;
+        return 5;
+    }
+}

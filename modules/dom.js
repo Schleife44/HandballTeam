@@ -264,6 +264,12 @@ export const toggleCombinedThrow = document.getElementById('toggleCombinedThrow'
 export const combinedAssistPlayerList = document.getElementById('combinedAssistPlayerList');
 export const combinedAssistNone = document.getElementById('combinedAssistNone');
 export const combinedPlayTypeList = document.getElementById('combinedPlayTypeList');
+export const set_toggleGoalZones = document.getElementById('set_toggleGoalZones');
+export const set_toggleFieldZones = document.getElementById('set_toggleFieldZones');
+export const goalZonesGroups = document.querySelectorAll('.goal-zones-group');
+export const goalZoneRects = document.querySelectorAll('.goal-zone-rect');
+export const fieldZonesGroups = document.querySelectorAll('.field-zones-group');
+export const fieldZonePaths = document.querySelectorAll('.field-zone-path');
 
 export const heatmapSvg = document.getElementById('heatmapSvg');
 export const heatmapTeamToggle = document.getElementById('heatmapTeamToggle');

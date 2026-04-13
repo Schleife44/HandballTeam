@@ -9,6 +9,7 @@ import {
     liveOverviewHeatmapToreFilter, liveOverviewHeatmapMissedFilter, liveOverviewHeatmap7mFilter,
     liveOverviewHeatmapSvg
 } from './dom.js';
+import { calculateGoalZone, calculateFieldZone } from './utils.js';
 
 // --- Heatmap State ---
 export let currentHeatmapTab = 'tor';
@@ -80,51 +81,102 @@ export const drawGoalHeatmap = (pts, yOffset = 0, prefix = 'gen', isHistory = fa
                 </radialGradient>
             </defs>
             <rect x="25" y="10" width="250" height="180" fill="none" stroke="#666" stroke-width="3"/>
-            <line x1="100" y1="10" x2="100" y2="190" stroke="#444" stroke-width="1" stroke-dasharray="5,5"/>
-            <line x1="200" y1="10" x2="200" y2="190" stroke="#444" stroke-width="1" stroke-dasharray="5,5"/>
+            <!-- Tactical Grid Lines (Equal Thirds) -->
+            <line x1="108.3" y1="10" x2="108.3" y2="190" stroke="#444" stroke-width="1" stroke-dasharray="5,5"/>
+            <line x1="191.7" y1="10" x2="191.7" y2="190" stroke="#444" stroke-width="1" stroke-dasharray="5,5"/>
             <line x1="25" y1="70" x2="275" y2="70" stroke="#444" stroke-width="1" stroke-dasharray="5,5"/>
             <line x1="25" y1="130" x2="275" y2="130" stroke="#444" stroke-width="1" stroke-dasharray="5,5"/>
     `;
 
+    const isZoneMode = !!(spielstand && spielstand.settings && spielstand.settings.useGoalZones);
+    const stats = {1:{w:0,g:0},2:{w:0,g:0},3:{w:0,g:0},4:{w:0,g:0},5:{w:0,g:0},6:{w:0,g:0},7:{w:0,g:0},8:{w:0,g:0},9:{w:0,g:0}};
+    
+    // Predetermine statistics
     pts.forEach(p => {
-        if (p.isMiss || p.isBlocked) return;
-        let x = 25 + (p.x / 100) * 250;
-        let y = 10 + (p.y / 100) * 180;
-        x = Math.max(-10, Math.min(310, x));
-        y = Math.max(-55, Math.min(195, y));
-        // isOpponent in pts means Identity: Them
-        const gradient = p.isOpponent ? `url(#heatGradientBlue${prefix}${isHistory ? 'H' : ''}${yOffset})` : `url(#heatGradient${prefix}${isHistory ? 'H' : ''}${yOffset})`;
-        content += `<circle cx="${x}" cy="${y}" r="30" fill="${gradient}"/>`;
+        const z = calculateGoalZone(p.x, p.y);
+        if(z >= 1 && z <= 9) {
+            stats[z].w++;
+            const isGoal = !(p.isSave || p.isMiss || p.isBlocked || (p.action && p.action.toLowerCase().includes('block')));
+            if(isGoal) stats[z].g++;
+        }
     });
 
-    pts.forEach(p => {
-        let x = 25 + (p.x / 100) * 250;
-        let y = 10 + (p.y / 100) * 180;
-        x = Math.max(-10, Math.min(310, x));
-        y = Math.max(-55, Math.min(195, y));
+    const maxShots = Math.max(...Object.values(stats).map(s => s.w), 1);
 
-        let fillColor;
-        if (p.isSave) {
-            fillColor = '#ffc107';
-        } else if (p.isMiss || p.isBlocked || (p.action && p.action.toLowerCase().includes('block'))) {
-            fillColor = '#6c757d';
-        } else if (p.isOpponent) {
-            fillColor = colors.them;
-        } else {
-            fillColor = colors.us;
-        }
+    // 1. Draw individual markers ONLY if zone mode is OFF
+    if (!isZoneMode) {
+        pts.forEach(p => {
+            if (p.isMiss || p.isBlocked) return;
+            let x = 25 + (p.x / 100) * 250;
+            let y = 10 + (p.y / 100) * 180;
+            x = Math.max(-10, Math.min(310, x));
+            y = Math.max(-55, Math.min(195, y));
+            const gradient = p.isOpponent ? `url(#heatGradientBlue${prefix}${isHistory ? 'H' : ''}${yOffset})` : `url(#heatGradient${prefix}${isHistory ? 'H' : ''}${yOffset})`;
+            content += `<circle cx="${x}" cy="${y}" r="30" fill="${gradient}"/>`;
+        });
 
+        pts.forEach(p => {
+            let x = 25 + (p.x / 100) * 250;
+            let y = 10 + (p.y / 100) * 180;
+            x = Math.max(-10, Math.min(310, x));
+            y = Math.max(-55, Math.min(195, y));
 
-        let glowStyle = '';
-        if (p.isSave) {
-            glowStyle = `style="filter: drop-shadow(0 0 5px #ffc107); cursor: pointer;"`;
-        } else {
-            glowStyle = `style="filter: drop-shadow(0 0 5px ${fillColor}); cursor: pointer;"`;
-        }
+            let fillColor;
+            if (p.isSave) {
+                fillColor = '#ffc107';
+            } else if (p.isMiss || p.isBlocked || (p.action && p.action.toLowerCase().includes('block'))) {
+                fillColor = '#6c757d';
+            } else if (p.isOpponent) {
+                fillColor = colors.them;
+            } else {
+                fillColor = colors.us;
+            }
 
-        const radius = 4;
-        content += `<circle cx="${x}" cy="${y}" r="${radius}" fill="${fillColor}" stroke="white" stroke-width="1" ${glowStyle}/>`;
-    });
+            let glowStyle = '';
+            if (p.isSave) {
+                glowStyle = `style="filter: drop-shadow(0 0 5px #ffc107); cursor: pointer;"`;
+            } else {
+                glowStyle = `style="filter: drop-shadow(0 0 5px ${fillColor}); cursor: pointer;"`;
+            }
+
+            const radius = 4;
+            content += `<circle cx="${x}" cy="${y}" r="${radius}" fill="${fillColor}" stroke="white" stroke-width="1" ${glowStyle}/>`;
+        });
+    }
+
+    // 2. Draw Zone Highlights and Labels if mode is ON
+    if (isZoneMode) {
+        const goalZoneCenters = {
+            1: { x: 66.6, y: 40 },  2: { x: 150, y: 40 },  3: { x: 233.3, y: 40 },
+            4: { x: 66.6, y: 100 }, 5: { x: 150, y: 100 }, 6: { x: 233.3, y: 100 },
+            7: { x: 66.6, y: 160 }, 8: { x: 150, y: 160 }, 9: { x: 233.3, y: 160 }
+        };
+
+        const colWidth = 250 / 3;
+        const rowHeight = 180 / 3;
+
+        Object.keys(stats).forEach(z => {
+            const zi = parseInt(z);
+            if(stats[zi].w > 0) {
+                const c = goalZoneCenters[zi];
+                const col = (zi - 1) % 3;
+                const row = Math.floor((zi - 1) / 3);
+                
+                // Calculate intensity (0.1 to 0.7)
+                const intensity = 0.1 + (stats[zi].w / maxShots) * 0.6;
+                // Use team colors based on data content (if any points are opponent's)
+                const hasOpponentShots = pts.some(p => p.isOpponent);
+                const rgb = hasOpponentShots ? rgbThem : rgbUs;
+                
+                // Draw Glowing Rect
+                content += `<rect x="${25 + col * colWidth}" y="${10 + row * rowHeight}" width="${colWidth}" height="${rowHeight}" fill="rgba(${rgb.r},${rgb.g},${rgb.b},${intensity})" />`;
+                
+                // Draw Pill and Text
+                content += `<rect x="${c.x - 18}" y="${c.y + 8}" width="36" height="18" rx="6" fill="rgba(0,0,0,0.8)"/>`;
+                content += `<text x="${c.x}" y="${c.y + 21}" fill="white" font-size="12" font-weight="bold" text-anchor="middle" style="pointer-events: none;">${stats[zi].g}/${stats[zi].w}</text>`;
+            }
+        });
+    }
 
     content += `</g>`;
     return content;
@@ -155,39 +207,93 @@ export const drawFieldHeatmap = (pts, yOffset = 0, prefix = 'gen', isHistory = f
             <line x1="10" y1="388" x2="290" y2="388" stroke="#666" stroke-width="2"/>
     `;
 
+    const isZoneMode = !!(spielstand && spielstand.settings && spielstand.settings.useFieldZones);
+    const stats = {1:{w:0,g:0},2:{w:0,g:0},3:{w:0,g:0},4:{w:0,g:0},5:{w:0,g:0},6:{w:0,g:0},7:{w:0,g:0},8:{w:0,g:0},9:{w:0,g:0}};
+    
     pts.forEach(p => {
-        if (p.isMiss || p.isBlocked) return;
-        const x = 10 + (p.x / 100) * 280;
-        const y = 10 + (p.y / 100) * 380;
-        const gradient = p.isOpponent ? `url(#heatGradientBlueF${prefix}${isHistory ? 'H' : ''}${yOffset})` : `url(#heatGradientF${prefix}${isHistory ? 'H' : ''}${yOffset})`;
-        content += `<circle cx="${x}" cy="${y}" r="40" fill="${gradient}"/>`;
+        const z = calculateFieldZone(p.x, p.y);
+        if(z >= 1 && z <= 9) {
+            stats[z].w++;
+            const isGoal = !(p.isSave || p.isMiss || p.isBlocked || (p.action && p.action.toLowerCase().includes('block')));
+            if(isGoal) stats[z].g++;
+        }
     });
 
-    pts.forEach(p => {
-        let x = 10 + (p.x / 100) * 280;
-        let y = 10 + (p.y / 100) * 380;
-        x = Math.max(0, Math.min(300, x));
-        y = Math.max(0, Math.min(500, y));
+    const maxShots = Math.max(...Object.values(stats).map(s => s.w), 1);
 
-        let fillColor;
-        if (p.isSave) {
-            fillColor = '#ffc107';
-        } else if (p.isMiss || p.isBlocked || (p.action && p.action.toLowerCase().includes('block'))) {
-            fillColor = '#6c757d';
-        } else if (p.isOpponent) {
-            fillColor = colors.them;
-        } else {
-            fillColor = colors.us;
-        }
+    // 1. Draw individual markers ONLY if zone mode is OFF
+    if (!isZoneMode) {
+        pts.forEach(p => {
+            if (p.isMiss || p.isBlocked) return;
+            const x = 10 + (p.x / 100) * 280;
+            const y = 10 + (p.y / 100) * 380;
+            const gradient = p.isOpponent ? `url(#heatGradientBlueF${prefix}${isHistory ? 'H' : ''}${yOffset})` : `url(#heatGradientF${prefix}${isHistory ? 'H' : ''}${yOffset})`;
+            content += `<circle cx="${x}" cy="${y}" r="40" fill="${gradient}"/>`;
+        });
 
-        const radius = 4;
-        let glowStyle = '';
-        if (p.isSave) {
-            glowStyle = `style="filter: drop-shadow(0 0 5px #ffc107); cursor: pointer;"`;
-        }
+        pts.forEach(p => {
+            let x = 10 + (p.x / 100) * 280;
+            let y = 10 + (p.y / 100) * 380;
+            x = Math.max(0, Math.min(300, x));
+            y = Math.max(0, Math.min(500, y));
 
-        content += `<circle cx="${x}" cy="${y}" r="${radius}" fill="${fillColor}" stroke="white" stroke-width="1" ${glowStyle}/>`;
-    });
+            let fillColor;
+            if (p.isSave) {
+                fillColor = '#ffc107';
+            } else if (p.isMiss || p.isBlocked || (p.action && p.action.toLowerCase().includes('block'))) {
+                fillColor = '#6c757d';
+            } else if (p.isOpponent) {
+                fillColor = colors.them;
+            } else {
+                fillColor = colors.us;
+            }
+
+            const radius = 4;
+            let glowStyle = '';
+            if (p.isSave) {
+                glowStyle = `style="filter: drop-shadow(0 0 5px #ffc107); cursor: pointer;"`;
+            }
+
+            content += `<circle cx="${x}" cy="${y}" r="${radius}" fill="${fillColor}" stroke="white" stroke-width="1" ${glowStyle}/>`;
+        });
+    }
+
+    // 2. Draw Zone Highlights and Labels if mode is ON
+    if (isZoneMode) {
+        const fieldZonePaths = {
+            1: "M 37 18 L 75 18 Q 75 39.6 81.8 54.7 L 47.2 85.3 Q 37 57.6 37 18 Z",
+            2: "M 47.2 85.3 L 81.8 54.7 Q 90.8 74.9 111.8 83.5 L 92.4 138.1 Q 60.7 122.3 47.2 85.3 Z",
+            3: "M 92.4 138.1 L 111.8 83.5 Q 127.5 90 150 90 Q 172.5 90 188.2 83.5 L 207.6 138.1 Q 183.9 150 150 150 Q 116.1 150 92.4 138.1 Z",
+            4: "M 207.6 138.1 L 188.2 83.5 Q 209.2 74.9 218.2 54.7 L 252.8 85.3 Q 239.3 122.3 207.6 138.1 Z",
+            5: "M 263 18 L 225 18 Q 225 39.6 218.2 54.7 L 252.8 85.3 Q 263 57.6 263 18 Z",
+            6: "M 10 18 L 37 18 Q 37 57.6 47.2 85.3 Q 60.7 122.3 92.4 138.1 L 63.3 220 L 10 220 Z",
+            7: "M 63.3 220 L 92.4 138.1 Q 116.1 150 150 150 Q 183.9 150 207.6 138.1 L 236.7 220 Z",
+            8: "M 290 18 L 263 18 Q 263 57.6 252.8 85.3 Q 239.3 122.3 207.6 138.1 L 236.7 220 L 290 220 Z",
+            9: "M 10 220 L 290 220 L 290 388 L 10 388 Z"
+        };
+        const fieldZoneCenters = {
+            1: { x: 60, y: 45 },   2: { x: 75, y: 95 },   3: { x: 150, y: 115 },
+            4: { x: 225, y: 95 },  5: { x: 240, y: 45 },  6: { x: 40, y: 180 },
+            7: { x: 150, y: 180 }, 8: { x: 260, y: 180 }, 9: { x: 150, y: 280 }
+        };
+
+        Object.keys(stats).forEach(z => {
+            const zi = parseInt(z);
+            if(stats[zi].w > 0) {
+                const c = fieldZoneCenters[zi];
+                const intensity = 0.1 + (stats[zi].w / maxShots) * 0.6;
+                const hasOpponentShots = pts.some(p => p.isOpponent);
+                const rgb = hasOpponentShots ? rgbThem : rgbUs;
+
+                // Draw Glowing Path
+                content += `<path d="${fieldZonePaths[zi]}" fill="rgba(${rgb.r},${rgb.g},${rgb.b},${intensity})" stroke="rgba(${rgb.r},${rgb.g},${rgb.b},0.3)" stroke-width="1" />`;
+                
+                // Draw Pill and Text
+                content += `<rect x="${c.x - 18}" y="${c.y + 10}" width="36" height="18" rx="6" fill="rgba(0,0,0,0.8)"/>`;
+                content += `<text x="${c.x}" y="${c.y + 23}" fill="white" font-size="12" font-weight="bold" text-anchor="middle" style="pointer-events: none;">${stats[zi].g}/${stats[zi].w}</text>`;
+            }
+        });
+    }
 
     content += `</g>`;
     return content;
