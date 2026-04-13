@@ -1144,8 +1144,8 @@ function renderAttendanceUI(event) {
             
             if (isManualOnly) return { status: resp.status, reason: resp.reason };
             if (absence) return { status: 'not-going', reason: `Abwesend: ${absence.reason}` };
-            if (resp) return { status: resp.status, reason: resp.reason || '(Automatisch)' };
-            if (event.rules?.defaultStatus === 'going') return { status: 'going', reason: '(Automatisch)' };
+            if (resp) return { status: resp.status, reason: resp.reason || '' };
+            if (event.rules?.defaultStatus === 'going') return { status: 'going', reason: '' };
             
             return { status: 'none', reason: '' };
         };

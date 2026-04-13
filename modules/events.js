@@ -371,6 +371,25 @@ export function initEventListeners() {
                     spielstand.modeSelected = true;
                     spielstand.isSpielAktiv = false; // Reset to false until match start
                     
+                    // Auto-link today's game event for attendance-based roster filter
+                    if (!spielstand.aktivesSpielevent) {
+                        const today = new Date().toISOString().split('T')[0];
+                        const todayEvent = (spielstand.calendarEvents || []).find(e => {
+                            const eDate = e.date ? e.date.split('T')[0] : '';
+                            const isSpiel = (e.type === 'spiel' || e.type === 'training' || 
+                                             (e.title || '').toLowerCase().includes('spiel'));
+                            return eDate === today && isSpiel;
+                        }) || (spielstand.calendarEvents || []).find(e => {
+                            // Fallback: any event today
+                            const eDate = e.date ? e.date.split('T')[0] : '';
+                            return eDate === today;
+                        });
+                        if (todayEvent) {
+                            spielstand.aktivesSpielevent = todayEvent.id;
+                            console.log('[Game] Linked event for roster filter:', todayEvent.title, todayEvent.id);
+                        }
+                    }
+
                     // Save state
                     speichereSpielstand();
                     

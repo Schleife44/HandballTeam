@@ -125,8 +125,55 @@ export function zeichneSpielerRaster() {
     // Select containers
     [heimGoalkeeperRoster, heimActiveRoster, heimBenchRoster, gastGoalkeeperRoster, gastActiveRoster, gastBenchRoster].forEach(c => c && (c.innerHTML = ''));
 
-    const heimPlayers = isAway ? (spielstand.knownOpponents || []) : (spielstand.roster || []);
+    let heimPlayers = isAway ? (spielstand.knownOpponents || []) : (spielstand.roster || []);
     const gastPlayers = isAway ? (spielstand.roster || []) : (spielstand.knownOpponents || []);
+
+    // Filter home team players to only those who confirmed (going) for the active game event
+    const activeEvent = spielstand.aktivesSpielevent
+        ? (spielstand.calendarEvents || []).find(e => e.id === spielstand.aktivesSpielevent)
+        : null;
+
+    if (activeEvent && activeEvent.responses) {
+        const responses = activeEvent.responses;
+        const rosterAssignments = spielstand.rosterAssignments || {};
+
+        // Build a set of names that are "going"
+        const goingNames = new Set();
+
+        // Check responses by UID
+        Object.entries(responses).forEach(([uid, resp]) => {
+            if (resp && resp.status === 'going') {
+                const assignedName = rosterAssignments[uid];
+                if (assignedName) goingNames.add(assignedName.trim().toLowerCase());
+                // Also accept by resp.name directly (manual entries)
+                if (resp.name) goingNames.add(resp.name.trim().toLowerCase());
+            }
+        });
+
+        // Also check default status: if event default is 'going', include everyone who hasn't explicitly declined
+        const defaultGoing = activeEvent.rules?.defaultStatus === 'going';
+
+        if (goingNames.size > 0 || defaultGoing) {
+            // Filter the home team (not opponents)
+            const homeKey = isAway ? 'knownOpponents' : 'roster';
+            if (homeKey === 'roster') {
+                heimPlayers = heimPlayers.filter(p => {
+                    const pLower = (p.name || '').trim().toLowerCase();
+                    // Include if explicitly going
+                    if (goingNames.has(pLower)) return true;
+                    // Include if default is going AND player hasn't declined
+                    if (defaultGoing) {
+                        const uid = Object.keys(rosterAssignments).find(u => (rosterAssignments[u] || '').trim().toLowerCase() === pLower);
+                        const resp = uid ? responses[uid] : null;
+                        // Only exclude if explicitly not-going or maybe
+                        if (resp && (resp.status === 'not-going' || resp.status === 'maybe')) return false;
+                        return true;
+                    }
+                    return false;
+                });
+            }
+        }
+    }
 
     const renderTeam = (players, teamKey, gkCont, actCont, benchCont) => {
         const isOpponent = teamKey === 'opponent';
