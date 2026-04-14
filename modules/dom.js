@@ -50,6 +50,9 @@ export const historieHeader = document.getElementById('historieHeader');
 export const liveHeatmapBereich = document.getElementById('liveHeatmapBereich');
 export const protokollBereich = document.getElementById('protokollBereich');
 export const socialMediaBereich = document.getElementById('socialMediaBereich');
+export const playerProfileBereich = document.getElementById('playerProfileBereich');
+export const profilePlayerName = document.getElementById('profilePlayerName');
+export const backFromProfileBtn = document.getElementById('backFromProfileBtn');
 
 export const historyButtonInline = null;
 export const seasonOverviewButtonInline = null;

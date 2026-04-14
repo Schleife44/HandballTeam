@@ -557,6 +557,46 @@ export function initSocialMediaSettings() {
         };
     }
 
+    // --- Scorer Sorting ---
+    const scorerSortSelect = document.getElementById('smScorerSort');
+    if (scorerSortSelect) {
+        scorerSortSelect.value = sm.scorerSort || 'goals_desc';
+        scorerSortSelect.onchange = () => {
+            sm.scorerSort = scorerSortSelect.value;
+            speichereSpielstand();
+        };
+    }
+
+    // --- Scorer Format ---
+    const scorerFormatSelect = document.getElementById('smScorerFormat');
+    if (scorerFormatSelect) {
+        scorerFormatSelect.value = sm.scorerFormat || 'lastname_goals';
+        scorerFormatSelect.onchange = () => {
+            sm.scorerFormat = scorerFormatSelect.value;
+            speichereSpielstand();
+        };
+    }
+
+    // --- Auto Summary ---
+    const autoSummaryInput = document.getElementById('smAutoSummary');
+    if (autoSummaryInput) {
+        autoSummaryInput.checked = sm.autoSummary !== false;
+        autoSummaryInput.onchange = () => {
+            sm.autoSummary = autoSummaryInput.checked;
+            speichereSpielstand();
+        };
+    }
+
+    // --- Hashtags ---
+    const hashtagsInput = document.getElementById('smHashtags');
+    if (hashtagsInput) {
+        hashtagsInput.value = sm.hashtags || '';
+        hashtagsInput.oninput = () => {
+            sm.hashtags = hashtagsInput.value;
+            speichereSpielstand();
+        };
+    }
+
     // --- Editor Button ---
     const editorBtn = document.getElementById('openSmEditorBtn');
     if (editorBtn) {

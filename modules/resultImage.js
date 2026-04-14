@@ -4,6 +4,7 @@
 import { spielstand, speichereSpielstand } from './state.js';
 import { customAlert, customConfirm } from './customDialog.js';
 import { getGameResult } from './utils.js';
+import { berechneStatistiken } from './stats.js';
 
 /**
  * Default social media settings
@@ -18,6 +19,10 @@ function getSocialMediaDefaults() {
         overlayOpacity: 0.55,
         ownTeamColor: '#ffffff',
         opponentColor: '#ef4444',
+        hashtags: '#handball #ergebnis #spieltag #teampower #handballdeutschland',
+        scorerSort: 'goals_desc', // goals_desc, name_asc, roster_order
+        scorerFormat: 'lastname_goals', // lastname_goals, fullname_goals, lastname_only
+        autoSummary: true,
         customElements: [],
         positions: {
             ergebnisLabel: { x: 80, y: 960, fontSize: 110, bold: true },
@@ -1119,6 +1124,37 @@ export async function showResultImageModal(gameSource, isSettingsMode = false) {
         };
     }
 
+    // --- SETUP INSTAGRAM CAPTION ---
+    const captionArea = document.getElementById('smInstagramCaptionArea');
+    const captionText = document.getElementById('smInstagramCaptionText');
+    const copyBtn = document.getElementById('copySmCaptionBtn');
+
+    if (captionArea && captionText && !isSettingsMode) {
+        captionArea.classList.remove('versteckt');
+        captionText.value = generateInstagramCaption(game);
+
+        if (copyBtn) {
+            const newCopy = copyBtn.cloneNode(true);
+            copyBtn.parentNode.replaceChild(newCopy, copyBtn);
+            newCopy.onclick = async () => {
+                try {
+                    await navigator.clipboard.writeText(captionText.value);
+                    const originalHTML = newCopy.innerHTML;
+                    newCopy.innerHTML = '<i data-lucide="check" style="width: 14px; height: 14px; margin-right: 4px;"></i> Kopiert!';
+                    if (window.lucide) window.lucide.createIcons();
+                    setTimeout(() => {
+                        newCopy.innerHTML = originalHTML;
+                        if (window.lucide) window.lucide.createIcons();
+                    }, 2000);
+                } catch (err) {
+                    console.error('Fehler beim Kopieren:', err);
+                }
+            };
+        }
+    } else if (captionArea) {
+        captionArea.classList.add('versteckt');
+    }
+
     // Setup download button
     const downloadBtn = document.getElementById('downloadResultImage');
     if (downloadBtn) {
@@ -1142,3 +1178,205 @@ function triggerDownloadClick(canvas, game) {
     document.body.removeChild(link);
 }
 
+/**
+ * Analyzes the game log to create a narrative summary
+ */
+function generateGameSummary(game) {
+    const log = game.gameLog || [];
+    if (log.length === 0) return "";
+
+    const isAuswaerts = game.settings?.isAuswaertsspiel || false;
+    const myTeamName = game.settings?.myTeamName || "Unser Team";
+    const opponentName = isAuswaerts ? (game.teams?.heim || "der Gastgeber") : (game.teams?.gegner || "der Gast");
+
+    // Helper to get score from string "H:G"
+    const parseScore = (scoreStr) => {
+        if (!scoreStr || typeof scoreStr !== 'string') return { heim: 0, gegner: 0 };
+        const parts = scoreStr.split(':');
+        return { heim: parseInt(parts[0]) || 0, gegner: parseInt(parts[1]) || 0 };
+    };
+
+    const getScoreFromEntry = (e) => parseScore(e.score || e.spielstand || "");
+    const getDiff = (score) => isAuswaerts ? score.gegner - score.heim : score.heim - score.gegner;
+
+    const finalScore = { heim: game.score?.heim || 0, gegner: game.score?.gegner || 0 };
+
+    // 1. Identify Halftime Score
+    let halftimeScore = { heim: 0, gegner: 0 };
+    let halftimeEntry = log.find(e => e.action === 'Halbzeit' || e.action === 'Start 2. Halbzeit' || e.action === 'Spiel Ende');
+    
+    if (halftimeEntry && halftimeEntry.action !== 'Spiel Ende') {
+        halftimeScore = getScoreFromEntry(halftimeEntry);
+    } else {
+        // Fallback: Use the state of the game at roughly the midpoint of total events
+        const midIndex = Math.floor(log.length / 2);
+        halftimeScore = getScoreFromEntry(log[midIndex]);
+    }
+
+    // 2. Identify Early Game (first 10-15% of actions)
+    const earlyIndex = Math.max(0, log.length - Math.ceil(log.length * 0.15));
+    let earlyScore = getScoreFromEntry(log[earlyIndex]);
+    const earlyDiff = getDiff(earlyScore);
+    const htDiff = getDiff(halftimeScore);
+    const finalDiff = getDiff(finalScore);
+
+    let narrative = "";
+
+    // Header / Intro
+    if (earlyDiff > 2) {
+        narrative += `Wir waren von Anfang an im Spiel und konnten uns früh absetzen. `;
+    } else if (earlyDiff < -2) {
+        narrative += `Es dauerte ein paar Minuten, bis unser Team im Spiel angekommen war. `;
+    } else {
+        narrative += `Von Beginn an entwickelte sich eine ausgeglichene Partie. `;
+    }
+
+    // Halftime / Midgame
+    if (htDiff > 3) {
+        narrative += `Dank einer starken ersten Halbzeit konnten wir mit einer verdienten ${halftimeScore.heim}:${halftimeScore.gegner} Führung in die Kabine gehen. `;
+    } else if (htDiff < -3) {
+        narrative += `Trotz eines Rückstands zur Pause (${halftimeScore.heim}:${halftimeScore.gegner}) gaben wir uns nicht auf. `;
+    } else {
+        narrative += `In einer engen ersten Hälfte schenkten sich beide Teams nichts, was zum ${halftimeScore.heim}:${halftimeScore.gegner} Pausenstand führte. `;
+    }
+
+    // Second Half / Finish
+    if (finalDiff > htDiff && finalDiff > 0) {
+        narrative += `In der zweiten Halbzeit konnten wir das Tempo hochhalten und den Vorsprung kontinuierlich ausbauen. `;
+    } else if (finalDiff > 0 && htDiff < 0) {
+        narrative += `Mit einer tollen Moral kämpften wir uns im zweiten Durchgang zurück und drehten das Spiel zu unseren Gunsten. `;
+    } else if (finalDiff === 0) {
+        narrative += `Am Ende stand ein leistungsgerechtes Unentschieden auf der Anzeigetafel. `;
+    } else if (finalDiff < 0 && htDiff >= 0) {
+        narrative += `Leider konnten wir die Führung in der Schlussphase nicht über die Zeit retten. `;
+    } else {
+        narrative += `Kleine Schwächephasen konnten am Ende nicht mehr ganz ausgeglichen werden. `;
+    }
+
+    if (finalDiff > 0) {
+        narrative += `Am Ende sichern wir uns den verdienten Sieg gegen ${opponentName}! 🥳`;
+    } else if (finalDiff < 0) {
+        narrative += `Ein harter Kampf, der heute leider nicht mit Punkten belohnt wurde. Wir kommen stärker zurück!`;
+    }
+
+    return narrative;
+}
+
+/**
+ * Generates the Instagram caption text for a game
+ */
+function generateInstagramCaption(game) {
+    const myTeamName = game.settings?.myTeamName || spielstand.settings.myTeamName;
+    const sm = ensureSocialMediaSettings();
+    const stats = berechneStatistiken(game.gameLog, game.roster);
+    
+    const heimScore = game.score?.heim ?? 0;
+    const gegnerScore = game.score?.gegner ?? 0;
+    const result = getGameResult(game, myTeamName);
+    const isWin = result === 'win';
+    const isLoss = result === 'loss';
+    
+    const opponentName = game.settings?.isAuswaertsspiel 
+        ? game.teams?.heim 
+        : game.teams?.gegner;
+    
+    let text = "";
+    
+    // Header based on win/loss/draw
+    if (isWin) {
+        text += `SIEG GEGEN ${opponentName?.toUpperCase()}! 🥳💪🏼\n\n`;
+    } else if (isLoss) {
+        text += `NIEDERLAGE GEGEN ${opponentName?.toUpperCase()}. 😔\n\n`;
+    } else {
+        text += `UNENTSCHIEDEN GEGEN ${opponentName?.toUpperCase()}. 🤝\n\n`;
+    }
+    
+    // Result
+    text += `Endergebnis: ${heimScore}:${gegnerScore}\n\n`;
+    
+    // Narratives Placeholders or Auto Summary
+    if (sm.autoSummary) {
+        text += `${generateGameSummary(game)}\n\n`;
+    } else {
+        text += `[HIER SPIELZUSAMMENFASSUNG EINFÜGEN]\n\n`;
+    }
+    
+    // --- NEXT GAME INFO ---
+    const events = (spielstand.calendarEvents || []);
+    const currentGameDateStr = game.date ? new Date(game.date).toISOString().slice(0, 10) : "";
+    const futureEvents = events.filter(e => e.date > (currentGameDateStr || "0000-00-00"));
+    futureEvents.sort((a, b) => a.date.localeCompare(b.date) || (a.time || '').localeCompare(b.time || ''));
+    
+    const nextEvent = futureEvents[0];
+    if (nextEvent) {
+        const d = new Date(nextEvent.date);
+        const dayNames = ["Sonntag", "Montag", "Dienstag", "Mittwoch", "Donnerstag", "Freitag", "Samstag"];
+        const dayName = dayNames[d.getDay()];
+
+        // Try to extract only the opponent from the title (remove our team name)
+        let displayOpponent = nextEvent.title || "";
+        if (myTeamName && displayOpponent.toLowerCase().includes(myTeamName.toLowerCase())) {
+            const separators = [" - ", " vs. ", " vs ", " : "];
+            for (const sep of separators) {
+                if (displayOpponent.includes(sep)) {
+                    const parts = displayOpponent.split(sep);
+                    const found = parts.find(p => !p.toLowerCase().includes(myTeamName.toLowerCase()));
+                    if (found) {
+                        displayOpponent = found.trim();
+                        break;
+                    }
+                }
+            }
+            // Fallback: If still contains myTeamName, just strip it
+            if (displayOpponent.toLowerCase().includes(myTeamName.toLowerCase())) {
+                displayOpponent = displayOpponent.replace(new RegExp(myTeamName, 'gi'), '').replace(/^[-\s:]+|[-\s:]+$/g, '').trim();
+            }
+        }
+
+        text += `Am ${dayName} (${d.toLocaleDateString('de-DE')}) geht es bereits gegen ${displayOpponent} weiter! 🔥\n\n`;
+    } else {
+        text += `Am nächsten Spieltag geht es weiter! 🔥\n\n`;
+    }
+
+    text += `Danke für Eure Unterstützung! 👏🏼\n\n`;
+    
+    // Helper to extract Last Name
+    const getLastName = (fullName) => {
+        if (!fullName) return '';
+        const parts = fullName.trim().split(/\s+/);
+        return parts[parts.length - 1]; 
+    };
+
+    let filteredStats = stats.filter(p => !p.isOpponent);
+
+    // Sorting
+    if (sm.scorerSort === 'goals_desc') {
+        filteredStats.sort((a, b) => (b.tore - a.tore) || a.name.localeCompare(b.name));
+    } else if (sm.scorerSort === 'name_asc') {
+        filteredStats.sort((a, b) => a.name.localeCompare(b.name));
+    }
+
+    // List of scorers with customizable formatting
+    const scorers = filteredStats
+        .map(p => {
+            let nameToDisplay = p.name || '';
+            if (sm.scorerFormat === 'lastname_goals' || sm.scorerFormat === 'lastname_only') {
+                nameToDisplay = getLastName(p.name);
+            }
+            
+            if (sm.scorerFormat === 'lastname_only') {
+                return nameToDisplay;
+            }
+            
+            if (p.tore > 0) {
+                return `${nameToDisplay} (${p.tore})`;
+            }
+            return nameToDisplay;
+        })
+        .join(', ');
+        
+    text += scorers;
+    text += `\n\n${sm.hashtags || ''}`;
+    
+    return text;
+}

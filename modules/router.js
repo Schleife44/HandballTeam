@@ -15,6 +15,7 @@ import { showDashboardInline } from './dashboardView.js';
 import { updateRosterInputsForValidation, initSettingsPage, initSocialMediaSettings } from './settingsManager.js';
 import { renderHistoryList } from './historyView.js';
 import { openSeasonOverview } from './seasonView.js';
+import { renderPlayerProfilePage, initPlayerProfile } from './playerProfile.js';
 
 /**
  * Maps hashes to view rendering functions.
@@ -118,6 +119,11 @@ const routes = {
         hideAllSections();
         if (socialMediaBereich) socialMediaBereich.classList.remove('versteckt');
         initSocialMediaSettings();
+    },
+    'playerprofile': () => {
+        hideAllSections();
+        if (playerProfileBereich) playerProfileBereich.classList.remove('versteckt');
+        renderPlayerProfilePage();
     }
 };
 
@@ -135,7 +141,8 @@ function hideAllSections() {
         document.getElementById('tacticalBoardBereich'),
         document.getElementById('dashboardBereich'),
         socialMediaBereich,
-        historieDetailBereich
+        historieDetailBereich,
+        playerProfileBereich
     ];
     sections.forEach(s => {
         if (s) {
@@ -200,4 +207,7 @@ export function initRouter() {
     window.addEventListener('hashchange', handleRouting);
     // Trigger initial route
     handleRouting();
+    
+    // Init specialized pages
+    initPlayerProfile();
 }

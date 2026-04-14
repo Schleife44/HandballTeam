@@ -56,7 +56,8 @@ export let spielstand = {
     knownOpponents: [], // { number: 7, name: 'Max' } - Name ist optional
     calendarEvents: [], // { id, title, type, date, time, location }
     calendarSubscriptions: [], // { id, url, title, lastUpdated }
-    rosterAssignments: {} // { uid: 'Spieler Name' } - Wer ist welcher Kader-Spieler
+    rosterAssignments: {}, // { uid: 'Spieler Name' } - Wer ist welcher Kader-Spieler
+    activeProfilePlayer: { index: null, isOpponent: false } // Tracking for player profile page
 };
 
 // --- Deep Clone of Initial State for Reset ---
@@ -120,6 +121,7 @@ export function ladeSpielstandDaten() {
 
         if (!spielstand.knownOpponents) spielstand.knownOpponents = [];
         if (!spielstand.rosterAssignments) spielstand.rosterAssignments = {};
+        if (!spielstand.activeProfilePlayer) spielstand.activeProfilePlayer = { index: null, isOpponent: false };
         if (typeof spielstand.isSpielAktiv === 'undefined') spielstand.isSpielAktiv = false;
 
         // Migration: Konvertiere alte Gegner-Nummern zu Objekt-Format

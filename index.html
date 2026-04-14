@@ -811,6 +811,46 @@
                             <input type="range" id="smOverlayOpacity" min="0" max="100" value="55" style="width: 100%; accent-color: var(--btn-primary);">
                         </div>
 
+                        <!-- Bildunterschrift (Hashtags, Sort, Format) -->
+                        <div style="border-top: 1px solid var(--border-color); padding-top: 15px; margin-top: 5px; display: flex; flex-direction: column; gap: 12px;">
+                            <h5 style="margin: 0; font-size: 0.85rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em;">Bildunterschrift</h5>
+                            
+                            <!-- Scorer Sorting -->
+                            <div class="setting-row" style="display: flex; justify-content: space-between; align-items: center;">
+                                <label for="smScorerSort" style="font-weight: 500; font-size: 0.9rem;">Torschützen Sortierung</label>
+                                <select id="smScorerSort" class="shadcn-input" style="width: 160px; font-size: 0.8rem;">
+                                    <option value="goals_desc">Tore (absteigend)</option>
+                                    <option value="name_asc">Alphabetisch</option>
+                                    <option value="roster_order">Kader-Reihenfolge</option>
+                                </select>
+                            </div>
+
+                            <!-- Scorer Format -->
+                            <div class="setting-row" style="display: flex; justify-content: space-between; align-items: center;">
+                                <label for="smScorerFormat" style="font-weight: 500; font-size: 0.9rem;">Torschützen Format</label>
+                                <select id="smScorerFormat" class="shadcn-input" style="width: 160px; font-size: 0.8rem;">
+                                    <option value="lastname_goals">Nachname (Tore)</option>
+                                    <option value="fullname_goals">Vorname Nachname (Tore)</option>
+                                    <option value="lastname_only">Nur Nachname</option>
+                                </select>
+                            </div>
+
+                            <!-- Auto Summary -->
+                            <div class="setting-row" style="display: flex; justify-content: space-between; align-items: center;">
+                                <label for="smAutoSummary" style="font-weight: 500; font-size: 0.9rem;">Autom. Zusammenfassung</label>
+                                <label class="switch">
+                                    <input type="checkbox" id="smAutoSummary" checked>
+                                    <span class="slider round"></span>
+                                </label>
+                            </div>
+
+                            <!-- Hashtags -->
+                            <div class="setting-row" style="display: flex; flex-direction: column; gap: 6px;">
+                                <label for="smHashtags" style="font-weight: 500; font-size: 0.9rem;">Hashtags</label>
+                                <textarea id="smHashtags" class="shadcn-input" style="width: 100%; height: 60px; font-size: 0.8rem; padding: 8px; resize: none;" placeholder="#handball #ergebnis..."></textarea>
+                            </div>
+                        </div>
+
                         <!-- Team Colors -->
                         <div style="display: flex; gap: 12px;">
                             <div class="setting-row" style="display: flex; align-items: center; gap: 8px; flex: 1;">
@@ -835,6 +875,23 @@
                             </button>
                         </div>
                     </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- SECTION: PLAYER PROFILE -->
+        <div id="playerProfileBereich" class="versteckt">
+            <div style="padding: 20px; max-width: 1000px; margin: 0 auto;">
+                <!-- Header with Back Button -->
+                <div style="display: flex; align-items: center; gap: 15px; margin-bottom: 25px;">
+                    <button id="backFromProfileBtn" class="shadcn-btn-outline" style="width: 40px; height: 40px; padding: 0;">
+                        <i data-lucide="arrow-left" style="width: 20px; height: 20px;"></i>
+                    </button>
+                    <h2 id="profilePlayerName" style="margin: 0; font-size: 1.8rem;">Spieler Profil</h2>
+                </div>
+
+                <div id="playerProfileContent">
+                    <!-- Dynamic Content populated by modules/playerProfile.js -->
                 </div>
             </div>
         </div>
@@ -2559,6 +2616,16 @@
                             <input type="time" id="corrTime" style="background: rgba(255,255,255,0.05); border: 1px solid var(--border-color); color: white; border-radius: 4px; padding: 4px; font-size: 0.75rem;">
                         </div>
                     </div>
+                </div>
+            </div>
+            <!-- Instagram Caption Section (New) -->
+            <div id="smInstagramCaptionArea" class="versteckt" style="padding: 12px 20px; border-top: 1px solid var(--border-color); background: rgba(0,0,0,0.2);">
+                <label style="font-size: 0.75rem; color: var(--text-muted); display: block; margin-bottom: 8px;">Instagram Bildunterschrift</label>
+                <div style="position: relative;">
+                    <textarea id="smInstagramCaptionText" readonly style="width: 100%; height: 100px; background: rgba(0,0,0,0.3); border: 1px solid var(--border-color); color: white; border-radius: 8px; padding: 10px; font-size: 0.85rem; resize: none; font-family: inherit; outline: none;"></textarea>
+                    <button id="copySmCaptionBtn" class="shadcn-btn-outline" style="position: absolute; top: 8px; right: 8px; padding: 4px 8px; height: auto; font-size: 0.7rem; background: rgba(0,0,0,0.5); border-radius: 6px;">
+                        <i data-lucide="copy" style="width: 14px; height: 14px; margin-right: 4px; display: inline-block; vertical-align: -2px;"></i> Kopieren
+                    </button>
                 </div>
             </div>
 

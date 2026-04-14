@@ -4,6 +4,7 @@ import { sanitizeHTML, escapeHTML } from './securityUtils.js';
 import { drawGoalHeatmap, drawFieldHeatmap, renderHeatmap, setCurrentHeatmapTab, setCurrentHeatmapContext, drawShotLines } from './heatmap.js';
 import { spielstand, speichereSpielstand, getOpponentLabel, getMyTeamLabel } from './state.js';
 import { getAuthUid, getCurrentUserProfile, isUserTrainer } from './firebase.js';
+import { navigateTo } from './router.js';
 
 
 let inlineEditingIndex = null;
@@ -388,6 +389,16 @@ export function zeichneRosterListe(showGastTab = false) {
                          title="${p.email || Array.from(assignedNames).some(name => (name || '').trim().toLowerCase() === (p.name || '').trim().toLowerCase()) ? 'Konto verknüpft / E-Mail hinterlegt' : 'Kein Konto verknüpft'}"></div>
                 ` : ''}
             `);
+
+            // NEW: Player Profile Click Handler
+            const infoDiv = div.querySelector('.roster-player-info');
+            if (infoDiv) {
+                infoDiv.style.cursor = 'pointer';
+                infoDiv.addEventListener('click', () => {
+                    spielstand.activeProfilePlayer = { index: idx, isOpponent: isOpp };
+                    navigateTo('playerprofile');
+                });
+            }
         }
         rosterListe.appendChild(div);
     });
