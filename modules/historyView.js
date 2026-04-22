@@ -83,6 +83,14 @@ export async function handleSpielBeenden() {
             }
         };
 
+        // Carry over handball.net reference if the game was started from a synced event
+        if (spielstand.aktivesSpielevent) {
+            const activeEvent = (spielstand.calendarEvents || []).find(e => e.id === spielstand.aktivesSpielevent);
+            if (activeEvent && activeEvent.hnetGameId) {
+                gameData.hnetGameId = activeEvent.hnetGameId;
+            }
+        }
+
         if (spielstand.gameLog && spielstand.gameLog.length > 0) {
             await speichereSpielInHistorie(gameData);
             await customAlert("Spiel gespeichert!", "Erfolg ✓");
@@ -176,10 +184,16 @@ export async function renderHistoryList() {
 
         const date = new Date(game.date).toLocaleDateString();
 
+        const isHnet = !!game.hnetGameId;
+        const sourceBadge = isHnet 
+            ? `<span style="font-size: 0.65rem; padding: 2px 6px; background: rgba(37, 99, 235, 0.1); color: #60a5fa; border: 1px solid rgba(37, 99, 235, 0.2); border-radius: 4px; margin-left: auto;">handball.net</span>`
+            : `<span style="font-size: 0.65rem; padding: 2px 6px; background: rgba(255, 255, 255, 0.05); color: var(--text-muted); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 4px; margin-left: auto;">Eigenes Tracking</span>`;
+
         div.innerHTML = sanitizeHTML(`
-            <div class="history-card-header" style="pointer-events: none;">
+            <div class="history-card-header" style="pointer-events: none; display: flex; align-items: center; gap: 8px;">
                 <span style="font-weight: 600; color: ${statusColor}">${escapeHTML(statusText)}</span>
-                <span>${escapeHTML(date)}</span>
+                <span style="opacity: 0.6;">${escapeHTML(date)}</span>
+                ${sourceBadge}
             </div>
             
             <div class="history-card-body" style="pointer-events: none;">

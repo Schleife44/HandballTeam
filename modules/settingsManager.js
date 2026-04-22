@@ -210,7 +210,10 @@ export function initSettingsPage() {
     const myTeamNameInput = document.getElementById('myTeamNameInput');
     const myTeamColorInput = document.getElementById('myTeamColorInput');
     const myTeamColorIcon = document.getElementById('myTeamColorIcon');
-    const tournamentIdInput = document.getElementById('handballNetTournamentIdInput');
+    const teamUrlInput = document.getElementById('handballNetTeamUrlInput');
+    const hnetRequireReason = document.getElementById('hnetDefaultRequireReason');
+    const hnetAutoGoing = document.getElementById('hnetDefaultAutoGoing');
+    const hnetDeadlineHours = document.getElementById('hnetDefaultDeadlineHours');
     
     // Toggles
     const toggleDarkMode = document.getElementById('set_toggleDarkMode');
@@ -227,7 +230,12 @@ export function initSettingsPage() {
     if (myTeamNameInput) myTeamNameInput.value = spielstand.settings.myTeamName || '';
     if (myTeamColorInput) myTeamColorInput.value = spielstand.settings.myTeamColor || '#dc3545';
     if (myTeamColorIcon) myTeamColorIcon.style.color = spielstand.settings.myTeamColor || '#dc3545';
-    if (tournamentIdInput) tournamentIdInput.value = spielstand.settings.handballNetTournamentId || '';
+    if (teamUrlInput) teamUrlInput.value = spielstand.settings.handballNetTeamUrl || '';
+    // Load HNET default rules
+    const savedRules = spielstand.settings.hnetDefaultRules || {};
+    if (hnetRequireReason) hnetRequireReason.checked = !!savedRules.requireReason;
+    if (hnetAutoGoing) hnetAutoGoing.checked = !!savedRules.autoGoing;
+    if (hnetDeadlineHours) hnetDeadlineHours.value = savedRules.deadlineHours ?? 0;
 
     if (toggleDarkMode) toggleDarkMode.checked = !!spielstand.settings.darkMode;
     if (toggleWurfbildHeim) toggleWurfbildHeim.checked = !!spielstand.settings.showWurfbildHeim;
@@ -377,10 +385,160 @@ export function initSettingsPage() {
     if (myTeamColorInput) {
         myTeamColorInput.oninput = (e) => saveMyTeamColor(e.target.value);
     }
-    if (tournamentIdInput) {
-        tournamentIdInput.oninput = (e) => {
-            spielstand.settings.handballNetTournamentId = e.target.value;
+    if (teamUrlInput) {
+        teamUrlInput.oninput = (e) => {
+            spielstand.settings.handballNetTeamUrl = e.target.value;
             speichereSpielstand();
+        };
+    }
+
+    // Save HNET default rules on change
+    const saveHnetRules = () => {
+        spielstand.settings.hnetDefaultRules = {
+            requireReason: hnetRequireReason?.checked || false,
+            autoGoing: hnetAutoGoing?.checked || false,
+            deadlineHours: parseInt(hnetDeadlineHours?.value) || 0
+        };
+        speichereSpielstand();
+    };
+    if (hnetRequireReason) hnetRequireReason.onchange = saveHnetRules;
+    if (hnetAutoGoing) hnetAutoGoing.onchange = saveHnetRules;
+    if (hnetDeadlineHours) hnetDeadlineHours.onchange = saveHnetRules;
+
+    // --- Handball.net Sync Button ---
+    const syncBtn = document.getElementById('syncHandballNetBtn');
+    const syncStatus = document.getElementById('handballNetSyncStatus');
+    if (syncBtn) {
+        syncBtn.onclick = async () => {
+            const url = teamUrlInput?.value?.trim();
+            if (!url) {
+                if (syncStatus) {
+                    syncStatus.classList.remove('versteckt');
+                    syncStatus.style.background = 'rgba(239,68,68,0.1)';
+                    syncStatus.style.border = '1px solid rgba(239,68,68,0.2)';
+                    syncStatus.style.color = '#f87171';
+                    syncStatus.innerHTML = '<i data-lucide="alert-circle" style="width:16px;height:16px;"></i> Bitte zuerst einen handball.net Team-Link eingeben.';
+                    if (window.lucide) window.lucide.createIcons();
+                }
+                return;
+            }
+
+            const { parseTeamUrl, syncScheduleToCalendar } = await import('./handballNetImport.js');
+            const teamId = parseTeamUrl(url);
+            if (!teamId) {
+                if (syncStatus) {
+                    syncStatus.classList.remove('versteckt');
+                    syncStatus.style.background = 'rgba(239,68,68,0.1)';
+                    syncStatus.style.border = '1px solid rgba(239,68,68,0.2)';
+                    syncStatus.style.color = '#f87171';
+                    syncStatus.innerHTML = '<i data-lucide="alert-circle" style="width:16px;height:16px;"></i> Ungültiger Link. Bitte den Mannschaftslink von handball.net kopieren.';
+                    if (window.lucide) window.lucide.createIcons();
+                }
+                return;
+            }
+
+            // Show loading state
+            syncBtn.disabled = true;
+            const originalContent = syncBtn.innerHTML;
+            syncBtn.innerHTML = '<i data-lucide="loader-2" class="animate-spin" style="width:16px;height:16px;"></i> Synchronisiere...';
+            if (window.lucide) window.lucide.createIcons();
+
+            if (syncStatus) {
+                syncStatus.classList.remove('versteckt');
+                syncStatus.style.background = 'rgba(59,130,246,0.08)';
+                syncStatus.style.border = '1px solid rgba(59,130,246,0.2)';
+                syncStatus.style.color = '#60a5fa';
+                syncStatus.innerHTML = '<i data-lucide="loader-2" class="animate-spin" style="width:16px;height:16px;"></i> Lade Spielplan von handball.net...';
+                if (window.lucide) window.lucide.createIcons();
+            }
+
+            try {
+                const rules = spielstand.settings.hnetDefaultRules || {};
+                const result = await syncScheduleToCalendar(teamId, rules);
+
+                if (syncStatus) {
+                    syncStatus.style.background = 'rgba(34,197,94,0.1)';
+                    syncStatus.style.border = '1px solid rgba(34,197,94,0.2)';
+                    syncStatus.style.color = '#4ade80';
+
+                    const parts = [];
+                    if (result.added > 0) parts.push(`${result.added} neue Spiele hinzugefügt`);
+                    if (result.merged > 0) parts.push(`${result.merged} mit vorhandenen verknüpft`);
+                    if (result.skipped > 0) parts.push(`${result.skipped} bereits synchronisiert`);
+
+                    const hint = result.total < 8
+                        ? `<br><span style="font-size:0.72rem; opacity:0.7;">ℹ️ handball.net zeigt nur die aktuellen Spieltage. Bereits gespielte frühere Spieltage werden nicht geliefert.</span>`
+                        : '';
+
+                    syncStatus.innerHTML = `<i data-lucide="check-circle-2" style="width:16px;height:16px;"></i> <span>${parts.join(' · ') || 'Alles aktuell'} <span style="opacity:0.6;">(${result.tournamentName})</span>${hint}</span>`;
+                    if (window.lucide) window.lucide.createIcons();
+                }
+
+                syncBtn.innerHTML = '<i data-lucide="check" style="width:16px;height:16px;"></i> Synchronisiert!';
+                setTimeout(() => {
+                    syncBtn.innerHTML = originalContent;
+                    syncBtn.disabled = false;
+                    if (window.lucide) window.lucide.createIcons();
+                }, 3000);
+
+            } catch (err) {
+                console.error('[Sync] Failed:', err);
+                if (syncStatus) {
+                    syncStatus.style.background = 'rgba(239,68,68,0.1)';
+                    syncStatus.style.border = '1px solid rgba(239,68,68,0.2)';
+                    syncStatus.style.color = '#f87171';
+                    syncStatus.innerHTML = `<i data-lucide="alert-circle" style="width:16px;height:16px;"></i> Fehler: ${err.message}`;
+                    if (window.lucide) window.lucide.createIcons();
+                }
+                syncBtn.innerHTML = originalContent;
+                syncBtn.disabled = false;
+            }
+        };
+    }
+    
+    // --- Bulk Apply Rules Button ---
+    const applyRulesBtn = document.getElementById('applyHnetRulesToAllBtn');
+    if (applyRulesBtn) {
+        applyRulesBtn.onclick = async () => {
+            const rules = spielstand.settings.hnetDefaultRules || {};
+            const { applyAutoGoing } = await import('./handballNetImport.js');
+            
+            let count = 0;
+            (spielstand.calendarEvents || []).forEach(ev => {
+                if (ev.hnetGameId) {
+                    ev.rules = {
+                        requireReason: rules.requireReason || false,
+                        deadlineHours: rules.deadlineHours || 0,
+                        defaultStatus: rules.autoGoing ? 'going' : 'none'
+                    };
+                    if (rules.autoGoing) {
+                        applyAutoGoing(ev);
+                    }
+                    count++;
+                }
+            });
+            
+            speichereSpielstand();
+            
+            const originalText = applyRulesBtn.textContent;
+            applyRulesBtn.textContent = `✅ ${count} Spiele aktualisiert!`;
+            applyRulesBtn.style.color = '#4ade80';
+            applyRulesBtn.style.borderColor = 'rgba(74,222,128,0.3)';
+            
+            setTimeout(() => {
+                applyRulesBtn.textContent = originalText;
+                applyRulesBtn.style.color = '';
+                applyRulesBtn.style.borderColor = '';
+            }, 3000);
+
+            if (syncStatus) {
+                syncStatus.classList.remove('versteckt');
+                syncStatus.style.background = 'rgba(34,197,94,0.1)';
+                syncStatus.style.border = '1px solid rgba(34,197,94,0.2)';
+                syncStatus.style.color = '#4ade80';
+                syncStatus.innerHTML = `<i data-lucide="check-circle-2" style="width:16px;height:16px;"></i> Einstellungen wurden auf ${count} vorhandene Spiele angewendet.`;
+                if (window.lucide) window.lucide.createIcons();
+            }
         };
     }
     
@@ -862,46 +1020,57 @@ export function initInviteUI() {
 
     genBtn.onclick = async () => {
         const teamId = getActiveTeamId();
-        const teamName = spielstand.settings.myTeamName || 'Handball Team';
+        const teamName = (spielstand && spielstand.settings && spielstand.settings.myTeamName) || 'Handball Team';
 
         if (!teamId) {
-            customAlert('Bitte zuerst ein Team wählen.');
+            import('./customDialog.js').then(d => d.customAlert('Bitte zuerst ein Team wählen.'));
             return;
         }
 
         genBtn.disabled = true;
-        genBtn.textContent = 'Generiere...';
+        const originalBtnContent = genBtn.innerHTML;
+        genBtn.innerHTML = '<i data-lucide="loader-2" class="animate-spin" style="width: 18px; height: 18px;"></i> Generiere...';
+        if (window.lucide) window.lucide.createIcons();
 
         const token = await createInviteToken(teamId, teamName);
         
         if (token) {
-            const url = window.location.origin + window.location.pathname + '?invite=' + token;
+            // Build the link
+            const baseUrl = window.location.origin + window.location.pathname;
+            const url = `${baseUrl}?invite=${token}`;
+            
             input.value = url;
             container.classList.remove('versteckt');
-            if (window.lucide) window.lucide.createIcons();
+            
+            // Scroll to the new link if needed
+            input.focus();
+            input.select();
         } else {
-            customAlert('Fehler beim Erstellen des Links.');
+            import('./customDialog.js').then(d => d.customAlert('Fehler beim Erstellen des Links.'));
         }
 
         genBtn.disabled = false;
-        genBtn.innerHTML = '<i data-lucide="user-plus" style="width: 16px; height: 16px; margin-right: 8px;"></i> Einladungslink generieren';
+        genBtn.innerHTML = originalBtnContent;
         if (window.lucide) window.lucide.createIcons();
     };
 
     if (copyBtn) {
         copyBtn.onclick = () => {
-            input.select();
-            input.setSelectionRange(0, 99999);
-            navigator.clipboard.writeText(input.value);
+            if (!input.value) return;
             
-            const originalIcon = copyBtn.innerHTML;
-            copyBtn.innerHTML = '<i data-lucide="check" style="width: 16px; height: 16px; color: #22c55e;"></i>';
-            if (window.lucide) window.lucide.createIcons();
-            
-            setTimeout(() => {
-                copyBtn.innerHTML = originalIcon;
+            navigator.clipboard.writeText(input.value).then(() => {
+                const originalContent = copyBtn.innerHTML;
+                copyBtn.innerHTML = '<i data-lucide="check" style="width: 16px; height: 16px; color: #22c55e;"></i>';
                 if (window.lucide) window.lucide.createIcons();
-            }, 2000);
+                
+                setTimeout(() => {
+                    copyBtn.innerHTML = originalContent;
+                    if (window.lucide) window.lucide.createIcons();
+                }, 2000);
+            }).catch(err => {
+                console.error('Copy failed:', err);
+                input.select();
+            });
         };
     }
 }

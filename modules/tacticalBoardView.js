@@ -14,21 +14,32 @@ export function initTacticalBoard() {
             <div class="tactical-toolbar">
                 <div class="tool-group">
                     <span class="tool-label">Objekte</span>
-                    <div class="draggable-source home-team" draggable="true" data-type="player" data-team="home">H</div>
-                    <div class="draggable-source away-team" draggable="true" data-type="player" data-team="away">G</div>
-                    <div class="draggable-source ball" draggable="true" data-type="ball">⚽</div>
+                    <div class="draggable-source home-team" draggable="true" data-type="player" data-team="home" title="Heim-Spieler">
+                        <i data-lucide="user"></i>
+                    </div>
+                    <div class="draggable-source away-team" draggable="true" data-type="player" data-team="away" title="Gegner-Spieler">
+                        <i data-lucide="user"></i>
+                    </div>
+                    <div class="draggable-source ball" draggable="true" data-type="ball" title="Ball">
+                        <i data-lucide="disc"></i>
+                    </div>
                 </div>
-                <!-- Tools Removed: Select, Pen, Arrow, Eraser, Color Picker -->
+                
                 <div class="tool-group">
                     <span class="tool-label">Animation</span>
-                    <button id="addFrameBtn" class="shadcn-btn-secondary"><i data-lucide="plus"></i> Frame</button>
-                    <button id="playAnimationBtn" class="shadcn-btn-primary"><i data-lucide="play"></i> Abspielen</button>
+                    <button id="addFrameBtn" class="hub-btn-outline">
+                        <i data-lucide="plus"></i> <span>Frame</span>
+                    </button>
+                    <button id="playAnimationBtn" class="hub-btn-primary">
+                        <i data-lucide="play"></i> <span>Abspielen</span>
+                    </button>
                 </div>
-                <div class="tool-group">
-                    <span class="tool-label">Board</span>
-                    <button id="savePlayBtn" class="shadcn-btn-outline" title="Spielzug speichern"><i data-lucide="save"></i></button>
-                    <button id="loadPlayBtn" class="shadcn-btn-outline" title="Spielzug laden"><i data-lucide="folder-open"></i></button>
-                    <button id="clearBoardBtn" class="shadcn-btn-outline" title="Board leeren"><i data-lucide="trash-2"></i></button>
+
+                <div class="tool-group actions-group">
+                    <span class="tool-label">Aktionen</span>
+                    <button id="savePlayBtn" class="icon-btn-ghost" title="Spielzug speichern"><i data-lucide="save"></i></button>
+                    <button id="loadPlayBtn" class="icon-btn-ghost" title="Spielzug laden"><i data-lucide="folder-open"></i></button>
+                    <button id="clearBoardBtn" class="icon-btn-ghost danger" title="Board leeren"><i data-lucide="trash-2"></i></button>
                 </div>
             </div>
 
@@ -39,65 +50,63 @@ export function initTacticalBoard() {
                             <polygon points="0 0, 10 3.5, 0 7" fill="#ffffff" />
                         </marker>
                     </defs>
-                    <!-- Outer border / surroundings (matches reference green) -->
-                    <rect x="0" y="0" width="800" height="500" fill="#6b7b5c" />
-                    <!-- Playing field (blue) -->
-                    <rect x="20" y="20" width="760" height="460" fill="#3498db" stroke="#fff" stroke-width="2" />
+                    <!-- Outer border / surroundings -->
+                    <rect x="0" y="0" width="800" height="500" fill="#2d2e32" />
+                    <!-- Playing field -->
+                    <rect x="20" y="20" width="760" height="460" fill="#1a1b1e" stroke="rgba(255,255,255,0.15)" stroke-width="2" />
                     <!-- Center Line -->
-                    <line x1="400" y1="20" x2="400" y2="480" stroke="#fff" stroke-width="2" />
+                    <line x1="400" y1="20" x2="400" y2="480" stroke="rgba(255,255,255,0.15)" stroke-width="2" />
                     
                     <!-- LEFT SIDE -->
-                    <!-- Goal (white) -->
+                    <!-- Goal -->
                     <rect x="8" y="220" width="12" height="60" fill="#fff" stroke="#333" stroke-width="1" />
-                    <!-- 6m Goal Area (Solid D-shape) -->
-                    <!-- Top Arc -> Straight -> Bottom Arc -->
-                    <path d="M 20 100 A 120 120 0 0 1 140 220 L 140 280 A 120 120 0 0 1 20 400" fill="none" stroke="#fff" stroke-width="2" />
-                    <!-- 9m Free-throw Line (Dashed D-shape) -->
-                    <path d="M 20 40 A 180 180 0 0 1 200 220 L 200 280 A 180 180 0 0 1 20 460" fill="none" stroke="#fff" stroke-width="2" stroke-dasharray="10,10" />
+                    <!-- 6m Goal Area -->
+                    <path d="M 20 100 A 120 120 0 0 1 140 220 L 140 280 A 120 120 0 0 1 20 400" fill="none" stroke="rgba(255,255,255,0.15)" stroke-width="2" />
+                    <!-- 9m Free-throw Line -->
+                    <path d="M 20 40 A 180 180 0 0 1 200 220 L 200 280 A 180 180 0 0 1 20 460" fill="none" stroke="rgba(255,255,255,0.15)" stroke-width="2" stroke-dasharray="10,10" />
                     <!-- 4m Goalkeeper Line -->
-                    <line x1="100" y1="245" x2="100" y2="255" stroke="#fff" stroke-width="2" />
+                    <line x1="100" y1="245" x2="100" y2="255" stroke="rgba(255,255,255,0.15)" stroke-width="2" />
                     <!-- 7m Penalty Mark -->
-                    <line x1="160" y1="245" x2="160" y2="255" stroke="#fff" stroke-width="2" />
+                    <line x1="160" y1="245" x2="160" y2="255" stroke="rgba(255,255,255,0.15)" stroke-width="2" />
                     
                     <!-- RIGHT SIDE -->
-                    <!-- Goal (white) -->
+                    <!-- Goal -->
                     <rect x="780" y="220" width="12" height="60" fill="#fff" stroke="#333" stroke-width="1" />
-                    <!-- 6m Goal Area (Solid D-shape mirrored) -->
-                    <path d="M 780 400 A 120 120 0 0 1 660 280 L 660 220 A 120 120 0 0 1 780 100" fill="none" stroke="#fff" stroke-width="2" />
-                    <!-- 9m Free-throw Line (Dashed D-shape mirrored) -->
-                    <path d="M 780 460 A 180 180 0 0 1 600 280 L 600 220 A 180 180 0 0 1 780 40" fill="none" stroke="#fff" stroke-width="2" stroke-dasharray="10,10" />
+                    <!-- 6m Goal Area mirrored -->
+                    <path d="M 780 400 A 120 120 0 0 1 660 280 L 660 220 A 120 120 0 0 1 780 100" fill="none" stroke="rgba(255,255,255,0.15)" stroke-width="2" />
+                    <!-- 9m Free-throw Line mirrored -->
+                    <path d="M 780 460 A 180 180 0 0 1 600 280 L 600 220 A 180 180 0 0 1 780 40" fill="none" stroke="rgba(255,255,255,0.15)" stroke-width="2" stroke-dasharray="10,10" />
                     <!-- 4m Goalkeeper Line -->
-                    <line x1="700" y1="245" x2="700" y2="255" stroke="#fff" stroke-width="2" />
+                    <line x1="700" y1="245" x2="700" y2="255" stroke="rgba(255,255,255,0.15)" stroke-width="2" />
                     <!-- 7m Penalty Mark -->
-                    <line x1="640" y1="245" x2="640" y2="255" stroke="#fff" stroke-width="2" />
+                    <line x1="640" y1="245" x2="640" y2="255" stroke="rgba(255,255,255,0.15)" stroke-width="2" />
                     
-                    <!-- Dynamic Layer for drawing and players -->
-                    <!-- Dynamic Layer for drawing and players -->
                     <g id="pathLayer"></g>
+                    <g id="drawLayer"></g>
                     <g id="objectLayer"></g>
                 </svg>
+                
                 <div id="timelineContainer" class="timeline-container">
                     <div id="timelineTrack" class="timeline-track">
-                        <!-- Frames will appear here -->
+                        <!-- Frames appear here -->
                     </div>
                 </div>
             </div>
-            </div>
-            
-            <!-- Context Menu -->
-            <div id="playerContextMenu" class="context-menu versteckt" style="position: absolute;">
-                <div class="context-menu-form">
-                    <div class="context-input-group">
-                        <label>Nummer</label>
-                        <input type="text" id="ctxNumberInput" maxlength="3" style="width: 50px;">
+
+            <!-- Context Menu (Hub Styles) -->
+            <div id="playerContextMenu" class="context-menu hub-modal-card versteckt">
+                <div class="hub-modal-body" style="padding: 12px;">
+                    <div class="hub-field-group">
+                        <label class="hub-label">Nummer</label>
+                        <input type="text" id="ctxNumberInput" maxlength="3" placeholder="Nr." class="hub-input">
                     </div>
-                    <div class="context-input-group">
-                        <label>Name</label>
-                        <input type="text" id="ctxNameInput" placeholder="Name...">
+                    <div class="hub-field-group">
+                        <label class="hub-label">Name</label>
+                        <input type="text" id="ctxNameInput" placeholder="Name..." class="hub-input">
                     </div>
-                </div>
-                <div class="context-menu-item delete-item" id="ctxDeleteBtn">
-                    <i data-lucide="trash-2"></i> Entfernen
+                    <button class="hub-btn-outline danger" id="ctxDeleteBtn" style="width:100%; margin-top: 8px; justify-content: flex-start; gap: 8px;">
+                        <i data-lucide="trash-2" style="width:16px; height:16px;"></i> Entfernen
+                    </button>
                 </div>
             </div>
         </div>
@@ -640,9 +649,10 @@ function applyFrame(index) {
     // Always render paths from previous frame if available
     renderPaths(index);
 
-    // Highlight timeline thumb? (Visual polish for later)
+    // Highlight timeline thumb
     document.querySelectorAll('.timeline-thumb').forEach((t, i) => {
-        t.style.border = i === index ? '2px solid var(--primary-color)' : '1px solid #444';
+        if (i === index) t.classList.add('active');
+        else t.classList.remove('active');
     });
 }
 
@@ -652,7 +662,9 @@ async function playAnimation() {
 
     if (frames.length < 2) return;
     isPlaying = true;
-    playBtn.innerHTML = '<i data-lucide="square"></i> Stopp';
+    playBtn.innerHTML = '<i data-lucide="square"></i> <span>Stopp</span>';
+    playBtn.classList.remove('hub-btn-primary');
+    playBtn.classList.add('hub-btn-outline');
     if (window.lucide) window.lucide.createIcons();
 
     const pathLayer = document.getElementById('pathLayer');
@@ -666,7 +678,9 @@ async function playAnimation() {
     }
 
     isPlaying = false;
-    playBtn.innerHTML = '<i data-lucide="play"></i> Abspielen';
+    playBtn.innerHTML = '<i data-lucide="play"></i> <span>Abspielen</span>';
+    playBtn.classList.add('hub-btn-primary');
+    playBtn.classList.remove('hub-btn-outline');
     if (window.lucide) window.lucide.createIcons();
 
     // Restore state (select last frame)
@@ -770,13 +784,29 @@ function spawnObject(type, team, x, y, number = null, id = null, name = null) {
         group.classList.add('tactical-object', 'ball');
         group.dataset.id = id || Date.now() + Math.random().toString(36).substr(2, 9);
 
-        const text = document.createElementNS("http://www.w3.org/2000/svg", "text");
-        text.setAttribute('text-anchor', 'middle');
-        text.setAttribute('dy', '.35em');
-        text.setAttribute('font-size', '20');
-        text.textContent = '⚽';
+        // Modern Ball Graphic instead of Emoji
+        const ballCircle = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+        ballCircle.setAttribute('r', '10');
+        ballCircle.setAttribute('fill', '#fde047');
+        ballCircle.setAttribute('stroke', '#000');
+        ballCircle.setAttribute('stroke-width', '1.5');
+        
+        // Characteristic handball lines
+        const line1 = document.createElementNS("http://www.w3.org/2000/svg", "path");
+        line1.setAttribute('d', 'M -7 -3 A 8 8 0 0 1 7 -3');
+        line1.setAttribute('fill', 'none');
+        line1.setAttribute('stroke', 'rgba(0,0,0,0.3)');
+        line1.setAttribute('stroke-width', '1');
+        
+        const line2 = document.createElementNS("http://www.w3.org/2000/svg", "path");
+        line2.setAttribute('d', 'M -4 6 A 8 8 0 0 0 4 6');
+        line2.setAttribute('fill', 'none');
+        line2.setAttribute('stroke', 'rgba(0,0,0,0.3)');
+        line2.setAttribute('stroke-width', '1');
 
-        group.appendChild(text);
+        group.appendChild(ballCircle);
+        group.appendChild(line1);
+        group.appendChild(line2);
         objectLayer.appendChild(group);
     }
 }
@@ -850,13 +880,14 @@ function renderPaths(currentIndex) {
                 ghostGroup.appendChild(circle);
                 ghostGroup.appendChild(text);
             } else {
-                const text = document.createElementNS("http://www.w3.org/2000/svg", "text");
-                text.setAttribute('text-anchor', 'middle');
-                text.setAttribute('dy', '.35em');
-                text.setAttribute('font-size', '20');
-                text.setAttribute('opacity', '0.6');
-                text.textContent = '⚽';
-                ghostGroup.appendChild(text);
+                // Ball Ghost
+                const ballCircle = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+                ballCircle.setAttribute('r', '10');
+                ballCircle.setAttribute('fill', '#fde047');
+                ballCircle.setAttribute('stroke', '#fff');
+                ballCircle.setAttribute('stroke-width', '1.5');
+                ballCircle.setAttribute('stroke-dasharray', '2,2');
+                ghostGroup.appendChild(ballCircle);
             }
             pathLayer.appendChild(ghostGroup);
 

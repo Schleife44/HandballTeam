@@ -167,7 +167,7 @@
                         <i data-lucide="user-x"></i> <span class="mobile-hidden">Abwesenheit</span>
                     </button>
                     <button id="addEventBtn" class="hub-btn-primary">
-                        <i data-lucide="plus"></i> <span class="mobile-hidden">Termin</span>
+                        <i data-lucide="plus-circle" style="width: 18px; height: 18px;"></i> <span class="mobile-hidden">Termin</span>
                     </button>
                 </div>
             </div>
@@ -261,31 +261,31 @@
                     <button id="closeEventModal" class="icon-btn-ghost"><i data-lucide="x"></i></button>
                 </div>
                 
-                <div class="hub-modal-body">
-                    <div class="hub-field-group">
+                <div class="hub-modal-body" style="padding: 20px;">
+                    <div class="hub-field-group" style="margin-bottom: 15px;">
                         <label class="hub-label">Titel</label>
                         <input type="text" id="eventTitleInput" class="hub-input" placeholder="Training, Spiel, Teamevent...">
                     </div>
                     
-                    <div class="hub-field-group">
+                    <div class="hub-field-group" style="margin-bottom: 15px;">
                         <label class="hub-label">Typ</label>
                         <div class="hub-radio-group">
-                            <label class="hub-radio-pill training">
+                            <label class="hub-radio-pill training" style="padding: 8px 12px;">
                                 <input type="radio" name="eventType" value="training" checked>
-                                <span>Training</span>
+                                <span style="font-size: 0.85rem;">Training</span>
                             </label>
-                            <label class="hub-radio-pill game">
+                            <label class="hub-radio-pill game" style="padding: 8px 12px;">
                                 <input type="radio" name="eventType" value="game">
-                                <span>Spiel</span>
+                                <span style="font-size: 0.85rem;">Spiel</span>
                             </label>
-                            <label class="hub-radio-pill other">
+                            <label class="hub-radio-pill other" style="padding: 8px 12px;">
                                 <input type="radio" name="eventType" value="other">
-                                <span>Sonstiges</span>
+                                <span style="font-size: 0.85rem;">Sonstiges</span>
                             </label>
                         </div>
                     </div>
 
-                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 20px;">
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 15px;">
                         <div class="hub-field-group" style="margin-bottom: 0;">
                             <label class="hub-label">Datum</label>
                             <input type="date" id="eventDateInput" class="hub-input">
@@ -296,21 +296,41 @@
                         </div>
                     </div>
 
-                    <div class="hub-field-group">
-                        <label class="hub-label">Ort</label>
-                        <input type="text" id="eventLocationInput" class="hub-input" placeholder="Halle, Sportplatz...">
-                    </div>
-
-                    <div class="hub-field-group" style="border-top: 1px solid rgba(255,255,255,0.05); padding-top: 20px;">
-                        <label class="hub-label">Wiederholung</label>
-                        <select id="eventRepeatInput" class="hub-input">
-                            <option value="none">Keine Wiederholung</option>
-                            <option value="weekly">Wöchentlich</option>
-                        </select>
+                    <div style="display: grid; grid-template-columns: 1.5fr 1fr; gap: 15px; margin-bottom: 15px;">
+                        <div class="hub-field-group" style="margin-bottom: 0;">
+                            <label class="hub-label">Ort</label>
+                            <input type="text" id="eventLocationInput" class="hub-input" placeholder="Halle, Sportplatz...">
+                        </div>
+                        <div class="hub-field-group" style="margin-bottom: 0;">
+                            <label class="hub-label">Wiederholung</label>
+                            <select id="eventRepeatInput" class="hub-input">
+                                <option value="none">Nein</option>
+                                <option value="weekly">Wöchentlich</option>
+                            </select>
+                        </div>
                     </div>
                     <div id="recurrenceOptions" class="hub-field-group versteckt">
                         <label class="hub-label">Bis Datum</label>
                         <input type="date" id="eventRepeatEndInput" class="hub-input">
+                    </div>
+
+                    <div class="hub-field-group" style="border-top: 1px solid rgba(255,255,255,0.05); padding-top: 12px; margin-top: 5px; margin-bottom: 15px;">
+                        <label class="hub-label" style="margin-bottom: 8px;">Teilnahme-Regeln</label>
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                            <label class="hub-radio-pill" title="Grundpflicht bei Absage" style="padding: 8px 12px;">
+                                <input type="checkbox" id="eventRequireReasonInput">
+                                <span style="font-size: 0.8rem;">Grundpflicht Absage</span>
+                            </label>
+                            <label class="hub-radio-pill" title="Standardmäßig als 'Dabei' markieren" style="padding: 8px 12px;">
+                                <input type="checkbox" id="eventDefaultStatusInput">
+                                <span style="font-size: 0.8rem;">Automatisch Dabei</span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <div class="hub-field-group" style="display: flex; flex-direction: row; align-items: center; gap: 12px; margin-bottom: 5px;">
+                        <label class="hub-label" style="margin-bottom: 0;">Abmeldefrist (Std.):</label>
+                        <input type="number" id="eventDeadlineInput" class="hub-input" style="width: 80px;" min="0" value="0">
                     </div>
                 </div>
 
@@ -880,6 +900,30 @@
 
                     <div style="height: 1px; background: var(--hub-card-border); margin: 8px 0;"></div>
 
+                    <!-- Invite Link Section -->
+                    <div class="hub-field">
+                        <label class="hub-label">MITGLIEDER EINLADEN</label>
+                        <p style="font-size: 0.75rem; color: var(--hub-muted); margin-bottom: 12px; line-height: 1.4;">
+                            Generiere einen Link, um neue Spieler oder Trainer zu deinem Team hinzuzufügen.
+                        </p>
+                        
+                        <div id="inviteLinkContainer" class="versteckt" style="margin-bottom: 12px; animation: hub-fade-in 0.3s ease;">
+                            <div style="display: flex; gap: 8px;">
+                                <input type="text" id="inviteLinkInput" class="hub-input" readonly style="flex: 1; font-size: 0.8rem; height: 40px; background: rgba(255, 255, 255, 0.03);" value="">
+                                <button id="copyInviteBtn" class="hub-btn-outline" style="min-width: 44px; padding: 0; height: 40px;" title="Link kopieren">
+                                    <i data-lucide="copy" style="width: 16px; height: 16px;"></i>
+                                </button>
+                            </div>
+                        </div>
+
+                        <button id="generateInviteBtn" class="hub-btn-primary" style="width: 100%; height: 40px; gap: 8px;">
+                            <i data-lucide="user-plus" style="width: 18px; height: 18px;"></i>
+                            Link generieren
+                        </button>
+                    </div>
+
+                    <div style="height: 1px; background: var(--hub-card-border); margin: 8px 0;"></div>
+
                     <button id="toggleValidationBtn" class="hub-btn-outline" style="width: 100%; justify-content: space-between; height: 40px;">
                         <span style="display: flex; align-items: center; gap: 10px; font-size: 0.85rem;">
                             <span class="lock-icon-container">
@@ -961,13 +1005,73 @@
 
                     <div class="hub-field">
                         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-                            <label class="hub-label">Handball.net Turnier ID</label>
-                            <button id="idHelpToggle" class="icon-btn-ghost" style="padding: 2px;"><i data-lucide="help-circle" style="width: 14px; height: 14px;"></i></button>
+                            <label class="hub-label">HANDBALL.NET SYNC</label>
+                            <button id="idHelpToggle" class="icon-btn-ghost" style="padding: 2px;" title="Hilfe anzeigen"><i data-lucide="help-circle" style="width: 14px; height: 14px;"></i></button>
                         </div>
-                        <input type="text" id="handballNetTournamentIdInput" class="hub-input" placeholder="z.B. 123456">
-                        <p id="handballNetIdHelp" class="versteckt" style="font-size: 0.7rem; margin-top: 6px; padding: 8px; background: rgba(0,0,0,0.2); border-radius: 4px; color: var(--hub-muted);">
-                            Die ID findest du in der URL deines Wettbewerbs auf handball.net (z.B. /competitions/<b>123456</b>/...)
+                        <p style="font-size: 0.75rem; color: var(--hub-muted); margin: 0 0 10px 0; line-height: 1.5;">
+                            Füge den Link deiner Mannschaft auf handball.net ein. Die App lädt dann automatisch alle Spieltermine der Saison in deinen Kalender.
                         </p>
+                        <input type="text" id="handballNetTeamUrlInput" class="hub-input" placeholder="https://www.handball.net/mannschaften/handball4all.westfalen.XXXXXXXX/">
+                        <p id="handballNetIdHelp" class="versteckt" style="font-size: 0.7rem; margin-top: 6px; padding: 8px; background: rgba(59,130,246,0.08); border: 1px solid rgba(59,130,246,0.2); border-radius: 6px; color: var(--hub-muted); line-height: 1.5;">
+                            <strong style="color: #60a5fa;">💡 So geht's:</strong><br>
+                            1. Gehe zu <a href="https://www.handball.net" target="_blank" style="color: #60a5fa;">handball.net</a><br>
+                            2. Suche deine Mannschaft<br>
+                            3. Kopiere die URL aus der Adressleiste<br>
+                            Beispiel: <code style="font-size: 0.65rem; background: rgba(0,0,0,0.3); padding: 2px 4px; border-radius: 3px;">handball.net/mannschaften/handball4all.westfalen.1289886/</code>
+                        </p>
+                        <div id="handballNetSyncStatus" class="versteckt" style="margin-top: 8px; padding: 10px 12px; border-radius: 8px; font-size: 0.8rem; display: flex; align-items: flex-start; gap: 8px;"></div>
+
+                        <!-- Default Rules for synced games -->
+                        <div style="margin-top: 14px; padding: 12px; background: rgba(255,255,255,0.03); border: 1px solid var(--hub-card-border); border-radius: 8px; display: flex; flex-direction: column; gap: 10px;">
+                            <div style="font-size: 0.7rem; color: var(--hub-muted); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 2px;">Standard-Einstellungen für Spieltermine</div>
+
+                            <!-- Absagegrund Pflicht -->
+                            <label style="display: flex; justify-content: space-between; align-items: center; cursor: pointer; font-size: 0.85rem;">
+                                <span style="display: flex; align-items: center; gap: 8px;">
+                                    <i data-lucide="message-square" style="width: 14px; height: 14px; color: var(--hub-muted);"></i>
+                                    Absagegrund Pflicht
+                                </span>
+                                <div class="hub-switch compact">
+                                    <input type="checkbox" id="hnetDefaultRequireReason">
+                                    <span class="hub-slider"></span>
+                                </div>
+                            </label>
+
+                            <!-- Automatisch als "Dabei" eintragen -->
+                            <label style="display: flex; justify-content: space-between; align-items: center; cursor: pointer; font-size: 0.85rem;">
+                                <span style="display: flex; align-items: center; gap: 8px;">
+                                    <i data-lucide="user-check" style="width: 14px; height: 14px; color: var(--hub-muted);"></i>
+                                    Autom. als "Dabei" eintragen
+                                </span>
+                                <div class="hub-switch compact">
+                                    <input type="checkbox" id="hnetDefaultAutoGoing">
+                                    <span class="hub-slider"></span>
+                                </div>
+                            </label>
+
+                            <!-- Absage-Deadline -->
+                            <div style="display: flex; justify-content: space-between; align-items: center; gap: 12px; font-size: 0.85rem;">
+                                <span style="display: flex; align-items: center; gap: 8px;">
+                                    <i data-lucide="clock" style="width: 14px; height: 14px; color: var(--hub-muted);"></i>
+                                    Absagen möglich bis
+                                </span>
+                                <div style="display: flex; align-items: center; gap: 6px;">
+                                    <input type="number" id="hnetDefaultDeadlineHours" class="hub-input" min="0" max="168" value="0"
+                                        style="width: 60px; text-align: center; height: 32px; padding: 0 8px; font-size: 0.8rem;">
+                                    <span style="font-size: 0.75rem; color: var(--hub-muted); white-space: nowrap;">Std. vorher <span style="opacity:0.5;">(0 = immer)</span></span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div style="display: flex; flex-direction: column; gap: 8px; margin-top: 10px;">
+                            <button id="syncHandballNetBtn" class="hub-btn-primary" style="width: 100%; gap: 8px; height: 40px;">
+                                <i data-lucide="refresh-cw" style="width: 16px; height: 16px;"></i>
+                                Spielplan synchronisieren
+                            </button>
+                            <button id="applyHnetRulesToAllBtn" class="hub-btn-outline" style="width: 100%; font-size: 0.75rem; height: 32px; border-color: rgba(255,255,255,0.05);">
+                                Diese Einstellungen auf alle Spiele anwenden
+                            </button>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -1455,11 +1559,18 @@
                         <h3 id="videoAnalyseTitle" class="card-title" style="margin: 0; border: none;">Kein Spiel
                             gewählt</h3>
                         <div style="display: flex; gap: 10px;">
-                            <button id="setGameStartBtn" class="shadcn-btn-outline compact-btn"
-                                title="Aktuelle Video-Position als Spielstart wÃ¤hlen">
-                                <i data-lucide="clock" style="width: 14px; height: 14px; margin-right: 5px;"></i>
-                                Spielstart setzen
-                            </button>
+                            <div style="display: flex; flex-direction: column; gap: 4px;">
+                                <button id="setStartH1Btn" class="shadcn-btn-outline compact-btn" style="height: 32px; font-size: 0.75rem;"
+                                    title="Aktuelle Video-Position als Start der 1. HZ setzen">
+                                    <i data-lucide="clock" style="width: 12px; height: 12px; margin-right: 4px;"></i>
+                                    Sync H1
+                                </button>
+                                <button id="setStartH2Btn" class="shadcn-btn-outline compact-btn" style="height: 32px; font-size: 0.75rem;"
+                                    title="Aktuelle Video-Position als Start der 2. HZ setzen">
+                                    <i data-lucide="clock" style="width: 12px; height: 12px; margin-right: 4px;"></i>
+                                    Sync H2
+                                </button>
+                            </div>
                             <label class="shadcn-btn-primary" style="cursor: pointer;">
                                 <i data-lucide="upload" style="width: 16px; height: 16px; margin-right: 8px;"></i>
                                 Video laden
@@ -1485,9 +1596,38 @@
                         <!-- Protocol Container -->
                         <div id="videoAnalysisProtocol"
                             style="flex: 1; min-height: 0; overflow-y: auto; background: var(--bg-secondary); border-radius: 8px; padding: 10px; border: 1px solid var(--border-color); display: none; flex-direction: column;">
-                            <h3
-                                style="font-size: 0.9rem; margin-top: 0; margin-bottom: 8px; position: sticky; top: 0; background: var(--bg-secondary); padding-bottom: 5px; border-bottom: 1px solid var(--border-color); z-index: 5;">
-                                Protokoll</h3>
+                            <div
+                                style="display: flex; justify-content: space-between; align-items: center; margin-top: 0; margin-bottom: 8px; position: sticky; top: 0; background: var(--bg-secondary); padding-bottom: 5px; border-bottom: 1px solid var(--border-color); z-index: 5;">
+                                <h3 style="font-size: 0.9rem; margin: 0;">Protokoll</h3>
+                                <div style="display: flex; align-items: center; gap: 8px;">
+                                    <span style="font-size: 0.7rem; opacity: 0.7;">Vorlauf:</span>
+                                    <input type="number" id="videoLeadTimeInput" value="5" min="0" max="30" step="1" 
+                                        style="width: 45px; height: 24px; font-size: 0.75rem; background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 4px; text-align: center; color: var(--text-main);">
+                                    <span style="font-size: 0.7rem; opacity: 0.7;">s</span>
+                                </div>
+                            </div>
+                            
+                            <!-- Filter Bar -->
+                            <div style="display: flex; flex-direction: column; gap: 8px; margin-bottom: 12px; padding-bottom: 12px; border-bottom: 1px solid var(--border-color); background: var(--bg-secondary); position: sticky; top: 32px; z-index: 4;">
+                                <div style="display: flex; gap: 8px;">
+                                    <select id="videoFilterPlayer" class="hub-btn-outline" style="flex: 1; height: 32px; font-size: 0.75rem; padding: 0 5px; text-align: left; background: var(--bg-card);">
+                                        <option value="all">Alle Spieler</option>
+                                    </select>
+                                    <select id="videoFilterAction" class="hub-btn-outline" style="flex: 1; height: 32px; font-size: 0.75rem; padding: 0 5px; text-align: left; background: var(--bg-card);">
+                                        <option value="all">Alle Aktionen</option>
+                                    </select>
+                                </div>
+                                <div style="display: flex; gap: 8px; align-items: center;">
+                                    <button id="videoAutoplayBtn" class="hub-btn-primary compact-btn" style="flex: 2; height: 32px; font-size: 0.75rem; background: var(--primary); color: #000; font-weight: 700;">
+                                        <i data-lucide="play-circle" style="width: 14px; height: 14px; margin-right: 5px;"></i>
+                                        Clips abspielen (0)
+                                    </button>
+                                    <button id="videoClearFilters" class="hub-btn-outline compact-btn" style="flex: 1; height: 32px; font-size: 0.75rem; border: none; opacity: 0.6;">
+                                        Reset
+                                    </button>
+                                </div>
+                            </div>
+
                             <div id="videoAnalysisProtocolList"
                                 style="display: flex; flex-direction: column; gap: 4px;">
                             </div>
@@ -2035,30 +2175,31 @@
 
     <!-- Modal: Bestätigung (Handball Hub) -->
     <div id="customConfirmModal" class="modal-overlay hub-overlay-modern versteckt" style="z-index: 30000;">
-        <div class="hub-popover" style="width: 400px; max-width: 95vw;">
+        <div class="hub-modal-card" style="width: 440px;">
             <div class="hub-modal-header">
                 <h3 id="customConfirmTitle">Bestätigung</h3>
                 <button class="icon-btn-ghost" data-action="close-modal"><i data-lucide="x"></i></button>
             </div>
             <div class="hub-modal-body">
-                <p id="customConfirmMessage" style="color: var(--hub-muted); line-height: 1.5; margin: 0;"></p>
+                <p id="customConfirmMessage"></p>
             </div>
-            <div class="hub-modal-footer">
-                <button id="customConfirmNo" class="hub-btn-outline" style="min-width: 100px;">Abbrechen</button>
-                <button id="customConfirmYes" class="hub-btn-primary" style="min-width: 100px;">Fortfahren</button>
+            <div class="hub-modal-footer" style="flex-direction: row; justify-content: flex-end; gap: 12px;">
+                <button id="customConfirmNo" class="hub-btn-outline">Abbrechen</button>
+                <button id="customConfirmYes" class="hub-btn-primary">Fortfahren</button>
             </div>
         </div>
     </div>
 
     <!-- Modal: Hinweis (Handball Hub) -->
-    <div id="customAlertModal" class="modal-overlay hub-overlay-modern versteckt" style="z-index: 20000;">
-        <div class="hub-popover" style="width: 400px; max-width: 95vw;">
+    <!-- Modal: Hinweis (Handball Hub) -->
+    <div id="customAlertModal" class="modal-overlay hub-overlay-modern versteckt" style="z-index: 35000;">
+        <div class="hub-modal-card" style="width: 440px;">
             <div class="hub-modal-header">
                 <h3 id="customAlertTitle">Hinweis</h3>
                 <button class="icon-btn-ghost" data-action="close-modal"><i data-lucide="x"></i></button>
             </div>
             <div class="hub-modal-body">
-                <p id="customAlertMessage" style="color: var(--hub-muted); line-height: 1.5; margin: 0;"></p>
+                <p id="customAlertMessage"></p>
             </div>
             <div class="hub-modal-footer">
                 <button id="customAlertOk" class="hub-btn-primary" style="width: 100%;">OK</button>
@@ -2067,17 +2208,17 @@
     </div>
 
     <!-- Modal: Eingabe (Handball Hub) -->
-    <div id="customPromptModal" class="modal-overlay hub-overlay-modern versteckt" style="z-index: 20000;">
-        <div class="hub-popover" style="width: 400px; max-width: 95vw;">
+    <div id="customPromptModal" class="modal-overlay hub-overlay-modern versteckt" style="z-index: 35000;">
+        <div class="hub-modal-card" style="width: 440px;">
             <div class="hub-modal-header">
                 <h3 id="customPromptTitle">Eingabe</h3>
                 <button class="icon-btn-ghost" data-action="close-modal"><i data-lucide="x"></i></button>
             </div>
             <div class="hub-modal-body">
-                <p id="customPromptMessage" style="color: var(--hub-muted); font-size: 0.85rem; margin-bottom: 12px;"></p>
+                <p id="customPromptMessage" style="margin-bottom: 16px; opacity: 0.8;"></p>
                 <input type="text" id="customPromptInput" class="hub-input" placeholder="Text eingeben..." autocomplete="off">
             </div>
-            <div class="hub-modal-footer">
+            <div class="hub-modal-footer" style="flex-direction: row; justify-content: flex-end; gap: 12px;">
                 <button id="customPromptCancel" class="hub-btn-outline">Abbrechen</button>
                 <button id="customPromptConfirm" class="hub-btn-primary">Bestätigen</button>
             </div>
@@ -2085,15 +2226,15 @@
     </div>
 
         <!-- Load Play Modal -->
-        <div id="loadPlayModal" class="modal-overlay versteckt">
-            <div class="shadcn-modal-content">
-                <div class="shadcn-modal-header">
+        <div id="loadPlayModal" class="modal-overlay hub-overlay-modern versteckt">
+            <div class="hub-modal-card">
+                <div class="hub-modal-header">
                     <h3>Spielzug laden</h3>
-                    <button id="closeLoadPlayModal" class="close-modal-btn">&times;</button>
+                    <button id="closeLoadPlayModal" class="icon-btn-ghost"><i data-lucide="x"></i></button>
                 </div>
-                <div class="shadcn-modal-body">
+                <div class="hub-modal-body">
                     <div id="loadPlayList" class="play-list-container"
-                        style="display: flex; flex-direction: column; gap: 0.5rem; max-height: 300px; overflow-y: auto;">
+                        style="display: flex; flex-direction: column; gap: 10px; max-height: 400px; overflow-y: auto;">
                         <!-- Plays will be populated here -->
                     </div>
                 </div>

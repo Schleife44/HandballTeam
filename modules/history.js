@@ -36,6 +36,23 @@ export async function speichereSpielInHistorie(gameData) {
 }
 
 /**
+ * Aktualisiert ein bestehendes Spiel in der Historie.
+ */
+export async function updateHistorieSpiel(gameData) {
+    const teamId = getActiveTeamId();
+    if (teamId) {
+        await saveGameToHistory(teamId, gameData);
+    } else {
+        const history = await getHistorie();
+        const idx = history.findIndex(g => String(g.id) === String(gameData.id));
+        if (idx !== -1) {
+            history[idx] = gameData;
+            localStorage.setItem(getHistoryKey(), JSON.stringify(history));
+        }
+    }
+}
+
+/**
  * Ruft die Spielhistorie für das aktive Team ab.
  * @returns {Promise<Array>} Liste der Spiele.
  */

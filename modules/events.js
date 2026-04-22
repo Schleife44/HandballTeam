@@ -295,7 +295,7 @@ export function initEventListeners() {
                 break;
             case 'save-inline-edit':
                 if (params.index !== undefined) {
-                    const card = target.closest('.roster-player-card');
+                    const card = target.closest('.hub-player-card');
                     if (card) {
                         const nameInput = card.querySelector('.inline-edit-name');
                         const numInput = card.querySelector('.inline-edit-number');
@@ -375,10 +375,30 @@ export function initEventListeners() {
                     const data = await fetchHandballNetGame(gameId);
                     const gameData = mapHandballNetToInternal(data, spielstand.settings.myTeamName);
                     
-                    await speichereSpielInHistorie(gameData);
+                    // --- SMART UPDATE IMPROVEMENT ---
+                    // Check if game already exists in history to preserve metadata (offsets, etc.)
+                    const { getHistorie, updateHistorieSpiel, speichereSpielInHistorie } = await import('./history.js');
+                    const history = await getHistorie();
+                    const existingGame = history.find(g => String(g.hnetGameId) === String(gameId));
+                    
+                    if (existingGame) {
+                        // MERGE: Keep existing ID and Analysis Metadata
+                        const updatedGame = {
+                            ...gameData,
+                            id: existingGame.id, // Preserve internal ID
+                            videoOffsets: existingGame.videoOffsets || { h1: 0, h2: 0 },
+                            videoLeadTime: existingGame.videoLeadTime || 5,
+                            videoName: existingGame.videoName || ""
+                        };
+                        await updateHistorieSpiel(updatedGame);
+                        console.log('[Import] Existing game updated, offsets preserved.');
+                    } else {
+                        // NEW ENTRY
+                        await speichereSpielInHistorie(gameData);
+                    }
                     
                     if (importStatus) {
-                        importStatus.innerText = "Erfolgreich importiert!";
+                        importStatus.innerText = existingGame ? "Spiel aktualisiert!" : "Erfolgreich importiert!";
                         importStatus.style.background = "rgba(34, 197, 94, 0.1)";
                         importStatus.style.color = "#22c55e";
                     }

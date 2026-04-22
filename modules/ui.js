@@ -304,13 +304,13 @@ export function zeichneRosterListe(showGastTab = false) {
         if (isEditing) {
             div.classList.add('is-editing');
             div.innerHTML = sanitizeHTML(`
-                <div class="hub-player-info" style="flex-direction: column; align-items: stretch; gap: 8px; width: 100%;">
-                    <div style="display: flex; gap: 8px;">
-                        <input type="number" class="hub-input inline-edit-number" value="${p.number || ''}" style="width: 60px;" placeholder="#">
-                        <input type="text" class="hub-input inline-edit-name" value="${escapeHTML(p.name || '')}" style="flex: 1;" placeholder="Name">
+                <div class="hub-player-info" style="flex: 1; min-width: 0;">
+                    <div style="display: flex; gap: 8px; width: 100%;">
+                        <input type="number" class="hub-input inline-edit-number" value="${p.number || ''}" style="width: 50px; flex-shrink: 0;" placeholder="#">
+                        <input type="text" class="hub-input inline-edit-name" value="${escapeHTML(p.name || '')}" style="flex: 1; min-width: 0;" placeholder="Name">
                     </div>
                 </div>
-                <div class="hub-modal-footer" style="background: none; border: none; padding: 0 0 0 12px;">
+                <div style="display: flex; gap: 6px; margin-left: 12px; flex-shrink: 0;">
                     <button class="icon-btn-ghost" data-action="save-inline-edit" data-index="${idx}" data-is-opponent="${isOpp}" style="color: var(--hub-green);"><i data-lucide="check"></i></button>
                     <button class="icon-btn-ghost" data-action="cancel-inline-edit" style="color: var(--hub-red);"><i data-lucide="x"></i></button>
                 </div>
@@ -334,7 +334,7 @@ export function zeichneRosterListe(showGastTab = false) {
                         <div class="hub-player-role">${p.isGoalkeeper ? 'Torwart' : 'Feldspieler'}</div>
                     </div>
                 </div>
-                <div style="display: flex; gap: 4px;">
+                <div style="display: flex; gap: 8px; flex-shrink: 0; margin-left: 12px;">
                     ${actionsHtml}
                 </div>
             `);

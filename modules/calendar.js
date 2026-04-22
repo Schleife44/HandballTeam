@@ -986,7 +986,6 @@ export function showEventDetails(eventId, participantsOnly = false) {
         if (eventDetailsOverlay) eventDetailsOverlay.classList.add('versteckt');
         if (eventDetailsModal) eventDetailsModal.classList.add('versteckt');
         currentEventId = null;
-        document.removeEventListener('click', handleOutsideClick);
     };
     if (closeDetailsBtn) closeDetailsBtn.onclick = boundClose;
     if (closeDetailsModal) closeDetailsModal.onclick = boundClose;
