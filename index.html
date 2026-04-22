@@ -160,13 +160,13 @@
                     <button id="nextMonthBtn" class="icon-btn-ghost"><i data-lucide="chevron-right"></i></button>
                 </div>
                 <div class="cal-actions">
-                    <button id="manageCalendarBtn" class="shadcn-btn-outline" title="Kalender verwalten">
+                    <button id="manageCalendarBtn" class="hub-btn-outline" title="Kalender verwalten">
                         <i data-lucide="settings"></i> <span class="mobile-hidden">Einstellungen</span>
                     </button>
-                    <button id="addAbsenceBtn" class="shadcn-btn-outline accent-blue">
+                    <button id="addAbsenceBtn" class="hub-btn-outline">
                         <i data-lucide="user-x"></i> <span class="mobile-hidden">Abwesenheit</span>
                     </button>
-                    <button id="addEventBtn" class="shadcn-btn-primary">
+                    <button id="addEventBtn" class="hub-btn-primary">
                         <i data-lucide="plus"></i> <span class="mobile-hidden">Termin</span>
                     </button>
                 </div>
@@ -182,63 +182,60 @@
                     <div>Sa</div>
                     <div>So</div>
                 </div>                <!-- MANAGE MODAL -->
-                <div id="manageCalendarOverlay" class="modal-overlay versteckt" style="z-index: 10050;">
-                    <div id="manageCalendarModal" class="event-popover-modern" style="width: 450px; max-width: 95vw;">
-                        <div class="modal-header-modern">
-                            <h2 class="manage-section-title">Kalender verwalten</h2>
-                            <button id="closeManageBtn" class="icon-btn-ghost"><i data-lucide="x"></i></button>
+        <!-- MANAGE MODAL (Hub Modern) -->
+        <div id="manageCalendarOverlay" class="modal-overlay hub-overlay-modern versteckt">
+            <div id="manageCalendarModal" class="hub-modal-card" style="width: 500px;">
+                <div class="hub-modal-header">
+                    <h2>Kalender verwalten</h2>
+                    <button id="closeManageBtn" class="icon-btn-ghost"><i data-lucide="x"></i></button>
+                </div>
+                
+                <div class="hub-modal-body">
+                    <!-- SECTION: Add Subscription -->
+                    <div class="hub-field-group">
+                        <label class="hub-label">Neues Abo hinzufügen</label>
+                        <div style="display: flex; gap: 10px;">
+                            <input type="text" id="manageUrlInput" placeholder="https://... (ICS/Webcal)" class="hub-input" style="flex: 1;" />
+                            <button id="addSubBtn" class="hub-btn-primary" style="width: 44px; padding: 0;">
+                                <i data-lucide="plus"></i>
+                            </button>
                         </div>
-                        <div class="modal-body-modern">
-                            <!-- SECTION: Add Subscription -->
-                            <div class="rules-container">
-                                <div class="manage-section-header">
-                                    <h4 class="manage-section-title">Neues Abo hinzufügen</h4>
-                                </div>
-                                <div style="display: flex; gap: 8px; margin-bottom: 12px;">
-                                    <input type="text" id="manageUrlInput" placeholder="https://... (ICS/Webcal)" class="minimal-input" style="flex:1; border-bottom: 1px solid rgba(255,255,255,0.1); padding: 8px 4px;" />
-                                    <button id="addSubBtn" class="icon-btn-ghost" title="Hinzufügen"><i data-lucide="plus-circle" style="color:var(--hub-accent);"></i></button>
-                                </div>
-                                <div class="rules-grid">
-                                    <label class="checkbox-label-modern" title="Grundpflicht bei Absage/Vlt">
-                                        <input type="checkbox" id="subRequireReason">
-                                        <span class="checkbox-custom"></span>
-                                        <span style="font-size:0.8rem; color:rgba(255,255,255,0.6);">Grundpflicht bei Absage</span>
-                                    </label>
-                                    <label class="checkbox-label-modern" title="Standardmäßig als 'Dabei' markieren">
-                                        <input type="checkbox" id="subDefaultStatus">
-                                        <span class="checkbox-custom"></span>
-                                        <span style="font-size:0.8rem; color:rgba(255,255,255,0.6);">Automatisch "Dabei"</span>
-                                    </label>
-                                    <div style="display:flex; align-items:center; gap:8px; font-size:0.8rem; color:rgba(255,255,255,0.4); margin-left:32px;">
-                                        <span>Abmeldefrist:</span>
-                                        <input type="number" id="subDeadlineHours" value="0" class="minimal-input inline" style="width:30px;">
-                                        <span>Std.</span>
-                                    </div>
-                                </div>
-                            </div>
+                    </div>
 
-                            <!-- SECTION: Subscriptions -->
-                            <div class="manage-section">
-                                <div class="manage-section-header">
-                                    <h4 class="manage-section-title">Abonnierte Kalender</h4>
-                                </div>
-                                <div id="subsList" class="manage-list-modern">
-                                    <!-- Dynamic Cards -->
-                                </div>
-                            </div>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 24px;">
+                        <label class="hub-radio-pill" title="Grundpflicht bei Absage/Vlt">
+                            <input type="checkbox" id="subRequireReason">
+                            <span>Grundpflicht</span>
+                        </label>
+                        <label class="hub-radio-pill" title="Standardmäßig als 'Dabei' markieren">
+                            <input type="checkbox" id="subDefaultStatus">
+                            <span>Auto-Dabei</span>
+                        </label>
+                    </div>
 
-                            <!-- SECTION: Series -->
-                            <div class="manage-section">
-                                <div class="manage-section-header">
-                                    <h4 class="manage-section-title">Serien</h4>
-                                </div>
-                                <div id="seriesList" class="manage-list-modern">
-                                    <!-- Dynamic Cards -->
-                                </div>
-                            </div>
+                    <div class="hub-field-group" style="margin-top: 10px; flex-direction: row; align-items: center; gap: 12px;">
+                        <label class="hub-label" style="margin-bottom: 0;">Abmeldefrist (Std.):</label>
+                        <input type="number" id="subDeadlineHours" value="0" class="hub-input" style="width: 80px;">
+                    </div>
+
+                    <!-- SECTION: Subscriptions -->
+                    <div class="hub-attendance-section" style="margin-top: 24px;">
+                        <h3 style="font-size: 0.8rem; font-weight: 800; color: #64748b; text-transform: uppercase;">Abonnierte Kalender</h3>
+                        <div id="subsList" class="manage-list-modern" style="margin-top: 12px; max-height: 180px;">
+                            <!-- Dynamic Cards -->
                         </div>
-                    </div> <!-- End manageCalendarModal -->
-                </div> <!-- End manageCalendarOverlay -->
+                    </div>
+
+                    <!-- SECTION: Series -->
+                    <div class="hub-attendance-section" style="margin-top: 24px;">
+                        <h3 style="font-size: 0.8rem; font-weight: 800; color: #64748b; text-transform: uppercase;">Serien</h3>
+                        <div id="seriesList" class="manage-list-modern" style="margin-top: 12px; max-height: 180px;">
+                            <!-- Dynamic Cards -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
             <div id="calendarGrid" class="calendar-grid">
                     <!-- Javascript generated days -->
                 </div>
@@ -256,182 +253,135 @@
             </div>
         </div>
 
-        <!-- POPOVER: Add/Edit Event -->
-        <div id="addEventOverlay" class="modal-overlay versteckt" style="z-index: 10050;">
-            <div id="addEventModal" class="event-popover-modern" style="width: 450px; max-width: 95vw;">
-                <div class="modal-header-modern">
-                    <h2 id="addEventModalTitle">Termin</h2>
+        <!-- POPOVER: Add/Edit Event (Hub Modern) -->
+        <div id="addEventOverlay" class="modal-overlay hub-overlay-modern versteckt">
+            <div id="addEventModal" class="hub-modal-card">
+                <div class="hub-modal-header">
+                    <h2 id="addEventModalTitle">Termin erstellen</h2>
                     <button id="closeEventModal" class="icon-btn-ghost"><i data-lucide="x"></i></button>
                 </div>
-                <div class="modal-body-modern">
-                    <!-- Title Section -->
-                    <div class="form-section-modern hero">
-                        <input type="text" id="eventTitleInput" class="hero-input" placeholder="Worum geht es?">
+                
+                <div class="hub-modal-body">
+                    <div class="hub-field-group">
+                        <label class="hub-label">Titel</label>
+                        <input type="text" id="eventTitleInput" class="hub-input" placeholder="Training, Spiel, Teamevent...">
                     </div>
-
-                    <!-- Type Section -->
-                    <div class="form-section-modern">
-                        <div class="radio-pill-group-modern">
-                            <label class="radio-pill training">
+                    
+                    <div class="hub-field-group">
+                        <label class="hub-label">Typ</label>
+                        <div class="hub-radio-group">
+                            <label class="hub-radio-pill training">
                                 <input type="radio" name="eventType" value="training" checked>
                                 <span>Training</span>
                             </label>
-                            <label class="radio-pill game">
+                            <label class="hub-radio-pill game">
                                 <input type="radio" name="eventType" value="game">
                                 <span>Spiel</span>
                             </label>
-                            <label class="radio-pill other">
+                            <label class="hub-radio-pill other">
                                 <input type="radio" name="eventType" value="other">
                                 <span>Sonstiges</span>
                             </label>
                         </div>
                     </div>
 
-                    <!-- When & Where Section -->
-                    <div class="form-section-modern card-group">
-                        <div class="input-row-modern">
-                            <div class="input-with-icon">
-                                <i data-lucide="calendar"></i>
-                                <input type="date" id="eventDateInput" class="minimal-input">
-                                <i data-lucide="chevron-down" class="input-dropdown-icon"></i>
-                            </div>
-                            <div class="input-with-icon">
-                                <i data-lucide="clock"></i>
-                                <input type="time" id="eventTimeInput" class="minimal-input" step="900">
-                                <i data-lucide="chevron-down" class="input-dropdown-icon"></i>
-                            </div>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 20px;">
+                        <div class="hub-field-group" style="margin-bottom: 0;">
+                            <label class="hub-label">Datum</label>
+                            <input type="date" id="eventDateInput" class="hub-input">
                         </div>
-                        <div class="input-with-icon">
-                            <i data-lucide="map-pin"></i>
-                            <input type="text" id="eventLocationInput" class="minimal-input" placeholder="Treffpunkt / Ort">
+                        <div class="hub-field-group" style="margin-bottom: 0;">
+                            <label class="hub-label">Uhrzeit</label>
+                            <input type="time" id="eventTimeInput" class="hub-input">
                         </div>
                     </div>
 
-                    <!-- Repeat Section -->
-                    <div class="form-section-modern">
-                        <label class="checkbox-label-modern">
-                            <input type="checkbox" id="eventRepeatInput">
-                            <span class="checkbox-custom"></span>
-                            <span>Wöchentlich wiederholen</span>
-                        </label>
-                        <div id="recurrenceOptions" class="recurrence-panel versteckt">
-                            <span class="panel-label">Enddatum:</span>
-                            <input type="date" id="eventRepeatEndInput" class="minimal-input small">
-                        </div>
+                    <div class="hub-field-group">
+                        <label class="hub-label">Ort</label>
+                        <input type="text" id="eventLocationInput" class="hub-input" placeholder="Halle, Sportplatz...">
                     </div>
 
-                    <!-- Rules Section -->
-                    <div class="form-section-modern rules-container">
-                        <span class="section-label-modern">Regeln</span>
-                        <div class="rules-grid">
-                            <label class="checkbox-label-modern">
-                                <input type="checkbox" id="eventRequireReasonInput">
-                                <span class="checkbox-custom"></span>
-                                <div>
-                                    <span class="rule-title">Grundpflicht</span>
-                                    <span class="rule-desc">Bei Absage oder Vielleicht</span>
-                                </div>
-                            </label>
-                            <label class="checkbox-label-modern">
-                                <input type="checkbox" id="eventDefaultStatusInput">
-                                <span class="checkbox-custom"></span>
-                                <div>
-                                    <span class="rule-title">Auto-Dabei</span>
-                                    <span class="rule-desc">Alle auf "Dabei" setzen</span>
-                                </div>
-                            </label>
-                            <div class="rule-item-modern">
-                                <i data-lucide="timer"></i>
-                                <span>Deadline</span>
-                                <input type="number" id="eventDeadlineInput" class="minimal-input inline" value="0">
-                                <span>Std. vorher</span>
-                            </div>
-                        </div>
+                    <div class="hub-field-group" style="border-top: 1px solid rgba(255,255,255,0.05); padding-top: 20px;">
+                        <label class="hub-label">Wiederholung</label>
+                        <select id="eventRepeatInput" class="hub-input">
+                            <option value="none">Keine Wiederholung</option>
+                            <option value="weekly">Wöchentlich</option>
+                        </select>
+                    </div>
+                    <div id="recurrenceOptions" class="hub-field-group versteckt">
+                        <label class="hub-label">Bis Datum</label>
+                        <input type="date" id="eventRepeatEndInput" class="hub-input">
                     </div>
                 </div>
 
-                <div class="modal-footer-modern">
-                    <button id="cancelEventBtn" class="shadcn-btn-ghost">Abbrechen</button>
-                    <button id="saveEventBtn" class="shadcn-btn-primary">Speichern</button>
+                <div class="hub-modal-footer">
+                    <button id="cancelEventBtn" class="hub-btn-outline">Abbrechen</button>
+                    <button id="saveEventBtn" class="hub-btn-primary">Speichern</button>
                 </div>
             </div>
         </div>
 
-        <!-- POPOVER: Event Details -->
-        <div id="eventDetailsOverlay" class="modal-overlay versteckt" style="z-index: 10050;">
-            <div id="eventDetailsModal" class="event-popover-modern" style="width: 450px; max-width: 95vw;">
-            <div class="modal-header-modern">
-                <h2 id="detailsTitle">Termin-Details</h2>
-                <div class="modal-header-actions-modern">
-                    <button id="editEventBtn" class="icon-btn-ghost" title="Bearbeiten">
-                        <i data-lucide="pencil" style="width:18px; height:18px;"></i>
-                    </button>
-                    <button id="closeDetailsModal" class="icon-btn-ghost" title="Schließen">
-                        <i data-lucide="x" style="width:18px; height:18px;"></i>
-                    </button>
-                </div>
-            </div>
-            <div class="modal-body-modern">
-                <!-- Info Section -->
-                <div class="form-section-modern card-group">
-                    <div class="details-row-modern">
-                        <i data-lucide="calendar"></i>
-                        <span id="detailsDate">Laden...</span>
+        <!-- POPOVER: Event Details (Hub Premium) -->
+        <div id="eventDetailsOverlay" class="modal-overlay hub-overlay-modern versteckt">
+            <div id="eventDetailsModal" class="hub-modal-card" style="width: 480px;">
+                <div class="hub-modal-header" style="padding-bottom: 20px; border-bottom: 1px solid rgba(255,255,255,0.05);">
+                    <div style="display: flex; flex-direction: column; gap: 8px; flex: 1;">
+                        <div style="display: flex; align-items: center; gap: 10px;">
+                            <span id="detailsCategoryBadge" style="font-weight:700; padding: 4px 10px; border-radius: 6px; font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.05em;">Laden...</span>
+                            <h2 id="detailsTitle" style="font-size: 1.4rem; margin: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 250px;">Termin-Details</h2>
+                        </div>
+                        <div id="detailsInfoRow" style="display: flex; align-items: center; gap: 8px; color: #64748b; font-size: 0.95rem; font-weight: 500;">
+                            <i data-lucide="calendar" style="width: 16px; height: 16px;"></i>
+                            <span id="detailsFullInfo">Laden...</span>
+                        </div>
                     </div>
-                    <div class="details-row-modern">
-                        <i data-lucide="clock"></i>
-                        <span id="detailsTime">Laden...</span>
-                    </div>
-                    <div class="details-row-modern" id="detailsLocationRow">
-                        <i data-lucide="map-pin"></i>
-                        <span id="detailsLocation">Laden...</span>
+                    <div style="display: flex; gap: 4px; align-self: flex-start;">
+                        <button id="modalDetailsBtn" class="icon-btn-ghost" title="Teilnehmerliste"><i data-lucide="users"></i></button>
+                        <button id="editEventBtn" class="icon-btn-ghost" title="Bearbeiten"><i data-lucide="edit-3"></i></button>
+                        <button id="deleteEventBtn" class="icon-btn-ghost" style="color: #ef4444;" title="Löschen"><i data-lucide="trash-2"></i></button>
+                        <button id="closeDetailsBtn" class="icon-btn-ghost" title="Schließen"><i data-lucide="x"></i></button>
                     </div>
                 </div>
-
-                <!-- Attendance System -->
-                <div class="manage-section">
-                    <div class="manage-section-header">
-                        <h4 class="manage-section-title">Deine Teilnahme</h4>
-                    </div>
-                    
-                    <div class="cal-actions" style="margin-bottom: 16px;">
-                        <button class="shadcn-btn-primary att-btn" data-status="going" title="Zusage" style="flex: 1;">
-                            <i data-lucide="thumbs-up"></i> <span>Dabei</span>
-                        </button>
-                        <button class="shadcn-btn-primary att-btn" data-status="maybe" title="Vielleicht" style="flex: 1;">
-                            <i data-lucide="help-circle"></i> <span>Vlt.</span>
-                        </button>
-                        <button class="shadcn-btn-primary att-btn" data-status="not-going" title="Absage" style="flex: 1;">
-                            <i data-lucide="thumbs-down"></i> <span>Absage</span>
-                        </button>
-                        <button id="modalDetailsBtn" class="shadcn-btn-outline" title="Teilnehmer" style="width: 44px; padding: 0;">
-                            <i data-lucide="users"></i>
-                        </button>
+                
+                <div class="hub-modal-body" style="padding-top: 20px;">
+                    <div id="detailsLocationRow" class="hub-field-group" style="margin-bottom: 20px; background: rgba(255,255,255,0.02); padding: 12px 16px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.04); display: flex; align-items: center; gap: 12px;">
+                        <i data-lucide="map-pin" style="width: 18px; color: #22c55e;"></i>
+                        <span id="detailsLocation" style="color: #94a3b8; font-size: 0.95rem;">Laden...</span>
                     </div>
 
-                    <div id="attendanceReasonContainer" class="versteckt" style="margin-bottom: 16px; display: flex; gap: 8px;">
-                        <input type="text" id="attendanceReasonInput" class="minimal-input" placeholder="Grund für Änderung..." style="flex: 1; border-bottom: 1px solid rgba(255,255,255,0.1); padding: 8px 4px;">
-                        <button id="saveAttendanceReasonBtn" class="icon-btn-ghost" title="Speichern">
-                            <i data-lucide="check" style="color:var(--hub-accent);"></i>
-                        </button>
+                    <div id="attendanceReasonContainer" class="hub-field-group versteckt" style="margin-bottom: 20px;">
+                        <label class="hub-label">Grund (erforderlich)</label>
+                        <div style="display: flex; gap: 10px;">
+                            <input type="text" id="attendanceReasonInput" class="hub-input" placeholder="Warum kannst du nicht?" style="flex: 1;">
+                            <button id="saveAttendanceReasonBtn" class="hub-btn-primary" style="width: 44px; padding: 0;">
+                                <i data-lucide="check"></i>
+                            </button>
+                        </div>
                     </div>
 
-                    <div class="manage-section-header" style="margin-top: 10px;">
-                        <h4 id="attendanceStats" class="manage-section-title">Teilnehmer</h4>
-                    </div>
-
-                    <div id="attendanceFullList" class="manage-list-modern versteckt" style="max-height: 200px;">
-                        <!-- JS populated -->
+                    <div id="attendanceFullList" class="manage-list-modern versteckt" style="margin-top: 0; max-height: 300px; border-top: 1px solid rgba(255,255,255,0.05); padding-top: 16px;">
+                        <!-- Full list content -->
                     </div>
                 </div>
-            </div>
-            <div class="modal-footer-modern" style="display: flex; gap: 10px;">
-                <button id="deleteEventBtn" class="shadcn-btn-outline" title="Löschen" style="flex: 1; color: #ef4444; border-color: rgba(239, 68, 68, 0.2);">
-                    <i data-lucide="trash-2"></i> <span>Löschen</span>
-                </button>
+
+                <div class="hub-modal-footer" style="padding-top: 0; border-top: none;">
+                    <div class="dash-rsvp-group-modern" style="width: 100%;">
+                        <button class="dash-rsvp-modern-btn att-btn" data-status="going">
+                            <i data-lucide="thumbs-up"></i>
+                            <span id="detailsCountGoing">0</span>
+                        </button>
+                        <button class="dash-rsvp-modern-btn att-btn" data-status="maybe">
+                            <i data-lucide="help-circle"></i>
+                            <span id="detailsCountMaybe">0</span>
+                        </button>
+                        <button class="dash-rsvp-modern-btn att-btn" data-status="not-going">
+                            <i data-lucide="thumbs-down"></i>
+                            <span id="detailsCountMissing">0</span>
+                        </button>
+                    </div>
+                </div>
             </div>
         </div>
-    </div>
 
         <div id="rosterBereich" class="content-section versteckt">
             <!-- Roster Top Section -->
@@ -2084,7 +2034,7 @@
 
 
     <!-- Modal: Bestätigung (Handball Hub) -->
-    <div id="customConfirmModal" class="modal-overlay versteckt" style="z-index: 10020;">
+    <div id="customConfirmModal" class="modal-overlay hub-overlay-modern versteckt" style="z-index: 30000;">
         <div class="hub-popover" style="width: 400px; max-width: 95vw;">
             <div class="hub-modal-header">
                 <h3 id="customConfirmTitle">Bestätigung</h3>
@@ -2101,7 +2051,7 @@
     </div>
 
     <!-- Modal: Hinweis (Handball Hub) -->
-    <div id="customAlertModal" class="modal-overlay versteckt" style="z-index: 10020;">
+    <div id="customAlertModal" class="modal-overlay hub-overlay-modern versteckt" style="z-index: 20000;">
         <div class="hub-popover" style="width: 400px; max-width: 95vw;">
             <div class="hub-modal-header">
                 <h3 id="customAlertTitle">Hinweis</h3>
@@ -2117,7 +2067,7 @@
     </div>
 
     <!-- Modal: Eingabe (Handball Hub) -->
-    <div id="customPromptModal" class="modal-overlay versteckt" style="z-index: 10020;">
+    <div id="customPromptModal" class="modal-overlay hub-overlay-modern versteckt" style="z-index: 20000;">
         <div class="hub-popover" style="width: 400px; max-width: 95vw;">
             <div class="hub-modal-header">
                 <h3 id="customPromptTitle">Eingabe</h3>
@@ -2294,100 +2244,103 @@
         #deleteTeamBtn { display: none; }
     </style>
 
-    <!-- Modal: Subscription Settings -->
-    <div id="subSettingsOverlay" class="modal-overlay versteckt" style="z-index: 10060;">
-        <div id="subSettingsModal" class="event-popover" style="width: 320px; max-width: 95vw;">
-            <div class="modal-header">
-                <h3 style="font-size: 1rem;">Abo-Einstellungen</h3>
-                <button id="closeSubSettingsBtn" class="close-btn">X</button>
+    <!-- Modal: Subscription Settings (Hub Modern) -->
+    <div id="subSettingsOverlay" class="modal-overlay hub-overlay-modern versteckt">
+        <div id="subSettingsModal" class="hub-modal-card" style="width: 380px;">
+            <div class="hub-modal-header">
+                <h2>Abo-Einstellungen</h2>
+                <button id="closeSubSettingsBtn" class="icon-btn-ghost"><i data-lucide="x"></i></button>
             </div>
-            <div class="modal-body" style="padding: 1rem; display: flex; flex-direction: column; gap: 1rem;">
-                <div style="display: flex; flex-direction: column; gap: 0.75rem; font-size: 0.85rem;">
-                    <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+            <div class="hub-modal-body">
+                <div class="hub-field-group">
+                    <label class="hub-radio-pill" title="Grundpflicht bei Absage/Vlt">
                         <input type="checkbox" id="modalSubRequireReason" />
                         <span>Grundpflicht bei Absage/Vlt</span>
                     </label>
-                    <label style="display: flex; align-items: center; gap: 8px;">
-                        <span>Abmeldefrist (Std. vorher):</span>
-                        <input type="number" id="modalSubDeadlineHours" class="shadcn-input" style="width: 50px; padding: 2px 5px;" min="0" />
-                    </label>
-                    <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                </div>
+
+                <div class="hub-field-group" style="flex-direction: row; align-items: center; gap: 12px; margin-bottom: 24px;">
+                    <label class="hub-label" style="margin-bottom: 0;">Abmeldefrist (Std.):</label>
+                    <input type="number" id="modalSubDeadlineHours" class="hub-input" style="width: 80px;" min="0" />
+                </div>
+
+                <div class="hub-field-group">
+                    <label class="hub-radio-pill" title="Standardmäßig als 'Dabei' markieren">
                         <input type="checkbox" id="modalSubDefaultStatus" />
                         <span>Automatisch Dabei</span>
                     </label>
                 </div>
-                <button id="saveSubSettingsBtn" class="shadcn-btn-primary" style="width: 100%;">Einstellungen speichern</button>
+            </div>
+            <div class="hub-modal-footer">
+                <button id="saveSubSettingsBtn" class="hub-btn-primary" style="width: 100%;">Speichern</button>
             </div>
         </div>
     </div>
 
-    <!-- Modal: Abwesenheit Melden (Handball Hub) -->
-    <div id="absenceModal" class="modal-overlay versteckt" style="z-index: 10050;">
-        <div class="event-popover-modern" style="width: 400px; max-width: 95vw;">
-            <div class="modal-header-modern">
-                <h2 class="manage-section-title">Abwesenheit melden</h2>
+    <!-- Modal: Abwesenheit Melden (Hub Modern) -->
+    <div id="absenceModal" class="modal-overlay hub-overlay-modern versteckt">
+        <div class="hub-modal-card" style="width: 450px;">
+            <div class="hub-modal-header">
+                <h2>Abwesenheit melden</h2>
                 <button id="closeAbsenceBtn" class="icon-btn-ghost"><i data-lucide="x"></i></button>
             </div>
             
-            <div class="modal-body-modern">
-                <div class="form-section-modern">
-                    <label class="section-label-modern">Grund</label>
-                    <input type="text" id="absenceReasonInput" class="minimal-input" placeholder="Urlaub, Verletzt, Arbeit...">
+            <div class="hub-modal-body">
+                <div class="hub-field-group">
+                    <label class="hub-label">Grund</label>
+                    <input type="text" id="absenceReasonInput" class="hub-input" placeholder="Urlaub, Verletzt, Arbeit...">
                 </div>
                 
-                <div class="form-section-modern">
-                    <label class="section-label-modern">Typ der Abwesenheit</label>
-                    <div class="radio-pill-group-modern">
-                        <label class="radio-pill training" id="absenceTypeRangeContainer">
+                <div class="hub-field-group">
+                    <label class="hub-label">Typ der Abwesenheit</label>
+                    <div class="hub-radio-group">
+                        <label class="hub-radio-pill training">
                             <input type="radio" name="absenceType" id="absenceTypeRange" checked>
                             <span>Zeitraum</span>
                         </label>
-                        <label class="radio-pill game" id="absenceTypeWeeklyContainer">
+                        <label class="hub-radio-pill game">
                             <input type="radio" name="absenceType" id="absenceTypeWeekly">
                             <span>Wöchentlich</span>
                         </label>
                     </div>
                 </div>
 
-                <div id="absenceRangeSettings" class="form-section-modern card-group" style="gap: 12px;">
-                    <div class="input-with-icon">
-                        <i data-lucide="calendar"></i>
-                        <input type="date" id="absenceStartDate" class="minimal-input">
-                    </div>
-                    <div class="input-with-icon">
-                        <i data-lucide="calendar"></i>
-                        <input type="date" id="absenceEndDate" class="minimal-input" placeholder="Bis (optional)">
-                    </div>
-                </div>
-
-                <div id="absenceWeeklySettings" class="form-section-modern versteckt">
-                    <div class="input-with-icon">
-                        <i data-lucide="calendar-days"></i>
-                        <select id="absenceWeekdaySelect" class="minimal-input">
-                            <option value="1">Montag</option>
-                            <option value="2">Dienstag</option>
-                            <option value="3">Mittwoch</option>
-                            <option value="4">Donnerstag</option>
-                            <option value="5">Freitag</option>
-                            <option value="6">Samstag</option>
-                            <option value="0">Sonntag</option>
-                        </select>
-                        <i data-lucide="chevron-down" class="input-dropdown-icon"></i>
+                <div id="absenceRangeSettings" class="hub-field-group" style="margin-top: 10px;">
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                        <div>
+                            <label class="hub-label">Start</label>
+                            <input type="date" id="absenceStartDate" class="hub-input">
+                        </div>
+                        <div>
+                            <label class="hub-label">Ende (Opt.)</label>
+                            <input type="date" id="absenceEndDate" class="hub-input">
+                        </div>
                     </div>
                 </div>
 
-                <div id="absenceListContainer" class="manage-section" style="margin-top: 10px;">
-                    <div class="manage-section-header">
-                        <h4 class="manage-section-title">Deine Abwesenheiten</h4>
-                    </div>
-                    <div id="absenceList" class="manage-list-modern" style="max-height: 150px;">
+                <div id="absenceWeeklySettings" class="hub-field-group versteckt" style="margin-top: 10px;">
+                    <label class="hub-label">Wochentag</label>
+                    <select id="absenceWeekdaySelect" class="hub-input">
+                        <option value="1">Montag</option>
+                        <option value="2">Dienstag</option>
+                        <option value="3">Mittwoch</option>
+                        <option value="4">Donnerstag</option>
+                        <option value="5">Freitag</option>
+                        <option value="6">Samstag</option>
+                        <option value="0">Sonntag</option>
+                    </select>
+                </div>
+
+                <div id="absenceListContainer" class="hub-attendance-section" style="margin-top: 28px; border-top: 1px solid rgba(255,255,255,0.05); padding-top: 20px;">
+                    <h3 style="font-size: 0.8rem; font-weight: 800; color: #64748b; text-transform: uppercase;">Deine Meldungen</h3>
+                    <div id="absenceList" class="manage-list-modern" style="max-height: 180px; margin-top: 12px;">
                         <!-- JS fills this -->
                     </div>
                 </div>
             </div>
             
-            <div class="modal-footer-modern">
-                <button id="saveAbsenceBtn" class="shadcn-btn-primary" style="width: 100%;">Abspeichern</button>
+            <div class="hub-modal-footer">
+                <button id="saveAbsenceBtn" class="hub-btn-primary" style="width: 100%;">Abspeichern</button>
             </div>
         </div>
     </div>

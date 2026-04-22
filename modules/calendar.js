@@ -228,40 +228,54 @@ export function initCalendar() {
     // --- SUB SETTINGS MODAL ---
     const closeSubSettingsBtn = document.getElementById('closeSubSettingsBtn');
     const saveSubSettingsBtn = document.getElementById('saveSubSettingsBtn');
-    if (closeSubSettingsBtn) closeSubSettingsBtn.onclick = closeSubSettingsModal;
-    if (saveSubSettingsBtn) saveSubSettingsBtn.onclick = saveSubSettings;
+    if (closeSubSettingsBtn) {
+        closeSubSettingsBtn.addEventListener('click', closeSubSettingsModal);
+    }
+    if (saveSubSettingsBtn) {
+        saveSubSettingsBtn.addEventListener('click', saveSubSettings);
+    }
 }
 
 function setupAbsenceListeners() {
-    if (addAbsenceBtn) {
-        addAbsenceBtn.onclick = (e) => {
+    // Robust re-querying to avoid stale references from dom.js during dev-swaps
+    const currentAbsenceBtn = document.getElementById('addAbsenceBtn');
+    const currentCloseAbsenceBtn = document.getElementById('closeAbsenceBtn');
+    const currentSaveAbsenceBtn = document.getElementById('saveAbsenceBtn');
+
+    if (currentAbsenceBtn) {
+        currentAbsenceBtn.addEventListener('click', (e) => {
             e.stopPropagation();
             if (absenceModal && !absenceModal.classList.contains('versteckt')) {
                 closeAbsenceModal();
                 return;
             }
             openAbsenceModal();
-        };
+        });
     }
     
-    if (closeAbsenceBtn) closeAbsenceBtn.onclick = closeAbsenceModal;
-    if (saveAbsenceBtn) saveAbsenceBtn.onclick = saveAbsence;
+    if (currentCloseAbsenceBtn) {
+        currentCloseAbsenceBtn.addEventListener('click', closeAbsenceModal);
+    }
+
+    if (currentSaveAbsenceBtn) {
+        currentSaveAbsenceBtn.addEventListener('click', saveAbsence);
+    }
 
     if (absenceTypeRange) {
-        absenceTypeRange.onchange = () => {
+        absenceTypeRange.addEventListener('change', () => {
             if (absenceTypeRange.checked) {
                 absenceRangeSettings.classList.remove('versteckt');
                 absenceWeeklySettings.classList.add('versteckt');
             }
-        };
+        });
     }
     if (absenceTypeWeekly) {
-        absenceTypeWeekly.onchange = () => {
+        absenceTypeWeekly.addEventListener('change', () => {
             if (absenceTypeWeekly.checked) {
                 absenceWeeklySettings.classList.remove('versteckt');
                 absenceRangeSettings.classList.add('versteckt');
             }
-        };
+        });
     }
 }
 
@@ -535,7 +549,6 @@ export function renderCalendar() {
     for (let day = 1; day <= daysInMonth; day++) {
         const cell = document.createElement('div');
         cell.className = 'calendar-day';
-        cell.style.cursor = 'pointer'; // Make it obvious it's clickable
 
         // Check local date string YYYY-MM-DD
         const localDate = new Date(year, month, day);
@@ -905,18 +918,34 @@ export function showEventDetails(eventId, participantsOnly = false) {
     }
 
     if (detailsTitle) detailsTitle.textContent = event.title;
-    if (detailsDate) {
-        const [y, m, d] = event.date.split('-');
-        detailsDate.textContent = `${d}.${m}.${y} `;
+    
+    // Category Badge
+    const categoryBadge = document.getElementById('detailsCategoryBadge');
+    if (categoryBadge) {
+        const isGame = event.type === 'game';
+        const typeColor = isGame ? '#ef4444' : '#3b82f6';
+        const typeLabel = isGame ? 'Spiel' : 'Training';
+        categoryBadge.textContent = typeLabel.toUpperCase();
+        categoryBadge.style.color = typeColor;
+        categoryBadge.style.background = typeColor + '20';
     }
-    if (detailsTime) detailsTime.textContent = event.time + ' Uhr';
+
+    // Consolidated Info Row
+    const fullInfoSpan = document.getElementById('detailsFullInfo');
+    if (fullInfoSpan) {
+        const d = new Date(event.date);
+        const dayNames = ['So', 'Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa'];
+        const dayStr = dayNames[d.getDay()];
+        const [y, m, day] = event.date.split('-');
+        fullInfoSpan.innerHTML = `${dayStr}, ${day}.${m}.${y} <span style="margin: 0 4px; opacity: 0.3;">|</span> ${event.time} Uhr`;
+    }
 
     if (detailsLocationRow && detailsLocation) {
         if (event.location) {
             detailsLocation.textContent = event.location;
-            detailsLocationRow.classList.remove('versteckt');
+            detailsLocationRow.style.display = 'flex';
         } else {
-            detailsLocationRow.classList.add('versteckt');
+            detailsLocationRow.style.display = 'none';
         }
     }
 
@@ -1088,11 +1117,17 @@ function renderAttendanceUI(event) {
         }
     }
 
-    // 3. Stats Summary
+    // 3. Stats Summary & Button Counts
     const { going, missing, maybe } = getEventStats(event);
-    if (attendanceStats) {
-        attendanceStats.innerHTML = `<span style="color:#22c55e;">${going} Dabei</span> | <span style="color:#ef4444;">${missing} Absagen</span>` + (maybe > 0 ? ` | <span style="color:#f59e0b;">${maybe} ?</span>` : '');
-    }
+    
+    // Inject counts into buttons
+    const countGoing = document.getElementById('detailsCountGoing');
+    const countMaybe = document.getElementById('detailsCountMaybe');
+    const countMissing = document.getElementById('detailsCountMissing');
+    
+    if (countGoing) countGoing.textContent = going;
+    if (countMaybe) countMaybe.textContent = maybe;
+    if (countMissing) countMissing.textContent = missing;
 
     // 4. Build full participants list
     if (attendanceFullList) {
