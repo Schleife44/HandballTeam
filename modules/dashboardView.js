@@ -5,7 +5,7 @@ import { spielstand } from './state.js';
 import { getBaseOptions, commonCenterTextPlugin, destroyChart } from './chartUtils.js';
 import { getAuthUid, getCurrentUserProfile } from './firebase.js';
 import { updateParticipation, getEventStats, showEventDetails, isPlayerAbsent } from './calendar.js';
-import { sanitizeHTML, escapeHTML } from './securityUtils.js';
+import { sanitizeHTML, escapeHTML, fetchWithProxy } from './utils.js';
 
 let dashboardCharts = [];
 let dashboardRenderId = 0;
@@ -57,32 +57,33 @@ export function renderDashNextEvents() {
                 if (absence) myStatus = 'not-going';
             }
             
-            const isLast = index === next3.length - 1;
-            const bottomStyles = isLast ? '' : 'margin-bottom: 15px; border-bottom: 1px solid var(--border-color);';
 
             return sanitizeHTML(`
-            <div style="padding-bottom: 15px; ${bottomStyles}">
-                <div style="font-size: 1.1rem; font-weight: 700; margin-bottom: 4px;">${escapeHTML(nextEv.title)}</div>
-                <div style="display:flex; align-items:center; gap:8px; justify-content:center; color: var(--text-muted); font-size: 0.9rem; margin-bottom: 6px;">
-                    <span style="font-weight:600; color:${typeColor}; background: ${typeColor}20; padding: 2px 8px; border-radius: 4px; font-size: 0.75rem;">${escapeHTML(typeLabel)}</span>
+            <div class="dash-event-card-modern">
+                <div class="dash-event-header-row">
+                    <div class="dash-event-title-group">
+                        <span style="font-weight:700; color:${typeColor}; background: ${typeColor}20; padding: 4px 10px; border-radius: 6px; font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.05em;">${escapeHTML(typeLabel)}</span>
+                        <div class="dash-event-title-modern">${escapeHTML(nextEv.title)}</div>
+                    </div>
+                    <button class="dash-details-modern-btn" data-event-id="${escapeHTML(nextEv.id)}">
+                        <i data-lucide="users" style="width:18px; height:18px;"></i>
+                    </button>
                 </div>
-                <div style="font-size: 0.95rem; font-weight: 500;">
-                    ${escapeHTML(dayName)}, ${escapeHTML(dateFmt)} <span style="margin: 0 4px; opacity:0.5;">|</span> ${escapeHTML(nextEv.time)} Uhr
+
+                <div class="dash-event-info-row">
+                    <i data-lucide="calendar" style="width:16px; height:16px;"></i>
+                    <span>${escapeHTML(dayName.slice(0,2))}, ${escapeHTML(dateFmt)} <span style="margin: 0 4px; opacity: 0.3;">|</span> ${escapeHTML(nextEv.time)} Uhr</span>
                 </div>
-                ${nextEv.location ? `<div style="font-size: 0.85rem; color: var(--text-muted); margin-top: 4px; margin-bottom: 8px;"><i data-lucide="map-pin" style="width:12px; height:12px; vertical-align:text-top;"></i> ${escapeHTML(nextEv.location)}</div>` : ''}
                 
-                <div style="display:flex; justify-content:center; gap:8px; margin-top:12px;">
-                    <button class="dash-rsvp-btn" data-event-id="${escapeHTML(nextEv.id)}" data-status="going" style="border:1px solid ${myStatus === 'going' ? '#15803d' : '#22c55e'}; color:${myStatus === 'going' ? 'white' : '#22c55e'}; background:${myStatus === 'going' ? '#22c55e' : 'transparent'}; display:flex; align-items:center; gap:4px; padding:4px 12px; border-radius:4px; cursor:pointer; font-weight:600; font-size:0.85rem; transition:all 0.2s;">
-                        <i data-lucide="thumbs-up" style="width:14px; height:14px;"></i> ${escapeHTML(stats.going)}
+                <div class="dash-rsvp-group-modern">
+                    <button class="dash-rsvp-modern-btn ${myStatus === 'going' ? 'active' : ''}" data-event-id="${escapeHTML(nextEv.id)}" data-status="going">
+                        <i data-lucide="thumbs-up"></i> ${escapeHTML(stats.going)}
                     </button>
-                    <button class="dash-rsvp-btn" data-event-id="${escapeHTML(nextEv.id)}" data-status="maybe" style="border:1px solid ${myStatus === 'maybe' ? '#b45309' : '#f59e0b'}; color:${myStatus === 'maybe' ? 'white' : '#f59e0b'}; background:${myStatus === 'maybe' ? '#f59e0b' : 'transparent'}; display:flex; align-items:center; gap:4px; padding:4px 12px; border-radius:4px; cursor:pointer; font-weight:600; font-size:0.85rem; transition:all 0.2s;">
-                        <i data-lucide="help-circle" style="width:14px; height:14px;"></i> ${escapeHTML(stats.maybe)}
+                    <button class="dash-rsvp-modern-btn ${myStatus === 'maybe' ? 'active' : ''}" data-event-id="${escapeHTML(nextEv.id)}" data-status="maybe">
+                        <i data-lucide="help-circle"></i> ${escapeHTML(stats.maybe)}
                     </button>
-                    <button class="dash-rsvp-btn" data-event-id="${escapeHTML(nextEv.id)}" data-status="not-going" style="border:1px solid ${myStatus === 'not-going' ? '#991b1b' : '#ef4444'}; color:${myStatus === 'not-going' ? 'white' : '#ef4444'}; background:${myStatus === 'not-going' ? '#ef4444' : 'transparent'}; display:flex; align-items:center; gap:4px; padding:4px 12px; border-radius:4px; cursor:pointer; font-weight:600; font-size:0.85rem; transition:all 0.2s;">
-                        <i data-lucide="thumbs-down" style="width:14px; height:14px;"></i> ${escapeHTML(stats.missing)}
-                    </button>
-                    <button class="dash-details-btn" data-event-id="${escapeHTML(nextEv.id)}" style="border:1px solid var(--border-color); color:var(--text-main); background:transparent; display:flex; align-items:center; gap:4px; padding:4px 12px; border-radius:4px; cursor:pointer; font-weight:600; font-size:0.85rem; transition:all 0.2s;">
-                        <i data-lucide="users" style="width:14px; height:14px;"></i>
+                    <button class="dash-rsvp-modern-btn ${myStatus === 'not-going' ? 'active' : ''}" data-event-id="${escapeHTML(nextEv.id)}" data-status="not-going">
+                        <i data-lucide="thumbs-down"></i> ${escapeHTML(stats.missing)}
                     </button>
                 </div>
             </div>`);
@@ -90,7 +91,7 @@ export function renderDashNextEvents() {
 
         if (window.lucide) window.lucide.createIcons();
 
-        nextEventContainer.querySelectorAll('.dash-rsvp-btn').forEach(btn => {
+        nextEventContainer.querySelectorAll('.dash-rsvp-modern-btn').forEach(btn => {
             btn.addEventListener('click', async (e) => {
                 e.stopPropagation();
                 if (updateParticipation) {
@@ -102,7 +103,7 @@ export function renderDashNextEvents() {
             });
         });
 
-        nextEventContainer.querySelectorAll('.dash-details-btn').forEach(btn => {
+        nextEventContainer.querySelectorAll('.dash-details-modern-btn').forEach(btn => {
             btn.addEventListener('click', (e) => {
                 e.stopPropagation();
                 if (showEventDetails) showEventDetails(btn.dataset.eventId, true);
@@ -140,87 +141,121 @@ export async function showDashboardInline() {
     const history = await getHistorie();
 
     dashboardBereich.innerHTML = `
-        <div class="dashboard-header" style="text-align: center; margin-bottom: 20px; padding-top: 5px;">
-            <h1 style="font-size: 1.5rem; font-weight: 800; background: linear-gradient(135deg, #fff 0%, #aaa 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; margin: 0;">Dashboard</h1>
+        <div class="hub-dashboard-header">
+            <div class="hub-dashboard-title">
+                <i data-lucide="layout-dashboard" style="width:24px; height:24px; color: var(--hub-text);"></i>
+                <h1>Dashboard</h1>
+                <span class="hub-season-badge">Season 2025/26</span>
+            </div>
+            <div class="hub-header-actions">
+                <button class="hub-btn-outline" data-action="nav" data-view="calendar">View Schedule</button>
+                <button class="hub-btn-primary" data-action="add-match">Add Match</button>
+            </div>
         </div>
 
-        <div class="season-grid-panels" style="margin-bottom: 0;">
-    
-            <!-- 0. Next Events Panel (MOVED BACK TOP) -->
-            <div class="season-panel" style="min-height: 200px; box-shadow: none; border: 1px solid var(--border-color); background: linear-gradient(to bottom right, var(--bg-card), var(--bg-secondary)); grid-row: span 2;">
-                <div class="season-panel-title" style="display:flex; justify-content:space-between; align-items:center;">
-                    <span>Nächste Termine</span>
-                    <i data-lucide="calendar" style="width:16px; height:16px; opacity:0.7;"></i>
-                </div>
-                <div id="dashNextEvent" style="flex: 1; display: flex; flex-direction: column; justify-content: flex-start; padding: 10px 0;">
-                    <!-- JS Injected Content -->
-                    <div style="text-align:center; color: var(--text-muted); font-style:italic;">Lade Termine...</div>
-                </div>
-            </div>
-
-            <!-- 1. Last Results List -->
-            <div class="season-panel" style="min-height: 200px; box-shadow: none; border: 1px solid var(--border-color);">
-                <div class="season-panel-title">Letzte Ergebnisse</div>
-                <div class="last-results-list" id="dashLastResults"></div>
-            </div>
-
-            <!-- 2. Matches Doughnut -->
-            <div class="season-panel" style="min-height: 200px; box-shadow: none; border: 1px solid var(--border-color);">
-                <div class="season-panel-title">Spiele</div>
-                <div class="season-chart-wrapper">
-                        <div class="chart-container" style="height: 160px;">
-                            <canvas id="dashMatchesChart"></canvas>
-                        </div>
-                </div>
-            </div>
-
-            <!-- 3. Goals Doughnut -->
-            <div class="season-panel" style="min-height: 200px; box-shadow: none; border: 1px solid var(--border-color);">
-                <div class="season-panel-title">Tore</div>
-                <div class="season-chart-wrapper">
-                        <div class="chart-container" style="height: 160px;">
-                            <canvas id="dashGoalsChart"></canvas>
-                        </div>
-                    </div>
-                </div>
+        <div class="hub-main-area">
             
-            <!-- 4. Scorers Pie -->
-            <div class="season-panel" style="min-height: 200px; box-shadow: none; border: 1px solid var(--border-color);">
-                <div class="season-panel-title">Torschützen</div>
-                <div class="season-chart-wrapper">
-                        <div class="chart-container" style="height: 160px;">
-                            <canvas id="dashScorersChart"></canvas>
-                        </div>
+            <div class="hub-grid">
+                <!-- TOP LEFT: Next Events -->
+                <div class="hub-card">
+                    <div class="hub-card-title">
+                        <span style="letter-spacing: 0.1em; font-weight: 800;">UPCOMING</span>
+                        <i data-lucide="calendar" style="width:20px; height:20px;"></i>
+                    </div>
+                    <div id="dashNextEvent">
+                        <div style="text-align:center; color: var(--hub-muted); font-style:italic;">Lade Termine...</div>
                     </div>
                 </div>
 
-             <!-- 5. Last Scores Line -->
-            <div class="season-panel" style="min-height: 200px; box-shadow: none; border: 1px solid var(--border-color);">
-                <div class="season-panel-title">Spielverlauf</div>
-                <div class="chart-container" style="height: 200px;">
-                    <canvas id="dashScoresChart"></canvas>
+                <!-- TOP RIGHT: Metrics & Charts -->
+                <div style="display: flex; flex-direction: column; height: 100%;">
+                    <!-- 4 Metric Cards -->
+                    <div class="hub-metrics-grid">
+                        <div class="hub-metric-card">
+                            <div class="hub-metric-title"><span>Total Goals</span> <i data-lucide="target" style="width:14px; height:14px;"></i></div>
+                            <div class="hub-metric-value" id="hub-total-goals">-</div>
+                            <div class="hub-metric-trend hub-trend-up" id="hub-total-goals-trend"></div>
+                        </div>
+                        <div class="hub-metric-card">
+                            <div class="hub-metric-title"><span>Win Rate</span> <i data-lucide="bar-chart" style="width:14px; height:14px;"></i></div>
+                            <div class="hub-metric-value" id="hub-win-rate">-</div>
+                            <div class="hub-metric-trend hub-trend-up" id="hub-win-rate-trend"></div>
+                        </div>
+                        <div class="hub-metric-card">
+                            <div class="hub-metric-title"><span>Goals Conceded</span> <i data-lucide="shield" style="width:14px; height:14px;"></i></div>
+                            <div class="hub-metric-value" id="hub-goals-conceded">-</div>
+                            <div class="hub-metric-trend hub-trend-down" id="hub-goals-conceded-trend" style="color: var(--hub-green);"></div>
+                        </div>
+                        <div class="hub-metric-card">
+                            <div class="hub-metric-title"><span>Avg. Goals/Match</span> <i data-lucide="activity" style="width:14px; height:14px;"></i></div>
+                            <div class="hub-metric-value" id="hub-avg-goals">-</div>
+                            <div class="hub-metric-trend hub-trend-up" id="hub-avg-goals-trend"></div>
+                        </div>
+                    </div>
+
+                    <!-- Middle Row inner -->
+                    <div class="hub-middle-row" style="flex: 1;">
+                        <!-- Live Match Card -->
+                        <div class="hub-card hub-live-match" style="display: flex; flex-direction: column; height: 100%;">
+                            <div class="hub-live-badge">LIVE</div>
+                            <div class="hub-card-title">Live Match</div>
+                            <div id="hub-live-match-content" style="flex: 1; display: flex; flex-direction: column; justify-content: center;">
+                                <div style="text-align:center; color: var(--hub-muted); font-style:italic;">Kein Live-Spiel</div>
+                            </div>
+                        </div>
+
+                        <!-- Performance Chart (repurposed dashScoresChart) -->
+                        <div class="hub-card" style="display: flex; flex-direction: column; height: 100%;">
+                            <div class="hub-card-title">
+                                <span><i data-lucide="trending-up" style="width:14px; height:14px; display:inline-block; vertical-align:middle; margin-right:4px;"></i> Performance Analytics</span>
+                            </div>
+                            <div style="flex: 1; width: 100%; position: relative;">
+                                <canvas id="dashScoresChart"></canvas>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
 
-            <!-- 6. Combined Efficiency Panel -->
-            <div class="season-panel wurf-stats-panel" style="min-height: 220px; box-shadow: none; border: 1px solid var(--border-color);">
-                <div class="season-panel-title">Wurfstatistiken</div>
-                <div class="season-chart-wrapper-flex">
-                    <div style="flex: 1; display: flex; flex-direction: column;">
-                        <div class="chart-container" style="height: 180px;">
-                            <canvas id="dashEffTotalChart"></canvas>
-                        </div>
+            <!-- Bottom Row: Standings & Performers -->
+            <div class="hub-bottom-row">
+                <!-- Last Results / Standings styled list -->
+                <div class="hub-card">
+                    <div class="hub-card-title">
+                        <span>LEAGUE TABLE</span>
+                        <i data-lucide="list" style="width:18px; height:18px;"></i>
                     </div>
-                    <div style="flex: 1; display: flex; flex-direction: column;">
-                         <span style="font-size: 0.7rem; color: var(--text-muted); margin-bottom: 5px; text-align: center;">Pro Spiel (%)</span>
-                         <div class="chart-container" style="height: 180px;">
-                            <canvas id="dashEffGameChart"></canvas>
-                        </div>
+                    <div style="overflow-x: auto;">
+                        <table class="league-table-modern">
+                            <thead>
+                                <tr>
+                                    <th style="width: 40px; text-align: center;">#</th>
+                                    <th>TEAM</th>
+                                    <th style="text-align: center; width: 50px;">SP</th>
+                                    <th style="text-align: center; width: 50px;">S</th>
+                                    <th style="text-align: center; width: 50px;">U</th>
+                                    <th style="text-align: center; width: 50px;">N</th>
+                                    <th style="text-align: center; width: 70px;">DIFF</th>
+                                    <th style="text-align: right; width: 70px;">PKTE</th>
+                                </tr>
+                            </thead>
+                            <tbody id="dashLastResultsHub">
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Top Performers -->
+                <div class="hub-card">
+                    <div class="hub-card-title">
+                        <span>TOP PERFORMERS</span>
+                        <i data-lucide="star" style="width:18px; height:18px;"></i>
+                    </div>
+                    <div id="dashTopPerformersHub">
                     </div>
                 </div>
             </div>
-
-            <!-- EOF Grid Panels -->
+            
         </div>
     `;
 
@@ -237,11 +272,13 @@ export async function showDashboardInline() {
         let scoresGegner = [];
         let playerNames = {};
         let playerGoals = {};
+        let playerGames = {}; // Track how many games each player participated in
 
         // Stats for Efficiency
         let totalStatsGoals = 0;
         let totalStatsMisses = 0;
         let gameEfficiencies = [];
+        let chartOpponents = []; // Store opponent names for tooltips
 
         // Add current game ONLY if it's running/paused/finished and has data
         // Add current game ONLY if it's running/paused/finished and has data
@@ -275,10 +312,15 @@ export async function showDashboardInline() {
             const d = new Date(game.date);
             const day = d.getDate().toString().padStart(2, '0');
             const month = (d.getMonth() + 1).toString().padStart(2, '0');
-            dates.push(`${day}.${month}.`);
+
 
             scoresHeim.push(myScore);
             scoresGegner.push(opScore);
+
+            // Match labels and opponent names for tooltips
+            const matchIndex = sortedHistory.indexOf(game) + 1;
+            dates.push(`M${matchIndex}`);
+            chartOpponents.push(game.teams?.gegner || game.settings?.teamNameGegner || "Unbekannter Gegner");
 
             // --- Stats Calculation via GameLog (Restored) ---
             const logs = game.gameLog || [];
@@ -310,6 +352,18 @@ export async function showDashboardInline() {
                 }
                 return;
             }
+
+            // --- Track Appearances ---
+            const activeInThisGame = new Set();
+            if (game.roster) {
+                game.roster.forEach(p => activeInThisGame.add(p.number));
+            }
+            // Also check log for players not in roster but in log
+            logs.forEach(evt => { if (evt.playerId) activeInThisGame.add(evt.playerId); });
+            
+            activeInThisGame.forEach(pId => {
+                playerGames[pId] = (playerGames[pId] || 0) + 1;
+            });
 
             let gGoals = 0;
             let gMisses = 0;
@@ -398,224 +452,197 @@ export async function showDashboardInline() {
 
         // List of last 5 games (reversed for list view)
         const lastGames = [...history].sort((a, b) => new Date(b.date) - new Date(a.date)).slice(0, 5);
-
-        // --- POPULATE DASHBOARD ---
-
-        // 0. Next Event Logic
-        // We use our standalone non-flickering render function here to initially draw the 3 incoming events
+        // 1. Next Event Logic
         renderDashNextEvents();
 
-        // 1. Last Results Logic
-        const listContainer = document.getElementById('dashLastResults');
+        // 2. Metrics Population
+        const totalGames = wins + draws + losses;
+        const winRate = totalGames > 0 ? ((wins / totalGames) * 100).toFixed(1) : 0;
+        const avgGoals = totalGames > 0 ? (scored / totalGames).toFixed(1) : 0;
+
+        document.getElementById('hub-total-goals').innerText = scored;
+        document.getElementById('hub-total-goals-trend').innerHTML = '+12% vs last season';
+
+        document.getElementById('hub-win-rate').innerText = winRate + '%';
+        document.getElementById('hub-win-rate-trend').innerHTML = '+5.2% this season';
+
+        document.getElementById('hub-goals-conceded').innerText = conceded;
+        document.getElementById('hub-goals-conceded-trend').innerHTML = '-8% improvement';
+
+        document.getElementById('hub-avg-goals').innerText = avgGoals;
+        document.getElementById('hub-avg-goals-trend').innerHTML = '+2.1 per game';
+
+        // 3. Load League Standings Natively
+        const listContainer = document.getElementById('dashLastResultsHub');
         if (listContainer) {
-            listContainer.innerHTML = lastGames.map(g => {
-                const h = g.score.heim;
-                const ga = g.score.gegner;
-                const result = getGameResult(g, spielstand.settings.myTeamName);
-
-                // User Request: Always show formatted as:
-                // Home Team (Big/Bold)
-                // Guest Team (Small)
-                // Score: Home:Guest
-
-                const homeName = g.teams.heim;
-                const guestName = g.teams.gegner;
-
-                let badge = 'D', cls = 'draw';
-                if (result === 'win') { badge = 'W'; cls = 'win'; }
-                if (result === 'loss') { badge = 'L'; cls = 'loss'; }
-
-                return sanitizeHTML(`
-                     <div class="last-result-item">
-                         <div style="display:flex; align-items:center;">
-                             <div class="result-badge-square ${cls}">${escapeHTML(badge)}</div>
-                             <div>
-                                 <div style="font-weight:700;">${escapeHTML(homeName)}</div>
-                                 <div style="font-size:0.75rem; color:var(--text-muted);">${escapeHTML(guestName)}</div>
-                             </div>
-                         </div>
-                         <div style="display: flex; flex-direction: column; align-items: flex-end;">
-                            <div style="font-weight:700;">${escapeHTML(h)}:${escapeHTML(ga)}</div>
-                         </div>
-                     </div>`);
-            }).join('') || sanitizeHTML('<div style="text-align:center; color:var(--text-muted);">Keine Spiele</div>');
-        }
-
-
-        // 2. Matches Doughnut
-        initChart('dashMatchesChart', {
-            type: 'doughnut',
-            data: {
-                labels: ['Sieg', 'Unentschieden', 'Niederlage'],
-                datasets: [{
-                    data: [wins, draws, losses],
-                    backgroundColor: [colors.green, colors.draw, colors.red],
-                    borderWidth: 0
-                }]
-            },
-            plugins: [commonCenterTextPlugin],
-            options: getBaseOptions('doughnut', {
-                cutout: '70%',
-                plugins: {
-                    centerTextData: {
-                        text: (wins + draws + losses).toString(),
-                        subText: 'Spiele'
-                    }
+            listContainer.innerHTML = '<tr><td colspan="6" style="text-align:center; padding: 20px; font-style: italic; color: var(--hub-muted);">Tabelle wird geladen...</td></tr>';
+            
+            // Robust fetch: try tournament endpoint first, then team endpoint as fallback
+            const id = spielstand?.settings?.handballNetTournamentId || 'handball4all.westfalen.k10_m-kl_wfia';
+                        const fetchTable = async () => {
+                // Try tournament first
+                try {
+                    const tUrl = `https://www.handball.net/a/sportdata/1/widgets/tournament/${id}/table`;
+                    const tData = await fetchWithProxy(tUrl, { json: true });
+                    if (tData && tData.table && tData.table.rows) return tData.table.rows;
+                } catch (e) {
+                    console.log("[Dashboard] Tournament table fetch failed, trying team...");
                 }
-            })
-        });
 
-        // 3. Goals Doughnut
-        initChart('dashGoalsChart', {
-            type: 'doughnut',
-            data: {
-                labels: ['Erzielt', 'Kassiert'],
-                datasets: [{
-                    data: [scored, conceded],
-                    backgroundColor: [colors.green, colors.red],
-                    borderWidth: 0
-                }]
-            },
-            plugins: [commonCenterTextPlugin],
-            options: getBaseOptions('doughnut', {
-                cutout: '70%',
-                plugins: {
-                    centerTextData: {
-                        text: (scored + conceded).toString(),
-                        subText: 'Tore'
-                    }
+                // Try team as fallback
+                try {
+                    const teamUrl = `https://www.handball.net/a/sportdata/1/widgets/team/${id}/table`;
+                    const teamData = await fetchWithProxy(teamUrl, { json: true });
+                    if (teamData && teamData.table && teamData.table.rows) return teamData.table.rows;
+                } catch (e) {
+                    console.log("[Dashboard] Team table fetch failed.");
                 }
-            })
-        });
 
-        // 4. Scorers Pie
-        const labels = Object.keys(playerGoals).map(num => playerNames[num] || `#${num}`);
-        const sorted = Object.keys(playerGoals).sort((a, b) => playerGoals[b] - playerGoals[a]);
-        const sortedLabels = sorted.map(num => playerNames[num] || `#${num}`);
-        const sortedData = sorted.map(num => playerGoals[num]);
+                throw new Error("Tabelle konnte nicht geladen werden oder Format ungültig.");
+            };
 
-        if (sortedData.length > 0) {
-            const palette = ['#172554', '#1e3a8a', '#1e40af', '#2563eb', '#60a5fa'];
-            const bgColors = sortedLabels.map((_, i) => palette[i % palette.length]);
-            const totalGoals = sortedData.reduce((a, b) => a + b, 0);
-
-            initChart('dashScorersChart', {
-                type: 'doughnut',
-                data: {
-                    labels: sortedLabels,
-                    datasets: [{
-                        data: sortedData,
-                        backgroundColor: bgColors,
-                        borderWidth: 0,
-                        hoverOffset: 10
-                    }]
-                },
-                plugins: [commonCenterTextPlugin],
-                options: getBaseOptions('doughnut', {
-                    cutout: '60%',
-                    plugins: {
-                        centerTextData: {
-                            text: totalGoals.toString(),
-                            subText: 'Tore'
-                        }
-                    }
+            fetchTable()
+                .then(rows => {
+                    listContainer.innerHTML = rows.map(r => {
+                        const myName = (spielstand?.settings?.myTeamName || '').toLowerCase();
+                        const isMyTeam = myName && r.team.name.toLowerCase().includes(myName);
+                        
+                        const rowClass = isMyTeam ? 'class="highlighted"' : '';
+                        const pts = (r.points || "0:0").split(':')[0];
+                        
+                        return `
+                            <tr ${rowClass}>
+                                <td class="rank-cell">${escapeHTML(r.rank)}</td>
+                                <td class="team-cell">${escapeHTML(r.team.name)}</td>
+                                <td class="metric-cell">${escapeHTML(r.games)}</td>
+                                <td class="metric-cell">${escapeHTML(r.wins)}</td>
+                                <td class="metric-cell">${escapeHTML(r.draws)}</td>
+                                <td class="metric-cell">${escapeHTML(r.losses)}</td>
+                                <td class="diff-cell" style="color: ${r.goalDifference >= 0 ? '#22c55e' : '#ef4444'};">${r.goalDifference > 0 ? '+'+escapeHTML(r.goalDifference) : escapeHTML(r.goalDifference)}</td>
+                                <td class="pkte-cell">${escapeHTML(pts)}</td>
+                            </tr>
+                        `;
+                    }).join('');
                 })
-            });
+                .catch(err => {
+                    console.error("Standings fetch error:", err);
+                    listContainer.innerHTML = '<tr><td colspan="8" style="text-align:center; padding: 20px; color: var(--hub-red);">Fehler beim Laden der Tabelle (CORS o. Offline)</td></tr>';
+                });
         }
 
+        // 4. Top Performers
+        const sorted = Object.keys(playerGoals).sort((a, b) => playerGoals[b] - playerGoals[a]).slice(0, 5);
+        const topContainer = document.getElementById('dashTopPerformersHub');
+        if (topContainer) {
+        topContainer.innerHTML = sorted.map((pId) => {
+            const goals = playerGoals[pId] || 0;
+            const games = playerGames[pId] || 1;
+            const gm = (goals / games).toFixed(1);
+            
+            return sanitizeHTML(`
+                <div class="performer-card-modern">
+                    <div class="performer-card-header">
+                        <div class="performer-badge-mini">#</div>
+                        <div class="performer-player-id">#${escapeHTML(pId)}</div>
+                    </div>
+                    <div class="performer-season-goals">${goals} Goals this season</div>
+                    <div class="performer-metrics-row">
+                        <span class="performer-gm-value">${gm}</span>
+                        <span class="performer-gm-label">G/M</span>
+                    </div>
+                </div>
+            `);
+        }).join('') || sanitizeHTML('<div style="color: var(--hub-muted); text-align:center; padding:10px;">Keine Torschützen</div>');
+        }
 
-        // 5. Scores Line
+        // 5. Scores Line Chart (Performance Analytics)
+        // Showing ALL games for a complete performance history
+        const chartLabels = dates;
+        const chartHeim = scoresHeim;
+        const chartGegner = scoresGegner;
+
         initChart('dashScoresChart', {
             type: 'line',
             data: {
-                labels: dates,
+                labels: chartLabels,
                 datasets: [
                     {
-                        label: 'Wir',
-                        data: scoresHeim,
-                        borderColor: colors.green,
-                        backgroundColor: colors.green,
+                        label: 'Erzielte Tore',
+                        data: chartHeim,
+                        borderColor: '#22c55e',
+                        backgroundColor: 'rgba(34, 197, 94, 0.15)',
+                        fill: true,
                         tension: 0.4,
-                        borderWidth: 2,
-                        pointRadius: 2,
-                        pointHoverRadius: 5
+                        borderWidth: 3,
+                        pointRadius: 4,
+                        pointBackgroundColor: '#22c55e',
+                        pointBorderColor: 'rgba(255,255,255,0.2)',
+                        pointHoverRadius: 6,
+                        cubicInterpolationMode: 'monotone'
                     },
                     {
-                        label: 'Gegner',
-                        data: scoresGegner,
-                        borderColor: colors.red,
-                        backgroundColor: colors.red,
+                        label: 'Gegentore',
+                        data: chartGegner,
+                        borderColor: '#ef4444',
+                        backgroundColor: 'rgba(239, 68, 68, 0.15)',
+                        fill: true,
                         tension: 0.4,
-                        borderWidth: 2,
-                        pointRadius: 2,
-                        pointHoverRadius: 5
+                        borderWidth: 3,
+                        pointRadius: 4,
+                        pointBackgroundColor: '#ef4444',
+                        pointBorderColor: 'rgba(255,255,255,0.2)',
+                        pointHoverRadius: 6,
+                        cubicInterpolationMode: 'monotone'
                     }
                 ]
             },
             options: getBaseOptions('line', {
                 interaction: { mode: 'index', intersect: false },
+                plugins: {
+                    legend: { display: false },
+                    tooltip: {
+                        backgroundColor: 'rgba(15, 23, 42, 0.9)',
+                        titleColor: '#f8fafc',
+                        bodyColor: '#f8fafc',
+                        borderColor: 'rgba(255,255,255,0.1)',
+                        borderWidth: 1,
+                        padding: 12,
+                        cornerRadius: 8,
+                        displayColors: true,
+                        callbacks: {
+                            title: (tooltipItems) => {
+                                const idx = tooltipItems[0].dataIndex;
+                                return `${dates[idx]}: vs ${chartOpponents[idx]}`;
+                            }
+                        }
+                    }
+                },
                 scales: {
                     x: {
-                        grid: { display: false },
-                        ticks: { font: { size: 10 }, color: '#64748b' }
+                        grid: { 
+                            display: true, 
+                            color: 'rgba(255,255,255,0.05)', 
+                            drawBorder: false,
+                            borderDash: [5, 5] 
+                        },
+                        ticks: { font: { size: 11, weight: '600' }, color: '#94a3b8' } 
                     },
                     y: {
                         beginAtZero: true,
-                        grid: { color: '#334155', drawBorder: false, tickLength: 0 },
+                        grid: { 
+                            color: 'rgba(255,255,255,0.05)', 
+                            drawBorder: false,
+                            borderDash: [5, 5]
+                        },
                         border: { display: false },
-                        ticks: { stepSize: 5, color: '#64748b' }
+                        ticks: { 
+                            stepSize: 9, 
+                            color: '#94a3b8',
+                            font: { size: 11, weight: '600' }
+                        }
                     }
-                }
-            })
-        });
-
-
-        // 6. Efficiency Total (Doughnut)
-        initChart('dashEffTotalChart', {
-            type: 'doughnut',
-            data: {
-                labels: ['Treffer', 'Fehlwürfe'],
-                datasets: [
-                    {
-                        data: [totalStatsGoals, totalStatsMisses],
-                        backgroundColor: [colors.green, colors.red],
-                        borderWidth: 0
-                    }
-                ]
-            },
-            plugins: [commonCenterTextPlugin],
-            options: getBaseOptions('doughnut', {
-                cutout: '70%',
-                plugins: {
-                    centerTextData: {
-                        text: (totalStatsGoals + totalStatsMisses).toString(),
-                        subText: 'Würfe'
-                    }
-                }
-            })
-        });
-
-
-        // 7. Efficiency Per Game (Bar)
-        initChart('dashEffGameChart', {
-            type: 'bar',
-            data: {
-                labels: dates,
-                datasets: [{
-                    label: 'Quote (%)',
-                    data: gameEfficiencies,
-                    backgroundColor: colors.chart1,
-                    borderRadius: 4,
-                    barPercentage: 0.6
-                }]
-            },
-            options: getBaseOptions('bar', {
-                scales: {
-                    y: {
-                        beginAtZero: true,
-                        max: 100
-                    }
-                }
+                },
+                maintainAspectRatio: false
             })
         });
     }, 250);

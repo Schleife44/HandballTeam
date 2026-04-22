@@ -138,7 +138,11 @@ export async function renderHistoryList() {
     historieListe.className = 'history-grid';
     historieListe.style.display = 'grid';
 
-    const games = await getHistorie();
+    let games = await getHistorie();
+    // Sort games by date descending (newest first)
+    if (games && games.length > 1) {
+        games = [...games].sort((a, b) => new Date(b.date) - new Date(a.date));
+    }
     historieListe.innerHTML = '';
 
     if (!games || games.length === 0) {

@@ -17,17 +17,18 @@ import {
     absenceTypeRange, absenceTypeWeekly, absenceRangeSettings, 
     absenceWeeklySettings, absenceWeekdaySelect,
     // Calendar UI
-    calendarGrid, currentMonthLabel, addEventModal, addEventModalTitle,
+    calendarGrid, currentMonthLabel, addEventOverlay, addEventModal, addEventModalTitle,
     eventTitleInput, eventDateInput, eventTimeInput, eventLocationInput,
     eventRepeatInput, eventRepeatEndInput, recurrenceOptions,
-    eventDetailsModal, detailsTitle, detailsDate, detailsTime, detailsLocation, detailsLocationRow,
+    eventDetailsOverlay, eventDetailsModal, detailsTitle, detailsDate, detailsTime, detailsLocation, detailsLocationRow,
     closeDetailsModal, closeDetailsBtn, deleteEventBtn, editEventBtn,
     attendanceReasonInput, attendanceReasonContainer, attendanceStats,
     attendanceFullList, modalDetailsBtn, saveAttendanceReasonBtn,
     // Rules
     eventRequireReasonInput, eventDeadlineInput, eventDefaultStatusInput,
     // Manage UI
-    manageCalendarBtn, manageCalendarModal, closeManageBtn, manageUrlInput, addSubBtn, subsList, seriesList, addEventBtn
+    manageCalendarBtn, manageCalendarModal, closeManageBtn, manageUrlInput, addSubBtn, subsList, seriesList, addEventBtn,
+    subSettingsOverlay, subSettingsModal
 } from './dom.js';
 import { customAlert, customConfirm, customPrompt } from './customDialog.js';
 
@@ -35,6 +36,7 @@ import { openDatePicker, closeDatePicker } from './datepicker.js';
 import { openTimePicker, closeTimePicker } from './timepicker.js';
 import { toast } from './toast.js';
 import { parseICS } from './ics.js';
+import { fetchWithProxy } from './utils.js';
 
 let currentDate = new Date(); // Start with today
 let currentEventId = null; // Store ID for delete/details action
@@ -49,6 +51,48 @@ export function initCalendar() {
     if (!spielstand.absences) spielstand.absences = [];
     
     renderCalendar();
+
+    // === ROBUST MODAL LOGIC (Overlay-based) ===
+    
+    // 1. Add/Edit Event
+    if (addEventOverlay && addEventModal) {
+        addEventOverlay.addEventListener('click', (e) => {
+            if (e.target === addEventOverlay) closeAddEventModal();
+        });
+        addEventModal.addEventListener('click', (e) => {
+            e.stopPropagation();
+        });
+    }
+
+    // 2. Event Details
+    if (eventDetailsOverlay && eventDetailsModal) {
+        eventDetailsOverlay.addEventListener('click', (e) => {
+            if (e.target === eventDetailsOverlay) closeEventDetails();
+        });
+        eventDetailsModal.addEventListener('click', (e) => {
+            e.stopPropagation();
+        });
+    }
+
+    // 3. Manage Calendar
+    if (manageCalendarOverlay && manageCalendarModal) {
+        manageCalendarOverlay.addEventListener('click', (e) => {
+            if (e.target === manageCalendarOverlay) closeManageModal();
+        });
+        manageCalendarModal.addEventListener('click', (e) => {
+            e.stopPropagation();
+        });
+    }
+
+    // 4. Subscription Settings
+    if (subSettingsOverlay && subSettingsModal) {
+        subSettingsOverlay.addEventListener('click', (e) => {
+            if (e.target === subSettingsOverlay) closeSubSettingsModal();
+        });
+        subSettingsModal.addEventListener('click', (e) => {
+            e.stopPropagation();
+        });
+    }
 
     // Stable Modal Details Toggle (Only bind once)
     if (modalDetailsBtn) {
@@ -124,45 +168,10 @@ export function initCalendar() {
                 closeAddEventModal();
                 closeEventDetails();
 
-                document.body.appendChild(manageCalendarModal);
-                manageCalendarModal.classList.remove('versteckt');
-
-                // Center Modal Logic
-                manageCalendarModal.style.position = 'fixed'; // Force Fixed
-
-                const target = e.currentTarget || e.target;
-                const rect = target.getBoundingClientRect();
-
-                const modalWidth = 450;
-                const modalHeight = 400; // estimated max
-
-                // Fixed: rect is already viewport relative
-                let top = rect.bottom + 10;
-                let left = rect.left + (rect.width / 2) - (modalWidth / 2);
-
-                // Check Right
-                if (left + modalWidth > window.innerWidth) {
-                    left = window.innerWidth - modalWidth - 10;
-                }
-                // Check Left
-                if (left < 10) left = 10;
-
-                // Check Bottom
-                if (top + modalHeight > window.innerHeight) {
-                    top = rect.top - modalHeight - 10;
-                }
-                // Check Top (if flipped up)
-                if (top < 10) top = 10;
-
-                manageCalendarModal.style.top = `${top}px`;
-                manageCalendarModal.style.left = `${left}px`;
-
+                if (manageCalendarOverlay) manageCalendarOverlay.classList.remove('versteckt');
+                if (manageCalendarModal) manageCalendarModal.classList.remove('versteckt');
+                
                 renderManageView();
-
-                // Add outside click listener
-                setTimeout(() => {
-                    document.addEventListener('click', handleManageOutsideClick);
-                }, 0);
             }
         });
     }
@@ -239,19 +248,19 @@ function setupAbsenceListeners() {
     if (saveAbsenceBtn) saveAbsenceBtn.onclick = saveAbsence;
 
     if (absenceTypeRange) {
-        absenceTypeRange.onclick = () => {
-            absenceTypeRange.classList.add('active');
-            absenceTypeWeekly.classList.remove('active');
-            absenceRangeSettings.classList.remove('versteckt');
-            absenceWeeklySettings.classList.add('versteckt');
+        absenceTypeRange.onchange = () => {
+            if (absenceTypeRange.checked) {
+                absenceRangeSettings.classList.remove('versteckt');
+                absenceWeeklySettings.classList.add('versteckt');
+            }
         };
     }
     if (absenceTypeWeekly) {
-        absenceTypeWeekly.onclick = () => {
-            absenceTypeWeekly.classList.add('active');
-            absenceTypeRange.classList.remove('active');
-            absenceWeeklySettings.classList.remove('versteckt');
-            absenceRangeSettings.classList.add('versteckt');
+        absenceTypeWeekly.onchange = () => {
+            if (absenceTypeWeekly.checked) {
+                absenceWeeklySettings.classList.remove('versteckt');
+                absenceRangeSettings.classList.add('versteckt');
+            }
         };
     }
 }
@@ -259,17 +268,9 @@ function setupAbsenceListeners() {
 function openAbsenceModal() {
     if (!absenceModal) return;
     
-    document.body.appendChild(absenceModal);
-    absenceModal.classList.remove('versteckt');
+    if (absenceModal) absenceModal.classList.remove('versteckt');
     
-    Object.assign(absenceModal.style, {
-        position: 'fixed',
-        top: '50%',
-        left: '50%',
-        transform: 'translate(-50%, -50%)',
-        zIndex: '1100'
-    });
-
+    // Position now handled by CSS .modal-overlay
     // Reset fields
     absenceReasonInput.value = '';
     const today = new Date().toISOString().split('T')[0];
@@ -277,7 +278,10 @@ function openAbsenceModal() {
     absenceEndDate.value = ''; // Optional
     
     // Default to range
-    if (absenceTypeRange) absenceTypeRange.click();
+    if (absenceTypeRange) {
+        absenceTypeRange.checked = true;
+        absenceTypeRange.dispatchEvent(new Event('change'));
+    }
 
     renderAbsenceList();
 }
@@ -288,7 +292,7 @@ function closeAbsenceModal() {
 
 function saveAbsence() {
     const reason = absenceReasonInput.value.trim();
-    const type = absenceTypeRange.classList.contains('active') ? 'range' : 'recurring';
+    const type = absenceTypeRange.checked ? 'range' : 'recurring';
     
     const absence = {
         id: Date.now().toString(),
@@ -351,30 +355,34 @@ function renderAbsenceList() {
 
     myAbsences.forEach(abs => {
         const item = document.createElement('div');
-        item.style = 'display:flex; justify-content:space-between; align-items:center; background:rgba(0,0,0,0.03); padding:6px 10px; border-radius:4px; font-size:0.8rem;';
+        item.className = 'manage-card-modern';
         
         let displayStr = '';
         if (abs.type === 'recurring') {
-            const days = ["Sonntags", "Montags", "Dienstags", "Mittwochs", "Donnerstags", "Freitags", "Samstags"];
-            displayStr = `Jeden <b>${days[abs.weekday]}</b>`;
+            const days = ["Sonntag", "Montag", "Dienstag", "Mittwoch", "Donnerstag", "Freitag", "Samstag"];
+            displayStr = `Jeden ${days[abs.weekday]}`;
         } else {
             if (!abs.endDate) {
-                displayStr = `Ab <b>${abs.startDate}</b> (unbefristet)`;
+                displayStr = `Ab ${abs.startDate}`;
             } else if (abs.startDate === abs.endDate) {
-                displayStr = `Am <b>${abs.startDate}</b>`;
+                displayStr = `${abs.startDate}`;
             } else {
-                displayStr = `<b>${abs.startDate}</b> bis <b>${abs.endDate}</b>`;
+                displayStr = `${abs.startDate} bis ${abs.endDate}`;
             }
         }
 
         item.innerHTML = `
-            <div>
-                <div>${displayStr}</div>
-                <div style="font-size:0.7rem; color:#666;">${escapeHTML(abs.reason)}</div>
+            <div class="manage-card-info">
+                <div class="manage-card-title">
+                    <span>${displayStr}</span>
+                </div>
+                <div class="manage-card-subtitle">${escapeHTML(abs.reason)}</div>
             </div>
-            <button class="delete-abs-btn" style="background:transparent; border:none; color:#ef4444; cursor:pointer; padding:4px;">
-                <i data-lucide="trash-2" style="width:14px; height:14px;"></i>
-            </button>
+            <div class="manage-card-actions">
+                <button class="icon-btn-ghost delete-abs-btn" style="color:#ef4444;" title="Löschen">
+                    <i data-lucide="trash-2" style="width:16px; height:16px;"></i>
+                </button>
+            </div>
         `;
         
         item.querySelector('.delete-abs-btn').onclick = () => deleteAbsence(abs.id);
@@ -437,7 +445,7 @@ function setupAttendanceListeners() {
     if (attendanceListenersBound) return;
     
     // Bind only to actual RSVP buttons (exclude the 4th details/participants button)
-    const pills = document.querySelectorAll('.att-btn:not(#modalDetailsBtn)');
+    const pills = document.querySelectorAll('.att-btn:not(#deleteEventBtn)');
     pills.forEach(btn => {
         btn.addEventListener('click', (e) => {
             const status = btn.dataset.status;
@@ -536,9 +544,13 @@ export function renderCalendar() {
         const dStr = String(localDate.getDate()).padStart(2, '0');
         const localDateStr = `${yStr}-${mStr}-${dStr}`;
 
-        // Add today class
+        // Add classes for styling
         const todayStr = new Date().toISOString().split('T')[0];
         if (localDateStr === todayStr) cell.classList.add('is-today');
+
+        // Sat/Sun differentiation
+        const dayOfWeek = localDate.getDay();
+        if (dayOfWeek === 0 || dayOfWeek === 6) cell.classList.add('is-weekend');
 
         // Add past class
         const now = new Date();
@@ -567,11 +579,12 @@ export function renderCalendar() {
             const pill = document.createElement('div');
             pill.className = `event-pill event-${ev.type}`;
             pill.innerHTML = `
-                <div style="display:flex; justify-content:space-between; align-items:center;">
-                    <span style="font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;"><span class="event-time" style="margin-right:4px;">${ev.time}</span> ${ev.title}</span>
-                    <div style="font-size:0.75rem; background:rgba(255,255,255,0.25); padding:2px 6px; border-radius:10px; display:flex; align-items:center; gap:4px; font-weight:700;">
-                        ${stats.going} <i data-lucide="thumbs-up" style="width:11px; height:11px;"></i>
-                    </div>
+                <div class="pill-title-row">
+                    <span class="event-time">${ev.time}</span>
+                    <span class="event-name">${ev.title}</span>
+                </div>
+                <div class="pill-stats-row">
+                    <span class="pill-stat"><i data-lucide="thumbs-up"></i> ${stats.going}</span>
                 </div>
             `;
 
@@ -636,7 +649,6 @@ export function openAddEventModal(preselectDate = null, clickEvent = null, posit
 
     try {
         if (!isAlreadyOpen) {
-            document.body.appendChild(addEventModal);
             // Default values ONLY if opening fresh
             eventTitleInput.value = '';
             eventTimeInput.value = '19:00';
@@ -656,11 +668,11 @@ export function openAddEventModal(preselectDate = null, clickEvent = null, posit
 
         // ALWAYS remove versteckt and set display, even if already open
         // This handles cases where state might get out of sync
+        if (addEventOverlay) addEventOverlay.classList.remove('versteckt');
         addEventModal.classList.remove('versteckt');
         addEventModal.style.display = 'block';
 
-        // Always update Date (even if already open)
-        // Fix: Use local time instead of UTC to avoid guest's date issues
+        // Always update Date
         const now = new Date();
         const localToday = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0') + '-' + String(now.getDate()).padStart(2, '0');
         const targetDate = preselectDate || localToday;
@@ -669,18 +681,6 @@ export function openAddEventModal(preselectDate = null, clickEvent = null, posit
         eventDateInput.value = targetDate;
         updateModalTitle(targetDate);
 
-        // Positioning
-        Object.assign(addEventModal.style, {
-            position: 'fixed',
-            top: '50%',
-            left: '50%',
-            transform: 'translate(-50%, -50%)',
-            maxHeight: '90vh',
-            overflowY: 'auto',
-            width: '450px',
-            zIndex: '1500' // Increased for priority
-        });
-
         if (!isAlreadyOpen) {
             // Focus Title for quick entry
             setTimeout(() => {
@@ -688,10 +688,6 @@ export function openAddEventModal(preselectDate = null, clickEvent = null, posit
             }, 50);
 
             if (window.lucide) window.lucide.createIcons();
-            
-            setTimeout(() => {
-                document.addEventListener('click', handleAddOutsideClick);
-            }, 0);
         }
         console.log("[Calendar] openAddEventModal completed.");
     } catch (err) {
@@ -699,20 +695,11 @@ export function openAddEventModal(preselectDate = null, clickEvent = null, posit
     }
 }
 
-function handleAddOutsideClick(e) {
-    if (addEventModal && 
-        !addEventModal.contains(e.target) && 
-        !e.target.closest('.calendar-container') && 
-        !e.target.closest('.shadcn-datepicker') && 
-        !e.target.closest('.shadcn-timepicker')) {
-        closeAddEventModal();
-    }
-}
 
 export function closeAddEventModal() {
+    if (addEventOverlay) addEventOverlay.classList.add('versteckt');
     if (addEventModal) addEventModal.classList.add('versteckt');
     editingEventId = null;
-    document.removeEventListener('click', handleAddOutsideClick);
     closeDatePicker();
     closeTimePicker();
 }
@@ -910,21 +897,11 @@ export function showEventDetails(eventId, participantsOnly = false) {
 
     currentEventId = eventId;
 
+    if (eventDetailsOverlay) {
+        eventDetailsOverlay.classList.remove('versteckt');
+    }
     if (eventDetailsModal) {
-        document.body.appendChild(eventDetailsModal);
         eventDetailsModal.classList.remove('versteckt');
-        
-        // Fix: Ensure modal doesn't leak out of screen
-        Object.assign(eventDetailsModal.style, {
-            position: 'fixed',
-            top: '50%',
-            left: '50%',
-            transform: 'translate(-50%, -50%)',
-            maxHeight: '90vh',
-            overflowY: 'auto',
-            width: '450px',
-            zIndex: '1000'
-        });
     }
 
     if (detailsTitle) detailsTitle.textContent = event.title;
@@ -977,6 +954,7 @@ export function showEventDetails(eventId, participantsOnly = false) {
     
     // Ensure close buttons ALWAYS work, even if dashboard opened this modal without prior init
     const boundClose = () => {
+        if (eventDetailsOverlay) eventDetailsOverlay.classList.add('versteckt');
         if (eventDetailsModal) eventDetailsModal.classList.add('versteckt');
         currentEventId = null;
         document.removeEventListener('click', handleOutsideClick);
@@ -996,10 +974,6 @@ export function showEventDetails(eventId, participantsOnly = false) {
     }
 
     if (window.lucide) window.lucide.createIcons();
-
-    setTimeout(() => {
-        document.addEventListener('click', handleOutsideClick);
-    }, 0);
 }
 
 function openEventDetails(event, clickEvent) {
@@ -1090,7 +1064,7 @@ function renderAttendanceUI(event) {
         if (abs) effectiveStatus = 'not-going';
     }
 
-    const pills = document.querySelectorAll('.att-btn:not(#modalDetailsBtn)');
+    const pills = document.querySelectorAll('.att-btn:not(#deleteEventBtn)');
     pills.forEach(p => {
         p.classList.remove('active');
         if (effectiveStatus && p.dataset.status === effectiveStatus) {
@@ -1158,19 +1132,18 @@ function renderAttendanceUI(event) {
             if (effective.status === 'none') return;
 
             const div = document.createElement('div');
-            div.className = 'att-item';
-            div.style = 'display:flex; justify-content:space-between; align-items:center; padding:6px 0; font-size:0.8rem; border-bottom:1px solid rgba(255,255,255,0.05);';
+            div.className = 'hub-att-item';
 
             let statusIcon = 'check-circle-2';
-            let statusColor = '#22c55e';
-            if (effective.status === 'not-going') { statusIcon = 'x-circle'; statusColor = '#ef4444'; }
+            let statusColor = 'var(--hub-green)';
+            if (effective.status === 'not-going') { statusIcon = 'x-circle'; statusColor = 'var(--hub-red)'; }
             if (effective.status === 'maybe') { statusIcon = 'help-circle'; statusColor = '#f59e0b'; }
 
             div.innerHTML = `
-                <div style="display:flex; align-items:center; gap:8px;">
-                    <i data-lucide="${statusIcon}" style="width:14px; height:14px; color:${statusColor};"></i>
-                    <span style="font-weight:500;">${pName}</span>
-                    <span style="color:#888; font-size:0.7rem; margin-left:4px;">${effective.reason || ''}</span>
+                <div class="hub-att-item-info">
+                    <i data-lucide="${statusIcon}" style="width:16px; height:16px; color:${statusColor};"></i>
+                    <span class="hub-player-name">${pName}</span>
+                    <span class="hub-player-reason">${effective.reason || ''}</span>
                 </div>
             `;
             attendanceFullList.appendChild(div);
@@ -1195,19 +1168,18 @@ function renderAttendanceUI(event) {
             renderedNames.add(displayName);
 
             const div = document.createElement('div');
-            div.className = 'att-item';
-            div.style = 'display:flex; justify-content:space-between; align-items:center; padding:6px 0; font-size:0.8rem; border-bottom:1px solid rgba(255,255,255,0.05);';
+            div.className = 'hub-att-item';
 
             let statusIcon = 'check-circle-2';
-            let statusColor = '#22c55e';
-            if (resp.status === 'not-going') { statusIcon = 'x-circle'; statusColor = '#ef4444'; }
+            let statusColor = 'var(--hub-green)';
+            if (resp.status === 'not-going') { statusIcon = 'x-circle'; statusColor = 'var(--hub-red)'; }
             if (resp.status === 'maybe') { statusIcon = 'help-circle'; statusColor = '#f59e0b'; }
 
             div.innerHTML = `
-                <div style="display:flex; align-items:center; gap:8px;">
-                    <i data-lucide="${statusIcon}" style="width:14px; height:14px; color:${statusColor};"></i>
-                    <span style="font-weight:500;">${displayName}</span>
-                    <span style="color:#888; font-size:0.7rem; margin-left:4px;">${resp.reason || ''}</span>
+                <div class="hub-att-item-info">
+                    <i data-lucide="${statusIcon}" style="width:16px; height:16px; color:${statusColor};"></i>
+                    <span class="hub-player-name">${displayName}</span>
+                    <span class="hub-player-reason">${resp.reason || ''}</span>
                 </div>
             `;
             attendanceFullList.appendChild(div);
@@ -1315,21 +1287,11 @@ export async function updateParticipation(eventId, status, reason = '', targetPl
     toast.success("Teilnahme aktualisiert", targetPlayerName ? `Status für ${targetPlayerName} geändert.` : "Deine Antwort wurde gespeichert.");
 }
 
-function handleOutsideClick(e) {
-    if (eventDetailsModal &&
-        !eventDetailsModal.contains(e.target) &&
-        !e.target.closest('.event-pill') &&
-        !e.target.closest('#addEventModal') &&
-        !e.target.closest('#customPromptModal')
-    ) {
-        closeEventDetails();
-    }
-}
 
 function closeEventDetails() {
+    if (eventDetailsOverlay) eventDetailsOverlay.classList.add('versteckt');
     if (eventDetailsModal) eventDetailsModal.classList.add('versteckt');
     currentEventId = null;
-    document.removeEventListener('click', handleOutsideClick);
 }
 
 async function deleteEvent(id) {
@@ -1357,54 +1319,34 @@ let currentEditingBatchType = 'sub';
 function openSubSettingsModal(batchId, type = 'sub') {
     currentEditingBatchId = batchId;
     currentEditingBatchType = type;
-    const modal = document.getElementById('subSettingsModal');
-    if (!modal) return;
+    if (!subSettingsOverlay || !subSettingsModal) return;
 
     let rulesTarget = null;
     if (type === 'sub') {
         const sub = spielstand.calendarSubscriptions.find(s => s.id === batchId);
         if (!sub) return;
         rulesTarget = sub.rules;
-        modal.querySelector('h3').textContent = 'Abo-Einstellungen';
+        subSettingsModal.querySelector('h3').textContent = 'Abo-Einstellungen';
     } else {
         const firstEvent = (spielstand.calendarEvents || []).find(e => e.seriesId === batchId);
         if (!firstEvent) return;
         rulesTarget = firstEvent.rules;
-        modal.querySelector('h3').textContent = 'Serien-Einstellungen';
+        subSettingsModal.querySelector('h3').textContent = 'Serien-Einstellungen';
     }
 
     document.getElementById('modalSubRequireReason').checked = rulesTarget?.requireReason || false;
     document.getElementById('modalSubDeadlineHours').value = rulesTarget?.deadlineHours || 0;
     document.getElementById('modalSubDefaultStatus').checked = rulesTarget?.defaultStatus === 'going';
 
-    modal.classList.remove('versteckt');
-
-    // Position popover relative to screen center
-    Object.assign(modal.style, {
-        position: 'fixed',
-        top: '50%',
-        left: '50%',
-        transform: 'translate(-50%, -50%)',
-        zIndex: '1200'
-    });
-
-    setTimeout(() => {
-        document.addEventListener('click', handleSubSettingsOutsideClick);
-    }, 0);
+    if (subSettingsOverlay) subSettingsOverlay.classList.remove('versteckt');
+    subSettingsModal.classList.remove('versteckt');
 }
 
-function handleSubSettingsOutsideClick(e) {
-    const modal = document.getElementById('subSettingsModal');
-    if (modal && !modal.contains(e.target) && !e.target.closest('.active-sub-settings') && !e.target.closest('.active-series-settings')) {
-        closeSubSettingsModal();
-    }
-}
 
 function closeSubSettingsModal() {
-    const modal = document.getElementById('subSettingsModal');
-    if (modal) modal.classList.add('versteckt');
+    if (subSettingsOverlay) subSettingsOverlay.classList.add('versteckt');
+    if (subSettingsModal) subSettingsModal.classList.add('versteckt');
     currentEditingBatchId = null;
-    document.removeEventListener('click', handleSubSettingsOutsideClick);
 }
 
 function saveSubSettings() {
@@ -1466,33 +1408,7 @@ export async function addSubscription(url, rules = { requireReason: false, deadl
         }
 
         const fetchUrl = url.replace('webcal://', 'https://').trim();
-        
-        let icsText = null;
-
-        // Proxy 1: codetabs (most reliable for handball.net)
-        try {
-            const resp = await fetch(`https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(fetchUrl)}`);
-            if (resp.ok) icsText = await resp.text();
-        } catch (e) { console.warn('[Calendar] Proxy 1 (codetabs) failed:', e.message); }
-
-        // Proxy 2: corsproxy.io fallback
-        if (!icsText || icsText.length < 50) {
-            try {
-                const resp = await fetch(`https://corsproxy.io/?url=${encodeURIComponent(fetchUrl)}`);
-                if (resp.ok) icsText = await resp.text();
-            } catch (e) { console.warn('[Calendar] Proxy 2 (corsproxy) failed:', e.message); }
-        }
-
-        // Proxy 3: AllOrigins fallback
-        if (!icsText || icsText.length < 50) {
-            try {
-                const resp = await fetch(`https://api.allorigins.win/get?url=${encodeURIComponent(fetchUrl)}`);
-                if (resp.ok) {
-                    const data = await resp.json();
-                    icsText = data.contents;
-                }
-            } catch (e) { console.warn('[Calendar] Proxy 3 (allorigins) failed:', e.message); }
-        }
+        const icsText = await fetchWithProxy(fetchUrl);
 
         if (!icsText || icsText.length < 10) {
             throw new Error("Kalender konnte nicht geladen werden. Bitte prüfe die URL.");
@@ -1556,27 +1472,22 @@ function renderManageView() {
     if (spielstand.calendarSubscriptions && spielstand.calendarSubscriptions.length > 0) {
         spielstand.calendarSubscriptions.forEach(sub => {
             const row = document.createElement('div');
-            row.className = 'manage-row';
-            row.style.display = 'flex';
-            row.style.justifyContent = 'space-between';
-            row.style.alignItems = 'center';
-            row.style.padding = '8px';
-            row.style.borderBottom = '1px solid #eee';
+            row.className = 'manage-card-modern';
 
             row.innerHTML = `
-                <div style="flex:1; overflow:hidden;">
-                    <div style="font-weight:600; font-size:0.85rem; display:flex; justify-content:space-between; align-items:center;">
+                <div class="manage-card-info">
+                    <div class="manage-card-title">
                         <span>${sub.title || 'Kalender'}</span>
-                        <div style="display:flex; gap:8px; align-items:center;">
-                             <button class="shadcn-btn-ghost active-sub-settings" style="padding:4px;" data-id="${sub.id}" title="Einstellungen">
-                                <i data-lucide="settings" style="width:14px; height:14px;"></i>
-                             </button>
-                             <button class="shadcn-btn-ghost active-sub-delete" style="color:red; padding:4px;" data-id="${sub.id}" title="Löschen">
-                                <i data-lucide="trash-2" style="width:14px; height:14px;"></i>
-                             </button>
-                        </div>
                     </div>
-                    <div style="font-size:0.7rem; color:#888; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; margin-top:2px;">${sub.url}</div>
+                    <div class="manage-card-subtitle">${sub.url}</div>
+                </div>
+                <div class="manage-card-actions">
+                     <button class="icon-btn-ghost active-sub-settings" data-id="${sub.id}" title="Einstellungen">
+                        <i data-lucide="settings" style="width:16px; height:16px;"></i>
+                     </button>
+                     <button class="icon-btn-ghost active-sub-delete" style="color:hsl(var(--destructive));" data-id="${sub.id}" title="Löschen">
+                        <i data-lucide="trash-2" style="width:16px; height:16px;"></i>
+                     </button>
                 </div>
             `;
             subsList.appendChild(row);
@@ -1591,14 +1502,11 @@ function renderManageView() {
                 openSubSettingsModal(sub.id);
             });
         });
-
-        if (window.lucide) window.lucide.createIcons();
     } else {
-        subsList.innerHTML = '<div style="font-style:italic;">Keine Abos.</div>';
+        subsList.innerHTML = '<div style="font-style:italic; opacity:0.5; font-size:0.8rem; padding:10px;">Keine Abos vorhanden.</div>';
     }
 
-    // 2. Render Series (Mock logic for now, or real if implementing seriesId)
-    // We need to group events by seriesId
+    // 2. Render Series
     if (!seriesList) return;
     seriesList.innerHTML = '';
 
@@ -1619,27 +1527,22 @@ function renderManageView() {
     if (seriesMap.size > 0) {
         seriesMap.forEach(series => {
             const row = document.createElement('div');
-            row.className = 'manage-row';
-            row.style.display = 'flex';
-            row.style.justifyContent = 'space-between';
-            row.style.alignItems = 'center';
-            row.style.padding = '8px';
-            row.style.borderBottom = '1px solid #eee';
+            row.className = 'manage-card-modern';
 
             row.innerHTML = `
-                <div style="flex:1; overflow:hidden;">
-                    <div style="font-weight:600; font-size:0.9rem; display:flex; justify-content:space-between; align-items:center;">
+                <div class="manage-card-info">
+                    <div class="manage-card-title">
                         <span>${series.title}</span>
-                        <div style="display:flex; gap:8px; align-items:center;">
-                             <button class="shadcn-btn-ghost active-series-settings" style="padding:4px;" data-id="${series.id}" title="Einstellungen">
-                                <i data-lucide="settings" style="width:14px; height:14px;"></i>
-                             </button>
-                             <button class="shadcn-btn-ghost series-delete" style="color:red; padding:4px;" data-id="${series.id}" title="Löschen">
-                                <i data-lucide="trash-2" style="width:14px; height:14px;"></i>
-                             </button>
-                        </div>
                     </div>
-                    <div style="font-size:0.7rem; color:#888;">${series.weekday}s – Serie (${series.count} Termine)</div>
+                    <div class="manage-card-subtitle">${series.weekday}s – Serie (${series.count} Termine)</div>
+                </div>
+                <div class="manage-card-actions">
+                     <button class="icon-btn-ghost active-series-settings" data-id="${series.id}" title="Einstellungen">
+                        <i data-lucide="settings" style="width:16px; height:16px;"></i>
+                     </button>
+                     <button class="icon-btn-ghost series-delete" style="color:hsl(var(--destructive));" data-id="${series.id}" title="Löschen">
+                        <i data-lucide="trash-2" style="width:16px; height:16px;"></i>
+                     </button>
                 </div>
             `;
             seriesList.appendChild(row);
@@ -1652,7 +1555,7 @@ function renderManageView() {
             });
         });
     } else {
-        seriesList.innerHTML = '<div style="font-style:italic;">Keine Serien.</div>';
+        seriesList.innerHTML = '<div style="font-style:italic; opacity:0.5; font-size:0.8rem; padding:10px;">Keine Serien vorhanden.</div>';
     }
 
     if (window.lucide) window.lucide.createIcons();
@@ -1686,18 +1589,8 @@ function deleteSeries(seriesId) {
 
 // --- MANAGE OUTSIDE CLICK ---
 
-function handleManageOutsideClick(e) {
-    if (manageCalendarModal && !manageCalendarModal.classList.contains('versteckt')) {
-        // If click is NOT inside modal AND NOT on the button that opened it
-        if (!manageCalendarModal.contains(e.target) && (manageCalendarBtn && !manageCalendarBtn.contains(e.target))) {
-            closeManageModal();
-        }
-    }
-}
 
 function closeManageModal() {
-    if (manageCalendarModal) {
-        manageCalendarModal.classList.add('versteckt');
-        document.removeEventListener('click', handleManageOutsideClick);
-    }
+    if (manageCalendarOverlay) manageCalendarOverlay.classList.add('versteckt');
+    if (manageCalendarModal) manageCalendarModal.classList.add('versteckt');
 }

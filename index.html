@@ -12,7 +12,7 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
-    <script type="module" src="main.js"></script>
+    <script type="module" src="main.js?v=v4_safety_net"></script>
 </head>
 
 <body>
@@ -22,11 +22,15 @@
 
     <!-- Sidebar Navigation -->
     <div id="sidebar">
-        <div class="sidebar-header">
-            <h2>HANDBALL<br>DASHBOARD</h2>
+        <div class="sidebar-header hub-sidebar-brand" style="border-bottom: none; padding-bottom: 10px;">
+            <div class="hub-logo">H</div>
+            <div class="hub-brand-text">
+                <div class="hub-brand-name">Handball Hub</div>
+                <div class="hub-brand-sub">Dashboard</div>
+            </div>
         </div>
         <nav class="sidebar-nav">
-            <div class="nav-group-label">Basis</div>
+            <div class="nav-group-label" style="text-transform: none; color: var(--hub-muted); font-size: 0.8rem; padding-bottom: 8px;">Main Menu</div>
             <div class="nav-item active" data-action="nav" data-view="dashboard">
                 <span class="nav-icon"><i data-lucide="layout-dashboard"></i></span>
                 <span class="nav-label">Überblick</span>
@@ -40,7 +44,7 @@
                 <span class="nav-label">Taktikboard</span>
             </div>
 
-            <div class="nav-group-label">Spieltag</div>
+            <div class="nav-group-label" style="text-transform: none; color: var(--hub-muted); font-size: 0.8rem; padding-bottom: 8px;">Spieltag</div>
             <div class="nav-item" data-action="nav" data-view="game">
                 <span class="nav-icon"><i data-lucide="play-circle"></i></span>
                 <span class="nav-label">Spiel</span>
@@ -51,8 +55,8 @@
                 <span class="nav-label">Kader</span>
             </div>
 
-            <div class="nav-group-label" data-action="toggle-nav-group" data-group="live">
-                <span>Live Analyse</span>
+            <div class="nav-group-label" data-action="toggle-nav-group" data-group="live" style="text-transform: none; color: var(--hub-muted); font-size: 0.8rem; padding-bottom: 8px;">
+                <span>Analytics</span>
                 <i data-lucide="chevron-down" class="nav-group-toggle"></i>
             </div>
             <div class="nav-group-content" id="nav-group-live">
@@ -74,7 +78,7 @@
                 </div>
             </div>
 
-            <div class="nav-group-label" data-action="toggle-nav-group" data-group="archiv">
+            <div class="nav-group-label" data-action="toggle-nav-group" data-group="archiv" style="text-transform: none; color: var(--hub-muted); font-size: 0.8rem; padding-bottom: 8px;">
                 <span>Archiv</span>
                 <i data-lucide="chevron-down" class="nav-group-toggle"></i>
             </div>
@@ -149,17 +153,17 @@
 
         <!-- SECTION: CALENDAR -->
         <div id="calendarBereich" class="content-section versteckt">
-            <div class="calendar-header">
-                <div class="cal-nav">
-                    <button id="prevMonthBtn" class="shadcn-btn-ghost">&lt;</button>
-                    <h2 id="currentMonthLabel" style="min-width: 200px; text-align: center; margin: 0;">Januar 2026</h2>
-                    <button id="nextMonthBtn" class="shadcn-btn-ghost">&gt;</button>
+            <div class="calendar-header-modern">
+                <div class="cal-nav-modern">
+                    <button id="prevMonthBtn" class="icon-btn-ghost"><i data-lucide="chevron-left"></i></button>
+                    <h2 id="currentMonthLabel">Januar 2026</h2>
+                    <button id="nextMonthBtn" class="icon-btn-ghost"><i data-lucide="chevron-right"></i></button>
                 </div>
                 <div class="cal-actions">
                     <button id="manageCalendarBtn" class="shadcn-btn-outline" title="Kalender verwalten">
-                        <i data-lucide="settings"></i> <span class="mobile-hidden">Verwalten</span>
+                        <i data-lucide="settings"></i> <span class="mobile-hidden">Einstellungen</span>
                     </button>
-                    <button id="addAbsenceBtn" class="shadcn-btn-outline" style="color: #6366f1; border-color: #6366f1;">
+                    <button id="addAbsenceBtn" class="shadcn-btn-outline accent-blue">
                         <i data-lucide="user-x"></i> <span class="mobile-hidden">Abwesenheit</span>
                     </button>
                     <button id="addEventBtn" class="shadcn-btn-primary">
@@ -177,71 +181,65 @@
                     <div>Fr</div>
                     <div>Sa</div>
                     <div>So</div>
-                </div>
-
-                <!-- MANAGE MODAL -->
-                <div id="manageCalendarModal" class="event-popover versteckt"
-                    style="width: 450px; height: auto; max-height: 80vh; overflow-y: auto;">
-                    <div class="modal-header">
-                        <h3>Kalender verwalten</h3>
-                        <button id="closeManageBtn" class="close-btn">X</button>
-                    </div>
-                    <div class="modal-body" style="padding: 1rem; gap: 1.5rem; display: flex; flex-direction: column;">
-
-                        <!-- SECTION: Add Subscription -->
-                        <div class="manage-section">
-                            <h4 style="font-size: 0.9rem; margin-bottom: 0.5rem; color: hsl(var(--foreground));">Neues
-                                Abo hinzufügen</h4>
-                            <div style="display: flex; gap: 8px;">
-                                <input type="text" id="manageUrlInput" placeholder="https://... (ICS/Webcal)"
-                                    class="shadcn-input" style="flex:1;" />
-                                <button id="addSubBtn" class="shadcn-btn-primary">Hinzufügen</button>
+                </div>                <!-- MANAGE MODAL -->
+                <div id="manageCalendarOverlay" class="modal-overlay versteckt" style="z-index: 10050;">
+                    <div id="manageCalendarModal" class="event-popover-modern" style="width: 450px; max-width: 95vw;">
+                        <div class="modal-header-modern">
+                            <h2 class="manage-section-title">Kalender verwalten</h2>
+                            <button id="closeManageBtn" class="icon-btn-ghost"><i data-lucide="x"></i></button>
+                        </div>
+                        <div class="modal-body-modern">
+                            <!-- SECTION: Add Subscription -->
+                            <div class="rules-container">
+                                <div class="manage-section-header">
+                                    <h4 class="manage-section-title">Neues Abo hinzufügen</h4>
+                                </div>
+                                <div style="display: flex; gap: 8px; margin-bottom: 12px;">
+                                    <input type="text" id="manageUrlInput" placeholder="https://... (ICS/Webcal)" class="minimal-input" style="flex:1; border-bottom: 1px solid rgba(255,255,255,0.1); padding: 8px 4px;" />
+                                    <button id="addSubBtn" class="icon-btn-ghost" title="Hinzufügen"><i data-lucide="plus-circle" style="color:var(--hub-accent);"></i></button>
+                                </div>
+                                <div class="rules-grid">
+                                    <label class="checkbox-label-modern" title="Grundpflicht bei Absage/Vlt">
+                                        <input type="checkbox" id="subRequireReason">
+                                        <span class="checkbox-custom"></span>
+                                        <span style="font-size:0.8rem; color:rgba(255,255,255,0.6);">Grundpflicht bei Absage</span>
+                                    </label>
+                                    <label class="checkbox-label-modern" title="Standardmäßig als 'Dabei' markieren">
+                                        <input type="checkbox" id="subDefaultStatus">
+                                        <span class="checkbox-custom"></span>
+                                        <span style="font-size:0.8rem; color:rgba(255,255,255,0.6);">Automatisch "Dabei"</span>
+                                    </label>
+                                    <div style="display:flex; align-items:center; gap:8px; font-size:0.8rem; color:rgba(255,255,255,0.4); margin-left:32px;">
+                                        <span>Abmeldefrist:</span>
+                                        <input type="number" id="subDeadlineHours" value="0" class="minimal-input inline" style="width:30px;">
+                                        <span>Std.</span>
+                                    </div>
+                                </div>
                             </div>
-                            <!-- Rules for new Sub -->
-                            <div style="display: flex; gap: 10px; margin-top: 8px; font-size: 0.75rem; align-items: center; color: var(--text-muted);">
-                                <label style="display: flex; align-items: center; gap: 4px; cursor: pointer;" title="Grundpflicht bei Absage/Vlt">
-                                    <input type="checkbox" id="subRequireReason" />
-                                    <span>Grundpflicht</span>
-                                </label>
-                                <label style="display: flex; align-items: center; gap: 4px;" title="Abmeldefrist in Stunden">
-                                    <span>Frist (Std.):</span>
-                                    <input type="number" id="subDeadlineHours" class="shadcn-input" style="width: 40px; padding: 2px 4px;" value="0" min="0" />
-                                </label>
-                                <label style="display: flex; align-items: center; gap: 4px;" title="Standard-Status für neue Termine">
-                                    <input type="checkbox" id="subDefaultStatus" />
-                                    <span>Automatisch Dabei</span>
-                                </label>
+
+                            <!-- SECTION: Subscriptions -->
+                            <div class="manage-section">
+                                <div class="manage-section-header">
+                                    <h4 class="manage-section-title">Abonnierte Kalender</h4>
+                                </div>
+                                <div id="subsList" class="manage-list-modern">
+                                    <!-- Dynamic Cards -->
+                                </div>
+                            </div>
+
+                            <!-- SECTION: Series -->
+                            <div class="manage-section">
+                                <div class="manage-section-header">
+                                    <h4 class="manage-section-title">Serien</h4>
+                                </div>
+                                <div id="seriesList" class="manage-list-modern">
+                                    <!-- Dynamic Cards -->
+                                </div>
                             </div>
                         </div>
-
-                        <hr style="border: 0; border-top: 1px solid hsl(var(--border)); margin: 0;">
-
-                        <!-- SECTION: Subscriptions -->
-                        <div class="manage-section">
-                            <h4 style="font-size: 0.9rem; margin-bottom: 0.5rem; color: hsl(var(--foreground));">
-                                Abonnierte Kalender</h4>
-                            <div id="subsList" class="manage-list"
-                                style="font-size: 0.85rem; color: hsl(var(--muted-foreground));">
-                                <!-- JS fills this -->
-                                <div style="font-style: italic;">Keine Abos vorhanden.</div>
-                            </div>
-                        </div>
-
-                        <hr style="border: 0; border-top: 1px solid hsl(var(--border)); margin: 0;">
-
-                        <!-- SECTION: Series -->
-                        <div class="manage-section">
-                            <h4 style="font-size: 0.9rem; margin-bottom: 0.5rem; color: hsl(var(--foreground));">
-                                Wiederholende Termine (Serien)</h4>
-                            <div id="seriesList" class="manage-list"
-                                style="font-size: 0.85rem; color: hsl(var(--muted-foreground));">
-                                <!-- JS fills this -->
-                                <div style="font-style: italic;">Keine Serien vorhanden.</div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                <div id="calendarGrid" class="calendar-grid">
+                    </div> <!-- End manageCalendarModal -->
+                </div> <!-- End manageCalendarOverlay -->
+            <div id="calendarGrid" class="calendar-grid">
                     <!-- Javascript generated days -->
                 </div>
             </div>
@@ -259,166 +257,181 @@
         </div>
 
         <!-- POPOVER: Add/Edit Event -->
-        <div id="addEventModal" class="event-popover versteckt" style="width: 350px;">
-            <div class="modal-header">
-                <h2 id="addEventModalTitle">Termin</h2>
-                <div class="header-actions">
+        <div id="addEventOverlay" class="modal-overlay versteckt" style="z-index: 10050;">
+            <div id="addEventModal" class="event-popover-modern" style="width: 450px; max-width: 95vw;">
+                <div class="modal-header-modern">
+                    <h2 id="addEventModalTitle">Termin</h2>
                     <button id="closeEventModal" class="icon-btn-ghost"><i data-lucide="x"></i></button>
                 </div>
-            </div>
-            <div class="modal-body">
-                <div class="form-section">
-                    <input type="text" id="eventTitleInput" class="shadcn-input" placeholder="Titel hinzufügen"
-                        style="font-size: 1.2rem; border:none; padding-left:0; border-bottom: 1px solidhsl(var(--border)); border-radius:0;">
-                </div>
-
-                <div class="form-section" style="margin-top: 10px;">
-                    <div class="radio-pill-group">
-                        <label class="radio-pill training">
-                            <input type="radio" name="eventType" value="training" checked>
-                            <span>Training</span>
-                        </label>
-                        <label class="radio-pill game">
-                            <input type="radio" name="eventType" value="game">
-                            <span>Spiel</span>
-                        </label>
-                        <label class="radio-pill other">
-                            <input type="radio" name="eventType" value="other">
-                            <span>Sonstiges</span>
-                        </label>
+                <div class="modal-body-modern">
+                    <!-- Title Section -->
+                    <div class="form-section-modern hero">
+                        <input type="text" id="eventTitleInput" class="hero-input" placeholder="Worum geht es?">
                     </div>
-                </div>
 
-                <div class="form-section">
-                    <div class="form-row-2">
-                        <div class="input-group">
-                            <div class="details-row" style="border:none; padding:0;">
-                                <span class="details-icon"><i data-lucide="calendar"></i></span>
-                                <input type="date" id="eventDateInput" class="shadcn-input"
-                                    style="border:none; padding-left: 0;">
+                    <!-- Type Section -->
+                    <div class="form-section-modern">
+                        <div class="radio-pill-group-modern">
+                            <label class="radio-pill training">
+                                <input type="radio" name="eventType" value="training" checked>
+                                <span>Training</span>
+                            </label>
+                            <label class="radio-pill game">
+                                <input type="radio" name="eventType" value="game">
+                                <span>Spiel</span>
+                            </label>
+                            <label class="radio-pill other">
+                                <input type="radio" name="eventType" value="other">
+                                <span>Sonstiges</span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <!-- When & Where Section -->
+                    <div class="form-section-modern card-group">
+                        <div class="input-row-modern">
+                            <div class="input-with-icon">
+                                <i data-lucide="calendar"></i>
+                                <input type="date" id="eventDateInput" class="minimal-input">
+                                <i data-lucide="chevron-down" class="input-dropdown-icon"></i>
+                            </div>
+                            <div class="input-with-icon">
+                                <i data-lucide="clock"></i>
+                                <input type="time" id="eventTimeInput" class="minimal-input" step="900">
+                                <i data-lucide="chevron-down" class="input-dropdown-icon"></i>
                             </div>
                         </div>
-                        <div class="input-group">
-                            <div class="details-row" style="border:none; padding:0;">
-                                <span class="details-icon"><i data-lucide="clock"></i></span>
-                                <input type="time" id="eventTimeInput" class="shadcn-input"
-                                    style="border:none; padding-left: 0;" step="900">
+                        <div class="input-with-icon">
+                            <i data-lucide="map-pin"></i>
+                            <input type="text" id="eventLocationInput" class="minimal-input" placeholder="Treffpunkt / Ort">
+                        </div>
+                    </div>
+
+                    <!-- Repeat Section -->
+                    <div class="form-section-modern">
+                        <label class="checkbox-label-modern">
+                            <input type="checkbox" id="eventRepeatInput">
+                            <span class="checkbox-custom"></span>
+                            <span>Wöchentlich wiederholen</span>
+                        </label>
+                        <div id="recurrenceOptions" class="recurrence-panel versteckt">
+                            <span class="panel-label">Enddatum:</span>
+                            <input type="date" id="eventRepeatEndInput" class="minimal-input small">
+                        </div>
+                    </div>
+
+                    <!-- Rules Section -->
+                    <div class="form-section-modern rules-container">
+                        <span class="section-label-modern">Regeln</span>
+                        <div class="rules-grid">
+                            <label class="checkbox-label-modern">
+                                <input type="checkbox" id="eventRequireReasonInput">
+                                <span class="checkbox-custom"></span>
+                                <div>
+                                    <span class="rule-title">Grundpflicht</span>
+                                    <span class="rule-desc">Bei Absage oder Vielleicht</span>
+                                </div>
+                            </label>
+                            <label class="checkbox-label-modern">
+                                <input type="checkbox" id="eventDefaultStatusInput">
+                                <span class="checkbox-custom"></span>
+                                <div>
+                                    <span class="rule-title">Auto-Dabei</span>
+                                    <span class="rule-desc">Alle auf "Dabei" setzen</span>
+                                </div>
+                            </label>
+                            <div class="rule-item-modern">
+                                <i data-lucide="timer"></i>
+                                <span>Deadline</span>
+                                <input type="number" id="eventDeadlineInput" class="minimal-input inline" value="0">
+                                <span>Std. vorher</span>
                             </div>
                         </div>
                     </div>
                 </div>
 
-                <div class="form-section">
-                    <div class="details-row" style="border:none; padding:0;">
-                        <span class="details-icon"><i data-lucide="map-pin"></i></span>
-                        <input type="text" id="eventLocationInput" class="shadcn-input" placeholder="Ort hinzufügen"
-                            style="border:none;">
-                    </div>
-                </div>
-
-                <div class="form-section" style="margin-top: 15px;">
-                    <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; font-size: 0.85rem;">
-                        <input type="checkbox" id="eventRepeatInput">
-                        <span>Wiederholen (wöchentlich)</span>
-                    </label>
-                    <div id="recurrenceOptions" class="versteckt" style="margin-top: 5px; padding-left: 24px;">
-                        <span style="font-size: 0.75rem; color: var(--text-muted);">Endet am:</span>
-                        <input type="date" id="eventRepeatEndInput" class="shadcn-input" style="border:none; padding:0; font-size: 0.85rem; width: auto;">
-                    </div>
-                </div>
-
-                <div class="form-section" style="border-top: 1px solid hsl(var(--border)); margin-top: 15px; padding-top: 10px;">
-                    <h4 style="font-size: 0.7rem; text-transform: uppercase; color: var(--text-muted); margin-bottom: 8px; letter-spacing: 0.05em;">Regeln</h4>
-                    <div style="display: flex; flex-direction: column; gap: 10px; font-size: 0.85rem;">
-                        <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
-                            <input type="checkbox" id="eventRequireReasonInput">
-                            <span>Grundpflicht bei Absage/Vlt</span>
-                        </label>
-                        <div style="display: flex; align-items: center; gap: 8px;">
-                            <span>Abmeldefrist (Std.):</span>
-                            <input type="number" id="eventDeadlineInput" class="shadcn-input" style="width: 50px; padding: 2px 5px;" min="0" value="0">
-                        </div>
-                        <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
-                            <input type="checkbox" id="eventDefaultStatusInput">
-                            <span>Automatisch Dabei (für diesen Termin/Serie)</span>
-                        </label>
-                    </div>
-                </div>
-
-                <div class="modal-actions">
-                    <button id="saveEventBtn" class="shadcn-btn-primary" style="margin-left: auto;">Speichern</button>
+                <div class="modal-footer-modern">
+                    <button id="cancelEventBtn" class="shadcn-btn-ghost">Abbrechen</button>
+                    <button id="saveEventBtn" class="shadcn-btn-primary">Speichern</button>
                 </div>
             </div>
         </div>
 
         <!-- POPOVER: Event Details -->
-        <div id="eventDetailsModal" class="event-popover versteckt">
-            <div class="modal-header">
-                <h2 id="detailsTitle">Training</h2>
-                <div class="header-actions">
-                    <button id="editEventBtn" class="icon-btn-ghost" title="Bearbeiten"><i
-                            data-lucide="pencil"></i></button>
-                    <button id="closeDetailsModal" class="icon-btn-ghost" title="Schließen"><i
-                            data-lucide="x"></i></button>
+        <div id="eventDetailsOverlay" class="modal-overlay versteckt" style="z-index: 10050;">
+            <div id="eventDetailsModal" class="event-popover-modern" style="width: 450px; max-width: 95vw;">
+            <div class="modal-header-modern">
+                <h2 id="detailsTitle">Termin-Details</h2>
+                <div class="modal-header-actions-modern">
+                    <button id="editEventBtn" class="icon-btn-ghost" title="Bearbeiten">
+                        <i data-lucide="pencil" style="width:18px; height:18px;"></i>
+                    </button>
+                    <button id="closeDetailsModal" class="icon-btn-ghost" title="Schließen">
+                        <i data-lucide="x" style="width:18px; height:18px;"></i>
+                    </button>
                 </div>
             </div>
-            <div class="modal-body">
-                <div class="details-row">
-                    <span class="details-icon"><i data-lucide="calendar"></i></span>
-                    <span id="detailsDate">Dienstag, 12.03.2024</span>
-                </div>
-                <div class="details-row">
-                    <span class="details-icon"><i data-lucide="clock"></i></span>
-                    <span id="detailsTime">19:00 Uhr</span>
-                </div>
-                <div class="details-row" id="detailsLocationRow">
-                    <span class="details-icon"><i data-lucide="map-pin"></i></span>
-                    <span id="detailsLocation">Halle Bösperde</span>
-                </div>
-
-                <!-- NEW: Attendance System (SpielerPlus Style) -->
-                <div class="attendance-section" style="margin-top: 15px; border-top: 1px solid var(--border-color); padding-top: 15px;">
-                    <h3 style="font-size: 0.9rem; margin-bottom: 10px; font-weight: 600;">Deine Teilnahme</h3>
-                    <div class="attendance-pills" style="display: flex; gap: 8px; margin-bottom: 12px;">
-                        <button class="att-btn att-going" data-status="going" title="Zusage">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 10v12"/><path d="M15 5.88 14 10h5.83a2 2 0 0 1 1.92 2.56l-2.33 8A2 2 0 0 1 17.5 22H4a2 2 0 0 1-2-2v-8a2 2 0 0 1 2-2h2.76a2 2 0 0 0 1.79-1.11L12 2h0a3.13 3.13 0 0 1 3 3.88Z"/></svg> <span>Dabei</span>
-                        </button>
-                        <button class="att-btn att-maybe" data-status="maybe" title="Vielleicht">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><path d="M12 17h.01"/></svg> <span>Vielleicht</span>
-                        </button>
-                        <button class="att-btn att-not-going" data-status="not-going" title="Absage">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 14V2"/><path d="M9 18.12 10 14H4.17a2 2 0 0 1-1.92-2.56l2.33-8A2 2 0 0 1 6.5 2H20a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2h-2.76a2 2 0 0 0-1.79 1.11L12 22h0a3.13 3.13 0 0 1-3-3.88Z"/></svg> <span>Absage</span>
-                        </button>
-                        <button id="modalDetailsBtn" class="att-btn att-info" title="Teilnehmer" style="flex: 0 0 auto; width: 44px; padding: 6px 4px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px;">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
-                            <span id="modalDetailsBtnLabel" style="font-size: 0.65rem; line-height: 1;">Details</span>
-                        </button>
+            <div class="modal-body-modern">
+                <!-- Info Section -->
+                <div class="form-section-modern card-group">
+                    <div class="details-row-modern">
+                        <i data-lucide="calendar"></i>
+                        <span id="detailsDate">Laden...</span>
                     </div>
-
-                    <div id="attendanceReasonContainer" class="versteckt" style="margin-bottom: 15px; display: flex; gap: 8px;">
-                        <input type="text" id="attendanceReasonInput" class="shadcn-input" placeholder="Grund für Absage/Vielleicht..." style="font-size: 0.85rem; flex: 1;">
-                        <button id="saveAttendanceReasonBtn" class="shadcn-btn-primary" title="Grund speichern" style="height: 36px; padding: 0 10px;">
-                            <i data-lucide="check"></i>
-                        </button>
+                    <div class="details-row-modern">
+                        <i data-lucide="clock"></i>
+                        <span id="detailsTime">Laden...</span>
                     </div>
-
-                    <div class="attendance-summary" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; padding: 0 4px;">
-                        <div id="attendanceStats" style="font-size: 0.8rem; font-weight: 600; color: var(--text-muted);">
-                            <!-- JS: 10 dabei | 2 fehlt -->
-                        </div>
-                    </div>
-
-                    <div id="attendanceFullList" class="versteckt" style="max-height: 200px; overflow-y: auto; background: rgba(0,0,0,0.03); border-radius: 8px; padding: 8px;">
-                        <!-- JS populated player list with reasons and trainer buttons -->
+                    <div class="details-row-modern" id="detailsLocationRow">
+                        <i data-lucide="map-pin"></i>
+                        <span id="detailsLocation">Laden...</span>
                     </div>
                 </div>
 
-                <div class="modal-actions" style="margin-top: 15px;">
-                    <button id="deleteEventBtn" class="shadcn-btn-destructive" title="Löschen"><i data-lucide="trash-2"
-                            style="width:16px;"></i></button>
+                <!-- Attendance System -->
+                <div class="manage-section">
+                    <div class="manage-section-header">
+                        <h4 class="manage-section-title">Deine Teilnahme</h4>
+                    </div>
+                    
+                    <div class="cal-actions" style="margin-bottom: 16px;">
+                        <button class="shadcn-btn-primary att-btn" data-status="going" title="Zusage" style="flex: 1;">
+                            <i data-lucide="thumbs-up"></i> <span>Dabei</span>
+                        </button>
+                        <button class="shadcn-btn-primary att-btn" data-status="maybe" title="Vielleicht" style="flex: 1;">
+                            <i data-lucide="help-circle"></i> <span>Vlt.</span>
+                        </button>
+                        <button class="shadcn-btn-primary att-btn" data-status="not-going" title="Absage" style="flex: 1;">
+                            <i data-lucide="thumbs-down"></i> <span>Absage</span>
+                        </button>
+                        <button id="modalDetailsBtn" class="shadcn-btn-outline" title="Teilnehmer" style="width: 44px; padding: 0;">
+                            <i data-lucide="users"></i>
+                        </button>
+                    </div>
+
+                    <div id="attendanceReasonContainer" class="versteckt" style="margin-bottom: 16px; display: flex; gap: 8px;">
+                        <input type="text" id="attendanceReasonInput" class="minimal-input" placeholder="Grund für Änderung..." style="flex: 1; border-bottom: 1px solid rgba(255,255,255,0.1); padding: 8px 4px;">
+                        <button id="saveAttendanceReasonBtn" class="icon-btn-ghost" title="Speichern">
+                            <i data-lucide="check" style="color:var(--hub-accent);"></i>
+                        </button>
+                    </div>
+
+                    <div class="manage-section-header" style="margin-top: 10px;">
+                        <h4 id="attendanceStats" class="manage-section-title">Teilnehmer</h4>
+                    </div>
+
+                    <div id="attendanceFullList" class="manage-list-modern versteckt" style="max-height: 200px;">
+                        <!-- JS populated -->
+                    </div>
                 </div>
+            </div>
+            <div class="modal-footer-modern" style="display: flex; gap: 10px;">
+                <button id="deleteEventBtn" class="shadcn-btn-outline" title="Löschen" style="flex: 1; color: #ef4444; border-color: rgba(239, 68, 68, 0.2);">
+                    <i data-lucide="trash-2"></i> <span>Löschen</span>
+                </button>
             </div>
         </div>
+    </div>
 
         <div id="rosterBereich" class="content-section versteckt">
             <!-- Roster Top Section -->
@@ -531,14 +544,11 @@
                 </div>
 
                 <!-- Roster List Header -->
-                <div
-                    style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; padding: 0 10px;">
-                    <h2 id="teamHeaderTitle" style="margin: 0; font-size: 1.6rem; font-weight: 800;">Heim Team</h2>
-                    <div
-                        style="display: flex; align-items: center; gap: 12px; background: var(--bg-card); padding: 8px 15px; border-radius: 12px; border: 1px solid var(--border-color);">
+                <div class="roster-header-row" style="margin-top: 2rem; margin-bottom: 1rem; display: flex; justify-content: space-between; align-items: center;">
+                    <h3 id="teamHeaderTitle" style="margin:0; font-size: 1.1rem;">Kader: HEIM</h3>
+                    <div style="display: flex; align-items: center; gap: 10px;">
                         <span style="font-size: 0.85rem; font-weight: 600; color: var(--text-muted);">HEIM</span>
-                        <button id="teamToggle" role="switch" aria-checked="false" data-state="unchecked"
-                            class="shadcn-switch">
+                        <button id="teamToggle" role="switch" aria-checked="false" class="shadcn-switch">
                             <span class="shadcn-switch-thumb"></span>
                         </button>
                         <span style="font-size: 0.85rem; font-weight: 600; color: var(--text-muted);">GAST</span>
@@ -572,77 +582,62 @@
             </div>
         </div>
 
-        <!-- Season Stats Page Section (New) -->
-        <div id="seasonStatsBereich" class="content-section versteckt">
-            <h2>Saison Statistiken</h2>
-
-            <!-- 4-Button Sub-Tab Navigation -->
-            <div class="season-subtab-nav" style="display: flex; gap: 10px; margin-bottom: 20px; flex-wrap: wrap;">
-                <button class="season-subtab-btn shadcn-btn-primary" data-subtab="stats">Saison Statistiken</button>
-                <button class="season-subtab-btn shadcn-btn-outline" data-subtab="players">Spieler Statistiken</button>
-                <button class="season-subtab-btn shadcn-btn-outline" data-subtab="heatmap">Saison Heatmap</button>
-                <button class="season-subtab-btn shadcn-btn-outline" data-subtab="diagramm">Saison Diagramm</button>
+    <!-- SECTION: SEASON STATS (Handball Hub) -->
+    <section id="seasonStatsBereich" class="versteckt">
+        <div class="hub-header-row" style="margin-bottom: 24px;">
+            <div class="hub-dashboard-title">
+                <h1>Statistiken</h1>
+                <span class="hub-season-badge">Saison 23/24</span>
             </div>
-
-            <!-- Sub-Tab 1: Saison Statistiken (Current Team Stats) -->
-            <div id="seasonStatsTab" class="season-subtab-content">
-                <div id="seasonSummary" class="season-summary-grid-container" style="margin-bottom: 2rem;">
-                    <!-- JS Populated -->
-                </div>
-
-                <div id="seasonStatsContainer" class="season-stats-main-container">
-                    <!-- JS Populated (Player Cards) -->
-                </div>
-            </div>
-
-            <!-- Sub-Tab 2: Spieler Statistiken (Player Roster Table) -->
-            <div id="seasonPlayersTab" class="season-subtab-content versteckt">
-                <div id="playerStatsListContainer">
-                    <div class="table-container" style="overflow-x: auto;">
-                        <table class="modern-stats-table" style="width:100%; border-collapse: collapse;">
-                            <thead>
-                                <tr style="text-align: left; color: var(--text-muted); font-size: 0.8rem;">
-                                    <th data-sort="name" style="padding: 8px; cursor:pointer;">Spieler</th>
-                                    <th data-sort="timeOnField" style="padding: 8px; cursor:pointer;" title="Spielzeit">Zeit</th>
-                                    <th data-sort="tore" style="padding: 8px; cursor:pointer;" title="Tore Gesamt">T</th>
-                                    <th data-sort="feldtore" style="padding: 8px; cursor:pointer;" title="Feldtore">F</th>
-                                    <th data-sort="siebenMeter" style="padding: 8px; cursor:pointer;" title="7 Meter">7m</th>
-                                    <th data-sort="fehlwurf" style="padding: 8px; cursor:pointer;">FEHL</th>
-                                    <th data-sort="assist" style="padding: 8px; cursor:pointer;" title="Assists">A</th>
-                                    <th data-sort="quote" style="padding: 8px; cursor:pointer;">QUOTE</th>
-                                    <th data-sort="ballverlust" style="padding: 8px; cursor:pointer;">BALL</th>
-                                    <th data-sort="stuermerfoul" style="padding: 8px; cursor:pointer;">FOUL</th>
-                                    <th data-sort="block" style="padding: 8px; cursor:pointer;">BLK</th>
-                                    <th data-sort="gewonnen1v1" style="padding: 8px; cursor:pointer;">1v1+</th>
-                                    <th data-sort="oneOnOneLost" style="padding: 8px; cursor:pointer;">1v1-</th>
-                                    <th data-sort="rausgeholt7m" style="padding: 8px; cursor:pointer;">7m+</th>
-                                    <th data-sort="rausgeholt2min" style="padding: 8px; cursor:pointer;">2m+</th>
-                                    <th data-sort="gelb" style="padding: 8px; cursor:pointer;">G</th>
-                                    <th data-sort="zweiMinuten" style="padding: 8px; cursor:pointer;">2'</th>
-                                    <th data-sort="rot" style="padding: 8px; cursor:pointer;">R</th>
-                                </tr>
-                            </thead>
-                            <tbody id="statistikTabelleBody"></tbody>
-                        </table>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Sub-Tab 3: Saison Heatmap -->
-            <div id="seasonHeatmapTab" class="season-subtab-content versteckt">
-                <!-- Content will be populated by heatmap.js when this tab is selected -->
-                <div id="subtabSeasonHeatmapContainer">
-                    <!-- Heatmap content -->
-                </div>
-            </div>
-
-            <!-- Sub-Tab 4: Saison Diagramm (Team Comparison) -->
-            <div id="seasonDiagrammTab" class="season-subtab-content versteckt">
-                <div id="subtabSeasonDiagrammContent">
-                    <!-- Team diagram content -->
-                </div>
+            
+            <div class="hub-header-actions">
+                <button id="exportHistorieButton" class="hub-btn-outline" style="display: flex; align-items: center; gap: 8px;">
+                    <i data-lucide="download" style="width: 16px; height: 16px;"></i> Export
+                </button>
             </div>
         </div>
+
+        <!-- Summary Grid -->
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-bottom: 24px;">
+            <div class="hub-card" style="padding: 16px; text-align: center;">
+                <label class="hub-label">Bester Torschütze</label>
+                <div id="statTopScorer" style="font-size: 1.25rem; font-weight: 700; color: var(--hub-green);">-</div>
+            </div>
+            <div class="hub-card" style="padding: 16px; text-align: center;">
+                <label class="hub-label">Gesamt Tore</label>
+                <div id="statTotalGoals" style="font-size: 1.25rem; font-weight: 700; color: var(--hub-blue);">-</div>
+            </div>
+            <div class="hub-card" style="padding: 16px; text-align: center;">
+                <label class="hub-label">Wurfquote Ø</label>
+                <div id="statAvgAccuracy" style="font-size: 1.25rem; font-weight: 700; color: var(--hub-green);">-</div>
+            </div>
+            <div class="hub-card" style="padding: 16px; text-align: center;">
+                <label class="hub-label">Gespielte Spiele</label>
+                <div id="statTotalGames" style="font-size: 1.25rem; font-weight: 700; color: #fff;">-</div>
+            </div>
+        </div>
+
+        <div class="hub-card" style="min-height: 400px;">
+            <h3 class="hub-label" style="margin-bottom: 20px;">Spieler Statistiken</h3>
+            <div class="hub-table-wrapper" style="overflow-x: auto;">
+                <table class="hub-table">
+                    <thead>
+                        <tr id="seasonStatsHead">
+                            <th>Spieler</th>
+                            <th data-sort="totalGoals">T</th>
+                            <th data-sort="fieldGoals">F</th>
+                            <th data-sort="sevenMeterGoals">7m</th>
+                            <th data-sort="missedShots">FEHL</th>
+                            <th data-sort="assists">A</th>
+                            <th data-sort="accuracy">%</th>
+                            <th data-sort="gameCount">Spiele</th>
+                        </tr>
+                    </thead>
+                    <tbody id="seasonStatsContainer"></tbody>
+                </table>
+            </div>
+        </div>
+    </section>
 
         <!-- Shot Charts Page Section -->
         <div id="shotsBereich" class="content-section versteckt">
@@ -723,11 +718,8 @@
             <div id="protokollEmptyState" class="versteckt"></div>
         </div>
 
-        <!-- Export Page Section -->
-        <div id="exportBereich" class="versteckt">
-            <h2>Export</h2>
-            <div id="exportContent" style="padding: 20px;"></div>
-        </div>
+
+    <!-- SECTION: SETTINGS (Handball Hub) -->
 
         <!-- Settings Page Section -->
         <!-- SECTION: SOCIAL MEDIA -->
@@ -896,202 +888,163 @@
             </div>
         </div>
 
-        <!-- SECTION: SETTINGS -->
-        <div id="settingsBereich" class="versteckt">
-            <div style="padding: 20px; max-width: 800px; margin: 0 auto;">
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
-                    <h2 style="margin: 0;">Einstellungen</h2>
-                    <button id="saveAllSettingsBtn" class="shadcn-btn-primary" style="display: flex; align-items: center; gap: 8px;">
-                        <i data-lucide="save" style="width: 18px; height: 18px;"></i>
-                        Speichern
+    <!-- SECTION: SETTINGS (Handball Hub) -->
+    <section id="settingsBereich" class="content-section versteckt">
+        <div class="hub-header-row" style="margin-bottom: 24px;">
+            <div class="hub-dashboard-title">
+                <h1>Einstellungen</h1>
+                <span class="hub-season-badge">System & Profil</span>
+            </div>
+            <div class="hub-header-actions">
+                <button id="saveAllSettingsBtn" class="hub-btn-primary">
+                    <i data-lucide="save" style="width: 18px; height: 18px; margin-right: 8px;"></i>
+                    Alle speichern
+                </button>
+            </div>
+        </div>
+
+        <div class="hub-grid" style="grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 20px;">
+            
+            <!-- Card: Team Profile -->
+            <div class="hub-card">
+                <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 16px;">
+                    <h3 class="hub-label">MANNSCHAFTSPROFIL</h3>
+                    <div id="settingsValidatedIndicator" class="versteckt" style="color: #22c55e; display: flex; align-items: center; gap: 4px; font-size: 0.75rem;">
+                        <i data-lucide="check-circle-2" style="width: 14px; height: 14px;"></i> Validiert
+                    </div>
+                </div>
+                
+                <div style="display: flex; flex-direction: column; gap: 16px;">
+                    <div class="hub-field">
+                        <label class="hub-label">Eigener Team-Name</label>
+                        <input type="text" id="myTeamNameInput" class="hub-input" placeholder="z.B. SG Flensburg">
+                    </div>
+                    
+                    <div class="hub-field">
+                        <label class="hub-label">Team-Farbe</label>
+                        <div style="display: flex; gap: 10px; align-items: center;">
+                            <input type="color" id="myTeamColorInput" style="width: 40px; height: 40px; padding: 0; border: none; background: transparent; cursor: pointer;">
+                            <i id="myTeamColorIcon" data-lucide="shield" style="width: 24px; height: 24px;"></i>
+                        </div>
+                    </div>
+
+                    <div style="height: 1px; background: var(--hub-card-border); margin: 8px 0;"></div>
+
+                    <button id="toggleValidationBtn" class="hub-btn-outline" style="width: 100%; justify-content: space-between; height: 40px;">
+                        <span style="display: flex; align-items: center; gap: 10px; font-size: 0.85rem;">
+                            <span class="lock-icon-container">
+                                <i id="iconLocked" data-lucide="lock" class="lock-icon hidden" style="color: #22c55e; width: 16px; height: 16px;"></i>
+                                <i id="iconUnlocked" data-lucide="lock-open" class="lock-icon visible" style="color: #9ca3af; width: 16px; height: 16px;"></i>
+                            </span>
+                            Kader bearbeiten sperren
+                        </span>
                     </button>
                 </div>
+            </div>
 
-                <div
-                    style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px;">
-
-
-                    <!-- Card 2: General Settings -->
-                    <div class="settings-card"
-                        style="background: var(--bg-container); padding: 20px; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
-                        <h4
-                            style="margin-top: 0; margin-bottom: 15px; border-bottom: 2px solid var(--btn-purple); padding-bottom: 10px; display: inline-block;">
-                            Allgemein</h4>
-                        <div class="setting-row"
-                            style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
-                            <label for="toggleDarkMode" style="cursor: pointer;">Dark Mode</label>
-                            <label class="switch">
-                                <input type="checkbox" id="set_toggleDarkMode">
-                                <span class="slider round"></span>
-                            </label>
-                        </div>
-                        <div class="setting-row" style="display: flex; flex-direction: column; gap: 8px;">
-                            <label for="myTeamNameInput" style="font-weight: 500;">Mein Team Name:</label>
-                            <div style="display: flex; gap: 10px; align-items: center;">
-                                <input type="text" id="myTeamNameInput" placeholder="Mein Team" class="shadcn-input"
-                                    style="flex: 1;">
-                                <div class="color-picker-wrapper" title="Team Farbe wählen"
-                                    style="position: relative; cursor: pointer;">
-                                    <button id="myTeamColorTrigger" class="shadcn-btn-outline"
-                                        style="width: 40px; height: 40px; padding: 0; display: flex; align-items: center; justify-content: center; border-radius: 8px;">
-                                        <i id="myTeamColorIcon" data-lucide="shirt"
-                                            style="width: 20px; height: 20px; color: #dc3545;"></i>
-                                    </button>
-                                    <input type="color" id="myTeamColorInput" value="#dc3545"
-                                        style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer;">
-                                </div>
-                                <button id="toggleValidationBtn" class="shadcn-btn-outline"
-                                    title="Einstellungen sperren/entsperren"
-                                    style="width: 40px; height: 40px; padding: 0; display: flex; align-items: center; justify-content: center; border-radius: 8px;">
-                                    <div class="lock-icon-container">
-                                        <i id="iconLocked" class="lock-icon hidden" data-lucide="lock"
-                                            style="color: #22c55e;"></i>
-                                        <i id="iconUnlocked" class="lock-icon visible" data-lucide="lock-open"
-                                            style="color: #9ca3af;"></i>
-                                    </div>
-                                </button>
-                            </div>
-                        </div>
-                        <div id="settingsValidatedIndicator" class="versteckt"
-                            style="margin-top: 10px; padding: 10px; background: #22c55e20; border: 1px solid #22c55e; border-radius: 8px; display: flex; align-items: center; gap: 8px; color: #22c55e;">
-                            <i data-lucide="check-circle" style="width: 16px; height: 16px;"></i>
-                            <span>Einstellungen sind im Kader gespeichert</span>
-                        </div>
-                    </div>
-
-                    <!-- Card 3: Team Invitations -->
-                    <div class="settings-card"
-                        style="background: var(--bg-container); padding: 20px; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
-                        <h4
-                            style="margin-top: 0; margin-bottom: 15px; border-bottom: 2px solid var(--btn-primary); padding-bottom: 10px; display: inline-block;">
-                            Mitglieder einladen</h4>
-                        <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 15px;">
-                            Erstelle einen Link, um andere Trainer oder Analysten zu diesem Team einzuladen.
-                        </p>
-                        
-                        <div style="display: flex; flex-direction: column; gap: 10px;">
-                            <button id="generateInviteBtn" class="shadcn-btn-primary" style="width: 100%;">
-                                <i data-lucide="user-plus" style="width: 16px; height: 16px; margin-right: 8px;"></i>
-                                Einladungslink generieren
-                            </button>
-                            
-                            <div id="inviteLinkContainer" class="versteckt" style="margin-top: 10px;">
-                                <div style="display: flex; gap: 8px;">
-                                    <input type="text" id="inviteLinkInput" readonly class="shadcn-input" style="flex: 1; font-size: 0.8rem; background: var(--bg-secondary);">
-                                    <button id="copyInviteBtn" class="shadcn-btn-outline" style="padding: 0 12px;" title="In Zwischenablage kopieren">
-                                        <i data-lucide="copy" style="width: 16px; height: 16px;"></i>
-                                    </button>
-                                </div>
-                                <p style="font-size: 0.75rem; color: #22c55e; margin-top: 5px; text-align: center;">Link wurde erstellt (7 Tage gültig)</p>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Card 5: Wurfbilder -->
-                <div class="settings-card shadcn-card">
-                    <h4
-                        style="margin-top: 0; margin-bottom: 15px; border-bottom: 2px solid var(--btn-danger); padding-bottom: 10px; display: inline-block;">
-                        Wurfbilder (Popups)</h4>
-                    <div style="display: flex; flex-direction: column; gap: 12px;">
-                        <div class="setting-row"
-                            style="display: flex; justify-content: space-between; align-items: center;">
-                            <label for="set_toggleWurfbildHeim" style="cursor: pointer;">Wurfbild: Heim</label>
-                            <label class="switch">
-                                <input type="checkbox" id="set_toggleWurfbildHeim">
-                                <span class="slider round"></span>
-                            </label>
-                        </div>
-                        <div class="setting-row"
-                            style="display: flex; justify-content: space-between; align-items: center;">
-                            <label for="toggleWurfbildGegner" style="cursor: pointer;">Wurfbild:
-                                Gast</label>
-                            <label class="switch">
-                                <input type="checkbox" id="set_toggleWurfbildGegner">
-                                <span class="slider round"></span>
-                            </label>
-                        </div>
-                        <div style="height: 1px; background: var(--border-color); margin: 5px 0;"></div>
-                        <div class="setting-row"
-                            style="display: flex; justify-content: space-between; align-items: center;">
-                            <label for="set_toggleWurfpositionHeim" style="cursor: pointer;">Position: Heim</label>
-                            <label class="switch">
-                                <input type="checkbox" id="set_toggleWurfpositionHeim">
-                                <span class="slider round"></span>
-                            </label>
-                        </div>
-                        <div class="setting-row"
-                            style="display: flex; justify-content: space-between; align-items: center;">
-                            <label for="set_toggleWurfpositionGegner" style="cursor: pointer;">Position: Gast</label>
-                            <label class="switch">
-                                <input type="checkbox" id="set_toggleWurfpositionGegner">
-                                <span class="slider round"></span>
-                            </label>
-                        </div>
-                        <div style="height: 1px; background: var(--border-color); margin: 5px 0;"></div>
-                        <div class="setting-row"
-                            style="display: flex; justify-content: space-between; align-items: center;">
-                            <label for="set_toggleCombinedThrowMode" style="cursor: pointer;">Kombinierte Ansicht</label>
-                            <label class="switch">
-                                <input type="checkbox" id="set_toggleCombinedThrowMode">
-                                <span class="slider round"></span>
-                            </label>
-                        </div>
-                        <p style="font-size: 0.75rem; color: var(--text-muted); margin: 5px 0 0 0;">
-                            Zeigt Feld und Tor nebeneinander statt hintereinander
-                        </p>
-                        <div style="height: 1px; background: var(--border-color); margin: 5px 0;"></div>
-                        <div class="setting-row"
-                            style="display: flex; justify-content: space-between; align-items: center;">
-                            <label for="set_toggleGoalZones" style="cursor: pointer;">Tor-Zonen verwenden</label>
-                            <label class="switch">
-                                <input type="checkbox" id="set_toggleGoalZones">
-                                <span class="slider round"></span>
-                            </label>
-                        </div>
-                        <p style="font-size: 0.75rem; color: var(--text-muted); margin: 5px 0 0 0;">
-                            Unterteilt das Tor in 9 klickbare Zonen für präzisere Analyse
-                        </p>
-                        <div style="height: 1px; background: var(--border-color); margin: 5px 0;"></div>
-                        <div class="setting-row"
-                            style="display: flex; justify-content: space-between; align-items: center;">
-                            <label for="set_toggleFieldZones" style="cursor: pointer;">Feld-Zonen verwenden</label>
-                            <label class="switch">
-                                <input type="checkbox" id="set_toggleFieldZones">
-                                <span class="slider round"></span>
-                            </label>
-                        </div>
-                        <p style="font-size: 0.75rem; color: var(--text-muted); margin: 5px 0 0 0;">
-                            Teilt das Feld in 9 funktionale Zonen (LA, RA, Kreis, Rückraum) ein
-                        </p>
-                    </div>
-                </div>
-
-
-
-                <!-- Card 4: Team-Verwaltung (Gefahrenzone) -->
-                <div class="settings-card shadcn-card"
-                    style="border: 1px solid hsl(0 84.2% 60.2% / 0.2);">
-                    <h4
-                        style="margin-top: 0; margin-bottom: 15px; border-bottom: 2px solid #ef4444; padding-bottom: 10px; display: inline-block; color: #ef4444;">
-                        Team-Verwaltung</h4>
-                    <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 15px;">
-                        Gefahrenzone: Aktionen, die dein Team oder deine Mitgliedschaft betreffen.
-                    </p>
+            <!-- Card: Tracking Modes -->
+            <div class="hub-card">
+                <h3 class="hub-label">TRACKING-EINSTELLUNGEN</h3>
+                <div style="display: flex; flex-direction: column; gap: 12px; margin-top: 16px;">
                     
-                    <div style="display: flex; gap: 10px; flex-wrap: wrap;">
-                        <button id="leaveTeamBtn" data-action="leave-team" class="shadcn-btn-outline" style="border-color: #ef4444; color: #ef4444; min-width: 150px; display: inline-flex;">
-                            <i data-lucide="log-out" style="width: 16px; height: 16px; margin-right: 8px;"></i>
-                            Team verlassen
-                        </button>
-                        <button id="deleteTeamBtn" data-action="delete-team" class="shadcn-btn-primary" style="background: #ef4444; display: none; min-width: 150px;">
-                            <i data-lucide="trash-2" style="width: 16px; height: 16px; margin-right: 8px;"></i>
-                            Team löschen
-                        </button>
+                    <label class="setting-row" style="display: flex; justify-content: space-between; align-items: center; cursor: pointer;">
+                        <span style="font-size: 0.9rem;">Kombinierter Wurf-Modus</span>
+                        <div class="hub-switch">
+                            <input type="checkbox" id="set_toggleCombinedThrowMode">
+                            <span class="hub-slider"></span>
+                        </div>
+                    </label>
+
+                    <div style="border-top: 1px solid var(--hub-card-border); margin: 4px 0; padding-top: 8px;">
+                        <label class="setting-row" style="display: flex; justify-content: space-between; align-items: center; cursor: pointer;">
+                            <span style="font-size: 0.85rem; opacity: 0.8;">Tor-Zonen Grid (Heatmap)</span>
+                            <div class="hub-switch compact">
+                                <input type="checkbox" id="set_toggleGoalZones">
+                                <span class="hub-slider"></span>
+                            </div>
+                        </label>
+                    </div>
+
+                    <label class="setting-row" style="display: flex; justify-content: space-between; align-items: center; cursor: pointer;">
+                        <span style="font-size: 0.85rem; opacity: 0.8;">Feld-Zonen Grid (Heatmap)</span>
+                        <div class="hub-switch compact">
+                            <input type="checkbox" id="set_toggleFieldZones">
+                            <span class="hub-slider"></span>
+                        </div>
+                    </label>
+
+                    <div style="border-top: 1px solid var(--hub-card-border); margin: 4px 0; padding-top: 8px;">
+                        <div style="font-size: 0.75rem; color: var(--hub-muted); margin-bottom: 8px;">EINZEL-ABFRAGEN (Wenn Kombi-Modus AUS)</div>
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                            <label style="display: flex; align-items: center; gap: 8px; font-size: 0.8rem;">
+                                <input type="checkbox" id="set_toggleWurfbildHeim"> Wurfbild (H)
+                            </label>
+                            <label style="display: flex; align-items: center; gap: 8px; font-size: 0.8rem;">
+                                <input type="checkbox" id="set_toggleWurfbildGegner"> Wurfbild (G)
+                            </label>
+                            <label style="display: flex; align-items: center; gap: 8px; font-size: 0.8rem;">
+                                <input type="checkbox" id="set_toggleWurfpositionHeim"> Position (H)
+                            </label>
+                            <label style="display: flex; align-items: center; gap: 8px; font-size: 0.8rem;">
+                                <input type="checkbox" id="set_toggleWurfpositionGegner"> Position (G)
+                            </label>
+                        </div>
                     </div>
                 </div>
             </div>
+
+            <!-- Card: System & Appearance -->
+            <div class="hub-card">
+                <h3 class="hub-label">SYSTEM & DARSTELLUNG</h3>
+                <div style="display: flex; flex-direction: column; gap: 16px; margin-top: 16px;">
+                    
+                    <label class="setting-row" style="display: flex; justify-content: space-between; align-items: center; cursor: pointer;">
+                        <div style="display: flex; align-items: center; gap: 10px;">
+                            <i data-lucide="moon" style="width: 18px; height: 18px;"></i>
+                            <span>Dark Mode</span>
+                        </div>
+                        <div class="hub-switch">
+                            <input type="checkbox" id="set_toggleDarkMode">
+                            <span class="hub-slider"></span>
+                        </div>
+                    </label>
+
+                    <div class="hub-field">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                            <label class="hub-label">Handball.net Turnier ID</label>
+                            <button id="idHelpToggle" class="icon-btn-ghost" style="padding: 2px;"><i data-lucide="help-circle" style="width: 14px; height: 14px;"></i></button>
+                        </div>
+                        <input type="text" id="handballNetTournamentIdInput" class="hub-input" placeholder="z.B. 123456">
+                        <p id="handballNetIdHelp" class="versteckt" style="font-size: 0.7rem; margin-top: 6px; padding: 8px; background: rgba(0,0,0,0.2); border-radius: 4px; color: var(--hub-muted);">
+                            Die ID findest du in der URL deines Wettbewerbs auf handball.net (z.B. /competitions/<b>123456</b>/...)
+                        </p>
+                    </div>
+                </div>
+            </div>
+
+
+            <!-- Card: Data Management -->
+            <div class="hub-card">
+                <h3 class="hub-label">DATEN & SICHERHEIT</h3>
+                <div style="display: flex; flex-direction: column; gap: 12px; margin-top: 16px;">
+                    
+
+                    <button id="importSpielButtonSettings" class="hub-btn-outline" style="width: 100%; justify-content: flex-start;">
+                        <i data-lucide="upload" style="width: 18px; height: 18px; margin-right: 12px;"></i>
+                        Backup importieren (.json)
+                    </button>
+                    <input type="file" id="importSpielInputSettings" class="versteckt" accept=".json">
+                    
+                    <button id="deleteTeamBtn" class="hub-btn-outline" style="width: 100%; justify-content: flex-start; color: #f87171; border-color: rgba(248,113,113,0.2);">
+                        <i data-lucide="trash-2" style="width: 18px; height: 18px; margin-right: 12px;"></i>
+                        Team & Daten löschen
+                    </button>
+                </div>
+            </div>
+
         </div>
+    </section>
+
 
         <div id="spielBereich" class="content-section versteckt"
             style="padding: 0; background: transparent; border: none; box-shadow: none;">
@@ -1320,31 +1273,53 @@
         </div> <!-- End spielBereich -->
 
         <!-- Vergangene Spiele -->
-        <div id="historieBereich" class="versteckt">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
-                <h1>Vergangene Spiele</h1>
-                <!-- Back button removed -->
+        <div id="historieBereich" class="content-section versteckt">
+            <div class="hub-header-row" style="margin-bottom: 24px;">
+                <div class="hub-dashboard-title">
+                    <h1>Spiel Historie</h1>
+                    <span class="hub-season-badge">Archiv & Analyse</span>
+                </div>
+                <div class="hub-header-actions" style="display: flex; gap: 10px;">
+                    <button id="importHandballNetButton" data-action="import-handball-net-open" class="hub-btn-outline" style="border-color: #22c55e; color: #22c55e; height: 36px; padding: 0 12px; font-size: 0.8rem;">
+                        <i data-lucide="download-cloud" style="width: 14px; height: 14px; margin-right: 6px;"></i>
+                        Handball.net
+                    </button>
+                    <button id="importSpielButton" class="hub-btn-primary" style="height: 36px; padding: 0 12px; font-size: 0.8rem;">
+                        <i data-lucide="upload" style="width: 14px; height: 14px; margin-right: 6px;"></i>
+                        Import
+                    </button>
+                    <input type="file" id="importSpielInput" class="versteckt" accept=".json">
+                </div>
             </div>
 
-            <div id="historieListe" class="history-list">
-                <p>Keine gespeicherten Spiele.</p>
+            <div class="hub-card" style="flex: 1; min-height: 0; display: flex; flex-direction: column; padding: 0; overflow: hidden;">
+                <div id="historieListe" class="history-list" style="flex: 1; overflow-y: auto; padding: 20px;">
+                    <p style="color: var(--hub-muted); text-align: center; padding: 40px;">Lade Spiele...</p>
+                </div>
             </div>
 
-            <div style="margin-top: 20px; display: flex; gap: 10px; flex-wrap: wrap;">
-                <button id="importSpielButton" class="shadcn-btn-primary">Spiel importieren</button>
-                <input type="file" id="importSpielInput" class="versteckt" accept=".json">
-                <button id="exportHistorieButton" class="shadcn-btn-outline">Alle Spiele exportieren (Backup)</button>
+            <div style="margin-top: 24px; display: flex; justify-content: flex-end;">
+                <button id="exportHistorieButton" class="hub-btn-outline" style="font-size: 0.75rem; height: 32px; opacity: 0.7;">
+                    <i data-lucide="save" style="width: 12px; height: 12px; margin-right: 6px;"></i>
+                    Daten-Backup (.json)
+                </button>
             </div>
         </div>
 
-        <!-- Vergangene Spiele Deitail -->
-        <div id="historieDetailBereich" class="versteckt">
-            <button id="backToHistoryList" class="shadcn-btn-outline" style="margin-bottom: 20px; display: flex; align-items: center; gap: 8px;">
-                <i data-lucide="arrow-left" style="width: 16px; height: 16px;"></i>
-                Zurück zur Liste
-            </button>
-            <h2 style="margin-bottom: 15px; font-weight: 700; color: var(--text-main);">Spielanalyse</h2>
-            <!-- The header is now dynamically managed in historyView.js via a 'score-card' to match live overview -->
+        <!-- Vergangene Spiele Detail -->
+        <div id="historieDetailBereich" class="content-section versteckt">
+            <div class="hub-header-row" style="margin-bottom: 24px;">
+                <div class="hub-dashboard-title" style="display: flex; align-items: center; gap: 16px;">
+                    <button id="backToHistoryList" class="icon-btn-ghost" style="width: 32px; height: 32px; background: rgba(255,255,255,0.05); border-radius: 50%;">
+                        <i data-lucide="arrow-left" style="width: 18px; height: 18px;"></i>
+                    </button>
+                    <div>
+                        <h1 style="font-size: 1.25rem;">Spielanalyse</h1>
+                        <span id="historieDetailSubtitle" class="hub-season-badge">Statistiken & Heatmap</span>
+                    </div>
+                </div>
+            </div>
+            
             <div id="historieHeader" class="versteckt"></div>
 
             <div class="heatmap-tabs">
@@ -1502,9 +1477,14 @@
 
 
         <!-- Video Analyse Bereich -->
-        <div id="videoAnalyseBereich" class="versteckt">
-            <h2 style="margin-bottom: 20px;">Video Analyse</h2>
-            <div style="display: flex; gap: 20px; height: calc(100vh - 120px);">
+        <div id="videoAnalyseBereich" class="content-section versteckt" style="height: calc(100vh - 100px); display: flex; flex-direction: column; overflow: hidden; padding-bottom: 10px;">
+            <div class="hub-header-row" style="margin-bottom: 20px; flex-shrink: 0;">
+                <div class="hub-dashboard-title">
+                    <h1>Video Analyse</h1>
+                    <span class="hub-season-badge">Review & Coaching</span>
+                </div>
+            </div>
+            <div style="display: flex; gap: 20px; flex: 1; min-height: 0;">
                 <!-- Left: Game List -->
                 <div
                     style="width: 420px; min-width: 420px; flex-shrink: 0; display: flex; flex-direction: column; gap: 10px;">
@@ -1566,27 +1546,29 @@
                 </div>
             </div>
         </div>
+    </div>
 
-        <div id="aktionsMenue" class="modal-overlay versteckt">
-            <div class="shadcn-modal-content">
-                <div class="shadcn-modal-header">
-                    <h3 id="aktionsMenueTitel">Aktion wählen</h3>
-                </div>
-                <div class="shadcn-modal-body"
-                    style="display: flex; flex-direction: column; gap: 8px; margin-top: 1rem;">
-                    <button class="shadcn-btn-outline" data-aktion="Tor">Tor</button>
-                    <button class="shadcn-btn-outline" data-aktion="Fehlwurf">Fehlwurf</button>
-                    <button class="shadcn-btn-outline" data-aktion="7m">7m</button>
-                    <button class="shadcn-btn-outline" id="guteAktionModalButton">Anderes</button>
-                    <button class="shadcn-btn-outline strafe-gelb" data-aktion="Gelbe Karte">Gelbe Karte</button>
-                    <button class="shadcn-btn-outline strafe-zeit" data-aktion="2 Minuten">2 Minuten</button>
-                    <button class="shadcn-btn-outline strafe-rot" data-aktion="Rote Karte">Rote Karte</button>
-                </div>
-                <div class="shadcn-modal-footer">
-                    <button class="shadcn-btn-outline" id="aktionAbbrechen" style="width: 100%;">Abbrechen</button>
-                </div>
+    <!-- Modal: Aktions-Menü (Handball Hub) -->
+    <div id="aktionsMenue" class="modal-overlay versteckt" style="z-index: 10030;">
+        <div class="hub-popover" style="width: 350px; max-width: 90vw;">
+            <div class="hub-modal-header">
+                <h3 id="aktionsMenueTitel">Aktion wählen</h3>
+                <button class="icon-btn-ghost" id="aktionAbbrechen"><i data-lucide="x"></i></button>
+            </div>
+            <div class="hub-modal-body" style="display: flex; flex-direction: column; gap: 10px;">
+                <button class="dash-rsvp-modern-btn active" data-status="going" data-aktion="Tor" style="height: 48px; font-size: 0.9rem;">TOR</button>
+                <button class="dash-rsvp-modern-btn" data-aktion="Fehlwurf" style="height: 48px; font-size: 0.9rem;">Fehlwurf</button>
+                <button class="dash-rsvp-modern-btn" data-aktion="7m" style="height: 48px; font-size: 0.9rem;">7-Meter</button>
+                <button class="dash-rsvp-modern-btn" id="guteAktionModalButton" style="height: 48px; font-size: 0.9rem;">Anderes</button>
+                
+                <div style="height: 1px; background: var(--hub-card-border); margin: 5px 0;"></div>
+                
+                <button class="dash-rsvp-modern-btn" data-aktion="Gelbe Karte" style="color: #fbbf24; border-color: rgba(251,191,36,0.3); height: 44px;">Gelbe Karte</button>
+                <button class="dash-rsvp-modern-btn" data-aktion="2 Minuten" style="color: #60a5fa; border-color: rgba(96,165,250,0.3); height: 44px;">2 Minuten</button>
+                <button class="dash-rsvp-modern-btn" data-aktion="Rote Karte" style="color: #f87171; border-color: rgba(248,113,113,0.3); height: 44px;">Rote Karte</button>
             </div>
         </div>
+    </div>
 
         <div id="aktionVorauswahl" class="modal-overlay versteckt">
             <div class="shadcn-modal-content">
@@ -1610,287 +1592,207 @@
             </div>
         </div>
 
-        <!-- Comment Modal (Shadcn Style) -->
-        <div id="kommentarBereich" class="modal-overlay versteckt">
-            <div class="shadcn-modal-content">
-                <div class="shadcn-modal-header">
-                    <h3 id="kommentarTitel">Kommentar (optional)</h3>
-                </div>
-                <div class="shadcn-modal-body"
-                    style="margin-top: 1rem; display: flex; flex-direction: column; gap: 8px;">
-                    <input type="text" id="kommentarInput" placeholder="Beschreibe die Aktion..." class="shadcn-input">
-                </div>
-                <div class="shadcn-modal-footer">
-                    <button class="shadcn-btn-primary" id="kommentarSpeichernButton">Speichern</button>
-                </div>
+    <!-- Modal: Kommentar (Handball Hub) -->
+    <div id="kommentarBereich" class="modal-overlay versteckt" style="z-index: 10035;">
+        <div class="hub-popover" style="width: 400px; max-width: 90vw;">
+            <div class="hub-modal-header">
+                <h3 id="kommentarTitel">Notiz hinzufügen</h3>
+                <button class="icon-btn-ghost" data-action="close-modal"><i data-lucide="x"></i></button>
+            </div>
+            <div class="hub-modal-body">
+                <label class="hub-label">Beschreibung (Optional)</label>
+                <input type="text" id="kommentarInput" placeholder="Was ist passiert?..." class="hub-input">
+            </div>
+            <div class="hub-modal-footer">
+                <button id="kommentarSpeichernButton" class="hub-btn-primary" style="width: 100%;">Speichern</button>
             </div>
         </div>
+    </div>
 
 
-        <!-- Wurfbild Modal (Shadcn Style) -->
-        <div id="wurfbildModal" class="modal-overlay versteckt">
-            <div class="shadcn-modal-content">
-                <div class="shadcn-modal-header">
-                    <h3 id="wurfbildTitel">Wo ging der Ball rein?</h3>
-                </div>
-                <!-- Content (Goal SVG) -->
-                <div id="wurfbildUmgebung" style="margin-top: 1rem; display: flex; justify-content: center;">
-                    <svg id="inputGoalSvg" viewBox="0 0 300 200"
-                        style="width: 100%; height: auto; max-width: 400px; display: block; margin: 0 auto; background-color: transparent;">
-                        <!-- Goal Frame (Matches Heatmap) -->
-                        <rect x="25" y="10" width="250" height="180" fill="none" stroke="#888" stroke-width="3" />
-                        <line x1="108.33" y1="10" x2="108.33" y2="190" stroke="#bbb" stroke-width="1"
-                            stroke-dasharray="5,5" />
-                        <line x1="191.66" y1="10" x2="191.66" y2="190" stroke="#bbb" stroke-width="1"
-                            stroke-dasharray="5,5" />
-                        <line x1="25" y1="70" x2="275" y2="70" stroke="#bbb" stroke-width="1" stroke-dasharray="5,5" />
-                        <line x1="25" y1="130" x2="275" y2="130" stroke="#bbb" stroke-width="1"
-                            stroke-dasharray="5,5" />
-                        <!-- 9 zones for structured recording -->
-                        <g class="goal-zones-group versteckt">
-                            <rect class="goal-zone-rect" data-zone="1" x="25" y="10" width="83.33" height="60" />
-                            <rect class="goal-zone-rect" data-zone="2" x="108.33" y="10" width="83.33" height="60" />
-                            <rect class="goal-zone-rect" data-zone="3" x="191.66" y="10" width="83.33" height="60" />
-                            <rect class="goal-zone-rect" data-zone="4" x="25" y="70" width="83.33" height="60" />
-                            <rect class="goal-zone-rect" data-zone="5" x="108.33" y="70" width="83.33" height="60" />
-                            <rect class="goal-zone-rect" data-zone="6" x="191.66" y="70" width="83.33" height="60" />
-                            <rect class="goal-zone-rect" data-zone="7" x="25" y="130" width="83.33" height="60" />
-                            <rect class="goal-zone-rect" data-zone="8" x="108.33" y="130" width="83.33" height="60" />
-                            <rect class="goal-zone-rect" data-zone="9" x="191.66" y="130" width="83.33" height="60" />
-                            <!-- Labels -->
-                            <g fill="#999" font-size="10" text-anchor="middle" font-weight="bold" style="pointer-events: none; opacity: 0.4;">
-                                <text x="66.6" y="45">1</text><text x="150" y="45">2</text><text x="233.3" y="45">3</text>
-                                <text x="66.6" y="105">4</text><text x="150" y="105">5</text><text x="233.3" y="105">6</text>
-                                <text x="66.6" y="165">7</text><text x="150" y="165">8</text><text x="233.3" y="165">9</text>
-                            </g>
-                        </g>
+        <!-- Modal: Wurfbild / Tor (Handball Hub) -->
+    <div id="wurfbildModal" class="modal-overlay versteckt" style="z-index: 10040;">
+        <div class="hub-popover" style="width: 450px; max-width: 95vw;">
+            <div class="hub-modal-header">
+                <h3>Wohin ging der Wurf?</h3>
+                <button class="icon-btn-ghost" id="closeWurfbildModal"><i data-lucide="x"></i></button>
+            </div>
+            <div class="hub-modal-body" style="padding: 10px;">
+                <div id="wurfbildTorFeld" style="width: 100%; aspect-ratio: 3/2; display: flex; align-items: center; justify-content: center;">
+                    <svg viewBox="0 0 300 200" style="width: 100%; height: 100%; max-height: 300px;">
+                        <rect x="25" y="10" width="250" height="180" fill="none" stroke="currentColor" stroke-width="3"/>
+                        <line x1="108.3" y1="10" x2="108.3" y2="190" stroke="currentColor" stroke-width="1" stroke-dasharray="5,5" opacity="0.3"/>
+                        <line x1="191.7" y1="10" x2="191.7" y2="190" stroke="currentColor" stroke-width="1" stroke-dasharray="5,5" opacity="0.3"/>
+                        <line x1="25" y1="70" x2="275" y2="70" stroke="currentColor" stroke-width="1" stroke-dasharray="5,5" opacity="0.3"/>
+                        <line x1="25" y1="130" x2="275" y2="130" stroke="currentColor" stroke-width="1" stroke-dasharray="5,5" opacity="0.3"/>
+                        <circle id="wurfbildMarker" cx="-10" cy="-10" r="5" fill="var(--hub-accent)" style="display:none;"/>
                     </svg>
                 </div>
-                <div class="shadcn-modal-footer">
-                    <button class="shadcn-btn-outline" id="wurfbildUeberspringen">Überspringen</button>
-                </div>
+            </div>
+            <div class="hub-modal-footer">
+                <button id="wurfbildUeberspringen" class="hub-btn-outline" style="width: 100%;">Überspringen</button>
             </div>
         </div>
+    </div>
 
-        <!-- Wurfposition Modal (Shadcn Style) -->
-        <div id="wurfpositionModal" class="modal-overlay versteckt">
-            <div class="shadcn-modal-content">
-                <div class="shadcn-modal-header">
-                    <h3>Von wo wurde geworfen?</h3>
-                </div>
-                <div id="wurfpositionFeld" style="margin-top: 1rem; display: flex; justify-content: center;">
-                    <svg viewBox="0 0 300 400" width="100%" style="max-height: 50vh;">
-                        <!-- Spielfeld Hälfte (Matching Heatmap Output) -->
-                        <rect x="10" y="10" width="280" height="380" fill="#f5f5f5" stroke="#333" stroke-width="2" />
-
-                        <!-- Tor oben (Mitte) -->
-                        <rect x="112" y="10" width="76" height="8" fill="#333" />
-
-                        <!-- 6m Linie (Torraum - durchgezogen) -->
-                        <path d="M 75 18 Q 75 90 150 90 Q 225 90 225 18" fill="none" stroke="#333" stroke-width="2" />
-
-                        <!-- 9m Linie (Freiwurflinie - gestrichelt) -->
-                        <path d="M 37 18 Q 37 150 150 150 Q 263 150 263 18" fill="none" stroke="#333" stroke-width="1"
-                            stroke-dasharray="6,3" />
-
-                        <!-- 7m Punkt -->
-                        <circle cx="150" cy="65" r="4" fill="#333" />
-
-                        <!-- Mittellinie -->
-                        <line x1="10" y1="388" x2="290" y2="388" stroke="#333" stroke-width="2" />
-
-                        <!-- Field Zones Overlay -->
-                        <g class="field-zones-group versteckt">
-                        <!-- Field Zones Overlay -->
-                        <g class="field-zones-group versteckt">
-                            <!-- Zones 1-5: Between 6m and 9m -->
-                            <path class="field-zone-path" data-zone="1" d="M 37 18 L 75 18 Q 75 39.6 81.8 54.7 L 47.2 85.3 Q 37 57.6 37 18 Z" />
-                            <path class="field-zone-path" data-zone="2" d="M 47.2 85.3 L 81.8 54.7 Q 90.8 74.9 111.8 83.5 L 92.4 138.1 Q 60.7 122.3 47.2 85.3 Z" />
-                            <path class="field-zone-path" data-zone="3" d="M 92.4 138.1 L 111.8 83.5 Q 127.5 90 150 90 Q 172.5 90 188.2 83.5 L 207.6 138.1 Q 183.9 150 150 150 Q 116.1 150 92.4 138.1 Z" />
-                            <path class="field-zone-path" data-zone="4" d="M 207.6 138.1 L 188.2 83.5 Q 209.2 74.9 218.2 54.7 L 252.8 85.3 Q 239.3 122.3 207.6 138.1 Z" />
-                            <path class="field-zone-path" data-zone="5" d="M 263 18 L 225 18 Q 225 39.6 218.2 54.7 L 252.8 85.3 Q 263 57.6 263 18 Z" />
-                            
-                            <!-- Zones 6-8: Outside 9m up to Y=220 -->
-                            <path class="field-zone-path" data-zone="6" d="M 10 18 L 37 18 Q 37 57.6 47.2 85.3 Q 60.7 122.3 92.4 138.1 L 63.3 220 L 10 220 Z" />
-                            <path class="field-zone-path" data-zone="7" d="M 63.3 220 L 92.4 138.1 Q 116.1 150 150 150 Q 183.9 150 207.6 138.1 L 236.7 220 Z" />
-                            <path class="field-zone-path" data-zone="8" d="M 290 18 L 263 18 Q 263 57.6 252.8 85.3 Q 239.3 122.3 207.6 138.1 L 236.7 220 L 290 220 Z" />
-
-                            <!-- Zone 9: Midfield -->
-                            <path class="field-zone-path" data-zone="9" d="M 10 220 L 290 220 L 290 388 L 10 388 Z" />
-                            
-                            <!-- Labels -->
-                            <g fill="#999" font-size="12" text-anchor="middle" font-weight="bold" style="pointer-events: none; opacity: 0.5;">
-                                <text x="60" y="45">1</text>
-                                <text x="75" y="95">2</text>
-                                <text x="150" y="115">3</text>
-                                <text x="225" y="95">4</text>
-                                <text x="240" y="45">5</text>
-                                <text x="40" y="180">6</text>
-                                <text x="150" y="180">7</text>
-                                <text x="260" y="180">8</text>
-                                <text x="150" y="280">9</text>
-                            </g>
-                        </g>
+        <!-- Modal: Wurfposition / Feld (Handball Hub) -->
+    <div id="wurfpositionModal" class="modal-overlay versteckt" style="z-index: 10041;">
+        <div class="hub-popover" style="width: 500px; max-width: 95vw;">
+            <div class="hub-modal-header">
+                <h3>Von wo wurde geworfen?</h3>
+                <button class="icon-btn-ghost" id="closeWurfpositionModal"><i data-lucide="x"></i></button>
+            </div>
+            <div class="hub-modal-body" style="padding: 10px;">
+                <div id="wurfpositionFeld" style="width: 100%; aspect-ratio: 0.75; display: flex; align-items: center; justify-content: center;">
+                    <svg viewBox="0 0 300 400" style="width: 100%; height: 100%; max-height: 400px;">
+                        <rect x="10" y="10" width="280" height="380" fill="none" stroke="currentColor" stroke-width="2"/>
+                        <rect x="112" y="10" width="76" height="8" fill="currentColor" opacity="0.5"/>
+                        <path d="M 75 18 Q 75 90 150 90 Q 225 90 225 18" fill="none" stroke="currentColor" stroke-width="2" opacity="0.5"/>
+                        <path d="M 37 18 Q 37 150 150 150 Q 263 150 263 18" fill="none" stroke="currentColor" stroke-width="1" stroke-dasharray="6,3" opacity="0.5"/>
+                        <circle cx="150" cy="65" r="4" fill="currentColor" opacity="0.5"/>
+                        <line x1="10" y1="388" x2="290" y2="388" stroke="currentColor" stroke-width="2"/>
+                        <circle id="wurfpositionMarker" cx="-10" cy="-10" r="6" fill="var(--hub-accent)" style="display:none;"/>
                     </svg>
                 </div>
-                <div class="shadcn-modal-footer">
-                    <button class="shadcn-btn-outline" id="wurfpositionUeberspringen">Überspringen</button>
-                </div>
+            </div>
+            <div class="hub-modal-footer">
+                <button id="wurfpositionUeberspringen" class="hub-btn-outline" style="width: 100%;">Überspringen</button>
             </div>
         </div>
+    </div>
 
-        <!-- Combined Throw Modal (Wurfposition + Wurfbild nebeneinander) -->
-        <div id="combinedThrowModal" class="modal-overlay versteckt">
-            <div class="shadcn-modal-content" style="max-width: 850px; width: 95%;">
-                <div class="shadcn-modal-header">
-                    <h3>Wurf aufzeichnen</h3>
-                </div>
-                <div class="combined-throw-container">
-                    <!-- Linke Seite: Wurfposition (Feld) -->
-                    <div class="throw-section">
-                        <h4 style="margin-bottom: 10px; font-size: 0.9rem; color: var(--text-muted);">Von wo geworfen?
-                        </h4>
-                        <div id="combinedWurfpositionFeld" class="throw-svg-container">
-                            <svg viewBox="0 0 300 400" style="width: 100%; max-height: 45vh;">
-                                <rect x="10" y="10" width="280" height="380" fill="#f5f5f5" stroke="#333"
-                                    stroke-width="2" />
-                                <rect x="112" y="10" width="76" height="8" fill="#333" />
-                                <path d="M 75 18 Q 75 90 150 90 Q 225 90 225 18" fill="none" stroke="#333"
-                                    stroke-width="2" />
-                                <path d="M 37 18 Q 37 150 150 150 Q 263 150 263 18" fill="none" stroke="#333"
-                                    stroke-width="1" stroke-dasharray="6,3" />
-                                <circle cx="150" cy="65" r="4" fill="#333" />
-                                <line x1="10" y1="388" x2="290" y2="388" stroke="#333" stroke-width="2" />
-
-                                <!-- Field Zones Overlay -->
-                                <g class="field-zones-group versteckt">
-                                    <path class="field-zone-path" data-zone="1" d="M 37 18 L 75 18 Q 75 39.6 81.8 54.7 L 47.2 85.3 Q 37 57.6 37 18 Z" />
-                                    <path class="field-zone-path" data-zone="2" d="M 47.2 85.3 L 81.8 54.7 Q 90.8 74.9 111.8 83.5 L 92.4 138.1 Q 60.7 122.3 47.2 85.3 Z" />
-                                    <path class="field-zone-path" data-zone="3" d="M 92.4 138.1 L 111.8 83.5 Q 127.5 90 150 90 Q 172.5 90 188.2 83.5 L 207.6 138.1 Q 183.9 150 150 150 Q 116.1 150 92.4 138.1 Z" />
-                                    <path class="field-zone-path" data-zone="4" d="M 207.6 138.1 L 188.2 83.5 Q 209.2 74.9 218.2 54.7 L 252.8 85.3 Q 239.3 122.3 207.6 138.1 Z" />
-                                    <path class="field-zone-path" data-zone="5" d="M 263 18 L 225 18 Q 225 39.6 218.2 54.7 L 252.8 85.3 Q 263 57.6 263 18 Z" />
-                                    
-                                    <path class="field-zone-path" data-zone="6" d="M 10 18 L 37 18 Q 37 57.6 47.2 85.3 Q 60.7 122.3 92.4 138.1 L 63.3 220 L 10 220 Z" />
-                                    <path class="field-zone-path" data-zone="7" d="M 63.3 220 L 92.4 138.1 Q 116.1 150 150 150 Q 183.9 150 207.6 138.1 L 236.7 220 Z" />
-                                    <path class="field-zone-path" data-zone="8" d="M 290 18 L 263 18 Q 263 57.6 252.8 85.3 Q 239.3 122.3 207.6 138.1 L 236.7 220 L 290 220 Z" />
-
-                                    <path class="field-zone-path" data-zone="9" d="M 10 220 L 290 220 L 290 388 L 10 388 Z" />
-                                    
-                                    <!-- Labels -->
-                                    <g fill="#999" font-size="12" text-anchor="middle" font-weight="bold" style="pointer-events: none; opacity: 0.5;">
-                                        <text x="60" y="45">1</text>
-                                        <text x="75" y="95">2</text>
-                                        <text x="150" y="115">3</text>
-                                        <text x="225" y="95">4</text>
-                                        <text x="240" y="45">5</text>
-                                        <text x="40" y="180">6</text>
-                                        <text x="150" y="180">7</text>
-                                        <text x="260" y="180">8</text>
-                                        <text x="150" y="280">9</text>
-                                    </g>
-                                </g>
-                                <!-- Marker wird per JS hinzugefügt -->
-                                <circle id="combinedFieldMarker" cx="0" cy="0" r="8" fill="#2563eb" stroke="white"
-                                    stroke-width="2" style="display: none;" />
-                            </svg>
-                        </div>
-                    </div>
-                    <!-- Rechte Seite: Wurfbild (Tor) -->
-                    <div class="throw-section">
-                        <h4 style="margin-bottom: 10px; font-size: 0.9rem; color: var(--text-muted);">Wohin ging der
-                            Ball?</h4>
-                        <div id="combinedWurfbildUmgebung" class="throw-svg-container">
-                            <svg id="combinedGoalSvg" viewBox="0 0 300 200" style="width: 100%; max-height: 30vh;">
-                                <rect x="25" y="10" width="250" height="180" fill="none" stroke="#888"
-                                    stroke-width="3" />
-                                <line x1="108.33" y1="10" x2="108.33" y2="190" stroke="#bbb" stroke-width="1"
-                                    stroke-dasharray="5,5" />
-                                <line x1="191.66" y1="10" x2="191.66" y2="190" stroke="#bbb" stroke-width="1"
-                                    stroke-dasharray="5,5" />
-                                <line x1="25" y1="70" x2="275" y2="70" stroke="#bbb" stroke-width="1"
-                                    stroke-dasharray="5,5" />
-                                <line x1="25" y1="130" x2="275" y2="130" stroke="#bbb" stroke-width="1"
-                                    stroke-dasharray="5,5" />
-                                <!-- 9 zones for structured recording -->
-                                <g class="goal-zones-group versteckt">
-                                    <rect class="goal-zone-rect" data-zone="1" x="25" y="10" width="83.33" height="60" />
-                                    <rect class="goal-zone-rect" data-zone="2" x="108.33" y="10" width="83.33" height="60" />
-                                    <rect class="goal-zone-rect" data-zone="3" x="191.66" y="10" width="83.33" height="60" />
-                                    <rect class="goal-zone-rect" data-zone="4" x="25" y="70" width="83.33" height="60" />
-                                    <rect class="goal-zone-rect" data-zone="5" x="108.33" y="70" width="83.33" height="60" />
-                                    <rect class="goal-zone-rect" data-zone="6" x="191.66" y="70" width="83.33" height="60" />
-                                    <rect class="goal-zone-rect" data-zone="7" x="25" y="130" width="83.33" height="60" />
-                                    <rect class="goal-zone-rect" data-zone="8" x="108.33" y="130" width="83.33" height="60" />
-                                    <rect class="goal-zone-rect" data-zone="9" x="191.66" y="130" width="83.33" height="60" />
-                                    <!-- Labels -->
-                                    <g fill="#999" font-size="10" text-anchor="middle" font-weight="bold" style="pointer-events: none; opacity: 0.4;">
-                                        <text x="66.6" y="45">1</text><text x="150" y="45">2</text><text x="233.3" y="45">3</text>
-                                        <text x="66.6" y="105">4</text><text x="150" y="105">5</text><text x="233.3" y="105">6</text>
-                                        <text x="66.6" y="165">7</text><text x="150" y="165">8</text><text x="233.3" y="165">9</text>
-                                    </g>
-                                </g>
-                                <!-- Marker wird per JS hinzugefügt -->
-                                <circle id="combinedGoalMarker" cx="0" cy="0" r="8" fill="#16a34a" stroke="white"
-                                    stroke-width="2" style="display: none;" />
-                            </svg>
-                        </div>
-                        <!-- Spielart-Auswahl -->
-                        <div class="playtype-selection" style="margin-top: 10px;">
-                            <div id="combinedPlayTypeList" class="playtype-buttons">
-                                <button type="button" class="playtype-btn" data-playtype="schnelle_mitte">Schnelle
-                                    Mitte</button>
-                                <button type="button" class="playtype-btn" data-playtype="tempo_gegenstoss">Tempo
-                                    Gegenstoß</button>
-                                <button type="button" class="playtype-btn" data-playtype="spielzug">Spielzug</button>
-                                <button type="button" class="playtype-btn" data-playtype="freies_spiel">Freies
-                                    Spiel</button>
-                            </div>
-                        </div>
+        <!-- Modal: Kombinierter Wurf (Handball Hub) -->
+    <div id="combinedThrowModal" class="modal-overlay versteckt" style="z-index: 10042;">
+        <div class="hub-popover" style="width: 600px; max-width: 98vw; max-height: 95vh; display: flex; flex-direction: column;">
+            <div class="hub-modal-header">
+                <h3>Wurf-Details</h3>
+                <button class="icon-btn-ghost" id="closeCombinedThrowModal"><i data-lucide="x"></i></button>
+            </div>
+            <div class="hub-modal-body" style="padding: 10px; gap: 10px;">
+                <div class="throw-section-field">
+                    <label class="hub-label">1. Feldposition</label>
+                    <div id="combinedWurfpositionFeldContainer" style="width: 100%; aspect-ratio: 1.5; border: 1px solid var(--hub-card-border); border-radius: 8px; background: rgba(0,0,0,0.2); overflow: hidden; display: flex; align-items: center; justify-content: center;">
+                        <svg id="combinedFieldSvg" viewBox="-10 -10 320 240" style="width: 100%; height: 100%; cursor: crosshair;">
+                            <!-- Field Zones (Tactical Interaction Layer) -->
+                            <g class="field-zones-layer">
+                                <path class="field-zone-path" data-zone="1" d="M 37 18 L 75 18 Q 75 39.6 81.8 54.7 L 47.2 85.3 Q 37 57.6 37 18 Z" fill="transparent"/>
+                                <path class="field-zone-path" data-zone="2" d="M 47.2 85.3 L 81.8 54.7 Q 90.8 74.9 111.8 83.5 L 92.4 138.1 Q 60.7 122.3 47.2 85.3 Z" fill="transparent"/>
+                                <path class="field-zone-path" data-zone="3" d="M 92.4 138.1 L 111.8 83.5 Q 127.5 90 150 90 Q 172.5 90 188.2 83.5 L 207.6 138.1 Q 183.9 150 150 150 Q 116.1 150 92.4 138.1 Z" fill="transparent"/>
+                                <path class="field-zone-path" data-zone="4" d="M 207.6 138.1 L 188.2 83.5 Q 209.2 74.9 218.2 54.7 L 252.8 85.3 Q 239.3 122.3 207.6 138.1 Z" fill="transparent"/>
+                                <path class="field-zone-path" data-zone="5" d="M 263 18 L 225 18 Q 225 39.6 218.2 54.7 L 252.8 85.3 Q 263 57.6 263 18 Z" fill="transparent"/>
+                                <path class="field-zone-path" data-zone="6" d="M 10 18 L 37 18 Q 37 57.6 47.2 85.3 Q 60.7 122.3 92.4 138.1 L 63.3 220 L 10 220 Z" fill="transparent"/>
+                                <path class="field-zone-path" data-zone="7" d="M 63.3 220 L 92.4 138.1 Q 116.1 150 150 150 Q 183.9 150 207.6 138.1 L 236.7 220 Z" fill="transparent"/>
+                                <path class="field-zone-path" data-zone="8" d="M 290 18 L 263 18 Q 263 57.6 252.8 85.3 Q 239.3 122.3 207.6 138.1 L 236.7 220 L 290 220 Z" fill="transparent"/>
+                                <path class="field-zone-path" data-zone="9" d="M 10 220 L 290 220 L 290 388 L 10 388 Z" fill="transparent"/>
+                            </g>
+                            <rect x="10" y="10" width="280" height="600" fill="none" stroke="currentColor" stroke-width="2"/>
+                            <rect x="112" y="10" width="76" height="8" fill="currentColor" opacity="0.5"/>
+                            <path d="M 75 18 Q 75 90 150 90 Q 225 90 225 18" fill="none" stroke="currentColor" stroke-width="2" opacity="0.5"/>
+                            <path d="M 37 18 Q 37 150 150 150 Q 263 150 263 18" fill="none" stroke="currentColor" stroke-width="1" stroke-dasharray="6,3" opacity="0.5"/>
+                            <circle cx="150" cy="65" r="4" fill="currentColor" opacity="0.5"/>
+                            
+                            <!-- Modern Pulse Marker -->
+                            <g id="combinedFieldMarker" style="display:none; pointer-events: none;">
+                                <circle cx="0" cy="0" r="10" fill="var(--hub-accent)" class="tracking-marker-pulse"/>
+                                <line x1="-12" y1="0" x2="12" y2="0" stroke="var(--hub-accent)" stroke-width="2"/>
+                                <line x1="0" y1="-12" x2="0" y2="12" stroke="var(--hub-accent)" stroke-width="2"/>
+                                <circle cx="0" cy="0" r="5" fill="var(--hub-accent)" class="tracking-marker-inner"/>
+                            </g>
+                        </svg>
                     </div>
                 </div>
-                <!-- Assist-Auswahl -->
-                <div class="assist-selection-section">
-                    <h4 style="font-size: 0.9rem; color: var(--text-muted); margin-bottom: 8px;">Assist von:</h4>
-                    <div id="combinedAssistPlayerList" class="assist-player-grid">
-                        <!-- Spieler-Buttons werden per JS hinzugefügt -->
+                <div class="throw-section-goal">
+                    <label class="hub-label">2. Torbild</label>
+                    <div id="combinedWurfbildUmgebungContainer" style="width: 100%; aspect-ratio: 1.5; border: 1px solid var(--hub-card-border); border-radius: 8px; background: rgba(0,0,0,0.2); overflow: hidden; display: flex; align-items: center; justify-content: center;">
+                         <svg id="combinedGoalSvg" viewBox="10 -10 280 220" style="width: 100%; height: 100%; cursor: crosshair;">
+                             <!-- Goal Zones Grid (Tactical Interaction Layer) -->
+                             <g class="goal-zones-layer">
+                                 <rect class="goal-zone-rect" data-zone="1" x="25" y="10" width="83.3" height="60" fill="transparent"/>
+                                 <rect class="goal-zone-rect" data-zone="2" x="108.3" y="10" width="83.3" height="60" fill="transparent"/>
+                                 <rect class="goal-zone-rect" data-zone="3" x="191.7" y="10" width="83.3" height="60" fill="transparent"/>
+                                 <rect class="goal-zone-rect" data-zone="4" x="25" y="70" width="83.3" height="60" fill="transparent"/>
+                                 <rect class="goal-zone-rect" data-zone="5" x="108.3" y="70" width="83.3" height="60" fill="transparent"/>
+                                 <rect class="goal-zone-rect" data-zone="6" x="191.7" y="70" width="83.3" height="60" fill="transparent"/>
+                                 <rect class="goal-zone-rect" data-zone="7" x="25" y="130" width="83.3" height="60" fill="transparent"/>
+                                 <rect class="goal-zone-rect" data-zone="8" x="108.3" y="130" width="83.3" height="60" fill="transparent"/>
+                                 <rect class="goal-zone-rect" data-zone="9" x="191.7" y="130" width="83.3" height="60" fill="transparent"/>
+                             </g>
+                             <rect x="25" y="10" width="250" height="180" fill="none" stroke="currentColor" stroke-width="4"/>
+                             <line x1="108.3" y1="10" x2="108.3" y2="190" stroke="currentColor" stroke-width="1" stroke-dasharray="5,5" opacity="0.3"/>
+                             <line x1="191.7" y1="10" x2="191.7" y2="190" stroke="currentColor" stroke-width="1" stroke-dasharray="5,5" opacity="0.3"/>
+                             <line x1="25" y1="70" x2="275" y2="70" stroke="currentColor" stroke-width="1" stroke-dasharray="5,5" opacity="0.3"/>
+                             <line x1="25" y1="130" x2="275" y2="130" stroke="currentColor" stroke-width="1" stroke-dasharray="5,5" opacity="0.3"/>
+                             
+                             <!-- Modern Pulse Marker Goal -->
+                             <g id="combinedGoalMarker" style="display:none; pointer-events: none;">
+                                 <circle cx="0" cy="0" r="12" fill="var(--hub-accent)" class="tracking-marker-pulse"/>
+                                 <line x1="-14" y1="0" x2="14" y2="0" stroke="var(--hub-accent)" stroke-width="2"/>
+                                 <line x1="0" y1="-14" x2="0" y2="14" stroke="var(--hub-accent)" stroke-width="2"/>
+                                 <circle cx="0" cy="0" r="6" fill="var(--hub-accent)" class="tracking-marker-inner"/>
+                             </g>
+                         </svg>
                     </div>
-                    <button type="button" id="combinedAssistNone" class="shadcn-btn-outline shadcn-btn-sm"
-                        style="margin-top: 8px;">Kein Assist</button>
                 </div>
-                <div class="shadcn-modal-footer" style="margin-top: 1rem;">
-                    <button class="shadcn-btn-outline" id="combinedThrowSkip">Überspringen</button>
-                    <button class="shadcn-btn-primary" id="combinedThrowSave">Weiter</button>
+                
+                <div class="assist-selection-section" style="margin-top: 5px;">
+                    <h4 class="hub-label" style="font-size: 0.75rem; margin-bottom: 4px;">Assist</h4>
+                    <div id="combinedAssistPlayerList" class="hub-player-grid compact-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(40px, 1fr)); gap: 4px;">
+                        <!-- JS populated -->
+                    </div>
+                    <button id="combinedAssistNone" class="assist-player-btn dash-rsvp-modern-btn" style="width: 100%; margin-top: 5px; padding: 2px; font-size: 0.7rem;">Kein Assist</button>
+                </div>
+
+                <div class="play-type-section" style="margin-top: 5px;">
+                    <h4 class="hub-label" style="font-size: 0.75rem; margin-bottom: 4px;">Wurf-Typ</h4>
+                    <div id="combinedPlayTypeList" style="display: flex; flex-wrap: wrap; gap: 6px;">
+                        <button class="playtype-btn dash-rsvp-modern-btn" data-playtype="Fernwurf" style="padding: 4px 8px; font-size: 0.75rem; height: auto;">Fern</button>
+                        <button class="playtype-btn dash-rsvp-modern-btn" data-playtype="Durchbruch" style="padding: 4px 8px; font-size: 0.75rem; height: auto;">Durchbruch</button>
+                        <button class="playtype-btn dash-rsvp-modern-btn" data-playtype="Konter" style="padding: 4px 8px; font-size: 0.75rem; height: auto;">TG</button>
+                        <button class="playtype-btn dash-rsvp-modern-btn" data-playtype="7m" style="padding: 4px 8px; font-size: 0.75rem; height: auto;">7m</button>
+                        <button class="playtype-btn dash-rsvp-modern-btn" data-playtype="Freiwurf" style="padding: 4px 8px; font-size: 0.75rem; height: auto;">Frei</button>
+                    </div>
                 </div>
             </div>
-        </div>
-
-        <!-- Opponent Number Modal (Shadcn Style) -->
-        <div id="gegnerNummerModal" class="modal-overlay versteckt">
-            <div class="shadcn-modal-content">
-                <div class="shadcn-modal-header">
-                    <h3 id="gegnerNummerTitel">Torschütze (Gast)</h3>
-                </div>
-                <div class="shadcn-modal-body" style="margin-top: 1rem;">
-                    <div id="bekannteGegnerListe"
-                        style="display: flex; flex-wrap: wrap; gap: 5px; margin-bottom: 1rem;">
-                    </div>
-                    <div
-                        style="border-top: 1px solid hsl(var(--border)); padding-top: 10px; display: flex; flex-direction: column; gap: 10px;">
-                        <input type="number" id="neueGegnerNummer" placeholder="Neue Nummer" class="shadcn-input">
-                        <input type="text" id="neueGegnerName" placeholder="Name (optional)" class="shadcn-input">
-                        <label class="shadcn-checkbox-label"
-                            style="display: flex; align-items: center; gap: 8px; font-size: 0.9rem; cursor: pointer; margin-top: 5px;">
-                            <input type="checkbox" id="neueGegnerTorwart" style="cursor: pointer;">
-                            <span>Torwart (TW)</span>
-                        </label>
-                    </div>
-                </div>
-                <div class="shadcn-modal-footer">
-                    <button class="shadcn-btn-outline" id="gegnerNummerUeberspringen">Unbekannt / Weiter</button>
-                    <button class="shadcn-btn-primary" id="gegnerNummerSpeichern">Weiter</button>
-                </div>
+            <div class="hub-modal-footer" style="display: flex; gap: 8px; padding: 12px;">
+                <button id="combinedThrowSave" class="hub-btn-primary" style="flex: 1;">Speichern</button>
+                <button id="combinedThrowSkip" class="hub-btn-outline" style="flex: 1;">Abbrechen</button>
             </div>
         </div>
+    </div>
+
+    <!-- Modal: Gegner Nummer (Handball Hub) -->
+    <div id="gegnerNummerModal" class="modal-overlay versteckt" style="z-index: 10030;">
+        <div class="hub-popover" style="width: 450px; max-width: 95vw;">
+            <div class="hub-modal-header">
+                <h3 id="gegnerNummerTitel">Torschütze (Gast)</h3>
+                <button class="icon-btn-ghost" data-action="close-modal"><i data-lucide="x"></i></button>
+            </div>
+            
+            <div class="hub-modal-body">
+                <label class="hub-label">Bekannte Spieler</label>
+                <div id="bekannteGegnerListe" class="hub-player-grid compact-grid" style="margin-bottom: 20px; display: grid; grid-template-columns: repeat(auto-fill, minmax(60px, 1fr)); gap: 8px;">
+                    <!-- Managed via JS -->
+                </div>
+                
+                <div style="border-top: 1px solid var(--hub-card-border); padding-top: 16px;">
+                    <label class="hub-label">Neuer Spieler</label>
+                    <div style="display: flex; gap: 10px;">
+                        <input type="number" id="neueGegnerNummer" class="hub-input" placeholder="NR" style="width: 70px;">
+                        <input type="text" id="neueGegnerName" class="hub-input" placeholder="Name (optional)" style="flex: 1;">
+                    </div>
+                    <label style="display: flex; align-items: center; gap: 8px; margin-top: 12px; cursor: pointer; font-size: 0.85rem;">
+                        <input type="checkbox" id="neueGegnerTorwart">
+                        <span>Ist Torwart</span>
+                    </label>
+                </div>
+            </div>
+            
+            <div class="hub-modal-footer">
+                <button id="gegnerNummerUeberspringen" class="hub-btn-outline" style="margin-right: auto;">Unbekannt</button>
+                <button id="gegnerNummerSpeichern" class="hub-btn-primary">Bestätigen</button>
+            </div>
+        </div>
+    </div>
 
         <!-- Quick Add Home Player Modal (during game) -->
         <!-- Quick Add Home Player Modal (Shadcn Style) -->
@@ -2002,29 +1904,30 @@
             </div>
         </div>
 
-        <!-- Add Opponent Modal (Shadcn Style) -->
-        <div id="addGegnerModal" class="modal-overlay versteckt">
-            <div class="shadcn-modal-content">
-                <div class="shadcn-modal-header">
-                    <h3>Gegner hinzufügen</h3>
-                    <p>Gib die Nummer und optional den Namen ein:</p>
+    <!-- Modal: Gegner hinzufügen (Handball Hub) -->
+    <div id="addGegnerModal" class="modal-overlay versteckt" style="z-index: 10031;">
+        <div class="hub-popover" style="width: 400px; max-width: 95vw;">
+            <div class="hub-modal-header">
+                <h3>Gegner hinzufügen</h3>
+                <button class="icon-btn-ghost" data-action="close-modal"><i data-lucide="x"></i></button>
+            </div>
+            
+            <div class="hub-modal-body">
+                <div class="hub-field" style="margin-bottom: 16px;">
+                    <label class="hub-label">Trikotnummer</label>
+                    <input type="number" id="addGegnerNummerInput" placeholder="00" class="hub-input">
                 </div>
-                <div class="shadcn-modal-body"
-                    style="display: flex; flex-direction: column; gap: 10px; margin-top: 1rem;">
-                    <input type="number" id="addGegnerNummerInput" placeholder="Nummer" class="shadcn-input">
-                    <input type="text" id="addGegnerNameInput" placeholder="Name (optional)" class="shadcn-input">
-                    <label class="shadcn-checkbox-label"
-                        style="display: flex; align-items: center; gap: 8px; font-size: 0.9rem; cursor: pointer; margin-top: 5px;">
-                        <input type="checkbox" id="addGegnerTorwartInput" style="cursor: pointer;">
-                        <span>Torwart (TW)</span>
-                    </label>
-                </div>
-                <div class="shadcn-modal-footer">
-                    <button class="shadcn-btn-outline" id="addGegnerAbbrechen">Abbrechen</button>
-                    <button class="shadcn-btn-primary" id="addGegnerSpeichern">Hinzufügen</button>
+                <div class="hub-field">
+                    <label class="hub-label">Name (optional)</label>
+                    <input type="text" id="addGegnerNameInput" placeholder="Spielername" class="hub-input">
                 </div>
             </div>
+            
+            <div class="hub-modal-footer">
+                <button id="addGegnerBestatigen" class="hub-btn-primary" style="width: 100%;">Hinzufügen</button>
+            </div>
         </div>
+    </div>
 
         <!-- 7m Outcome Modal (Shadcn Style) -->
         <div id="sevenMeterOutcomeModal" class="modal-overlay versteckt">
@@ -2057,210 +1960,179 @@
             </div>
         </div>
 
-        <!-- Live Game Overview Modal (Shadcn Style) -->
-        <div id="liveGameOverviewModal" class="modal-overlay versteckt">
-            <div class="shadcn-modal-content"
-                style="max-width: 900px; width: 95%; max-height: 90vh; display: flex; flex-direction: column;">
-                <div class="shadcn-modal-header">
-                    <h3>Spiel Übersicht (Aktuell)</h3>
+        <!-- Modal: Live Game Overview (Handball Hub) -->
+    <div id="liveGameOverviewModal" class="modal-overlay versteckt" style="z-index: 10050;">
+        <div class="hub-popover" style="width: 1000px; max-width: 98vw; height: 90vh; display: flex; flex-direction: column;">
+            <div class="hub-modal-header">
+                <h2>Live Spielanalyse</h2>
+                <div class="hub-header-actions">
+                    <div style="display: flex; gap: 8px;">
+                        <button id="liveOverviewTabStats" class="dash-rsvp-modern-btn active" data-status="going">Statistiken</button>
+                        <button id="liveOverviewTabHeatmap" class="dash-rsvp-modern-btn">Heatmap</button>
+                    </div>
+                    <button id="closeLiveGameOverview" class="icon-btn-ghost"><i data-lucide="x"></i></button>
                 </div>
-                <!-- Body needs to scroll -->
-                <div class="shadcn-modal-body" style="overflow-y: auto; flex: 1;">
-                    <!-- Score Header -->
-                    <div class="live-overview-score-header"
-                        style="margin-bottom: 24px; text-align: center; background: hsl(var(--muted)/0.3); padding: 20px; border-radius: 12px; border: 1px solid hsl(var(--border));">
-                        <div style="display: flex; justify-content: space-around; align-items: center; gap: 20px;">
-                            <div style="flex: 1;">
-                                <div id="liveOverviewTeamHeim"
-                                    style="font-size: 1.1rem; font-weight: 600; color: hsl(var(--primary));">HEIM
-                                </div>
-                            </div>
-                            <div
-                                style="font-size: 2.5rem; font-weight: 800; letter-spacing: -1px; min-width: 120px; display: flex; justify-content: center; align-items: center; gap: 8px;">
-                                <span id="liveOverviewScoreHeim">0</span>
-                                <span style="color: hsl(var(--muted-foreground)); opacity: 0.5;">:</span>
-                                <span id="liveOverviewScoreGegner">0</span>
-                            </div>
-                            <div style="flex: 1;">
-                                <div id="liveOverviewTeamGegner"
-                                    style="font-size: 1.1rem; font-weight: 600; color: #ef4444;">GEGNER</div>
-                            </div>
-                        </div>
-                        <div id="liveOverviewTime"
-                            style="margin-top: 8px; font-size: 0.9rem; font-weight: 500; color: hsl(var(--muted-foreground)); font-family: monospace;">
-                            00:00</div>
-                    </div>
-
-                    <!-- Tabs -->
-                    <div class="heatmap-tabs">
-                        <button class="heatmap-tab shadcn-btn-outline active"
-                            id="liveOverviewTabStats">Statistik</button>
-                        <button class="heatmap-tab shadcn-btn-outline" id="liveOverviewTabHeatmap">Heatmap</button>
-                    </div>
-
-                    <!-- Content: Stats -->
-                    <div id="liveOverviewContentStats">
-                        <!-- Heim Stats Card -->
-                        <div
-                            style="background: var(--bg-container); border-radius: 12px; padding: 15px; border: 1px solid var(--border-color); margin-bottom: 20px; min-width: 0;">
-                            <div
-                                style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; border-bottom: 1px solid var(--border-color); padding-bottom: 10px;">
-                                <h4 id="liveOverviewTeamHeimTitle"
-                                    style="margin: 0; font-size: 1.1rem; color: var(--team-primary-color);">Heim</h4>
-                            </div>
-                            <div style="overflow-x: auto; display: block; width: 100%; max-width: 100%;">
-                                <table class="modern-stats-table"
-                                    style="display: block; width: max-content !important; min-width: 800px !important; border-collapse: collapse;">
+            </div>
+            
+            <div class="hub-modal-body" style="flex: 1; overflow-y: auto; padding: 20px;">
+                <!-- Content: Stats -->
+                <div id="liveOverviewContentStats">
+                    <div style="display: flex; flex-direction: column; gap: 30px;">
+                        <!-- Home Team -->
+                        <div class="hub-card">
+                            <h3 class="hub-label" style="font-size: 0.9rem; margin-bottom: 16px;">HEIMMANTLSCHAFT</h3>
+                            <div class="hub-table-wrapper">
+                                <table class="hub-table">
                                     <thead>
-                                        <tr style="text-align: left; color: var(--text-muted); font-size: 0.75rem;">
-                                            <th style="padding: 8px;">SPIELER</th>
-                                            <th style="padding: 8px;">ZEIT</th>
-                                            <th style="padding: 8px;" title="Tore Gesamt">T</th>
-                                            <th style="padding: 8px;" title="Feldtore">F</th>
-                                            <th style="padding: 8px;" title="7 Meter">7m</th>
-                                            <th style="padding: 8px;">FEHL</th>
-                                            <th style="padding: 8px;" title="Assists">A</th>
-                                            <th style="padding: 8px;">QUOTE</th>
-                                            <th style="padding: 8px;">BALL</th>
-                                            <th style="padding: 8px;">FOUL</th>
-                                            <th style="padding: 8px;">BLK</th>
-                                            <th style="padding: 8px;">1v1+</th>
-                                            <th style="padding: 8px;">1v1-</th>
-                                            <th style="padding: 8px;">7m+</th>
-                                            <th style="padding: 8px;">2m+</th>
-                                            <th style="padding: 8px;">G</th>
-                                            <th style="padding: 8px;">2'</th>
-                                            <th style="padding: 8px;">R</th>
+                                        <tr>
+                                            <th>Spieler</th>
+                                            <th title="Tore Gesamt">T</th>
+                                            <th title="Feldtore">F</th>
+                                            <th title="7 Meter">7m</th>
+                                            <th>FEHL</th>
+                                            <th title="Assists">A</th>
+                                            <th>QUOTE</th>
+                                            <th>BALL</th>
+                                            <th>FOUL</th>
+                                            <th>BLK</th>
+                                            <th>1v1+</th>
+                                            <th>1v1-</th>
+                                            <th>7m+</th>
+                                            <th>2m+</th>
+                                            <th>G</th>
+                                            <th>2'</th>
+                                            <th>R</th>
                                         </tr>
                                     </thead>
-                                    <tbody id="liveOverviewStatsBody" style="font-size: 0.85rem;"></tbody>
+                                    <tbody id="liveOverviewStatsBody"></tbody>
                                 </table>
                             </div>
                         </div>
 
-                        <!-- Gegner Stats Card -->
-                        <div
-                            style="background: var(--bg-container); border-radius: 12px; padding: 15px; border: 1px solid var(--border-color); min-width: 0;">
-                            <div
-                                style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; border-bottom: 1px solid var(--border-color); padding-bottom: 10px;">
-                                <h4 id="liveOverviewTeamGegnerTitle"
-                                    style="margin: 0; font-size: 1.1rem; color: var(--team-opponent-color);">Gegner</h4>
-                            </div>
-                            <div style="overflow-x: auto; display: block; width: 100%; max-width: 100%;">
-                                <table class="modern-stats-table"
-                                    style="display: block; width: max-content !important; min-width: 800px !important; border-collapse: collapse;">
+                        <!-- Opponent Team -->
+                        <div class="hub-card">
+                            <h3 class="hub-label" style="font-size: 0.9rem; margin-bottom: 16px;">GASTMANNSCHAFT</h3>
+                            <div class="hub-table-wrapper">
+                                <table class="hub-table">
                                     <thead>
-                                        <tr style="text-align: left; color: var(--text-muted); font-size: 0.75rem;">
-                                            <th style="padding: 8px;">SPIELER</th>
-                                            <th style="padding: 8px;">ZEIT</th>
-                                            <th style="padding: 8px;" title="Tore Gesamt">T</th>
-                                            <th style="padding: 8px;" title="Feldtore">F</th>
-                                            <th style="padding: 8px;" title="7 Meter">7m</th>
-                                            <th style="padding: 8px;">FEHL</th>
-                                            <th style="padding: 8px;" title="Assists">A</th>
-                                            <th style="padding: 8px;">QUOTE</th>
-                                            <th style="padding: 8px;">BALL</th>
-                                            <th style="padding: 8px;">FOUL</th>
-                                            <th style="padding: 8px;">BLK</th>
-                                            <th style="padding: 8px;">1v1+</th>
-                                            <th style="padding: 8px;">1v1-</th>
-                                            <th style="padding: 8px;">7m+</th>
-                                            <th style="padding: 8px;">2m+</th>
-                                            <th style="padding: 8px;">G</th>
-                                            <th style="padding: 8px;">2'</th>
-                                            <th style="padding: 8px;">R</th>
+                                        <tr>
+                                            <th>Spieler</th>
+                                            <th title="Tore Gesamt">T</th>
+                                            <th title="Feldtore">F</th>
+                                            <th title="7 Meter">7m</th>
+                                            <th>FEHL</th>
+                                            <th title="Assists">A</th>
+                                            <th>QUOTE</th>
+                                            <th>BALL</th>
+                                            <th>FOUL</th>
+                                            <th>BLK</th>
+                                            <th>1v1+</th>
+                                            <th>1v1-</th>
+                                            <th>7m+</th>
+                                            <th>2m+</th>
+                                            <th>G</th>
+                                            <th>2'</th>
+                                            <th>R</th>
                                         </tr>
                                     </thead>
-                                    <tbody id="liveOverviewStatsGegnerBody" style="font-size: 0.85rem;"></tbody>
+                                    <tbody id="liveOverviewStatsGegnerBody"></tbody>
                                 </table>
                             </div>
                         </div>
                     </div>
+                </div>
 
-                    <!-- Content: Heatmap -->
-                    <div id="liveOverviewContentHeatmap" class="versteckt" style="text-align: center;">
-                        <div class="heatmap-tabs" style="margin-top: 10px;">
-                            <button class="heatmap-tab shadcn-btn-outline active"
-                                id="liveOverviewSubTabTor">Tor</button>
-                            <button class="heatmap-tab shadcn-btn-outline" id="liveOverviewSubTabFeld">Feld</button>
-                            <button class="heatmap-tab shadcn-btn-outline"
-                                id="liveOverviewSubTabKombi">Kombiniert</button>
+                <!-- Content: Heatmap -->
+                <div id="liveOverviewContentHeatmap" class="versteckt">
+                    <div style="display: flex; flex-direction: column; align-items: center; gap: 20px;">
+                        <div style="display: flex; gap: 8px;">
+                            <button id="liveOverviewSubTabTor" class="dash-rsvp-modern-btn active" data-status="going">Tor</button>
+                            <button id="liveOverviewSubTabFeld" class="dash-rsvp-modern-btn">Feld</button>
+                            <button id="liveOverviewSubTabKombi" class="dash-rsvp-modern-btn">Kombiniert</button>
                         </div>
-                        <!-- Filters reuse history filters logic or new ones? -->
-                        <!-- We can reuse IDs if we are careful, but better to use unique IDs and unified event handling -->
-                        <div class="heatmap-filter">
-                            <label><input type="radio" name="liveOverviewHeatTeam" value="heim" checked>
-                                Heim</label>
-                            <label><input type="radio" name="liveOverviewHeatTeam" value="gegner"> Gegner</label>
-                            <span style="margin: 0 10px;">|</span>
-                            <label><input type="checkbox" id="liveOverviewHeatmapToreFilter" checked>
-                                Feldtore</label>
-                            <label><input type="checkbox" id="liveOverviewHeatmap7mFilter"> 7m</label>
-                            <label><input type="checkbox" id="liveOverviewHeatmapMissedFilter" checked>
-                                Fehlwürfe</label>
-                        </div>
-                        <div id="liveOverviewHeatmapContainer"
-                            style="display: flex; justify-content: center; padding: 20px;">
-                            <svg id="liveOverviewHeatmapSvg" viewBox="0 0 300 200" width="600" height="400"
-                                style="margin: 0 auto; display: block;"></svg>
+                        
+                        <div class="hub-card" style="width: 100%; max-width: 800px; text-align: center;">
+                            <div style="margin-bottom: 16px; display: flex; justify-content: center; gap: 20px; font-size: 0.85rem;">
+                                <label style="display: flex; align-items: center; gap: 6px; cursor: pointer;">
+                                    <input type="radio" name="liveOverviewHeatTeam" value="heim" checked> Heim
+                                </label>
+                                <label style="display: flex; align-items: center; gap: 6px; cursor: pointer;">
+                                    <input type="radio" name="liveOverviewHeatTeam" value="gegner"> Gegner
+                                </label>
+                                <span style="opacity: 0.2;">|</span>
+                                <label style="display: flex; align-items: center; gap: 6px; cursor: pointer;">
+                                    <input type="checkbox" id="liveOverviewHeatmapToreFilter" checked> Tore
+                                </label>
+                                <label style="display: flex; align-items: center; gap: 6px; cursor: pointer;">
+                                    <input type="checkbox" id="liveOverviewHeatmap7mFilter"> 7m
+                                </label>
+                                <label style="display: flex; align-items: center; gap: 6px; cursor: pointer;">
+                                    <input type="checkbox" id="liveOverviewHeatmapMissedFilter" checked> Fehl
+                                </label>
+                            </div>
+                            <svg id="liveOverviewHeatmapSvg" viewBox="0 0 300 200" style="width: 100%; max-height: 50vh; outline: 1px solid var(--hub-card-border);"></svg>
                         </div>
                     </div>
-
-                </div>
-
-                <div class="shadcn-modal-footer">
-                    <button class="shadcn-btn-outline" id="closeLiveGameOverview">Schließen</button>
                 </div>
             </div>
-        </div>
-
-
-        <!-- Custom Confirm/Alert Modal -->
-        <!-- Custom Confirm/Alert Modal (Shadcn Style) -->
-        <div id="customConfirmModal" class="modal-overlay versteckt" style="z-index: 10005;">
-            <div class="shadcn-modal-content">
-                <div class="shadcn-modal-header">
-                    <h3 id="customConfirmTitle">Bestätigung</h3>
-                    <p id="customConfirmMessage"></p>
-                </div>
-                <div class="shadcn-modal-footer">
-                    <button id="customConfirmNo" class="shadcn-btn-outline">Abbrechen</button>
-                    <button id="customConfirmYes" class="shadcn-btn-primary">Fortfahren</button>
-                </div>
+            
+            <div class="hub-modal-footer">
+                <button class="hub-btn-outline" data-action="close-modal" style="width: 100%;">Schließen</button>
             </div>
         </div>
+    </div>
 
-        <!-- Custom Alert Modal (nur OK Button) -->
-        <!-- Custom Alert Modal (Shadcn Style) -->
-        <div id="customAlertModal" class="modal-overlay versteckt" style="z-index: 10005;">
-            <div class="shadcn-modal-content">
-                <div class="shadcn-modal-header">
-                    <h3 id="customAlertTitle">Hinweis</h3>
-                    <p id="customAlertMessage"></p>
-                </div>
-                <div class="shadcn-modal-footer">
-                    <button id="customAlertOk" class="shadcn-btn-primary"
-                        style="width: 100%; max-width: 100px;">OK</button>
-                </div>
+
+    <!-- Modal: Bestätigung (Handball Hub) -->
+    <div id="customConfirmModal" class="modal-overlay versteckt" style="z-index: 10020;">
+        <div class="hub-popover" style="width: 400px; max-width: 95vw;">
+            <div class="hub-modal-header">
+                <h3 id="customConfirmTitle">Bestätigung</h3>
+                <button class="icon-btn-ghost" data-action="close-modal"><i data-lucide="x"></i></button>
+            </div>
+            <div class="hub-modal-body">
+                <p id="customConfirmMessage" style="color: var(--hub-muted); line-height: 1.5; margin: 0;"></p>
+            </div>
+            <div class="hub-modal-footer">
+                <button id="customConfirmNo" class="hub-btn-outline" style="min-width: 100px;">Abbrechen</button>
+                <button id="customConfirmYes" class="hub-btn-primary" style="min-width: 100px;">Fortfahren</button>
             </div>
         </div>
+    </div>
 
-        <!-- Custom Prompt Modal (Input) -->
-        <div id="customPromptModal" class="modal-overlay versteckt">
-            <div class="shadcn-modal-content">
-                <div class="shadcn-modal-header">
-                    <h3 id="customPromptTitle">Eingabe</h3>
-                    <p id="customPromptMessage"></p>
-                </div>
-                <div class="shadcn-modal-body">
-                    <input type="text" id="customPromptInput" class="shadcn-input" placeholder="Text eingeben..." autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" data-1p-ignore="true" data-bwignore="true" data-lpignore="true" style="width: 100%; box-sizing: border-box;">
-                </div>
-                <div class="shadcn-modal-footer">
-                    <button id="customPromptCancel" class="shadcn-btn-secondary">Abbrechen</button>
-                    <button id="customPromptConfirm" class="shadcn-btn-primary">Bestätigen</button>
-                </div>
+    <!-- Modal: Hinweis (Handball Hub) -->
+    <div id="customAlertModal" class="modal-overlay versteckt" style="z-index: 10020;">
+        <div class="hub-popover" style="width: 400px; max-width: 95vw;">
+            <div class="hub-modal-header">
+                <h3 id="customAlertTitle">Hinweis</h3>
+                <button class="icon-btn-ghost" data-action="close-modal"><i data-lucide="x"></i></button>
+            </div>
+            <div class="hub-modal-body">
+                <p id="customAlertMessage" style="color: var(--hub-muted); line-height: 1.5; margin: 0;"></p>
+            </div>
+            <div class="hub-modal-footer">
+                <button id="customAlertOk" class="hub-btn-primary" style="width: 100%;">OK</button>
             </div>
         </div>
+    </div>
+
+    <!-- Modal: Eingabe (Handball Hub) -->
+    <div id="customPromptModal" class="modal-overlay versteckt" style="z-index: 10020;">
+        <div class="hub-popover" style="width: 400px; max-width: 95vw;">
+            <div class="hub-modal-header">
+                <h3 id="customPromptTitle">Eingabe</h3>
+                <button class="icon-btn-ghost" data-action="close-modal"><i data-lucide="x"></i></button>
+            </div>
+            <div class="hub-modal-body">
+                <p id="customPromptMessage" style="color: var(--hub-muted); font-size: 0.85rem; margin-bottom: 12px;"></p>
+                <input type="text" id="customPromptInput" class="hub-input" placeholder="Text eingeben..." autocomplete="off">
+            </div>
+            <div class="hub-modal-footer">
+                <button id="customPromptCancel" class="hub-btn-outline">Abbrechen</button>
+                <button id="customPromptConfirm" class="hub-btn-primary">Bestätigen</button>
+            </div>
+        </div>
+    </div>
 
         <!-- Load Play Modal -->
         <div id="loadPlayModal" class="modal-overlay versteckt">
@@ -2422,87 +2294,100 @@
         #deleteTeamBtn { display: none; }
     </style>
 
-    <!-- SUB SETTINGS MODAL -->
-    <div id="subSettingsModal" class="event-popover versteckt" style="width: 320px; z-index: 9999;">
-        <div class="modal-header">
-            <h3 style="font-size: 1rem;">Abo-Einstellungen</h3>
-            <button id="closeSubSettingsBtn" class="close-btn">X</button>
-        </div>
-        <div class="modal-body" style="padding: 1rem; display: flex; flex-direction: column; gap: 1rem;">
-            <div style="display: flex; flex-direction: column; gap: 0.75rem; font-size: 0.85rem;">
-                <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
-                    <input type="checkbox" id="modalSubRequireReason" />
-                    <span>Grundpflicht bei Absage/Vlt</span>
-                </label>
-                <label style="display: flex; align-items: center; gap: 8px;">
-                    <span>Abmeldefrist (Std. vorher):</span>
-                    <input type="number" id="modalSubDeadlineHours" class="shadcn-input" style="width: 50px; padding: 2px 5px;" min="0" />
-                </label>
-                <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
-                    <input type="checkbox" id="modalSubDefaultStatus" />
-                    <span>Automatisch Dabei</span>
-                </label>
+    <!-- Modal: Subscription Settings -->
+    <div id="subSettingsOverlay" class="modal-overlay versteckt" style="z-index: 10060;">
+        <div id="subSettingsModal" class="event-popover" style="width: 320px; max-width: 95vw;">
+            <div class="modal-header">
+                <h3 style="font-size: 1rem;">Abo-Einstellungen</h3>
+                <button id="closeSubSettingsBtn" class="close-btn">X</button>
             </div>
-            <button id="saveSubSettingsBtn" class="shadcn-btn-primary" style="width: 100%;">Einstellungen speichern</button>
+            <div class="modal-body" style="padding: 1rem; display: flex; flex-direction: column; gap: 1rem;">
+                <div style="display: flex; flex-direction: column; gap: 0.75rem; font-size: 0.85rem;">
+                    <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                        <input type="checkbox" id="modalSubRequireReason" />
+                        <span>Grundpflicht bei Absage/Vlt</span>
+                    </label>
+                    <label style="display: flex; align-items: center; gap: 8px;">
+                        <span>Abmeldefrist (Std. vorher):</span>
+                        <input type="number" id="modalSubDeadlineHours" class="shadcn-input" style="width: 50px; padding: 2px 5px;" min="0" />
+                    </label>
+                    <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                        <input type="checkbox" id="modalSubDefaultStatus" />
+                        <span>Automatisch Dabei</span>
+                    </label>
+                </div>
+                <button id="saveSubSettingsBtn" class="shadcn-btn-primary" style="width: 100%;">Einstellungen speichern</button>
+            </div>
         </div>
     </div>
 
-    <!-- POPOVER: Add Absence -->
-    <div id="absenceModal" class="event-popover versteckt" style="width: 350px;">
-        <div class="modal-header">
-            <h3>Abwesenheit melden</h3>
-            <button id="closeAbsenceBtn" class="icon-btn-ghost"><i data-lucide="x"></i></button>
-        </div>
-        <div class="modal-body">
-            <div class="form-section">
-                <label class="form-label">Grund</label>
-                <input type="text" id="absenceReasonInput" class="shadcn-input" placeholder="z.B. Urlaub, Verletzt, Arbeit...">
+    <!-- Modal: Abwesenheit Melden (Handball Hub) -->
+    <div id="absenceModal" class="modal-overlay versteckt" style="z-index: 10050;">
+        <div class="event-popover-modern" style="width: 400px; max-width: 95vw;">
+            <div class="modal-header-modern">
+                <h2 class="manage-section-title">Abwesenheit melden</h2>
+                <button id="closeAbsenceBtn" class="icon-btn-ghost"><i data-lucide="x"></i></button>
             </div>
             
-            <div class="form-section">
-                <label class="form-label">Typ der Abwesenheit</label>
-                <div style="display: flex; gap: 8px; margin-bottom: 12px;">
-                    <button id="absenceTypeRange" class="shadcn-btn-outline active" style="flex: 1; font-size: 0.75rem; padding: 6px;">Zeitraum</button>
-                    <button id="absenceTypeWeekly" class="shadcn-btn-outline" style="flex: 1; font-size: 0.75rem; padding: 6px;">Ein Tag in der Woche</button>
+            <div class="modal-body-modern">
+                <div class="form-section-modern">
+                    <label class="section-label-modern">Grund</label>
+                    <input type="text" id="absenceReasonInput" class="minimal-input" placeholder="Urlaub, Verletzt, Arbeit...">
                 </div>
-            </div>
-
-            <div id="absenceRangeSettings" class="form-section">
-                <div class="form-row-2">
-                    <div class="input-group">
-                        <label class="form-label">Von</label>
-                        <input type="date" id="absenceStartDate" class="shadcn-input">
-                    </div>
-                    <div class="input-group">
-                        <label class="form-label">Bis (optional)</label>
-                        <input type="date" id="absenceEndDate" class="shadcn-input" placeholder="unbefristet">
+                
+                <div class="form-section-modern">
+                    <label class="section-label-modern">Typ der Abwesenheit</label>
+                    <div class="radio-pill-group-modern">
+                        <label class="radio-pill training" id="absenceTypeRangeContainer">
+                            <input type="radio" name="absenceType" id="absenceTypeRange" checked>
+                            <span>Zeitraum</span>
+                        </label>
+                        <label class="radio-pill game" id="absenceTypeWeeklyContainer">
+                            <input type="radio" name="absenceType" id="absenceTypeWeekly">
+                            <span>Wöchentlich</span>
+                        </label>
                     </div>
                 </div>
-                <div style="font-size: 0.65rem; color: var(--text-muted); margin-top: 4px;">Tipp: Ohne Enddatum gilt die Abwesenheit dauerhaft ab dem Start.</div>
-            </div>
 
-            <div id="absenceWeeklySettings" class="form-section versteckt">
-                <label class="form-label">Jeden ...</label>
-                <select id="absenceWeekdaySelect" class="shadcn-input">
-                    <option value="1">Montag</option>
-                    <option value="2">Dienstag</option>
-                    <option value="3">Mittwoch</option>
-                    <option value="4">Donnerstag</option>
-                    <option value="5">Freitag</option>
-                    <option value="6">Samstag</option>
-                    <option value="0">Sonntag</option>
-                </select>
-            </div>
-            <div class="modal-footer" style="padding:0; margin-top:20px;">
-                <button id="saveAbsenceBtn" class="shadcn-btn-primary" style="width:100%; background:#6366f1; border-color:#6366f1;">Speichern</button>
+                <div id="absenceRangeSettings" class="form-section-modern card-group" style="gap: 12px;">
+                    <div class="input-with-icon">
+                        <i data-lucide="calendar"></i>
+                        <input type="date" id="absenceStartDate" class="minimal-input">
+                    </div>
+                    <div class="input-with-icon">
+                        <i data-lucide="calendar"></i>
+                        <input type="date" id="absenceEndDate" class="minimal-input" placeholder="Bis (optional)">
+                    </div>
+                </div>
+
+                <div id="absenceWeeklySettings" class="form-section-modern versteckt">
+                    <div class="input-with-icon">
+                        <i data-lucide="calendar-days"></i>
+                        <select id="absenceWeekdaySelect" class="minimal-input">
+                            <option value="1">Montag</option>
+                            <option value="2">Dienstag</option>
+                            <option value="3">Mittwoch</option>
+                            <option value="4">Donnerstag</option>
+                            <option value="5">Freitag</option>
+                            <option value="6">Samstag</option>
+                            <option value="0">Sonntag</option>
+                        </select>
+                        <i data-lucide="chevron-down" class="input-dropdown-icon"></i>
+                    </div>
+                </div>
+
+                <div id="absenceListContainer" class="manage-section" style="margin-top: 10px;">
+                    <div class="manage-section-header">
+                        <h4 class="manage-section-title">Deine Abwesenheiten</h4>
+                    </div>
+                    <div id="absenceList" class="manage-list-modern" style="max-height: 150px;">
+                        <!-- JS fills this -->
+                    </div>
+                </div>
             </div>
             
-            <div id="absenceListContainer" style="margin-top:20px; border-top:1px solid var(--border-color); padding-top:15px;">
-                <h4 style="font-size:0.85rem; margin-bottom:10px; color:var(--text-muted);">Deine gemeldeten Abwesenheiten</h4>
-                <div id="absenceList" style="max-height:150px; overflow-y:auto; display:flex; flex-direction:column; gap:8px;">
-                    <!-- JS fills this -->
-                    <div style="font-size:0.75rem; color:#888; font-style:italic;">Keine Abwesenheiten gemeldet.</div>
-                </div>
+            <div class="modal-footer-modern">
+                <button id="saveAbsenceBtn" class="shadcn-btn-primary" style="width: 100%;">Abspeichern</button>
             </div>
         </div>
     </div>
@@ -2665,6 +2550,28 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Montserrat:wght@400;700;900&family=Oswald:wght@400;700&family=Roboto+Condensed:wght@400;700&display=swap" rel="stylesheet">
+    <!-- Handball.net Import Modal -->
+    <div id="importHandballNetModal" class="modal-overlay versteckt" style="z-index: 10007;">
+        <div class="shadcn-modal-content" style="max-width: 500px;">
+            <div class="shadcn-modal-header">
+                <h3>Spiel von Handball.net importieren</h3>
+                <p style="font-size: 0.85rem; color: var(--text-muted);">Füge den Link zum Spielbericht ein, um Ergebnisse und Torschützen zu importieren.</p>
+            </div>
+            <div class="shadcn-modal-body" style="padding: 20px; display: flex; flex-direction: column; gap: 15px;">
+                <div style="display: flex; flex-direction: column; gap: 8px;">
+                    <label style="font-size: 0.85rem; font-weight: 500;">Spielbericht URL:</label>
+                    <input type="text" id="handballNetImportUrl" placeholder="https://www.handball.net/spiele/.../spielbericht" class="shadcn-input" style="width: 100%;">
+                </div>
+                <div id="importStatus" class="versteckt" style="padding: 10px; border-radius: 6px; font-size: 0.85rem;">
+                    <!-- Status message -->
+                </div>
+            </div>
+            <div class="shadcn-modal-footer">
+                <button id="cancelImportBtn" data-action="close-modal" class="shadcn-btn-outline">Abbrechen</button>
+                <button id="confirmImportBtn" data-action="import-handball-net-confirm" class="shadcn-btn-primary">Importieren</button>
+            </div>
+        </div>
+    </div>
 </body>
 
 </html>

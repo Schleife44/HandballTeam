@@ -44,7 +44,8 @@ import {
     liveOverviewHeatmapToreFilter, liveOverviewHeatmapMissedFilter, liveOverviewHeatmap7mFilter,
     liveOverviewHeatmapSvg,
     mobileMenuBtn, sidebarOverlay, sidebar, navItems,
-    prevMonthBtn, nextMonthBtn, addEventBtn, closeEventModal, saveEventBtn, cancelEventBtn
+    closeCombinedThrowModal,
+    closeEventModal, saveEventBtn, cancelEventBtn
 } from './dom.js';
 import { handlePrevMonth, handleNextMonth, openAddEventModal, closeAddEventModal, saveEvent } from './calendar.js';
 import { addPlayer, schliesseEditModus, oeffneEditModus, deletePlayer, deleteEntireTeam, deleteOpponent, oeffneOpponentEditModus, swapTeams } from './roster.js';
@@ -271,6 +272,7 @@ export function registerEventListeners() {
             }
         });
     }
+
     if (backToHistoryList) {
         backToHistoryList.addEventListener('click', () => {
             historieDetailBereich.classList.add('versteckt');
@@ -679,14 +681,15 @@ export function registerEventListeners() {
     }
 
     // === Combined Throw Modal Logic ===
-    // Temporary state for combined modal
-    let tempCombinedField = null;
-    let tempCombinedGoal = null;
+    // Note: tempCombinedField and tempCombinedGoal are now stored in spielstand for cross-module pre-selection
 
     if (combinedWurfpositionFeld) {
         combinedWurfpositionFeld.addEventListener('click', (e) => {
-            const svg = combinedWurfpositionFeld.querySelector('svg');
-            if (!svg) return;
+            let svg = combinedWurfpositionFeld;
+            if (svg.tagName !== 'svg') {
+                const found = svg.querySelector('svg');
+                if (found) svg = found;
+            }
 
             // Use SVG's own coordinate system for precise positioning
             const pt = svg.createSVGPoint();
@@ -736,7 +739,7 @@ export function registerEventListeners() {
                 zoneId = calculateFieldZone(finalX, finalY);
             }
 
-            tempCombinedField = { 
+            spielstand.tempCombinedField = { 
                 x: finalX.toFixed(1), 
                 y: finalY.toFixed(1),
                 zone: zoneId
@@ -751,8 +754,7 @@ export function registerEventListeners() {
                 if (zonePath) zonePath.classList.add('selected-zone');
             } else {
                 if (combinedFieldMarker) {
-                    combinedFieldMarker.setAttribute('cx', markerX);
-                    combinedFieldMarker.setAttribute('cy', markerY);
+                    combinedFieldMarker.setAttribute('transform', `translate(${markerX}, ${markerY})`);
                     combinedFieldMarker.style.display = 'block';
                 }
             }
@@ -761,8 +763,11 @@ export function registerEventListeners() {
 
     if (combinedWurfbildUmgebung) {
         combinedWurfbildUmgebung.addEventListener('click', (e) => {
-            const svg = combinedGoalSvg;
-            if (!svg) return;
+            let svg = combinedWurfbildUmgebung;
+            if (svg.tagName !== 'svg') {
+                const found = svg.querySelector('svg');
+                if (found) svg = found;
+            }
 
             // Use SVG's own coordinate system for precise positioning
             const pt = svg.createSVGPoint();
@@ -797,7 +802,7 @@ export function registerEventListeners() {
                 zoneId = calculateGoalZone(finalX, finalY);
             }
 
-            tempCombinedGoal = { 
+            spielstand.tempCombinedGoal = { 
                 x: finalX.toFixed(1), 
                 y: finalY.toFixed(1),
                 zone: zoneId
@@ -817,8 +822,7 @@ export function registerEventListeners() {
             } else {
                 // Exact mode: Show marker
                 if (combinedGoalMarker) {
-                    combinedGoalMarker.setAttribute('cx', markerX);
-                    combinedGoalMarker.setAttribute('cy', markerY);
+                    combinedGoalMarker.setAttribute('transform', `translate(${markerX}, ${markerY})`);
                     combinedGoalMarker.style.display = 'block';
                 }
             }
@@ -959,8 +963,8 @@ export function registerEventListeners() {
 
     // Reset function for combined modal
     function resetCombinedModal() {
-        tempCombinedField = null;
-        tempCombinedGoal = null;
+        spielstand.tempCombinedField = null;
+        spielstand.tempCombinedGoal = null;
         selectedAssistPlayer = null;
         selectedPlayType = null;
         if (combinedFieldMarker) combinedFieldMarker.style.display = 'none';
@@ -973,38 +977,48 @@ export function registerEventListeners() {
         spielstand.temp7mOutcome = null;
     }
 
-    if (combinedThrowSave) {
-        combinedThrowSave.addEventListener('click', () => {
-            if (spielstand.gameLog.length > 0) {
-                const lastEntry = spielstand.gameLog[0];
-                if (tempCombinedField) {
-                    lastEntry.wurfposition = tempCombinedField;
-                }
-                if (tempCombinedGoal) {
-                    lastEntry.wurfbild = { x: tempCombinedGoal.x, y: tempCombinedGoal.y, color: null };
-                }
-                // Save assist or attribution if selected
-                if (selectedAssistPlayer) {
-                    const isBlock = lastEntry.action.toLowerCase().includes('block');
-                    const playerObj = { number: selectedAssistPlayer.number, nummer: selectedAssistPlayer.number, name: selectedAssistPlayer.name || '' };
-
-                    if (isBlock) {
-                        const isOpponentAction = lastEntry.action.startsWith('Gegner') || lastEntry.gegnerNummer;
-                        playerObj.teamKey = isOpponentAction ? 'myteam' : 'opponent';
-                        lastEntry.attributedPlayer = playerObj;
-                    } else {
-                        lastEntry.assist = playerObj;
-                    }
-                }
-                // Save play type
-                if (selectedPlayType) {
-                    lastEntry.playType = selectedPlayType;
-                }
-                updateProtokollAnzeige();
-                updateScoreDisplay(); // Refresh stats table immediately
-                speichereSpielstand();
+    // Helper for auto-save
+    function handleCombinedSave() {
+        if (spielstand.gameLog.length > 0) {
+            const lastEntry = spielstand.gameLog[0];
+            if (spielstand.tempCombinedField) {
+                lastEntry.wurfposition = spielstand.tempCombinedField;
             }
+            if (spielstand.tempCombinedGoal) {
+                lastEntry.wurfbild = { x: spielstand.tempCombinedGoal.x, y: spielstand.tempCombinedGoal.y, color: null, zone: spielstand.tempCombinedGoal.zone };
+            }
+            // Save assist or attribution if selected
+            if (selectedAssistPlayer) {
+                const action = lastEntry.action || "";
+                const isBlock = action.toLowerCase().includes('block');
+                const playerObj = { number: selectedAssistPlayer.number, nummer: selectedAssistPlayer.number, name: selectedAssistPlayer.name || '' };
 
+                if (isBlock) {
+                    const isOpponentAction = action.startsWith('Gegner') || lastEntry.gegnerNummer;
+                    playerObj.teamKey = isOpponentAction ? 'myteam' : 'opponent';
+                    lastEntry.attributedPlayer = playerObj;
+                } else {
+                    lastEntry.assist = playerObj;
+                }
+            }
+            // Save play type
+            if (selectedPlayType) {
+                lastEntry.playType = selectedPlayType;
+            }
+            updateProtokollAnzeige();
+            updateScoreDisplay(); // Refresh stats table immediately
+            speichereSpielstand();
+        }
+        resetCombinedModal();
+    }
+
+    if (combinedThrowSave) {
+        combinedThrowSave.addEventListener('click', handleCombinedSave);
+    }
+
+    if (closeCombinedThrowModal) {
+        closeCombinedThrowModal.addEventListener('click', () => {
+            combinedThrowModal.classList.add('versteckt');
             resetCombinedModal();
         });
     }

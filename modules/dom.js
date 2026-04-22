@@ -51,6 +51,7 @@ export const liveHeatmapBereich = document.getElementById('liveHeatmapBereich');
 export const protokollBereich = document.getElementById('protokollBereich');
 export const socialMediaBereich = document.getElementById('socialMediaBereich');
 export const playerProfileBereich = document.getElementById('playerProfileBereich');
+export const videoAnalyseBereich = document.getElementById('videoAnalyseBereich');
 export const profilePlayerName = document.getElementById('profilePlayerName');
 export const backFromProfileBtn = document.getElementById('backFromProfileBtn');
 
@@ -64,11 +65,20 @@ export const currentMonthLabel = document.getElementById('currentMonthLabel');
 export const prevMonthBtn = document.getElementById('prevMonthBtn');
 export const nextMonthBtn = document.getElementById('nextMonthBtn');
 export const addEventBtn = document.getElementById('addEventBtn');
+export const addEventOverlay = document.getElementById('addEventOverlay');
 export const addEventModal = document.getElementById('addEventModal');
 export const addEventModalTitle = document.getElementById('addEventModalTitle'); // New
 export const closeEventModal = document.getElementById('closeEventModal');
 export const saveEventBtn = document.getElementById('saveEventBtn');
 export const cancelEventBtn = document.getElementById('cancelEventBtn');
+
+// Handball.net Import
+export const importHandballNetButton = document.getElementById('importHandballNetButton');
+export const importHandballNetModal = document.getElementById('importHandballNetModal');
+export const handballNetImportUrl = document.getElementById('handballNetImportUrl');
+export const confirmImportBtn = document.getElementById('confirmImportBtn');
+export const cancelImportBtn = document.getElementById('cancelImportBtn');
+export const importStatus = document.getElementById('importStatus');
 export const eventTitleInput = document.getElementById('eventTitleInput');
 export const eventDateInput = document.getElementById('eventDateInput');
 export const eventTimeInput = document.getElementById('eventTimeInput');
@@ -83,6 +93,7 @@ export const eventDeadlineInput = document.getElementById('eventDeadlineInput');
 export const eventDefaultStatusInput = document.getElementById('eventDefaultStatusInput');
 
 // Event Details Modal
+export const eventDetailsOverlay = document.getElementById('eventDetailsOverlay');
 export const eventDetailsModal = document.getElementById('eventDetailsModal');
 export const detailsTitle = document.getElementById('detailsTitle');
 export const detailsDate = document.getElementById('detailsDate');
@@ -117,12 +128,15 @@ export const absenceList = document.getElementById('absenceList');
 
 // Manage UI
 export const manageCalendarBtn = document.getElementById('manageCalendarBtn');
+export const manageCalendarOverlay = document.getElementById('manageCalendarOverlay');
 export const manageCalendarModal = document.getElementById('manageCalendarModal');
 export const closeManageBtn = document.getElementById('closeManageBtn');
 export const manageUrlInput = document.getElementById('manageUrlInput');
 export const addSubBtn = document.getElementById('addSubBtn');
 export const subsList = document.getElementById('subsList');
 export const seriesList = document.getElementById('seriesList');
+export const subSettingsOverlay = document.getElementById('subSettingsOverlay');
+export const subSettingsModal = document.getElementById('subSettingsModal');
 
 export const exportTeamButton = document.getElementById('exportTeamButton');
 export const importTeamButton = document.getElementById('importTeamButton');
@@ -257,8 +271,8 @@ export const wurfpositionUeberspringen = document.getElementById('wurfpositionUe
 
 // Combined Throw Modal
 export const combinedThrowModal = document.getElementById('combinedThrowModal');
-export const combinedWurfpositionFeld = document.getElementById('combinedWurfpositionFeld');
-export const combinedWurfbildUmgebung = document.getElementById('combinedWurfbildUmgebung');
+export const combinedWurfpositionFeld = document.getElementById('combinedFieldSvg');
+export const combinedWurfbildUmgebung = document.getElementById('combinedGoalSvg');
 export const combinedGoalSvg = document.getElementById('combinedGoalSvg');
 export const combinedFieldMarker = document.getElementById('combinedFieldMarker');
 export const combinedGoalMarker = document.getElementById('combinedGoalMarker');
@@ -267,6 +281,7 @@ export const combinedThrowSkip = document.getElementById('combinedThrowSkip');
 export const toggleCombinedThrow = document.getElementById('toggleCombinedThrow');
 export const combinedAssistPlayerList = document.getElementById('combinedAssistPlayerList');
 export const combinedAssistNone = document.getElementById('combinedAssistNone');
+export const closeCombinedThrowModal = document.getElementById('closeCombinedThrowModal');
 export const combinedPlayTypeList = document.getElementById('combinedPlayTypeList');
 export const set_toggleGoalZones = document.getElementById('set_toggleGoalZones');
 export const set_toggleFieldZones = document.getElementById('set_toggleFieldZones');

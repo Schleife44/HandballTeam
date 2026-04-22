@@ -5,6 +5,8 @@ import {
     seasonBereich, historieBereich, settingsBereich,
     liveOverviewBereich, shotsBereich, liveHeatmapBereich,
     protokollBereich, socialMediaBereich,
+    historieDetailBereich, playerProfileBereich,
+    videoAnalyseBereich,
     sidebar, sidebarOverlay
 } from './dom.js';
 import {
@@ -105,8 +107,7 @@ const routes = {
     },
     'videoanalyse': () => {
         hideAllSections();
-        const vaBereich = document.getElementById('videoAnalyseBereich');
-        if (vaBereich) vaBereich.classList.remove('versteckt');
+        if (videoAnalyseBereich) videoAnalyseBereich.classList.remove('versteckt');
         import('./videoAnalysis.js').then(mod => mod.handleVideoAnalysisView());
     },
     'tacticalboard': () => {
@@ -137,7 +138,7 @@ function hideAllSections() {
         liveOverviewBereich, shotsBereich, liveHeatmapBereich,
         protokollBereich,
         document.getElementById('seasonStatsBereich'),
-        document.getElementById('videoAnalyseBereich'),
+        videoAnalyseBereich,
         document.getElementById('tacticalBoardBereich'),
         document.getElementById('dashboardBereich'),
         socialMediaBereich,

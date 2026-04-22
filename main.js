@@ -28,7 +28,7 @@ import { sanitizeHTML, escapeHTML } from './modules/utils.js';
 import { registerEventListeners } from './modules/eventListeners.js';
 import { initCustomDialogs, customAlert, customPrompt } from './modules/customDialog.js';
 import { initRouter } from './modules/router.js';
-import { initEventListeners } from './modules/events.js';
+import { initEventListeners } from './modules/events.js?v=v4_safety_net';
 import { showTeamSelectionOverlay } from './modules/teamsView.js';
 import { getActiveTeamId } from './modules/firebase.js';
 import { initTableSorting } from './modules/sharedViews.js';

@@ -747,6 +747,66 @@ export function logAktion(aktion, kommentar = null) {
             if (fieldMarker) fieldMarker.style.display = 'none';
 
             combinedThrowModal.classList.remove('versteckt');
+
+            // --- Marker & Grid Visibility Sync ---
+            const fieldSvg = document.getElementById('combinedFieldSvg');
+            const goalSvg = document.getElementById('combinedGoalSvg');
+            const useFieldZones = !!(spielstand.settings && spielstand.settings.useFieldZones);
+            const useGoalZones = !!(spielstand.settings && spielstand.settings.useGoalZones);
+
+            if (fieldSvg) {
+                fieldSvg.classList.toggle('zones-enabled', useFieldZones);
+                fieldSvg.querySelectorAll('.field-zone-path').forEach(p => p.classList.remove('selected-zone'));
+            }
+            if (goalSvg) {
+                goalSvg.classList.toggle('zones-enabled', useGoalZones);
+                goalSvg.querySelectorAll('.goal-zone-rect').forEach(p => p.classList.remove('selected-zone'));
+            }
+
+            // --- Smart Pre-selection (Calculated from player roles) ---
+            const roles = player.roles || [];
+            let preSelectedZone = null;
+            if (roles.includes('LA')) preSelectedZone = 1;
+            else if (roles.includes('RL')) preSelectedZone = 2;
+            else if (roles.includes('RM')) preSelectedZone = 3;
+            else if (roles.includes('RR')) preSelectedZone = 4;
+            else if (roles.includes('RA')) preSelectedZone = 5;
+            else if (roles.includes('KM')) preSelectedZone = 9;
+            else preSelectedZone = 3; // Fallback to Center Back for generic 'Spieler'
+
+            if (preSelectedZone) {
+                const snapPoints = {
+                    1: { x: 60, y: 45 }, 2: { x: 75, y: 95 }, 3: { x: 150, y: 115 },
+                    4: { x: 225, y: 95 }, 5: { x: 240, y: 45 }, 9: { x: 150, y: 280 }
+                };
+                const pt = snapPoints[preSelectedZone];
+                const finalX = ((pt.x - 10) / 280) * 100;
+                const finalY = ((pt.y - 10) / 380) * 100;
+
+                spielstand.tempCombinedField = {
+                    x: finalX.toFixed(1),
+                    y: finalY.toFixed(1),
+                    zone: preSelectedZone
+                };
+
+                // Trigger visual highlight with a slightly longer timeout to ensure DOM is ready
+                setTimeout(() => {
+                    if (fieldSvg) {
+                        const zonePath = fieldSvg.querySelector(`.field-zone-path[data-zone="${preSelectedZone}"]`);
+                        if (zonePath && useFieldZones) {
+                            zonePath.classList.add('selected-zone');
+                        }
+                        
+                        // Exact mode marker positioning (using transform for groups)
+                        const marker = document.getElementById('combinedFieldMarker');
+                        if (marker && !useFieldZones) {
+                            marker.setAttribute('transform', `translate(${pt.x}, ${pt.y})`);
+                            marker.style.display = 'block';
+                        }
+                    }
+                }, 50);
+            }
+
             // Populate assist player list
             if (typeof window.populateAssistPlayerList === 'function') {
                 window.populateAssistPlayerList();

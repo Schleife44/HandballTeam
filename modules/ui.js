@@ -178,35 +178,31 @@ export function zeichneSpielerRaster() {
 
     const renderTeam = (players, teamKey, gkCont, actCont, benchCont) => {
         const isOpponent = teamKey === 'opponent';
-        // Filter out inactive players
         const activePlayers = players.filter(p => p.isInactive !== true);
 
         activePlayers.forEach((p, idx) => {
             const actualIndexInList = players.findIndex(orig => orig === p);
             const btn = document.createElement('button');
-            btn.className = `spieler-button action-btn ${p.isGoalkeeper ? 'torwart' : ''}`;
-            const timeStr = `${Math.floor((p.timeOnField || 0) / 60)}:${((p.timeOnField || 0) % 60).toString().padStart(2, '0')}`;
+            btn.className = `hub-game-btn ${isOpponent ? 'is-gegner' : ''}`;
             
-            const numberDisplay = p.number ? `<div class="spieler-nummer-display">${p.number}</div>` : '';
-            btn.innerHTML = sanitizeHTML(`<div class="player-time-display">${timeStr}</div>${numberDisplay}<span class="spieler-name-display">${escapeHTML(p.name || '')}</span>`);
+            const timeStr = `${Math.floor((p.timeOnField || 0) / 60)}:${((p.timeOnField || 0) % 60).toString().padStart(2, '0')}`;
+            const numDisp = p.number ? `<div class="p-num">#${p.number}</div>` : '';
+            
+            btn.innerHTML = sanitizeHTML(`
+                ${numDisp}
+                <div class="p-name">${escapeHTML(p.name || '')}</div>
+                <div class="p-time">${timeStr}</div>
+            `);
             
             btn.dataset.index = actualIndexInList;
-            if (isOpponent) {
-                btn.dataset.gegnerNummer = p.number || '';
-                btn.dataset.isOpponent = 'true';
-            } else {
-                btn.dataset.isOpponent = 'false';
-            }
+            btn.dataset.isOpponent = isOpponent ? 'true' : 'false';
+            if (isOpponent) btn.dataset.gegnerNummer = p.number || '';
+            
             btn.dataset.team = teamKey;
             btn.dataset.name = p.name || '';
             
-            // Add classes for styling and identification
-            btn.classList.add(teamKey === 'opponent' ? 'gegner-button' : 'my-team-btn');
-            if (isSimple) btn.classList.add('simple-player-card');
-
             const isOnLineup = p.lineupSlot !== null && p.lineupSlot !== undefined;
             btn.dataset.action = (isSimple || isOnLineup) ? 'lineup-player' : 'bench-player';
-            btn.dataset.empty = 'false';
             
             if (isOnLineup) {
                 btn.dataset.slotType = p.lineupSlot === 'gk' ? 'gk' : 'field';
@@ -285,6 +281,10 @@ export function zeichneRosterListe(showGastTab = false) {
     showGastTabState = showGastTab;
     if (!rosterListe) return;
     rosterListe.innerHTML = '';
+    
+    // Ensure grid class is applied
+    rosterListe.className = 'hub-player-grid-modern';
+    
     const isAway = spielstand.settings.isAuswaertsspiel;
     const isOpp = showGastTab ? !isAway : isAway;
     const list = isOpp ? (spielstand.knownOpponents || []) : (spielstand.roster || []);
@@ -295,103 +295,52 @@ export function zeichneRosterListe(showGastTab = false) {
                                     ? spielstand.rosterAssignments[uid] 
                                     : null;
 
-    // Available roles (easy to extend later)
-    const AVAILABLE_ROLES = ['Spieler', 'Trainer', 'Betreuer', 'Kassenwart'];
-
-    // Permissions for global actions
-    const manageDisplay = isTrainer ? 'block' : 'none';
-    if (deleteTeamButton) deleteTeamButton.style.display = manageDisplay;
-    if (exportTeamButton) exportTeamButton.style.display = manageDisplay;
-    if (importTeamButton) importTeamButton.style.display = manageDisplay;
-    if (saveTeamButton) saveTeamButton.style.display = manageDisplay;
-    if (loadTeamButton) loadTeamButton.style.display = manageDisplay;
-
-    // Cache the set of assigned names for quick lookup
-    const assignedNames = new Set(Object.values(spielstand.rosterAssignments || {}));
-
     list.forEach((p, idx) => {
         const div = document.createElement('div');
-        div.className = 'roster-player-card';
+        div.className = `hub-player-card ${isOpp ? 'is-gegner' : ''}`;
         
         const isEditing = (inlineEditingIndex === idx && inlineEditingIsOpp === isOpp);
 
         if (isEditing) {
             div.classList.add('is-editing');
-            const playerRoles = p.roles || ['Spieler'];
-            const roleCheckboxesHtml = !isOpp ? `
-                <div style="margin-top: 8px;">
-                    <div style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 4px;">Rollen</div>
-                    <div style="display: flex; flex-wrap: wrap; gap: 8px;">
-                        ${AVAILABLE_ROLES.map(role => `
-                            <label style="font-size: 0.8rem; cursor: pointer; display: flex; align-items: center; gap: 4px;">
-                                <input type="checkbox" class="inline-edit-role" value="${escapeHTML(role)}" ${playerRoles.includes(role) ? 'checked' : ''} style="accent-color: var(--btn-primary);">
-                                ${escapeHTML(role)}
-                            </label>
-                        `).join('')}
-                    </div>
-                </div>
-            ` : '';
             div.innerHTML = sanitizeHTML(`
-                <div class="roster-player-info" style="flex-direction: column; align-items: flex-start; gap: 8px;">
-                    <div style="display: flex; gap: 8px; width: 100%;">
-                        <input type="number" class="inline-edit-number" value="${p.number || ''}" title="Rückennummer" placeholder="#">
-                        <input type="text" class="inline-edit-name" value="${escapeHTML(p.name || '')}" placeholder="Spielername">
+                <div class="hub-player-info" style="flex-direction: column; align-items: stretch; gap: 8px; width: 100%;">
+                    <div style="display: flex; gap: 8px;">
+                        <input type="number" class="hub-input inline-edit-number" value="${p.number || ''}" style="width: 60px;" placeholder="#">
+                        <input type="text" class="hub-input inline-edit-name" value="${escapeHTML(p.name || '')}" style="flex: 1;" placeholder="Name">
                     </div>
-                    <input type="email" class="inline-edit-email" value="${escapeHTML(p.email || '')}" placeholder="E-Mail für Verknüpfung">
-                    ${roleCheckboxesHtml}
                 </div>
-                <div style="display: flex; align-items: center; gap: 8px; margin: 8px 0; padding: 0 4px;">
-                    <label style="font-size: 0.75rem; color: var(--text-muted); cursor: pointer; display: flex; align-items: center; gap: 6px;">
-                        <input type="checkbox" class="inline-edit-inactive" ${p.isInactive ? 'checked' : ''} style="accent-color: var(--btn-primary);">
-                        Inaktiv im Spielbetrieb
-                    </label>
-                </div>
-                <div class="roster-player-actions">
-                    <button class="shadcn-btn-outline" data-action="save-inline-edit" data-index="${idx}" data-is-opponent="${isOpp}" style="color: #10b981; border-color: #10b981; padding: 4px;" title="Speichern"><i data-lucide="check" style="width: 14px; height: 14px;"></i></button>
-                    <button class="shadcn-btn-outline" data-action="cancel-inline-edit" style="color: #ef4444; border-color: #ef4444; padding: 4px;" title="Abbrechen"><i data-lucide="x" style="width: 14px; height: 14px;"></i></button>
+                <div class="hub-modal-footer" style="background: none; border: none; padding: 0 0 0 12px;">
+                    <button class="icon-btn-ghost" data-action="save-inline-edit" data-index="${idx}" data-is-opponent="${isOpp}" style="color: var(--hub-green);"><i data-lucide="check"></i></button>
+                    <button class="icon-btn-ghost" data-action="cancel-inline-edit" style="color: var(--hub-red);"><i data-lucide="x"></i></button>
                 </div>
             `);
         } else {
-            // Check permissions
             const canEdit = isOpp ? isTrainer : (isTrainer || p.name === currentUserRosterName);
             const canDelete = isTrainer;
 
             let actionsHtml = '';
-            if (canEdit) {
-                actionsHtml += `<button class="edit-player shadcn-btn-outline" data-action="edit-player" data-index="${idx}" data-is-opponent="${isOpp}" style="padding: 4px; margin-right: 4px;" title="Bearbeiten"><i data-lucide="edit-2" style="width: 14px; height: 14px;"></i></button>`;
-            }
-            if (canDelete) {
-                actionsHtml += `<button class="delete-player shadcn-btn-outline" data-action="delete-player" data-index="${idx}" data-is-opponent="${isOpp}" style="padding: 4px; color: #ef4444; border-color: #ef4444;" title="Löschen"><i data-lucide="trash-2" style="width: 14px; height: 14px;"></i></button>`;
-            }
+            if (canEdit) actionsHtml += `<button class="icon-btn-ghost" data-action="edit-player" data-index="${idx}" data-is-opponent="${isOpp}"><i data-lucide="pencil" style="width: 16px;"></i></button>`;
+            if (canDelete) actionsHtml += `<button class="icon-btn-ghost" data-action="delete-player" data-index="${idx}" data-is-opponent="${isOpp}" style="color: var(--hub-red);"><i data-lucide="trash-2" style="width: 16px;"></i></button>`;
 
             const isInactive = p.isInactive === true;
-            div.style.opacity = isInactive ? '0.6' : '1';
-            if (isInactive) div.title = 'Inaktiv im Spielbetrieb';
+            if (isInactive) div.style.opacity = '0.5';
 
-            const numDisplay = p.number ? `#${p.number}` : '';
-            
             div.innerHTML = sanitizeHTML(`
-                <div class="roster-player-info">
-                    <div class="roster-player-number ${!p.number ? 'is-empty' : ''}">${p.number || '-'}</div>
-                    <div style="display: flex; flex-direction: column; gap: 2px;">
-                        <div style="font-weight: 600;">${escapeHTML(p.name || 'Ohne Name')}</div>
-                        ${!isOpp && (p.roles && p.roles.length) ? `
-                            <div class="player-role-badges">
-                                ${p.roles.map(r => `<span class="role-badge ${r === 'Trainer' ? 'role-badge--trainer' : r === 'Betreuer' ? 'role-badge--betreuer' : r === 'Kassenwart' ? 'role-badge--kassenwart' : ''} ">${escapeHTML(r)}</span>`).join('')}
-                            </div>
-                        ` : ''}
-                        ${isInactive ? '<div style="font-size: 0.65rem; color: #ef4444; font-weight: 700;">INAKTIV (SPIEL)</div>' : ''}
+                <div class="hub-player-info">
+                    <div class="hub-player-number">${p.number || '-'}</div>
+                    <div class="hub-player-name-wrap">
+                        <div class="hub-player-name">${escapeHTML(p.name || 'Ohne Name')}</div>
+                        <div class="hub-player-role">${p.isGoalkeeper ? 'Torwart' : 'Feldspieler'}</div>
                     </div>
                 </div>
-                <div class="roster-player-actions">${actionsHtml}</div>
-                ${!isOpp ? `
-                    <div class="account-marker ${p.email || Array.from(assignedNames).some(name => (name || '').trim().toLowerCase() === (p.name || '').trim().toLowerCase()) ? 'linked' : 'not-linked'}" 
-                         title="${p.email || Array.from(assignedNames).some(name => (name || '').trim().toLowerCase() === (p.name || '').trim().toLowerCase()) ? 'Konto verknüpft / E-Mail hinterlegt' : 'Kein Konto verknüpft'}"></div>
-                ` : ''}
+                <div style="display: flex; gap: 4px;">
+                    ${actionsHtml}
+                </div>
             `);
 
-            // NEW: Player Profile Click Handler
-            const infoDiv = div.querySelector('.roster-player-info');
+            // Profile Click
+            const infoDiv = div.querySelector('.hub-player-info');
             if (infoDiv) {
                 infoDiv.style.cursor = 'pointer';
                 infoDiv.addEventListener('click', () => {

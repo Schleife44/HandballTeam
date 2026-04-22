@@ -267,8 +267,9 @@ export async function saveGameToHistory(teamId, gameData) {
     try {
         const gameId = gameData.id ? String(gameData.id) : String(Date.now());
         const historyRef = getHistoryDoc(teamId, gameId);
+        const cleanedData = sanitizeForFirestore(gameData);
         await setDoc(historyRef, {
-            ...gameData,
+            ...cleanedData,
             serverTimestamp: serverTimestamp()
         });
         return { success: true };
@@ -1012,7 +1013,31 @@ function buildFirestorePayload(spielstand, category = 'all') {
     payload.lastUpdated = Date.now();
     payload.saveCategory = category;
 
-    return payload;
+    return sanitizeForFirestore(payload);
+}
+
+/**
+ * Recursively removes any keys with undefined values to prevent Firestore crashes.
+ * @param {Object|Array} data The data to clean
+ */
+export function sanitizeForFirestore(data) {
+    if (data === null || typeof data !== 'object') {
+        return data;
+    }
+
+    if (Array.isArray(data)) {
+        return data.map(item => sanitizeForFirestore(item));
+    }
+
+    const cleaned = { ...data };
+    Object.keys(cleaned).forEach(key => {
+        if (cleaned[key] === undefined) {
+            delete cleaned[key];
+        } else if (cleaned[key] !== null && typeof cleaned[key] === 'object') {
+            cleaned[key] = sanitizeForFirestore(cleaned[key]);
+        }
+    });
+    return cleaned;
 }
 
 // ─── UI: Status Indicator ──────────────────────────────────────────────────────

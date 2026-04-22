@@ -2,7 +2,8 @@
 import { navigateTo, handleRouting } from './router.js';
 import { 
     sidebar, sidebarOverlay, 
-    kommentarBereich, kommentarTitel, kommentarInput 
+    kommentarBereich, kommentarTitel, kommentarInput,
+    importHandballNetModal, handballNetImportUrl, confirmImportBtn, importStatus
 } from './dom.js';
 import { 
     starteNeuesSpiel, handleGamePhaseClick, handleRealPauseClick, 
@@ -10,7 +11,7 @@ import {
     loescheProtokollEintrag, setAktuelleAktionTyp
 } from './game.js';
 import { handleZeitSprung } from './timer.js';
-import { handleSpielBeenden } from './historyView.js';
+import { handleSpielBeenden, renderHistoryList } from './historyView.js';
 import { schliesseEditModus, deleteEntireTeam } from './roster.js';
 import { exportTeam } from './export.js';
 import { 
@@ -23,6 +24,9 @@ import { executeAction } from './game.js';
 import { addPlayer, oeffneOpponentEditModus } from './roster.js';
 import { zeichneSpielerRaster, applyGameMode, setInlineEditing } from './ui.js';
 import { spielstand, speichereSpielstand } from './state.js';
+import { parseGameId, fetchHandballNetGame, mapHandballNetToInternal } from './handballNetImport.js?v=v4_safety_net';
+import { speichereSpielInHistorie } from './history.js';
+import { customAlert } from './customDialog.js';
 
 /**
  * Central event delegation hub.
@@ -110,8 +114,8 @@ export function initEventListeners() {
         const target = e.target.closest('[data-action]');
         
         // --- Outside Click Modal Closing ---
-        const activeModal = document.querySelector('.modal-overlay:not(.versteckt), .event-popover:not(.versteckt)');
-        if (activeModal && !e.target.closest('.shadcn-modal-content, .event-popover, .modal-content, .dashboard-overlay-content, .result-image-modal-content')) {
+        const activeModal = document.querySelector('.modal-overlay:not(.versteckt), .event-popover:not(.versteckt), .event-popover-modern:not(.versteckt)');
+        if (activeModal && !e.target.closest('.shadcn-modal-content, .event-popover, .event-popover-modern, .modal-content, .hub-popover, .hub-modal-content, .dashboard-overlay-content, .result-image-modal-content')) {
             if (!target || target.dataset.action === 'close-modal') {
                 activeModal.classList.add('versteckt');
                 return;
@@ -330,6 +334,71 @@ export function initEventListeners() {
             case 'delete-player-from-saved-team':
                 deletePlayerFromSavedTeam(parseInt(params.playerIndex));
                 break;
+            
+            // --- Handball.net Import ---
+            case 'import-handball-net-open':
+                if (importHandballNetModal) {
+                    importHandballNetModal.classList.remove('versteckt');
+                    if (importStatus) importStatus.classList.add('versteckt');
+                    if (handballNetImportUrl) {
+                        handballNetImportUrl.value = '';
+                        handballNetImportUrl.focus();
+                    }
+                }
+                break;
+
+            case 'import-handball-net-confirm':
+                if (!handballNetImportUrl || !confirmImportBtn) break;
+                
+                const url = handballNetImportUrl.value.trim();
+                if (!url) {
+                    customAlert("Bitte eine URL eingeben.");
+                    break;
+                }
+
+                const gameId = parseGameId(url);
+                if (!gameId) {
+                    customAlert("Ungültige handball.net URL. Bitte den Spielbericht-Link kopieren.");
+                    break;
+                }
+
+                // Show Loading
+                if (importStatus) {
+                    importStatus.innerText = "Lade Spielbericht...";
+                    importStatus.style.background = "rgba(255,255,255,0.05)";
+                    importStatus.style.color = "var(--text-muted)";
+                    importStatus.classList.remove('versteckt');
+                }
+                confirmImportBtn.disabled = true;
+
+                try {
+                    const data = await fetchHandballNetGame(gameId);
+                    const gameData = mapHandballNetToInternal(data, spielstand.settings.myTeamName);
+                    
+                    await speichereSpielInHistorie(gameData);
+                    
+                    if (importStatus) {
+                        importStatus.innerText = "Erfolgreich importiert!";
+                        importStatus.style.background = "rgba(34, 197, 94, 0.1)";
+                        importStatus.style.color = "#22c55e";
+                    }
+                    
+                    setTimeout(() => {
+                        if (importHandballNetModal) importHandballNetModal.classList.add('versteckt');
+                        confirmImportBtn.disabled = false;
+                        renderHistoryList();
+                    }, 1000);
+
+                } catch (err) {
+                    console.error("Import error:", err);
+                    if (importStatus) {
+                        importStatus.innerText = "Fehler: " + err.message;
+                        importStatus.style.background = "rgba(239, 68, 68, 0.1)";
+                        importStatus.style.color = "#ef4444";
+                    }
+                    confirmImportBtn.disabled = false;
+                }
+                break;
 
             // --- Roster ---
             case 'toggle-nav-group':
@@ -422,7 +491,7 @@ export function initEventListeners() {
         }
 
         // Popovers (smaller floating div, need to check if click is outside)
-        const openPopovers = document.querySelectorAll('.event-popover:not(.versteckt)');
+        const openPopovers = document.querySelectorAll('.event-popover:not(.versteckt), .event-popover-modern:not(.versteckt)');
         openPopovers.forEach(popover => {
             if (!popover.contains(e.target)) {
                 // Check if target is not the button that opens it (to avoid immediate re-toggle)

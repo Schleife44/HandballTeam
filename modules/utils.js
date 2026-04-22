@@ -128,6 +128,77 @@ export function calculateGoalZone(xPercent, yPercent) {
 }
 
 /**
+ * Robust fetch utility that tries multiple CORS proxies to bypass browser restrictions.
+ * Proxies tried: Codetabs, CORSProxy.io, AllOrigins.
+ * 
+ * @param {string} url - The target URL to fetch
+ * @param {Object} options - Options object. { json: boolean } to auto-parse JSON.
+ * @returns {Promise<string|Object>} - The fetched content as string or parsed JSON.
+ */
+export async function fetchWithProxy(url, options = { json: false }) {
+    const cleanUrl = url.replace('webcal://', 'https://').trim();
+    let content = null;
+    let lastError = null;
+
+    const proxies = [
+        // 1. Codetabs (Most reliable for handball.net)
+        {
+            name: 'Codetabs',
+            getUrl: (u) => `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(u)}`,
+            parse: async (res) => await res.text()
+        },
+        // 2. CORSProxy.io
+        {
+            name: 'CORSProxy.io',
+            getUrl: (u) => `https://corsproxy.io/?url=${encodeURIComponent(u)}`,
+            parse: async (res) => await res.text()
+        },
+        // 3. AllOrigins
+        {
+            name: 'AllOrigins',
+            getUrl: (u) => `https://api.allorigins.win/get?url=${encodeURIComponent(u)}`,
+            parse: async (res) => {
+                const data = await res.json();
+                return data.contents;
+            }
+        }
+    ];
+
+    for (const proxy of proxies) {
+        try {
+            console.log(`[Proxy] Trying ${proxy.name} for ${cleanUrl}...`);
+            const res = await fetch(proxy.getUrl(cleanUrl));
+            if (res.ok) {
+                const raw = await proxy.parse(res);
+                if (raw && raw.length > 5) {
+                    content = raw;
+                    console.log(`[Proxy] Success with ${proxy.name}`);
+                    break;
+                }
+            }
+        } catch (err) {
+            console.warn(`[Proxy] ${proxy.name} failed:`, err.message);
+            lastError = err;
+        }
+    }
+
+    if (!content) {
+        throw new Error(lastError ? `Alle Proxies fehlgeschlagen: ${lastError.message}` : "Inhalt konnte nicht geladen werden.");
+    }
+
+    if (options.json) {
+        try {
+            return JSON.parse(content);
+        } catch (e) {
+            console.error("[Proxy] Selected JSON parsing but content is not valid JSON:", e);
+            throw new Error("Proxy-Antwort ist kein gültiges JSON.");
+        }
+    }
+
+    return content;
+}
+
+/**
  * Calculates the functional field zone (1-9) based on relative percentage coordinates.
  * Using mathematical boundaries matching the 6m/9m arcs and radial dividers.
  * @param {number} xPercent - Percent from left (0-100)

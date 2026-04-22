@@ -171,9 +171,36 @@ export function initSettingsPage() {
                     if (window.lucide) window.lucide.createIcons();
                 }, 2000);
             } catch (err) {
-                console.error('[Settings] Manual save failed:', err);
+                console.error('[Settings] Save failed:', err);
+                customAlert('Speichern fehlgeschlagen.');
                 saveAllSettingsBtn.disabled = false;
-                saveAllSettingsBtn.innerHTML = '<i data-lucide="alert-circle" style="width: 18px; height: 18px;"></i> Fehler';
+            }
+        };
+    }
+
+    // Handle Backup Import in Settings
+    const importBtn = document.getElementById('importSpielButtonSettings');
+    const importInput = document.getElementById('importSpielInputSettings');
+    if (importBtn && importInput) {
+        importBtn.onclick = () => importInput.click();
+        importInput.onchange = async (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+            const text = await file.text();
+            try {
+                const data = JSON.parse(text);
+                if (data && data.players && data.history) {
+                    const confirmed = await customConfirm('Möchtest du diese Daten wirklich importieren? Bestehende Daten werden überschrieben.', 'Daten importieren');
+                    if (confirmed) {
+                        Object.assign(spielstand, data);
+                        await speichereSpielstandSofort();
+                        window.location.reload();
+                    }
+                } else {
+                    customAlert('Ungültige Datei. Die Datei muss Spieler und Historie enthalten.');
+                }
+            } catch (err) {
+                customAlert('Fehler beim Lesen der Datei.');
             }
         };
     }
@@ -183,6 +210,7 @@ export function initSettingsPage() {
     const myTeamNameInput = document.getElementById('myTeamNameInput');
     const myTeamColorInput = document.getElementById('myTeamColorInput');
     const myTeamColorIcon = document.getElementById('myTeamColorIcon');
+    const tournamentIdInput = document.getElementById('handballNetTournamentIdInput');
     
     // Toggles
     const toggleDarkMode = document.getElementById('set_toggleDarkMode');
@@ -194,15 +222,12 @@ export function initSettingsPage() {
     const toggleGoalZones = document.getElementById('set_toggleGoalZones');
     const toggleFieldZones = document.getElementById('set_toggleFieldZones');
 
-    // Attendance Settings (Modal Sub)
-    const modalSubRequireReason = document.getElementById('subRequireReason');
-    const modalSubDeadlineHours = document.getElementById('subDeadlineHours');
-    const modalSubDefaultStatus = document.getElementById('subDefaultStatus');
 
     // 1. Sync Values from State to UI
     if (myTeamNameInput) myTeamNameInput.value = spielstand.settings.myTeamName || '';
     if (myTeamColorInput) myTeamColorInput.value = spielstand.settings.myTeamColor || '#dc3545';
     if (myTeamColorIcon) myTeamColorIcon.style.color = spielstand.settings.myTeamColor || '#dc3545';
+    if (tournamentIdInput) tournamentIdInput.value = spielstand.settings.handballNetTournamentId || '';
 
     if (toggleDarkMode) toggleDarkMode.checked = !!spielstand.settings.darkMode;
     if (toggleWurfbildHeim) toggleWurfbildHeim.checked = !!spielstand.settings.showWurfbildHeim;
@@ -213,12 +238,6 @@ export function initSettingsPage() {
     if (toggleGoalZones) toggleGoalZones.checked = !!spielstand.settings.useGoalZones;
     if (toggleFieldZones) toggleFieldZones.checked = !!spielstand.settings.useFieldZones;
 
-    // Sync Attendance
-    if (spielstand.settings.calendar) {
-        if (modalSubRequireReason) modalSubRequireReason.checked = !!spielstand.settings.calendar.requireReason;
-        if (modalSubDeadlineHours) modalSubDeadlineHours.value = spielstand.settings.calendar.deadlineHours || 0;
-        if (modalSubDefaultStatus) modalSubDefaultStatus.checked = (spielstand.settings.calendar.defaultStatus === 'going');
-    }
 
     // 2. Attach Event Listeners for Real-time Saving
     const attachChange = (el, key, isCheckbox = true, subKey = null) => {
@@ -358,29 +377,21 @@ export function initSettingsPage() {
     if (myTeamColorInput) {
         myTeamColorInput.oninput = (e) => saveMyTeamColor(e.target.value);
     }
+    if (tournamentIdInput) {
+        tournamentIdInput.oninput = (e) => {
+            spielstand.settings.handballNetTournamentId = e.target.value;
+            speichereSpielstand();
+        };
+    }
+    
+    const idHelpToggle = document.getElementById('idHelpToggle');
+    const idHelpBox = document.getElementById('handballNetIdHelp');
+    if (idHelpToggle && idHelpBox) {
+        idHelpToggle.onclick = () => {
+            idHelpBox.classList.toggle('versteckt');
+        };
+    }
 
-    // Attendance Listeners
-    if (modalSubRequireReason) {
-        modalSubRequireReason.onchange = () => {
-            if (!spielstand.settings.calendar) spielstand.settings.calendar = {};
-            spielstand.settings.calendar.requireReason = modalSubRequireReason.checked;
-            speichereSpielstand();
-        };
-    }
-    if (modalSubDeadlineHours) {
-        modalSubDeadlineHours.oninput = () => {
-            if (!spielstand.settings.calendar) spielstand.settings.calendar = {};
-            spielstand.settings.calendar.deadlineHours = parseInt(modalSubDeadlineHours.value) || 0;
-            speichereSpielstand();
-        };
-    }
-    if (modalSubDefaultStatus) {
-        modalSubDefaultStatus.onchange = () => {
-            if (!spielstand.settings.calendar) spielstand.settings.calendar = {};
-            spielstand.settings.calendar.defaultStatus = modalSubDefaultStatus.checked ? 'going' : 'none';
-            speichereSpielstand();
-        };
-    }
 
     const toggleValidationBtn = document.getElementById('toggleValidationBtn');
     if (toggleValidationBtn) {
@@ -414,9 +425,9 @@ export function initSettingsPage() {
 /**
  * Social Media Settings (Instagram Ergebnisbild)
  */
-export function initSocialMediaSettings() {
+export async function initSocialMediaSettings() {
     // Ensure defaults
-    const { ensureSocialMediaSettings } = importSocialMedia();
+    const { ensureSocialMediaSettings } = await import('./resultImage.js');
     
     const sm = ensureSocialMediaSettings();
 
@@ -597,28 +608,30 @@ export function initSocialMediaSettings() {
         };
     }
 
-    // --- Editor Button ---
-    const editorBtn = document.getElementById('openSmEditorBtn');
-    if (editorBtn) {
-        editorBtn.onclick = async () => {
-            const { showResultImageModal } = await import(`./resultImage.js?v=${Date.now()}`);
-            // Create dummy game data for the editor preview
-            const dummyGame = {
-                id: 'dummy_editor',
-                score: { heim: 27, gegner: 24 },
-                teams: { heim: spielstand.settings.myTeamName || 'Heim', gegner: 'TSV Muster' },
-                date: new Date().toISOString(),
-                settings: { isAuswaertsspiel: false }
+    // Wire up both the main editor button and the shortcut in Settings
+    ['openSmEditorBtn', 'openSmEditorBtnShortcut'].forEach(id => {
+        const btn = document.getElementById(id);
+        if (btn) {
+            btn.onclick = async () => {
+                const { showResultImageModal } = await import(`./resultImage.js?v=${Date.now()}`);
+                // Create dummy game data for the editor preview
+                const dummyGame = {
+                    id: 'dummy_editor',
+                    score: { heim: 27, gegner: 24 },
+                    teams: { heim: spielstand.settings.myTeamName || 'Heim', gegner: 'TSV Muster' },
+                    date: new Date().toISOString(),
+                    settings: { isAuswaertsspiel: false }
+                };
+                showResultImageModal(dummyGame, true);
             };
-            showResultImageModal(dummyGame, true);
-        };
-    }
+        }
+    });
 
     // --- Designs Management Modal ---
     const manageDesignsBtn = document.getElementById('manageSmDesignsBtn');
     console.log('[Settings] manageDesignsBtn found:', !!manageDesignsBtn);
     if (manageDesignsBtn) {
-        manageDesignsBtn.onclick = (e) => {
+        manageDesignsBtn.onclick = async (e) => {
             e.stopPropagation(); // Prevent outside-click handler from closing modals
             console.log('[Settings] Designs button clicked!');
             const modal = document.getElementById('smDesignsModal');
@@ -626,7 +639,8 @@ export function initSocialMediaSettings() {
             console.log('[Settings] smDesignsModal found:', !!modal, 'smDesignsList found:', !!list);
             if (!modal || !list) return;
 
-            const sm = importSocialMedia().ensureSocialMediaSettings();
+            const { ensureSocialMediaSettings } = await import('./resultImage.js');
+            const sm = ensureSocialMediaSettings();
             const presets = sm.presets || [];
 
             if (presets.length === 0) {
