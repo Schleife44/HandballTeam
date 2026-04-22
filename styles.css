@@ -8435,3 +8435,18 @@ body.dark-mode #dashboardBereich {
     letter-spacing: 1px;
     color: rgba(255, 255, 255, 0.3);
 }
+
+/* --- SYNC REPORT UI (MODERN) --- */
+.hub-sync-report { max-height: 400px; overflow-y: auto; padding-right: 8px; margin-top: 10px; list-style: none; padding: 0; }
+.hub-sync-report::-webkit-scrollbar { width: 6px; }
+.hub-sync-report::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 10px; }
+.hub-sync-item { display: flex; align-items: center; justify-content: space-between; padding: 10px 12px; margin-bottom: 6px; background: rgba(255,255,255,0.03); border-radius: 8px; border: 1px solid rgba(255,255,255,0.05); font-size: 0.85rem; transition: background 0.2s; }
+.hub-sync-item:hover { background: rgba(255,255,255,0.06); }
+.hub-sync-left { display: flex; align-items: center; gap: 12px; }
+.hub-sync-icon { width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; background: rgba(59, 130, 246, 0.1); color: #3b82f6; }
+.hub-sync-icon.added { background: rgba(34, 197, 94, 0.1); color: #22c55e; }
+.hub-sync-info { display: flex; flex-direction: column; }
+.hub-sync-action { font-weight: 600; color: #fff; }
+.hub-sync-times { font-size: 0.75rem; color: var(--muted-foreground); margin-top: 2px; }
+.hub-sync-badge { font-size: 0.65rem; padding: 2px 6px; border-radius: 10px; background: rgba(59, 130, 246, 0.2); color: #60a5fa; font-weight: 700; text-transform: uppercase; }
+.hub-sync-badge.added { background: rgba(34, 197, 94, 0.2); color: #4ade80; }

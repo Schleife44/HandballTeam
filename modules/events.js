@@ -388,7 +388,17 @@ export function initEventListeners() {
                             id: existingGame.id, // Preserve internal ID
                             videoOffsets: existingGame.videoOffsets || { h1: 0, h2: 0 },
                             videoLeadTime: existingGame.videoLeadTime || 5,
-                            videoName: existingGame.videoName || ""
+                            videoName: existingGame.videoName || "",
+                            // Preserve manualShifts for each entry by matching IDs
+                            gameLog: gameData.gameLog.map(newEntry => {
+                                const oldEntry = (existingGame.gameLog || []).find(og => 
+                                    og.importMeta?.hnetId === newEntry.importMeta?.hnetId
+                                );
+                                return oldEntry ? { 
+                                    ...newEntry, 
+                                    manualShift: oldEntry.manualShift || 0 
+                                } : newEntry;
+                            })
                         };
                         await updateHistorieSpiel(updatedGame);
                         console.log('[Import] Existing game updated, offsets preserved.');

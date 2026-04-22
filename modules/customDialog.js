@@ -7,6 +7,7 @@ import {
     customAlertModal, customAlertTitle, customAlertMessage, customAlertOk,
     customPromptModal, customPromptTitle, customPromptMessage, customPromptInput, customPromptConfirm, customPromptCancel
 } from './dom.js';
+import { sanitizeHTML } from './securityUtils.js';
 
 // Speichere Resolve-Funktion für Confirm-Dialog
 let confirmResolve = null;
@@ -36,7 +37,7 @@ export function customConfirm(message, title = "Bestätigung") {
 export function customAlert(message, title = "Hinweis") {
     return new Promise((resolve) => {
         customAlertTitle.textContent = title;
-        customAlertMessage.textContent = message;
+        customAlertMessage.innerHTML = sanitizeHTML(message);
         customAlertModal.classList.remove('versteckt');
 
         const handleOk = () => {

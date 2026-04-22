@@ -296,10 +296,61 @@ export function mapHandballNetToInternal(rawJson, myTeamName) {
     const knownOpponents = mapPlayers(theirHnetPlayers);
 
     // Map Events to GameLog
-    const gameLog = (data.events || []).map(e => {
+    let splitIndex = -1;
+    let maxTimeSeen = -1;
+    
+    // SORT events by TIMESTAMP ascending to ensure perfect chronological order
+    // This is the most robust way regardless of ID or provided order.
+    const events = (data.events || []).sort((a, b) => (a.timestamp || 0) - (b.timestamp || 0));
+
+    // PASS 1: Find the halftime split point (Time jump or StopPeriod marker around 30m)
+    for (let i = 0; i < events.length; i++) {
+        const e = events[i];
+        if (!e.time) continue; // IGNORE events without time for split detection!
+        
+        const timeSecs = (parseInt(e.time.split(':')[0]) * 60 + parseInt(e.time.split(':')[1]));
+        
+        // Signal 1: Marker from API (StopPeriod)
+        if (e.type === 'StopPeriod' && timeSecs > 1500 && timeSecs < 3300) {
+            splitIndex = i;
+            break;
+        }
+        // Signal 2: Physical time jump (e.g. 30:05 -> 00:00)
+        // Must be a jump to a valid low time, not just missing data
+        if (maxTimeSeen > 1600 && timeSecs < maxTimeSeen - 600 && timeSecs < 600) {
+            splitIndex = i;
+            break;
+        }
+        maxTimeSeen = Math.max(maxTimeSeen, timeSecs);
+    }
+
+    // PASS 2: Map and Tag
+    const gameLog = [];
+
+    events.forEach((e, idx) => {
         const type = e.type;
+        const timeSecs = e.time ? (parseInt(e.time.split(':')[0]) * 60 + parseInt(e.time.split(':')[1])) : 0;
         const isActionByOurTeam = (isAuswaerts && e.team === 'Away') || (!isAuswaerts && e.team === 'Home');
         
+        // EVERYTHING on or before splitIndex belongs to H1.
+        // EVERYTHING after splitIndex belongs to H2.
+        const currentHalf = (splitIndex !== -1 && idx > splitIndex) ? 2 : 1;
+
+        // Map Period markers
+        if (type === 'StopPeriod' || (e.message && e.message.toLowerCase().includes('halbzeit'))) {
+            const isHalftime = (timeSecs < 2400); // < 40 mins
+            gameLog.push({
+                time: e.time || (isHalftime ? '30:00' : '60:00'),
+                action: isHalftime ? 'Halbzeit' : 'Spielende',
+                half: isHalftime ? 1 : 2, 
+                manualShift: 0,
+                timestamp: e.timestamp || null,
+                spielstand: e.score || "",
+                importMeta: { hnetId: `${isHalftime ? 'half' : 'end'}_${idx}` }
+            });
+            return;
+        }
+
         let action = null;
         if (type === 'Goal') action = isActionByOurTeam ? 'Tor' : 'Gegner Tor';
         else if (type === 'SevenMeterGoal') action = isActionByOurTeam ? '7m Tor' : 'Gegner 7m Tor';
@@ -307,19 +358,16 @@ export function mapHandballNetToInternal(rawJson, myTeamName) {
         else if (type === 'YellowCard') action = isActionByOurTeam ? 'Gelbe Karte' : 'Gegner Gelbe Karte';
         else if (type === 'RedCard') action = isActionByOurTeam ? 'Rote Karte' : 'Gegner Rote Karte';
         else if (type === 'BlueCard') action = isActionByOurTeam ? 'Blaue Karte' : 'Gegner Blaue Karte';
+        else if (type === 'TeamTimeout' || type === 'Timeout') action = isActionByOurTeam ? 'Timeout' : 'Gegner Timeout';
         
-        if (!action) return null; // Skip unknown actions for now
+        if (!action) return;
 
-        // Extract jersey number from player object OR message e.g. "(55)" or "(55.)"
         let jerseyNumber = e.player?.jerseyNumber || "";
         if (!jerseyNumber && e.message) {
             const match = e.message.match(/\((\d+)\.?\)/);
-            if (match && match[1]) {
-                jerseyNumber = match[1];
-            }
+            if (match && match[1]) jerseyNumber = match[1];
         }
 
-        // LOOKUP PLAYER NAME for our team
         let playerName = "";
         if (isActionByOurTeam && jerseyNumber) {
             const found = roster.find(p => parseInt(String(p.number)) === parseInt(String(jerseyNumber)));
@@ -327,16 +375,30 @@ export function mapHandballNetToInternal(rawJson, myTeamName) {
             else playerName = `Spieler #${jerseyNumber}`;
         }
 
-        return {
+        gameLog.push({
             time: e.time || '00:00',
             action: action,
+            half: currentHalf,
+            manualShift: 0,
+            timestamp: e.timestamp || null,
             playerName: playerName || null,
             playerId: isActionByOurTeam ? (jerseyNumber || null) : null,
             gegnerNummer: !isActionByOurTeam ? (jerseyNumber || null) : null,
             spielstand: e.score || "0:0",
-            importMeta: { hnetId: e.id || Date.now() }
-        };
-    }).filter(e => e !== null);
+            importMeta: { hnetId: e.id || `event_${idx}` }
+        });
+    });
+
+    // Final sanity check: Add Spielende if missing
+    if (!gameLog.some(e => e.action === 'Spielende')) {
+        const lastEvent = gameLog[gameLog.length - 1];
+        gameLog.push({
+            time: (lastEvent && parseTime(lastEvent.time) > 2000) ? lastEvent.time : '60:00',
+            action: 'Spielende',
+            half: 2,
+            importMeta: { hnetId: 'sanity_end' }
+        });
+    }
 
     // Ultra-defensive score lookup (Check all known variants)
     const heimTore = Number(summary.homeGoals ?? summary.scoreHome ?? 0);

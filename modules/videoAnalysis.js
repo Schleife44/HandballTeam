@@ -1,5 +1,7 @@
 import { spielstand } from './state.js';
 import { getHistorie } from './history.js';
+import { formatiereZeit } from './utils.js';
+import { customConfirm, customAlert } from './customDialog.js';
 
 let videoAnalysisInitialized = false;
 let currentVideoGame = null;
@@ -16,7 +18,7 @@ let currentAutoplayIndex = -1;
 let autoplayTimer = null;
 let currentClipEndTime = 0; // State for playback-aware autoplay
 const CLIP_DURATION = 6; // Reduced by 2 seconds as requested
-let videoLeadTime = 5; // Default lead time in seconds
+let videoLeadTime = 3; // Default lead time in seconds
 
 export function initVideoAnalysis() {
     if (videoAnalysisInitialized) return;
@@ -54,7 +56,7 @@ export function initVideoAnalysis() {
         videoPlayer.style.display = 'block';
         videoPlayer.load();
 
-        // If a game is already selected, try to KEEP its offsets instead of resetting
+        // If a game is already selected, prefer its stored offsets
         if (currentVideoGame && currentVideoGame.videoOffsets) {
             videoOffsets = { ...currentVideoGame.videoOffsets };
         } else {
@@ -81,24 +83,11 @@ export function initVideoAnalysis() {
     const setH2Btn = document.getElementById('setStartH2Btn');
 
     if (setH1Btn) {
-        setH1Btn.addEventListener('click', () => {
-            if (videoPlayer && videoPlayer.src && videoPlayer.style.display !== 'none') {
-                videoOffsets.h1 = videoPlayer.currentTime;
-                updateOffsetUI('h1');
-            }
-        });
+        setH1Btn.addEventListener('click', () => setHalfOffset(1));
     }
 
     if (setH2Btn) {
-        setH2Btn.addEventListener('click', () => {
-            if (videoPlayer && videoPlayer.src && videoPlayer.style.display !== 'none') {
-                videoOffsets.h2 = videoPlayer.currentTime;
-                // If 2nd half start is set, we assume event time 30:00 maps to this currentTime.
-                // So the offset for H2 is videoPlayer.currentTime - 1800s.
-                videoOffsets.h2 = videoPlayer.currentTime - 1800; 
-                updateOffsetUI('h2');
-            }
-        });
+        setH2Btn.addEventListener('click', () => setHalfOffset(2));
     }
 
     // Drag & Drop
@@ -199,7 +188,23 @@ export function initVideoAnalysis() {
     videoAnalysisInitialized = true;
 }
 
-function updateOffsetUI(half) {
+async function setHalfOffset(half) {
+    const videoPlayer = document.getElementById('analysisVideoPlayer');
+    if (!videoPlayer || isNaN(videoPlayer.currentTime)) return;
+
+    if (half === 1) videoOffsets.h1 = videoPlayer.currentTime;
+    else if (half === 2) videoOffsets.h2 = videoPlayer.currentTime;
+
+    if (currentVideoGame) {
+        currentVideoGame.videoOffsets = { ...videoOffsets };
+        await updateHistorieSpiel(currentVideoGame);
+    }
+    
+    updateOffsetUI();
+    await customAlert(`Startpunkt für Halbzeit ${half} auf ${formatiereZeit(videoPlayer.currentTime)} gesetzt.`, "Synchronisation");
+}
+
+function updateOffsetUI() {
     const btnH1 = document.getElementById('setStartH1Btn');
     const btnH2 = document.getElementById('setStartH2Btn');
     
@@ -215,19 +220,12 @@ function updateOffsetUI(half) {
     
     if (btnH2) {
         if (videoOffsets.h2 !== 0) {
-            const displayVal = videoOffsets.h2 + 1800;
-            btnH2.innerHTML = `<i data-lucide="check-circle" style="width: 12px; height: 12px; margin-right: 4px; color: var(--hub-green);"></i> H2: ${displayVal.toFixed(1)}s`;
+            btnH2.innerHTML = `<i data-lucide="check-circle" style="width: 12px; height: 12px; margin-right: 4px; color: var(--hub-green);"></i> H2: ${videoOffsets.h2.toFixed(1)}s`;
             btnH2.style.borderColor = 'var(--hub-green)';
         } else {
             btnH2.innerHTML = `<i data-lucide="clock" style="width: 12px; height: 12px; margin-right: 4px;"></i> Sync H2`;
             btnH2.style.borderColor = '';
         }
-    }
-
-    // Persist offsets immediately to the game object
-    if (currentVideoGame) {
-        currentVideoGame.videoOffsets = { ...videoOffsets };
-        saveUpdatedLog();
     }
 
     if (window.lucide) window.lucide.createIcons();
@@ -268,7 +266,6 @@ async function renderVideoGameList() {
 
     listContainer.innerHTML = '';
     
-    // Sort games by timestamp descending
     const sortedGames = [...games].sort((a, b) => {
         const tsA = a.timestamp || a.id || 0;
         const tsB = b.timestamp || b.id || 0;
@@ -315,7 +312,6 @@ async function renderVideoGameList() {
             item.style.border = '1px solid var(--primary)';
             selectedItem = item;
 
-            // Load offsets if present
             videoOffsets = game.videoOffsets || { h1: 0, h2: 0 };
             updateOffsetUI();
             selectGameForAnalysis(game);
@@ -348,7 +344,6 @@ export function selectGameForAnalysis(game) {
 
     if (title) title.textContent = text;
     
-    // Fill Filters
     populateFilterDropdowns(game);
     
     checkAndRenderProtocol();
@@ -361,7 +356,6 @@ function populateFilterDropdowns(game) {
 
     const log = game.gameLog || [];
     
-    // Extract unique players
     const players = new Set();
     log.forEach(entry => {
         if (entry.playerName && entry.playerName !== "SPIEL") {
@@ -371,13 +365,11 @@ function populateFilterDropdowns(game) {
         }
     });
 
-    // Extract unique actions
     const actions = new Set();
     log.forEach(entry => {
         if (entry.action) actions.add(entry.action);
     });
 
-    // Update Player Dropdown
     playerFilter.innerHTML = '<option value="all">Alle Spieler</option>';
     Array.from(players).sort().forEach(p => {
         const opt = document.createElement('option');
@@ -387,7 +379,6 @@ function populateFilterDropdowns(game) {
     });
     playerFilter.value = currentFilterPlayer;
 
-    // Update Action Dropdown
     actionFilter.innerHTML = '<option value="all">Alle Aktionen</option>';
     Array.from(actions).sort().forEach(a => {
         const opt = document.createElement('option');
@@ -408,7 +399,12 @@ function checkAndRenderProtocol() {
     if (currentVideoGame && hasVideo) {
         if (protocolContainer) protocolContainer.style.display = 'flex';
         
-        // Fix: Limit size and enable scrolling
+        const isEditing = list?.querySelector('div[style*="display: flex"] input');
+        if (isEditing) {
+            console.log("[Protocol] Skipping rerender: Editor is active.");
+            return;
+        }
+
         if (list) {
             list.style.maxHeight = '400px'; 
             list.style.overflowY = 'auto';
@@ -426,6 +422,27 @@ function checkAndRenderProtocol() {
 function renderProtocolList(game, list) {
     if (!list) return;
     list.innerHTML = '';
+
+    // Header with Smart Propagate Toggle
+    const header = document.createElement('div');
+    header.style.padding = '8px 12px';
+    header.style.borderBottom = '1px solid var(--border-color)';
+    header.style.display = 'flex';
+    header.style.alignItems = 'center';
+    header.style.justifyContent = 'space-between';
+    header.style.background = 'rgba(255,255,255,0.02)';
+    header.style.position = 'sticky';
+    header.style.top = '0';
+    header.style.zIndex = '10';
+
+    header.innerHTML = `
+        <span style="font-size: 0.8rem; font-weight: 600; color: var(--text-muted); flex: 1;">Protokoll (${currentVideoGame?.gameLog?.length || 0})</span>
+        <label style="display: flex; align-items: center; gap: 6px; cursor: pointer; font-size: 0.7rem; user-select: none; color: var(--text-muted); white-space: nowrap;" title="Verschiebt automatisch alle folgenden Ereignisse in derselben Hälfte">
+            <input type="checkbox" id="smartPropagateToggle" style="width: 12px; height: 12px; cursor: pointer; accent-color: var(--primary);">
+            Sync folgen
+        </label>
+    `;
+    list.appendChild(header);
 
     const log = game.gameLog || [];
     
@@ -445,11 +462,22 @@ function renderProtocolList(game, list) {
         if (window.lucide) window.lucide.createIcons();
     }
 
-    // Update internal autoplay list (always ascending for chronological playback)
-    autoplayList = [...filteredLog].sort((a, b) => parseTime(a.time || "00:00") - parseTime(b.time || "00:00"));
+    // Unified Absolute Seconds sorting helper
+    const getAbsSecs = (e) => {
+        const h = e.half || (parseTime(e.officialTime || e.time || "00:00") > 1800 ? 2 : 1);
+        return (h - 1) * 1800 + parseTime(e.officialTime || e.time || "00:00");
+    };
 
-    // Display order: Newest at TOP (Descending)
-    const sortedLogForDisplay = [...filteredLog].sort((a, b) => parseTime(b.time || "00:00") - parseTime(a.time || "00:00"));
+    // Update internal autoplay list (always ascending for chronological playback)
+    autoplayList = [...filteredLog].sort((a, b) => {
+        const diff = getAbsSecs(a) - getAbsSecs(b);
+        if (diff !== 0) return diff;
+        if (a.timestamp && b.timestamp) return a.timestamp - b.timestamp;
+        return 0;
+    });
+
+    // Display order: For Video Analysis, we prefer CHRONOLOGICAL (0:00 first)
+    const sortedLogForDisplay = [...autoplayList];
 
     sortedLogForDisplay.forEach((entry, idx) => {
         const item = document.createElement('div');
@@ -463,7 +491,15 @@ function renderProtocolList(game, list) {
         item.style.borderRadius = '4px';
 
         // Add visual color based on action
-        if (entry.action && entry.action.includes("Tor")) {
+        if (entry.action === "Halbzeit" || entry.action === "Spielende") {
+            item.style.background = 'rgba(255, 255, 255, 0.08)';
+            item.style.borderLeft = '4px solid var(--text-muted)';
+            item.style.textAlign = 'center';
+            item.style.fontWeight = 'bold';
+        } else if (entry.action && entry.action.includes("Timeout")) {
+            item.style.borderLeft = '4px solid #3b82f6'; // Blue for timeouts
+            item.style.background = 'rgba(59, 130, 246, 0.05)';
+        } else if (entry.action && entry.action.includes("Tor")) {
             item.style.borderLeft = '4px solid #22c55e';
             item.style.background = 'rgba(34, 197, 94, 0.03)';
         } else if (entry.action && (entry.action.includes("Fehlwurf") || entry.action.includes("Pfosten") || entry.action.includes("Latte"))) {
@@ -479,10 +515,13 @@ function renderProtocolList(game, list) {
         row.style.gap = '10px';
         row.style.width = '100%';
 
-        const timeStr = entry.time || "00:00";
         let playerInfo = "";
         if (entry.gegnerNummer) playerInfo = `#${entry.gegnerNummer} (Gegner)`;
         else if (entry.playerName && entry.playerName !== "SPIEL") playerInfo = entry.playerName;
+        const baseSecs = parseTime(entry.officialTime || entry.time || "00:00");
+        const displayTime = formatiereZeit(baseSecs);
+        const isOfficial = !!entry.officialTime;
+        const isShifted = (entry.manualShift && Math.abs(entry.manualShift) > 0.5);
 
         // 1. Hotspot for Seeking (Time + Action)
         const seekHotspot = document.createElement('div');
@@ -491,11 +530,24 @@ function renderProtocolList(game, list) {
         seekHotspot.style.alignItems = 'center';
         seekHotspot.style.gap = '10px';
         seekHotspot.style.cursor = 'pointer';
+        
+        const effectiveSecs = baseSecs + (entry.manualShift || 0);
+        
+        // Show shifted status visually but keep game time text clean
+        const timeColor = isShifted ? '#60a5fa' : 'var(--text-muted)';
+        const timeStyle = isShifted ? 'italic' : 'normal';
+        const shiftInfo = isShifted ? `Video-Korrektur: ${entry.manualShift > 0 ? '+' : ''}${Math.round(entry.manualShift)}s` : '';
+
         seekHotspot.innerHTML = `
-            <span style="font-family: monospace; font-weight: bold; width: 45px; color: var(--text-muted);">${timeStr}</span>
+            <div style="font-family: monospace; font-weight: bold; width: 44px; color: ${timeColor}; font-style: ${timeStyle};" title="${shiftInfo}">
+                ${formatiereZeit(baseSecs)}
+            </div>
             <div style="flex: 1; display: flex; flex-direction: column;">
                 <span style="font-weight: 600;">${entry.action}</span>
                 ${playerInfo ? `<span style="font-size: 0.75rem; opacity: 0.7;">${playerInfo}</span>` : ''}
+            </div>
+            <div style="font-family: monospace; font-size: 0.7rem; opacity: 0.4; text-align: right; width: 40px; margin-right: 5px;" title="Sprungpunkt im Video: ${formatiereZeit(effectiveSecs)}">
+                ${formatiereZeit(effectiveSecs)}
             </div>
         `;
         seekHotspot.addEventListener('click', () => {
@@ -516,9 +568,11 @@ function renderProtocolList(game, list) {
         const editArea = document.createElement('div');
         editArea.style.display = 'flex';
         editArea.style.alignItems = 'center';
+        editArea.style.gap = '6px';
+        
         editArea.innerHTML = `
             <button class="icon-btn-ghost edit-entry-time" style="padding: 6px; cursor: pointer;" title="Zeit korrigieren">
-                <i data-lucide="edit-2" style="width: 16px; height: 16px;"></i>
+                <i data-lucide="edit-2" style="width: 14px; height: 14px;"></i>
             </button>
         `;
 
@@ -533,53 +587,85 @@ function renderProtocolList(game, list) {
         editor.style.flexDirection = 'column';
         editor.style.gap = '8px';
 
+        const baseTimeText = formatiereZeit(effectiveSecs);
+        
         editor.innerHTML = `
             <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
                 <div style="display: flex; align-items: center; gap: 4px;">
-                    <input type="text" class="hub-input" value="${timeStr}" style="width: 60px; height: 30px; font-size: 0.8rem; text-align: center;">
+                    <input type="text" class="hub-input" value="${baseTimeText}" style="width: 60px; height: 30px; font-size: 0.8rem; text-align: center;" title="Spielzeit">
                     <button class="hub-btn-outline compact-btn sync-from-video" style="font-size: 0.7rem; height: 30px;" title="Vom aktuellen Video-Zeitpunkt übernehmen">
                         Vom Video
+                    </button>
+                    <button class="hub-btn-outline compact-btn reset-entry-shift" style="font-size: 0.7rem; height: 30px; border-color: rgba(239, 68, 68, 0.3); color: #ef4444;" title="Verschiebung löschen">
+                        Reset
                     </button>
                     <button class="hub-btn-primary compact-btn save-entry-time" style="font-size: 0.7rem; height: 30px; background: var(--hub-green);">
                         OK
                     </button>
-                </div>
-                
-                <div style="height: 20px; width: 1px; background: var(--border-color);"></div>
-
-                <div style="display: flex; align-items: center; gap: 4px;">
-                    <span style="font-size: 0.7rem; color: var(--text-muted);">Bulk:</span>
-                    <button class="hub-btn-outline compact-btn bulk-shift-btn" data-delta="-30" style="padding: 0 6px; height: 26px; font-size: 0.65rem;">-30s</button>
-                    <button class="hub-btn-outline compact-btn bulk-shift-btn" data-delta="30" style="padding: 0 6px; height: 26px; font-size: 0.65rem;">+30s</button>
-                    <button class="hub-btn-outline compact-btn bulk-shift-btn" data-delta="60" style="padding: 0 6px; height: 26px; font-size: 0.65rem;">+60s</button>
                 </div>
             </div>
         `;
 
         // Event for Edit Button
         const editBtn = editArea.querySelector('.edit-entry-time');
+        const timeInput = editor.querySelector('input');
+
         editBtn.addEventListener('click', (e) => {
             e.preventDefault();
             e.stopPropagation();
             const isHidden = editor.style.display === 'none';
             editor.style.display = isHidden ? 'flex' : 'none';
-            item.style.background = isHidden ? 'rgba(var(--primary-rgb), 0.15)' : (entry.action === "Tor" ? 'rgba(34, 197, 94, 0.03)' : '');
+            
+            if (isHidden) {
+                // When opening the editor, show the EFFECTIVE time (Original + ManualShift)
+                const baseSecs = parseTime(entry.officialTime || entry.time || "00:00");
+                const effectiveSecs = baseSecs + (entry.manualShift || 0);
+                timeInput.value = formatiereZeit(effectiveSecs);
+                item.style.background = 'rgba(var(--primary-rgb), 0.15)';
+            } else {
+                item.style.background = (entry.action === "Tor" ? 'rgba(34, 197, 94, 0.03)' : '');
+            }
         });
 
         // Event for "Vom Video"
         const syncVideoBtn = editor.querySelector('.sync-from-video');
         syncVideoBtn.addEventListener('click', () => {
             const videoPlayer = document.getElementById('analysisVideoPlayer');
-            if (videoPlayer && !isNaN(videoPlayer.currentTime)) {
-                let currentPos = videoPlayer.currentTime;
-                // Reverse offset calculation: GameTime = VideoTime - Offset
-                const gameSecs = (currentPos >= (videoOffsets.h2 + 1800) && videoOffsets.h2 !== 0) 
-                    ? (currentPos - videoOffsets.h2) 
-                    : (currentPos - videoOffsets.h1);
+            if (videoPlayer && !isNaN(videoPlayer.currentTime) && currentVideoGame?.gameLog) {
+                // Determine the half
+                let currentHalf = entry.half || (parseTime(entry.officialTime || entry.time || "00:00") > 1800 ? 2 : 1);
+                if (videoOffsets.h2 && videoPlayer.currentTime >= (videoOffsets.h2 - 5)) currentHalf = 2;
+
+                const hVideoStart = (currentHalf === 2) ? (videoOffsets.h2 || 0) : (videoOffsets.h1 || 0);
                 
-                const mins = Math.floor(Math.max(0, gameSecs) / 60);
-                const secs = Math.floor(Math.max(0, gameSecs) % 60);
-                editor.querySelector('input').value = `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+                // 1. Calculate where the entry SHOULD be in the video (wall-clock based)
+                let wallDelta = 0;
+                const anchor = currentVideoGame.gameLog.find(e => {
+                    const eh = e.half || (parseTime(e.officialTime || e.time || "00:00") > 1800 ? 2 : 1);
+                    return eh === currentHalf && e.timestamp;
+                });
+                
+                if (anchor) {
+                    const aRawSecs = parseTime(anchor.officialTime || anchor.time || "00:00");
+                    const aSecsInHalf = (currentHalf === 2 && aRawSecs >= 1800) ? (aRawSecs - 1800) : aRawSecs;
+                    const virtualHalfStartTS = anchor.timestamp - (aSecsInHalf * 1000);
+                    wallDelta = (entry.timestamp - virtualHalfStartTS) / 1000;
+                } else {
+                    // Fallback to game clock logic
+                    const rawSecs = parseTime(entry.officialTime || entry.time || "00:00");
+                    wallDelta = (currentHalf === 2 && rawSecs >= 1800) ? (rawSecs - 1800) : rawSecs;
+                }
+
+                // 2. The difference between where we ARE and where we SHOULD be is our required Shift
+                const expectedVideoPos = hVideoStart + wallDelta;
+                const requiredShift = videoPlayer.currentTime - expectedVideoPos;
+                
+                // 3. Keep the base time (official if exists) and show the result
+                const baseSecs = parseTime(entry.officialTime || entry.time || "00:00");
+                const newEffectiveSecs = Math.max(0, baseSecs + requiredShift);
+                
+                timeInput.value = formatiereZeit(newEffectiveSecs);
+                console.log(`[SyncFromVideo] Video: ${videoPlayer.currentTime.toFixed(1)}s, Expected: ${expectedVideoPos.toFixed(1)}s. Shift: ${requiredShift.toFixed(1)}s. Time: ${timeInput.value}`);
             }
         });
 
@@ -589,7 +675,7 @@ function renderProtocolList(game, list) {
             btn.addEventListener('click', async () => {
                 const delta = parseInt(btn.dataset.delta);
                 const startTime = entry.time;
-                if (confirm(`Alle Ereignisse ab ${startTime} um ${delta} Sekunden verschieben?`)) {
+                if (await customConfirm(`Alle Ereignisse ab ${startTime} um ${delta} Sekunden verschieben?`, "Bulk Shift")) {
                     await bulkShiftTimes(startTime, delta);
                     checkAndRenderProtocol();
                 }
@@ -599,46 +685,44 @@ function renderProtocolList(game, list) {
         // Event for Save
         const saveBtn = editor.querySelector('.save-entry-time');
         saveBtn.addEventListener('click', async () => {
-            const newTime = editor.querySelector('input').value;
-            if (/^\d{1,3}:\d{2}$/.test(newTime)) {
-                const oldTime = entry.time;
-                const oldSecs = parseTime(oldTime);
-                const newSecs = parseTime(newTime);
-                const delta = newSecs - oldSecs;
+            const newTimeInput = editor.querySelector('input').value;
+            if (/^\d{1,3}:\d{2}$/.test(newTimeInput)) {
+                const newSecs = parseTime(newTimeInput);
+                const officialBaseSecs = parseTime(entry.officialTime || entry.time || "00:00");
+                const currentTotalSecs = officialBaseSecs + (entry.manualShift || 0);
+                const delta = newSecs - currentTotalSecs;
 
-                // Update current entry
-                entry.time = newTime;
+                // Update manualShift of this entry
+                entry.manualShift = (entry.manualShift || 0) + delta;
 
-                // Smart Propagate: If shifting later (>0), shift all following entries in same half
-                if (delta > 0 && currentVideoGame && currentVideoGame.gameLog) {
-                    const threshold = 1800;
-                    const isSecondHalf = oldSecs >= threshold;
-                    
+                // Smart Propagate: Shift all following entries (chronologically)
+                const smartPropagate = document.getElementById('smartPropagateToggle')?.checked;
+                if (delta !== 0 && smartPropagate && currentVideoGame && currentVideoGame.gameLog) {
+                    const currentAbsSecs = getAbsSecs(entry);
                     currentVideoGame.gameLog.forEach(logEntry => {
                         if (logEntry === entry) return; 
-                        
-                        const entrySecs = parseTime(logEntry.time || "00:00");
-                        const entryIsSecondHalf = entrySecs >= threshold;
-                        
-                        if (entryIsSecondHalf === isSecondHalf && entrySecs >= oldSecs) {
-                            // Access formatiereZeit from utils (locally imported in file but helper needed here)
-                            const mins = Math.floor(Math.max(0, entrySecs + delta) / 60);
-                            const secs = Math.floor(Math.max(0, entrySecs + delta) % 60);
-                            logEntry.time = `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+                        if (getAbsSecs(logEntry) >= currentAbsSecs) {
+                            logEntry.manualShift = (logEntry.manualShift || 0) + delta;
                         }
                     });
                 }
 
                 // Automatic Sorting: Ensure log remains chronological
                 if (currentVideoGame && currentVideoGame.gameLog) {
-                    currentVideoGame.gameLog.sort((a, b) => parseTime(a.time) - parseTime(b.time));
+                    currentVideoGame.gameLog.sort((a, b) => {
+                        const getAbsSecs = (e) => {
+                            const h = e.half || (parseTime(e.time || "00:00") > 1800 ? 2 : 1);
+                            return (h - 1) * 1800 + parseTime(e.time || "00:00");
+                        };
+                        return getAbsSecs(a) - getAbsSecs(b);
+                    });
                 }
 
                 await saveUpdatedLog();
                 editor.style.display = 'none';
-                checkAndRenderProtocol();
+                renderProtocolList(); // Full refresh UI
             } else {
-                alert("Bitte Zeit im Format MM:SS eingeben.");
+                await customAlert("Bitte Zeit im Format MM:SS eingeben.", "Eingabe-Fehler");
             }
         });
 
@@ -668,8 +752,8 @@ async function bulkShiftTimes(startTimeStr, deltaSeconds) {
     currentVideoGame.gameLog.forEach(entry => {
         const entrySecs = parseTime(entry.time || "00:00");
         if (entrySecs >= startSecs) {
-            const newSecs = Math.max(0, entrySecs + deltaSeconds);
-            entry.time = formatiereZeit(newSecs);
+            // Shift the internal manual offset, keep original display time
+            entry.manualShift = (entry.manualShift || 0) + deltaSeconds;
         }
     });
 
@@ -681,21 +765,48 @@ async function bulkShiftTimes(startTimeStr, deltaSeconds) {
 
 function seekToEntry(entry) {
     const videoPlayer = document.getElementById('analysisVideoPlayer');
-    if (!videoPlayer) return;
+    if (!videoPlayer || !currentVideoGame || !currentVideoGame.gameLog) return;
 
     let targetTime = 0;
-    if (entry.videoTime !== undefined) {
-        targetTime = entry.videoTime;
-    } else {
-        targetTime = parseTime(entry.time || "00:00");
-    }
+    
+    // Unified Half Detection
+    const currentHalf = entry.half || (parseTime(entry.officialTime || entry.time || "00:00") > 1800 ? 2 : 1);
 
-    // Apply Offset based on half (30min threshold)
-    const gameSeconds = parseTime(entry.time || "00:00");
-    if (gameSeconds >= 1800 && videoOffsets.h2 !== 0) {
-        targetTime += videoOffsets.h2;
-    } else {
-        targetTime += videoOffsets.h1;
+    // 1. TIMESTAMP-BASED SEEKING (Modern Precision)
+    if (entry.timestamp && currentVideoGame.gameLog) {
+        // Find an anchor in the SAME determined half
+        const anchor = currentVideoGame.gameLog.find(e => {
+            const eh = e.half || (parseTime(e.officialTime || e.time || "00:00") > 1800 ? 2 : 1);
+            return eh === currentHalf && e.timestamp;
+        });
+        
+        if (anchor) {
+            // Seconds from START OF HALF to anchor
+            const aRawSecs = parseTime(anchor.officialTime || anchor.time || "00:00");
+            const aSecsInHalf = (currentHalf === 2 && aRawSecs >= 1800) ? (aRawSecs - 1800) : aRawSecs;
+            
+            const virtualHalfStartTS = anchor.timestamp - (aSecsInHalf * 1000);
+            const wallDeltaSinceHalfStart = (entry.timestamp - virtualHalfStartTS) / 1000;
+            
+            const hVideoStart = (currentHalf === 2) ? (videoOffsets.h2 || 0) : (videoOffsets.h1 || 0);
+            targetTime = hVideoStart + wallDeltaSinceHalfStart + (entry.manualShift || 0);
+            
+            console.log(`[Seek] TS Mode (Half ${currentHalf}): Delta ${wallDeltaSinceHalfStart.toFixed(1)}s from Start ${hVideoStart.toFixed(1)}s`);
+        }
+    } 
+    
+    // 2. FALLBACK: GAME-CLOCK BASED (Classic)
+    if (targetTime === 0) {
+        if (entry.videoTime !== undefined) {
+            targetTime = entry.videoTime;
+        } else {
+            const rawSecs = parseTime(entry.officialTime || entry.time || "00:00");
+            const secsInHalf = (currentHalf === 2 && rawSecs >= 1800) ? (rawSecs - 1800) : rawSecs;
+            const hVideoStart = (currentHalf === 2) ? (videoOffsets.h2 || 0) : (videoOffsets.h1 || 0);
+            
+            targetTime = hVideoStart + secsInHalf + (entry.manualShift || 0);
+        }
+        console.log(`[Seek] Fallback Mode (Half ${currentHalf}): ${targetTime.toFixed(1)}s`);
     }
 
     // Start a bit earlier for context (using user preference)

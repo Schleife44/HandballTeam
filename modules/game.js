@@ -1005,7 +1005,9 @@ export function logGlobalAktion(aktion, kommentar = null, gegnerNummer = null) {
         kommentar: kommentar,
         spielstand: aktuellerSpielstand,
         gegnerNummer: gegnerNummer,
-        wurfbild: null
+        wurfbild: null,
+        timestamp: Date.now(),
+        half: (spielstand.timer.gamePhase <= 2 ? 1 : 2)
     });
 
     updateProtokollAnzeige();
@@ -1050,10 +1052,10 @@ export function logScoreKorrektur(team, change) {
         playerName: "SPIEL",
         action: aktion,
         kommentar: null,
-        action: aktion,
-        kommentar: null,
         spielstand: aktuellerSpielstand,
-        videoTime: getVideoTimeSeconds() // NEW
+        videoTime: getVideoTimeSeconds(),
+        timestamp: Date.now(),
+        half: (spielstand.timer.gamePhase <= 2 ? 1 : 2)
     });
 
     updateProtokollAnzeige();
@@ -1088,7 +1090,9 @@ export function speichereGegnerNummer(nummer, name = '', isGoalkeeper = false) {
             spielstand: `${spielstand.score.heim}:${spielstand.score.gegner}`,
             gegnerNummer: nummer,
             wurfbild: null,
-            videoTime: getVideoTimeSeconds() // NEW
+            timestamp: Date.now(),
+            half: (spielstand.timer.gamePhase <= 2 ? 1 : 2),
+            videoTime: getVideoTimeSeconds()
         });
 
         gegnerNummerModal.classList.add('versteckt');
@@ -1219,7 +1223,9 @@ export function handle7mOutcome(outcome) {
         spielstand: aktuellerSpielstand,
         gegnerNummer: nummer,
         wurfposition: { x: 50, y: 29.0 },
-        wurfbild: null
+        wurfbild: null,
+        timestamp: Date.now(),
+        half: (spielstand.timer.gamePhase <= 2 ? 1 : 2)
     });
 
     updateProtokollAnzeige();
@@ -1369,7 +1375,9 @@ export function skipGegnerNummer() {
             playerId: null, playerName: "SPIEL",
             action: "Gegner 2 min", kommentar: null,
             spielstand: `${spielstand.score.heim}:${spielstand.score.gegner}`,
-            gegnerNummer: null, wurfbild: null
+            gegnerNummer: null, wurfbild: null,
+            timestamp: Date.now(),
+            half: (spielstand.timer.gamePhase <= 2 ? 1 : 2)
         });
         gegnerNummerModal.classList.add('versteckt');
     }
@@ -1380,7 +1388,9 @@ export function skipGegnerNummer() {
             playerId: null, playerName: "SPIEL",
             action: "Gegner 7m", kommentar: null,
             spielstand: `${spielstand.score.heim}:${spielstand.score.gegner}`,
-            gegnerNummer: null, wurfbild: null
+            gegnerNummer: null, wurfbild: null,
+            timestamp: Date.now(),
+            half: (spielstand.timer.gamePhase <= 2 ? 1 : 2)
         });
         gegnerNummerModal.classList.add('versteckt');
         sevenMeterOutcomeModal.classList.remove('versteckt');
