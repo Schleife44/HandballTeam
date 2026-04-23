@@ -264,6 +264,9 @@ export function mapHandballNetToInternal(rawJson, myTeamName) {
         throw new Error("Ungültiges Datenformat (summary fehlt).");
     }
 
+    console.log("%c[DEBUG IMPORT] Starting Mapping...", "color: #3b82f6; font-weight: bold; font-size: 14px;");
+    console.log("[DEBUG IMPORT] My Team (Settings):", myTeamName);
+
     const summary = data.summary;
     const homeTeam = summary.homeTeam || { name: "Heim" };
     const awayTeam = summary.awayTeam || { name: "Gast" };
@@ -274,23 +277,62 @@ export function mapHandballNetToInternal(rawJson, myTeamName) {
         gameDate = new Date(summary.startsAt).toISOString();
     }
 
-    // Detect perspective (is the user's team away?)
-    const isAuswaerts = myTeamName && awayTeam.name && awayTeam.name.toLowerCase().includes(myTeamName.toLowerCase());
+    // Detect perspective (is the user's team home or away?)
+    // Improved detection: Check both teams and pick the one that matches better
+    const homeName = (homeTeam.name || "").toLowerCase();
+    const awayName = (awayTeam.name || "").toLowerCase();
+    const searchName = (myTeamName || "").toLowerCase();
+
+    let isAuswaerts = false;
+    if (searchName) {
+        // If our name is in the away name but not home name (or away name is a better match)
+        const homeMatch = homeName.includes(searchName);
+        const awayMatch = awayName.includes(searchName);
+        
+        if (awayMatch && !homeMatch) {
+            isAuswaerts = true;
+        } else if (homeMatch && awayMatch) {
+            // Tie breaker: which one is more similar in length or exact?
+            isAuswaerts = Math.abs(awayName.length - searchName.length) < Math.abs(homeName.length - searchName.length);
+        } else if (!homeMatch && !awayMatch) {
+            // Fallback: try very loose matching (words)
+            const words = searchName.split(/\s+/).filter(w => w.length > 2);
+            const homeWordMatch = words.some(w => homeName.includes(w));
+            const awayWordMatch = words.some(w => awayName.includes(w));
+            if (awayWordMatch && !homeWordMatch) isAuswaerts = true;
+        }
+    }
+ 
+    console.log(`[DEBUG IMPORT] Teams: Home='${homeName}', Away='${awayName}'`);
+    console.log(`[DEBUG IMPORT] DETECTED: isAuswaerts = ${isAuswaerts}`);
     
     // Handled wrapped data if present
     const lineup = data.lineup || {};
     const hnetHomePlayers = lineup.home || [];
     const hnetAwayPlayers = lineup.away || [];
-
+    
+    // Safety check: Compare score order vs team order
+    // In Hnet API combined, summary.homeTeam is always the team that matches events with team: 'Home'
     const ourHnetPlayers = isAuswaerts ? hnetAwayPlayers : hnetHomePlayers;
     const theirHnetPlayers = isAuswaerts ? hnetHomePlayers : hnetAwayPlayers;
 
     // Helper to map players
-    const mapPlayers = (hnetList) => hnetList.map(p => ({
-        name: p.player?.name || `Spieler #${p.player?.jerseyNumber || '?'}`,
-        number: p.player?.jerseyNumber || "",
-        isGoalkeeper: !!(p.position?.toLowerCase().includes('torwart') || p.position?.toLowerCase().includes('gk'))
-    }));
+    const mapPlayers = (hnetList) => hnetList.map(p => {
+        const fn = p.player?.firstname || p.firstname || "";
+        const ln = p.player?.lastname || p.lastname || "";
+        let fullName = (fn + " " + ln).trim();
+        
+        // Try to find the number in various common fields
+        const jerseyNum = p.player?.jerseyNumber || p.jerseyNumber || p.number || "";
+        
+        if (fullName === "N.N. N.N." || !fullName) fullName = `Spieler #${jerseyNum || '?'}`;
+        
+        return {
+            name: fullName,
+            number: String(jerseyNum),
+            isGoalkeeper: !!(p.position?.toLowerCase().includes('torwart') || p.position?.toLowerCase().includes('gk'))
+        };
+    });
 
     const roster = mapPlayers(ourHnetPlayers);
     const knownOpponents = mapPlayers(theirHnetPlayers);
@@ -332,6 +374,10 @@ export function mapHandballNetToInternal(rawJson, myTeamName) {
         const timeSecs = e.time ? (parseInt(e.time.split(':')[0]) * 60 + parseInt(e.time.split(':')[1])) : 0;
         const isActionByOurTeam = (isAuswaerts && e.team === 'Away') || (!isAuswaerts && e.team === 'Home');
         
+        if (idx < 5) {
+            console.log(`[DEBUG IMPORT] Event #${idx}: Team=${e.team}, Action=${type}, ByUs=${isActionByOurTeam}`);
+        }
+        
         // EVERYTHING on or before splitIndex belongs to H1.
         // EVERYTHING after splitIndex belongs to H2.
         const currentHalf = (splitIndex !== -1 && idx > splitIndex) ? 2 : 1;
@@ -352,27 +398,71 @@ export function mapHandballNetToInternal(rawJson, myTeamName) {
         }
 
         let action = null;
-        if (type === 'Goal') action = isActionByOurTeam ? 'Tor' : 'Gegner Tor';
-        else if (type === 'SevenMeterGoal') action = isActionByOurTeam ? '7m Tor' : 'Gegner 7m Tor';
-        else if (type === 'TwoMinutePenalty') action = isActionByOurTeam ? '2 Minuten' : 'Gegner 2 Minuten';
-        else if (type === 'YellowCard') action = isActionByOurTeam ? 'Gelbe Karte' : 'Gegner Gelbe Karte';
-        else if (type === 'RedCard') action = isActionByOurTeam ? 'Rote Karte' : 'Gegner Rote Karte';
-        else if (type === 'BlueCard') action = isActionByOurTeam ? 'Blaue Karte' : 'Gegner Blaue Karte';
+        const typeLower = (type || "").toLowerCase();
+        
+        // Map common goal types
+        if (typeLower.includes('goal') || typeLower.includes('tor')) {
+            action = isActionByOurTeam ? 'Tor' : 'Gegner Tor';
+            if (typeLower.includes('seven')) action = isActionByOurTeam ? '7m Tor' : 'Gegner 7m Tor';
+        } 
+        else if (type === 'TwoMinutePenalty' || typeLower.includes('minute')) action = isActionByOurTeam ? '2 Minuten' : 'Gegner 2 Minuten';
+        else if (type === 'YellowCard' || typeLower.includes('yellow')) action = isActionByOurTeam ? 'Gelbe Karte' : 'Gegner Gelbe Karte';
+        else if (type === 'RedCard' || typeLower.includes('red')) action = isActionByOurTeam ? 'Rote Karte' : 'Gegner Rote Karte';
+        else if (type === 'BlueCard' || typeLower.includes('blue')) action = isActionByOurTeam ? 'Blaue Karte' : 'Gegner Blaue Karte';
         else if (type === 'TeamTimeout' || type === 'Timeout') action = isActionByOurTeam ? 'Timeout' : 'Gegner Timeout';
+        
+        // FALLBACK: If score changed but no goal action identified yet
+        if (!action && e.score) {
+            const currentScoreParts = e.score.split(':').map(n => parseInt(n.trim()));
+            // We'd need the previous score to be 100% sure, but usually we can check if it's a known goal type from the message
+            const msg = (e.message || "").toLowerCase();
+            if (msg.includes("tor") || msg.includes("treffer") || msg.includes("erzielt")) {
+                action = isActionByOurTeam ? 'Tor' : 'Gegner Tor';
+                if (msg.includes("7m") || msg.includes("siebenmeter")) action = isActionByOurTeam ? '7m Tor' : 'Gegner 7m Tor';
+            }
+        }
         
         if (!action) return;
 
         let jerseyNumber = e.player?.jerseyNumber || "";
         if (!jerseyNumber && e.message) {
-            const match = e.message.match(/\((\d+)\.?\)/);
-            if (match && match[1]) jerseyNumber = match[1];
+            const msg = e.message;
+            // 1. Classic: "Tor durch Name (Num.)"
+            const matchParentheses = msg.match(/\((\d+)\.?\)/);
+            if (matchParentheses) {
+                jerseyNumber = matchParentheses[1];
+            } else {
+                // 2. N.N. Case: "Tor durch 29. (Letmather TV 2)"
+                const matchNaked = msg.match(/durch (\d+)\. \(/i);
+                if (matchNaked) jerseyNumber = matchNaked[1];
+            }
         }
 
         let playerName = "";
-        if (isActionByOurTeam && jerseyNumber) {
-            const found = roster.find(p => parseInt(String(p.number)) === parseInt(String(jerseyNumber)));
-            if (found) playerName = found.name;
-            else playerName = `Spieler #${jerseyNumber}`;
+        let finalPlayerId = null;
+        let finalGegnerId = null;
+
+        if (jerseyNumber) {
+            finalPlayerId = isActionByOurTeam ? String(jerseyNumber) : null;
+            finalGegnerId = !isActionByOurTeam ? String(jerseyNumber) : null;
+
+            // Find player name from the correct list
+            const searchList = isActionByOurTeam ? roster : knownOpponents;
+            const found = searchList.find(p => String(p.number) === String(jerseyNumber));
+            if (found) {
+                playerName = found.name;
+            } else {
+                playerName = (isActionByOurTeam ? "Spieler #" : "Gegner #") + jerseyNumber;
+            }
+        } else {
+            // Team Goal / No player info
+            if (isActionByOurTeam) {
+                finalPlayerId = "TEAM_US";
+                playerName = "Mannschaft (Wir)";
+            } else {
+                finalGegnerId = "TEAM_OPP";
+                playerName = "Mannschaft (Gegner)";
+            }
         }
 
         gameLog.push({
@@ -381,12 +471,31 @@ export function mapHandballNetToInternal(rawJson, myTeamName) {
             half: currentHalf,
             manualShift: 0,
             timestamp: e.timestamp || null,
-            playerName: playerName || null,
-            playerId: isActionByOurTeam ? (jerseyNumber || null) : null,
-            gegnerNummer: !isActionByOurTeam ? (jerseyNumber || null) : null,
+            playerName: playerName,
+            playerId: finalPlayerId,
+            gegnerNummer: finalGegnerId,
             spielstand: e.score || "0:0",
             importMeta: { hnetId: e.id || `event_${idx}` }
         });
+    });
+
+    // --- AUTO-POPULATE ROSTERS FROM LOG (Safety Net) ---
+    // If the API lineup was incomplete, we rebuild it from the actual game events
+    gameLog.forEach(e => {
+        const isUs = !e.action.toLowerCase().includes('gegner');
+        const num = e.playerId || e.gegnerNummer;
+        if (!num) return;
+
+        const targetList = isUs ? roster : knownOpponents;
+        const exists = targetList.some(p => String(p.number) === String(num));
+        
+        if (!exists) {
+            targetList.push({
+                name: e.playerName || (isUs ? `Spieler #${num}` : `Gegner #${num}`),
+                number: String(num),
+                isGoalkeeper: false
+            });
+        }
     });
 
     // Final sanity check: Add Spielende if missing
@@ -407,6 +516,7 @@ export function mapHandballNetToInternal(rawJson, myTeamName) {
     // Final Object
     const result = {
         date: gameDate,
+        isImportedOnly: true,
         score: {
             heim: isNaN(heimTore) ? 0 : heimTore,
             gegner: isNaN(gegnerTore) ? 0 : gegnerTore
@@ -421,13 +531,13 @@ export function mapHandballNetToInternal(rawJson, myTeamName) {
         settings: {
             teamNameHeim: homeTeam.name || "Heimteam",
             teamNameGegner: awayTeam.name || "Gastteam",
-            myTeamName: myTeamName || homeTeam.name || "Mein Team",
-            isAuswaertsspiel: !!isAuswaerts
+            myTeamName: myTeamName || (isAuswaerts ? awayTeam.name : homeTeam.name),
+            isAuswaertsspiel: isAuswaerts
         },
         hnetGameId: summary.id || null,
         importDate: new Date().toISOString()
     };
     
-    console.log("[V4_SAFETY_NET] Mapped result:", result);
+    console.log(`[Import] Finished mapping. Perspective: ${isAuswaerts ? 'Away' : 'Home'}, MyTeam: ${result.settings.myTeamName}`);
     return result;
 }

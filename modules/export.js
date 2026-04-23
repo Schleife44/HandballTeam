@@ -90,7 +90,7 @@ export function exportiereAlsTxt() {
 
     const heimName = spielstand.settings.teamNameHeim;
 
-    let dateiInhalt = `Protokoll Handball Team-Tracker: ${heimName} vs ${spielstand.settings.teamNameGegner}\n\n`;
+    let dateiInhalt = `Protokoll Handball Sechsmeter: ${heimName} vs ${spielstand.settings.teamNameGegner}\n\n`;
     dateiInhalt += `Team: ${spielstand.roster.map(p => `#${p.number} ${p.name}`).join(', ')}\n\n`;
 
     dateiInhalt += `--- TOR-ÜBERSICHT ${heimName.toUpperCase()} ---\n`;
@@ -651,7 +651,7 @@ export function exportiereHistorieAlsPdf(game) {
     // Footer
     doc.setFontSize(8);
     doc.setTextColor(128, 128, 128);
-    doc.text('Erstellt mit Team-Tracker', 105, 290, { align: 'center' });
+    doc.text('Erstellt mit Sechsmeter', 105, 290, { align: 'center' });
 
     // Save
     const dateStr = new Date(game.date).toISOString().slice(0, 10);
@@ -772,7 +772,7 @@ export function exportiereAlsPdf() {
     // Footer
     doc.setFontSize(8);
     doc.setTextColor(128, 128, 128);
-    doc.text('Erstellt mit Team-Tracker', 105, 290, { align: 'center' });
+    doc.text('Erstellt mit Sechsmeter', 105, 290, { align: 'center' });
 
     // Save PDF
     const dateStr = new Date().toISOString().slice(0, 10);

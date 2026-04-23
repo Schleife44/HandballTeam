@@ -287,9 +287,15 @@ export function registerEventListeners() {
             histTabProtokoll.classList.remove('active');
             histTabTorfolge.classList.remove('active');
 
-            // Unified View: Show Heatmap Content and SHOW visuals
+            // Unified View: Show Heatmap Content
             histContentHeatmap.classList.remove('versteckt');
-            histContentHeatmap.classList.remove('hide-heatmap-visuals');
+            
+            // Re-apply hiding IF it's an imported game
+            if (histContentHeatmap.dataset.isImportedOnly === "true") {
+                histContentHeatmap.classList.add('hide-heatmap-visuals');
+            } else {
+                histContentHeatmap.classList.remove('hide-heatmap-visuals');
+            }
 
             // Hide others
             histContentProtokoll.classList.add('versteckt');
@@ -302,7 +308,6 @@ export function registerEventListeners() {
             histContentProtokoll.classList.remove('versteckt');
 
             histContentHeatmap.classList.add('versteckt');
-            histContentHeatmap.classList.remove('hide-heatmap-visuals'); // Reset class
             histContentTorfolge.classList.add('versteckt');
         });
         histTabTorfolge.addEventListener('click', () => {
@@ -312,7 +317,6 @@ export function registerEventListeners() {
             histContentTorfolge.classList.remove('versteckt');
 
             histContentHeatmap.classList.add('versteckt');
-            histContentHeatmap.classList.remove('hide-heatmap-visuals'); // Reset class
             histContentProtokoll.classList.add('versteckt');
         });
     }

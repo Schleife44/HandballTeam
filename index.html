@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Team-Tracker</title>
+    <title>Sechsmeter.de</title>
     <link rel="stylesheet" href="styles.css">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -23,10 +23,10 @@
     <!-- Sidebar Navigation -->
     <div id="sidebar">
         <div class="sidebar-header hub-sidebar-brand" style="border-bottom: none; padding-bottom: 10px;">
-            <div class="hub-logo">H</div>
+            <div class="hub-logo">6</div>
             <div class="hub-brand-text">
-                <div class="hub-brand-name">Handball Hub</div>
-                <div class="hub-brand-sub">Dashboard</div>
+                <div class="hub-brand-name">Sechsmeter</div>
+                <div class="hub-brand-sub">Analyse Dashboard</div>
             </div>
         </div>
         <nav class="sidebar-nav">
@@ -1531,29 +1531,34 @@
 
 
         <!-- Video Analyse Bereich -->
-        <div id="videoAnalyseBereich" class="content-section versteckt" style="height: calc(100vh - 100px); display: flex; flex-direction: column; overflow: hidden; padding-bottom: 10px;">
+        <div id="videoAnalyseBereich" class="content-section versteckt" style="min-height: calc(100vh - 100px); display: flex; flex-direction: column; overflow-y: auto; padding-bottom: 30px;">
             <div class="hub-header-row" style="margin-bottom: 20px; flex-shrink: 0;">
                 <div class="hub-dashboard-title">
                     <h1>Video Analyse</h1>
                     <span class="hub-season-badge">Review & Coaching</span>
                 </div>
             </div>
-            <div style="display: flex; gap: 20px; flex: 1; min-height: 0;">
-                <!-- Left: Game List -->
-                <div
-                    style="width: 420px; min-width: 420px; flex-shrink: 0; display: flex; flex-direction: column; gap: 10px;">
-                    <div class="stats-card" style="flex: 1; overflow-y: auto; padding: 15px; width: 100%;">
-                        <h3 class="card-title">Spiele</h3>
-                        <div id="videoGameListContent" style="display: flex; flex-direction: column; gap: 8px;">
+            <div style="display: flex; gap: 20px; flex: 1; min-height: 0; overflow: visible;">
+                <!-- Left: Game List (Sidebar) -->
+                <div id="videoSidebar"
+                    style="width: 420px; min-width: 420px; flex-shrink: 0; display: flex; flex-direction: column; gap: 10px; transition: all 0.3s ease; height: 100%; min-height: 0;">
+                    <div class="stats-card" style="flex: 1; display: flex; flex-direction: column; overflow: hidden; padding: 15px; width: 100%; min-height: 0;">
+                        <h3 class="card-title" style="flex-shrink: 0;">Spiele</h3>
+                        <div id="videoGameListContent" style="max-height: 68vh; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; padding-right: 5px;">
                             <!-- Items injected via JS -->
                             <p style="color: var(--text-muted); font-size: 0.9rem;">Lade Spiele...</p>
                         </div>
                     </div>
                 </div>
 
+                <!-- Side Toggle Button (absolute positioned, shown when sidebar hidden) -->
+                <button id="videoSidebarToggle" class="versteckt" style="position: absolute; left: 0; top: 50%; transform: translateY(-50%); z-index: 100; writing-mode: vertical-rl; padding: 15px 5px; border-radius: 0 8px 8px 0; background: var(--hub-green); color: var(--hub-btn-text); border: none; font-size: 0.7rem; font-weight: bold; cursor: pointer; opacity: 0.8;">
+                    SPIELE ZEIGEN
+                </button>
+
                 <!-- Right: Video Player -->
                 <div class="stats-card"
-                    style="flex: 1; display: flex; flex-direction: column; gap: 15px; padding: 20px;">
+                    style="flex: 1; display: flex; flex-direction: column; gap: 15px; padding: 20px; overflow-y: auto; min-height: 0;">
                     <div
                         style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-color); padding-bottom: 10px;">
                         <h3 id="videoAnalyseTitle" class="card-title" style="margin: 0; border: none;">Kein Spiel
@@ -1570,6 +1575,10 @@
                                     <i data-lucide="clock" style="width: 12px; height: 12px; margin-right: 4px;"></i>
                                     Sync H2
                                 </button>
+                                <button id="videoCinemaModeBtn" class="shadcn-btn-outline compact-btn" style="height: 32px; font-size: 0.75rem;" title="Kino-Modus ein-/ausschalten">
+                                    <i data-lucide="monitor" style="width: 14px; height: 14px; margin-right: 4px;"></i>
+                                    Kino
+                                </button>
                             </div>
                             <label class="shadcn-btn-primary" style="cursor: pointer;">
                                 <i data-lucide="upload" style="width: 16px; height: 16px; margin-right: 8px;"></i>
@@ -1582,22 +1591,58 @@
                     <div style="flex: 1; display: flex; flex-direction: row; gap: 15px; min-height: 0;">
                         <!-- Video Container -->
                         <div
-                            style="flex: 2; align-self: flex-start; background: #000; border-radius: 8px; overflow: hidden; display: flex; align-items: center; justify-content: center; position: relative; width: 100%;">
-                            <video id="analysisVideoPlayer" controls
-                                style="width: 100%; height: auto; max-height: 80vh;">
-                            </video>
-                            <div id="videoPlaceholder"
-                                style="position: absolute; color: #fff; display: flex; flex-direction: column; align-items: center; gap: 10px; pointer-events: none;">
-                                <i data-lucide="film" style="width: 48px; height: 48px; opacity: 0.5;"></i>
-                                <span style="opacity: 0.8;">Bitte Video auswählen</span>
+                            style="flex: 2; align-self: flex-start; display: flex; flex-direction: column; gap: 10px; width: 100%; min-width: 0;">
+                            <!-- Video Player Section -->
+                            <div style="background: #000; border-radius: 12px; overflow: hidden; display: flex; align-items: center; justify-content: center; position: relative; width: 100%; aspect-ratio: 16/9; box-shadow: 0 10px 30px rgba(0,0,0,0.5);">
+                                <video id="analysisVideoPlayer" controls
+                                    style="width: 100%; height: 100%; max-height: none;">
+                                </video>
+                                <div id="videoPlaceholder"
+                                    style="position: absolute; color: #fff; display: flex; flex-direction: column; align-items: center; gap: 10px; pointer-events: none;">
+                                    <i data-lucide="film" style="width: 48px; height: 48px; opacity: 0.5;"></i>
+                                    <span style="opacity: 0.8;">Bitte Video auswählen</span>
+                                </div>
+                            </div>
+
+                            <!-- Timeline Container (New) -->
+                            <div id="videoTimelineContainer" class="versteckt" style="width: 100%; background: var(--bg-card); border-radius: 12px; border: 1px solid var(--border-color); padding: 15px; display: flex; flex-direction: column; gap: 10px; user-select: none; margin-top: 10px;">
+                                <div style="display: flex; justify-content: space-between; align-items: center;">
+                                    <span style="font-size: 0.75rem; font-weight: 600; color: var(--text-muted); text-transform: uppercase;">Spielverlauf Timeline</span>
+                                    <div id="timelineTimeLabel" style="font-family: monospace; font-size: 0.85rem; color: var(--primary);">00:00 / 00:00</div>
+                                </div>
+                                
+                                <!-- Home/Guest Split Timeline -->
+                                <div id="videoTimelineTrack" style="width: 100%; height: 100px; background: rgba(0,0,0,0.3); border-radius: 8px; position: relative; cursor: pointer; border: 1px solid rgba(255,255,255,0.1); overflow: hidden; box-shadow: inset 0 0 10px rgba(0,0,0,0.5);">
+                                    <!-- Progress Layer -->
+                                    <div id="timelineProgress" style="position: absolute; top: 0; left: 0; height: 100%; background: rgba(59, 130, 246, 0.1); border-right: 2px solid var(--primary); z-index: 1;"></div>
+                                    
+                                    <!-- Track Orientation Labels -->
+                                    <div style="position: absolute; top: 15%; left: 12px; font-size: 0.6rem; font-weight: bold; color: var(--hub-green); opacity: 0.7; z-index: 1; pointer-events: none; text-transform: uppercase; letter-spacing: 0.05em;">Heim</div>
+                                    <div style="position: absolute; top: 65%; left: 12px; font-size: 0.6rem; font-weight: bold; color: #60a5fa; opacity: 0.7; z-index: 1; pointer-events: none; text-transform: uppercase; letter-spacing: 0.05em;">Gegner</div>
+
+                                    <!-- Strong Center Line -->
+                                    <div style="position: absolute; top: 50%; left: 0; width: 100%; height: 2px; background: rgba(255,255,255,0.15); transform: translateY(-50%);"></div>
+
+                                    <!-- Markers Layer -->
+                                    <div id="timelineMarkers" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 2;"></div>
+                                </div>
+
+                                <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 5px;">
+                                    <div style="display: flex; gap: 15px; font-size: 0.65rem; color: var(--text-muted);">
+                                        <div style="display: flex; align-items: center; gap: 4px;"><span style="width: 8px; height: 8px; border-radius: 50%; background: #22c55e;"></span> Tor</div>
+                                        <div style="display: flex; align-items: center; gap: 4px;"><span style="width: 8px; height: 8px; border-radius: 50%; background: #ef4444;"></span> Fehlwurf</div>
+                                        <div style="display: flex; align-items: center; gap: 4px;"><span style="width: 8px; height: 8px; border-radius: 50%; background: #eab308;"></span> Bestrafung</div>
+                                    </div>
+                                    <span style="font-size: 0.6rem; color: var(--text-muted); opacity: 0.6;">Oben: Heim | Unten: Gegner</span>
+                                </div>
                             </div>
                         </div>
 
                         <!-- Protocol Container -->
                         <div id="videoAnalysisProtocol"
-                            style="flex: 1; min-height: 0; overflow-y: auto; background: var(--bg-secondary); border-radius: 8px; padding: 10px; border: 1px solid var(--border-color); display: none; flex-direction: column;">
+                            style="flex: 1; min-height: 0; background: var(--bg-secondary); border-radius: 8px; border: 1px solid var(--border-color); display: none; flex-direction: column; overflow: hidden;">
                             <div
-                                style="display: flex; justify-content: space-between; align-items: center; margin-top: 0; margin-bottom: 8px; position: sticky; top: 0; background: var(--bg-secondary); padding-bottom: 5px; border-bottom: 1px solid var(--border-color); z-index: 5;">
+                                style="display: flex; justify-content: space-between; align-items: center; padding: 10px; border-bottom: 1px solid var(--border-color); background: var(--bg-secondary); flex-shrink: 0; z-index: 5;">
                                 <h3 style="font-size: 0.9rem; margin: 0;">Protokoll</h3>
                                 <div style="display: flex; align-items: center; gap: 8px;">
                                     <span style="font-size: 0.7rem; opacity: 0.7;">Vorlauf:</span>
@@ -1608,7 +1653,7 @@
                             </div>
                             
                             <!-- Filter Bar -->
-                            <div style="display: flex; flex-direction: column; gap: 8px; margin-bottom: 12px; padding-bottom: 12px; border-bottom: 1px solid var(--border-color); background: var(--bg-secondary); position: sticky; top: 32px; z-index: 4;">
+                            <div style="display: flex; flex-direction: column; gap: 8px; padding: 10px; border-bottom: 1px solid var(--border-color); background: var(--bg-secondary); flex-shrink: 0; z-index: 4;">
                                 <div style="display: flex; gap: 8px;">
                                     <select id="videoFilterPlayer" class="hub-btn-outline" style="flex: 1; height: 32px; font-size: 0.75rem; padding: 0 5px; text-align: left; background: var(--bg-card);">
                                         <option value="all">Alle Spieler</option>
@@ -1629,7 +1674,7 @@
                             </div>
 
                             <div id="videoAnalysisProtocolList"
-                                style="display: flex; flex-direction: column; gap: 4px;">
+                                style="max-height: 60vh; overflow-y: auto; display: flex; flex-direction: column; gap: 4px; padding: 10px;">
                             </div>
                         </div>
                     </div>
@@ -2284,7 +2329,7 @@
         ">
             <!-- Header -->
             <div style="text-align: center; margin-bottom: 2rem;">
-                <h1 style="font-size: 1.5rem; font-weight: 600; letter-spacing: -0.025em; margin-bottom: 0.5rem;">Handball Dashboard</h1>
+                <h1 style="font-size: 1.5rem; font-weight: 600; letter-spacing: -0.025em; margin-bottom: 0.5rem;">Sechsmeter</h1>
                 <p id="loginSubtitle" style="font-size: 0.875rem; color: hsl(215, 20.2%, 65.1%);">Melde dich an, um fortzufahren</p>
             </div>
 

@@ -189,9 +189,18 @@ export async function renderHistoryList() {
         const date = new Date(game.date).toLocaleDateString();
 
         const isHnet = !!game.hnetGameId;
-        const sourceBadge = isHnet 
-            ? `<span style="font-size: 0.65rem; padding: 2px 6px; background: rgba(37, 99, 235, 0.1); color: #60a5fa; border: 1px solid rgba(37, 99, 235, 0.2); border-radius: 4px; margin-left: auto;">handball.net</span>`
-            : `<span style="font-size: 0.65rem; padding: 2px 6px; background: rgba(255, 255, 255, 0.05); color: var(--text-muted); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 4px; margin-left: auto;">Eigenes Tracking</span>`;
+        const hasTrackingData = (game.gameLog || []).some(e => e.wurfposition || e.wurfbild || e.isManualEntry);
+        
+        let sourceBadge = '';
+        if (isHnet && hasTrackingData) {
+            sourceBadge = `<span class="hub-sync-badge-verified" style="font-size: 0.65rem; padding: 3px 8px; background: rgba(34, 197, 94, 0.15); color: #4ade80; border: 1px solid rgba(34, 197, 94, 0.3); border-radius: 6px; margin-left: auto; display: inline-flex; align-items: center; gap: 5px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.03em;">
+                <i data-lucide="check-check" style="width: 12px; height: 12px;"></i> Tracking + Sync
+            </span>`;
+        } else if (isHnet) {
+            sourceBadge = `<span style="font-size: 0.65rem; padding: 2px 6px; background: rgba(37, 99, 235, 0.1); color: #60a5fa; border: 1px solid rgba(37, 99, 235, 0.2); border-radius: 4px; margin-left: auto;">handball.net</span>`;
+        } else {
+            sourceBadge = `<span style="font-size: 0.65rem; padding: 2px 6px; background: rgba(255, 255, 255, 0.05); color: var(--text-muted); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 4px; margin-left: auto;">Eigenes Tracking</span>`;
+        }
 
         div.innerHTML = sanitizeHTML(`
             <div class="history-card-header" style="pointer-events: none; display: flex; align-items: center; gap: 8px;">
@@ -280,6 +289,10 @@ export async function renderHistoryList() {
 
         historieListe.appendChild(div);
     });
+
+    if (typeof lucide !== 'undefined') {
+        lucide.createIcons({ root: historieListe });
+    }
 }
 
 /**
@@ -631,14 +644,18 @@ function renderGoalSequenceChart(game) {
         const isGoal = actionLower.includes('tor');
         if (!isGoal) return;
 
-        // Correct Logic: "Tor" is Us (Heim), "Gegner" is Them (Gegner)
-        // (Assuming standard Home Game recording)
-        const isGegnerGoal = entry.action.startsWith('Gegner');
+        const isActionByUs = !entry.action.toLowerCase().includes('gegner');
+        const isAuswaerts = game.settings?.isAuswaertsspiel || false;
 
-        if (isGegnerGoal) {
-            gegnerScore++;
+        // Attribute goal to the correct side (Heim vs Gegner/Gast)
+        if (isAuswaerts) {
+            // We are Away (Gegner/Gast). Our goals go to gegnerScore.
+            if (isActionByUs) gegnerScore++;
+            else heimScore++;
         } else {
-            heimScore++;
+            // We are Home. Our goals go to heimScore.
+            if (isActionByUs) heimScore++;
+            else gegnerScore++;
         }
 
         labels.push(entry.time);
@@ -808,7 +825,19 @@ export function openHistoryDetail(game) {
     // Show Heatmap content directly
     if (histContentHeatmap) {
         histContentHeatmap.classList.remove('versteckt');
-        histContentHeatmap.classList.remove('hide-heatmap-visuals');
+        
+        // AUTO-DETECT Import-Only status
+        // A game is "Imported Only" if it has an hnet ID but NO tracking data (widespread coordinates)
+        const hasTrackingData = (game.gameLog || []).some(e => e.wurfposition || e.wurfbild || e.isManualEntry);
+        const isImportedOnly = !!game.hnetGameId && !hasTrackingData;
+
+        if (isImportedOnly) {
+            histContentHeatmap.classList.add('hide-heatmap-visuals');
+            histContentHeatmap.dataset.isImportedOnly = "true";
+        } else {
+            histContentHeatmap.classList.remove('hide-heatmap-visuals');
+            histContentHeatmap.dataset.isImportedOnly = "false";
+        }
     }
     if (histContentProtokoll) histContentProtokoll.classList.add('versteckt');
     if (histContentTorfolge) histContentTorfolge.classList.add('versteckt');
@@ -1046,11 +1075,22 @@ function renderHistoryStats(game, renderBound) {
     if (histHeatmapHomeTitle) histHeatmapHomeTitle.textContent = game.teams.heim;
     if (histHeatmapGegnerTitle) histHeatmapGegnerTitle.textContent = game.teams.gegner;
 
-    const homeStats = berechneStatistiken(game.gameLog, game.roster);
-    const opponentStats = berechneGegnerStatistiken(game.gameLog);
+    const isAuswaerts = game.settings?.isAuswaertsspiel || false;
+    
+    // Determine which stats go where (Top table = Home, Bottom table = Away)
+    let statsHome, statsAway;
+    if (isAuswaerts) {
+        // We are Away. Top table (Home) should show opponent stats. Bottom table (Away) should show our stats.
+        statsHome = berechneGegnerStatistiken(game.gameLog, game.knownOpponents);
+        statsAway = berechneStatistiken(game.gameLog, game.roster);
+    } else {
+        // We are Home. Top table (Home) should show our stats. Bottom table (Away) should show opponent stats.
+        statsHome = berechneStatistiken(game.gameLog, game.roster);
+        statsAway = berechneGegnerStatistiken(game.gameLog, game.knownOpponents);
+    }
 
-    renderHomeStatsInHistory(histHeatmapStatsBodyHome, homeStats, game.gameLog, false, true, renderBound, showLivePlayerDetails);
+    renderHomeStatsInHistory(histHeatmapStatsBodyHome, statsHome, game.gameLog, false, true, renderBound, showLivePlayerDetails);
     if (histHeatmapStatsBodyGegner) {
-        renderOpponentStatsInHistory(histHeatmapStatsBodyGegner, opponentStats, game.gameLog, game, false, true, renderBound, showLivePlayerDetails);
+        renderOpponentStatsInHistory(histHeatmapStatsBodyGegner, statsAway, game.gameLog, game, false, true, renderBound, showLivePlayerDetails);
     }
 }

@@ -1,11 +1,17 @@
 import { spielstand } from './state.js';
-import { getHistorie } from './history.js';
-import { formatiereZeit } from './utils.js';
+import { getHistorie, updateHistorieSpiel } from './history.js';
+import { formatiereZeit, parseTime } from './utils.js';
 import { customConfirm, customAlert } from './customDialog.js';
+import { toast } from './toast.js';
 
 let videoAnalysisInitialized = false;
 let currentVideoGame = null;
 let videoOffsets = { h1: 0, h2: 0 }; // Multiple sync points per half
+
+// Caching System to reduce DB reads
+let historyCache = null;
+let lastCacheUpdate = 0;
+const CACHE_TTL = 300000; // 5 minutes cache
 
 // Filter State
 let currentFilterPlayer = 'all';
@@ -19,6 +25,8 @@ let autoplayTimer = null;
 let currentClipEndTime = 0; // State for playback-aware autoplay
 const CLIP_DURATION = 6; // Reduced by 2 seconds as requested
 let videoLeadTime = 3; // Default lead time in seconds
+let isCinemaMode = false;
+let lastSyncTime = 0;
 
 export function initVideoAnalysis() {
     if (videoAnalysisInitialized) return;
@@ -182,6 +190,33 @@ export function initVideoAnalysis() {
                     playNextClip();
                 }
             }
+            updateTimelineProgress();
+            syncProtocolWithVideo(); // HIGH PRECISION SYNC
+        });
+
+        videoPlayer.addEventListener('loadedmetadata', () => {
+            renderTimelineMarkers();
+        });
+    }
+
+    const cinemaBtn = document.getElementById('videoCinemaModeBtn');
+    if (cinemaBtn) {
+        cinemaBtn.addEventListener('click', toggleCinemaMode);
+    }
+
+    const sidebarToggle = document.getElementById('videoSidebarToggle');
+    if (sidebarToggle) {
+        sidebarToggle.addEventListener('click', toggleCinemaMode);
+    }
+
+    const timelineTrack = document.getElementById('videoTimelineTrack');
+    if (timelineTrack) {
+        timelineTrack.addEventListener('click', (e) => {
+            if (!videoPlayer || !videoPlayer.duration) return;
+            const rect = timelineTrack.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const pct = x / rect.width;
+            videoPlayer.currentTime = pct * videoPlayer.duration;
         });
     }
 
@@ -201,7 +236,8 @@ async function setHalfOffset(half) {
     }
     
     updateOffsetUI();
-    await customAlert(`Startpunkt für Halbzeit ${half} auf ${formatiereZeit(videoPlayer.currentTime)} gesetzt.`, "Synchronisation");
+    checkAndRenderProtocol(); // RE-RENDER LIST TO SHOW NEW TIMES IN PARENTHESES
+    toast.success(`Startpunkt H${half} gesetzt`, `Video-Position: ${formatiereZeit(videoPlayer.currentTime)}`);
 }
 
 function updateOffsetUI() {
@@ -229,6 +265,7 @@ function updateOffsetUI() {
     }
 
     if (window.lucide) window.lucide.createIcons();
+    renderTimelineMarkers();
 }
 
 function updateTitleWithVideoName(videoName) {
@@ -239,7 +276,7 @@ function updateTitleWithVideoName(videoName) {
     if (currentVideoGame) {
         const heim = currentVideoGame.settings?.teamNameHeim || 'Heim';
         const gast = currentVideoGame.settings?.teamNameGegner || 'Gast';
-        const dateStr = new Date(currentVideoGame.timestamp).toLocaleDateString('de-DE');
+        const dateStr = new Date(currentVideoGame.timestamp || currentVideoGame.date).toLocaleDateString('de-DE');
         gameText = `${dateStr}: ${heim} vs ${gast}`;
     }
 
@@ -248,16 +285,48 @@ function updateTitleWithVideoName(videoName) {
 
 export async function handleVideoAnalysisView() {
     initVideoAnalysis();
-    await renderVideoGameList();
+    // Use cached list unless specifically asked to reload
+    await renderVideoGameList(false);
 }
 
-async function renderVideoGameList() {
+async function saveUpdatedLog() {
+    if (!currentVideoGame) return;
+    try {
+        await updateHistorieSpiel(currentVideoGame);
+        
+        // Update local cache too
+        if (historyCache) {
+            const idx = historyCache.findIndex(g => g.id === currentVideoGame.id);
+            if (idx !== -1) historyCache[idx] = { ...currentVideoGame };
+        }
+        
+        console.log("[VideoAnalysis] Game log saved and cache updated.");
+    } catch (err) {
+        console.error("[VideoAnalysis] Error saving game log:", err);
+        toast.error("Speicherfehler", "Änderungen konnten nicht gesichert werden.");
+    }
+}
+
+async function renderVideoGameList(forceRefresh = false) {
     const listContainer = document.getElementById('videoGameListContent');
     if (!listContainer) return;
 
-    listContainer.innerHTML = '<div class="loading-spinner">Lade Spiele...</div>';
-    
-    const games = await getHistorie();
+    const now = Date.now();
+    let games = historyCache;
+
+    // Only fetch if forced or cache is old/missing
+    if (forceRefresh || !historyCache || (now - lastCacheUpdate > CACHE_TTL)) {
+        listContainer.innerHTML = '<div class="loading-spinner">Lade Spiele aus DB...</div>';
+        try {
+            games = await getHistorie();
+            historyCache = games;
+            lastCacheUpdate = now;
+        } catch (err) {
+            console.error("Error fetching history:", err);
+            listContainer.innerHTML = '<p style="color: var(--text-muted);">Fehler beim Laden.</p>';
+            return;
+        }
+    }
 
     if (!games || games.length === 0) {
         listContainer.innerHTML = '<p style="color: var(--text-muted); font-size: 0.9rem; padding: 1rem; text-align: center;">Keine Spiele im Archiv gefunden.</p>';
@@ -344,9 +413,17 @@ export function selectGameForAnalysis(game) {
 
     if (title) title.textContent = text;
     
+    // Reset Filters when switching games to avoid empty lists
+    currentFilterPlayer = 'all';
+    currentFilterAction = 'all';
+    const pFilter = document.getElementById('videoFilterPlayer');
+    const aFilter = document.getElementById('videoFilterAction');
+    if (pFilter) pFilter.value = 'all';
+    if (aFilter) aFilter.value = 'all';
+
     populateFilterDropdowns(game);
-    
     checkAndRenderProtocol();
+    renderTimelineMarkers();
 }
 
 function populateFilterDropdowns(game) {
@@ -356,13 +433,26 @@ function populateFilterDropdowns(game) {
 
     const log = game.gameLog || [];
     
-    const players = new Set();
+    // Unified Players Map to avoid duplicates (ID -> DisplayName)
+    const playersMap = new Map();
     log.forEach(entry => {
+        if (!entry.playerName && !entry.playerId && !entry.gegnerNummer) return;
+
+        let id = "";
+        let displayName = "";
+
         if (entry.playerName && entry.playerName !== "SPIEL") {
-            players.add(entry.playerName);
+            id = entry.playerName.trim();
+            displayName = entry.playerName.trim();
+        } else if (entry.playerId && entry.playerId !== "TEAM_US") {
+            id = `Spieler #${entry.playerId}`;
+            displayName = id;
         } else if (entry.gegnerNummer) {
-            players.add(`#${entry.gegnerNummer} (Gegner)`);
+            id = `Gegner #${entry.gegnerNummer}`;
+            displayName = id;
         }
+
+        if (id) playersMap.set(id, displayName);
     });
 
     const actions = new Set();
@@ -371,10 +461,10 @@ function populateFilterDropdowns(game) {
     });
 
     playerFilter.innerHTML = '<option value="all">Alle Spieler</option>';
-    Array.from(players).sort().forEach(p => {
+    Array.from(playersMap.keys()).sort().forEach(id => {
         const opt = document.createElement('option');
-        opt.value = p;
-        opt.textContent = p;
+        opt.value = id;
+        opt.textContent = playersMap.get(id);
         playerFilter.appendChild(opt);
     });
     playerFilter.value = currentFilterPlayer;
@@ -397,19 +487,27 @@ function checkAndRenderProtocol() {
     const hasVideo = videoPlayer && videoPlayer.src && videoPlayer.style.display !== 'none';
 
     if (currentVideoGame && hasVideo) {
-        if (protocolContainer) protocolContainer.style.display = 'flex';
+        if (protocolContainer) {
+            protocolContainer.style.display = 'flex';
+            protocolContainer.style.flexDirection = 'column';
+            protocolContainer.style.height = '100%';
+            protocolContainer.style.minHeight = '400px'; 
+            protocolContainer.style.overflow = 'hidden'; 
+        }
         
-        const isEditing = list?.querySelector('div[style*="display: flex"] input');
-        if (isEditing) {
-            console.log("[Protocol] Skipping rerender: Editor is active.");
+        // Inline Editor detection (prevent rerender while typing)
+        const isCurrentlyEditing = list.querySelector('.editing-row') !== null;
+        
+        if (isCurrentlyEditing) {
             return;
         }
 
         if (list) {
-            list.style.maxHeight = '400px'; 
+            list.style.maxHeight = '65vh'; 
             list.style.overflowY = 'auto';
             list.style.border = '1px solid var(--border-color)';
             list.style.borderRadius = '8px';
+            list.style.padding = '4px';
             list.style.background = 'var(--bg-secondary)';
         }
         
@@ -422,8 +520,38 @@ function checkAndRenderProtocol() {
 function renderProtocolList(game, list) {
     if (!list) return;
     list.innerHTML = '';
+    const log = game.gameLog || [];
+    
+    // Apply Filters with Deep Search
+    const filteredLog = log.filter(entry => {
+        const targetPlayer = String(currentFilterPlayer || 'all').trim().toLowerCase();
+        const targetAction = String(currentFilterAction || 'all').trim().toLowerCase();
 
-    // Header with Smart Propagate Toggle
+        // 1. Player Match (Deep Check)
+        let pMatch = (targetPlayer === 'all');
+        if (!pMatch) {
+            const searchPool = [
+                String(entry.playerName || ''),
+                String(entry.playerId || ''),
+                `spieler #${entry.playerId}`,
+                String(entry.gegnerNummer || ''),
+                `gegner #${entry.gegnerNummer}`
+            ].map(v => v.toLowerCase().trim());
+            
+            pMatch = searchPool.some(val => val === targetPlayer || val.includes(targetPlayer));
+        }
+
+        // 2. Action Match
+        let aMatch = (targetAction === 'all');
+        if (!aMatch) {
+            const eAction = String(entry.action || '').trim().toLowerCase();
+            aMatch = (eAction === targetAction);
+        }
+        
+        return pMatch && aMatch;
+    });
+
+    // Header with Stats & Smart Propagate Toggle
     const header = document.createElement('div');
     header.style.padding = '8px 12px';
     header.style.borderBottom = '1px solid var(--border-color)';
@@ -436,36 +564,30 @@ function renderProtocolList(game, list) {
     header.style.zIndex = '10';
 
     header.innerHTML = `
-        <span style="font-size: 0.8rem; font-weight: 600; color: var(--text-muted); flex: 1;">Protokoll (${currentVideoGame?.gameLog?.length || 0})</span>
-        <label style="display: flex; align-items: center; gap: 6px; cursor: pointer; font-size: 0.7rem; user-select: none; color: var(--text-muted); white-space: nowrap;" title="Verschiebt automatisch alle folgenden Ereignisse in derselben Hälfte">
-            <input type="checkbox" id="smartPropagateToggle" style="width: 12px; height: 12px; cursor: pointer; accent-color: var(--primary);">
+        <div style="display: flex; flex-direction: column; gap: 2px;">
+            <span style="font-size: 0.8rem; font-weight: 600; color: var(--text-main);">Protokoll (${filteredLog.length} / ${log.length})</span>
+            ${(currentFilterPlayer !== 'all' || currentFilterAction !== 'all') ? `<span style="font-size: 0.6rem; color: var(--primary);">Filter: ${currentFilterPlayer !== 'all' ? currentFilterPlayer : ''} ${currentFilterAction !== 'all' ? '['+currentFilterAction+']' : ''}</span>` : ''}
+        </div>
+        <label style="display: flex; align-items: center; gap: 6px; cursor: pointer; font-size: 0.7rem; user-select: none; color: var(--text-muted); white-space: nowrap;">
+            <input type="checkbox" id="syncFollowToggle" checked style="width: 12px; height: 12px; cursor: pointer; accent-color: var(--primary);">
             Sync folgen
         </label>
     `;
     list.appendChild(header);
 
-    const log = game.gameLog || [];
-    
-    // Apply Filters
-    const filteredLog = log.filter(entry => {
-        const playerMatch = currentFilterPlayer === 'all' || 
-                            entry.playerName === currentFilterPlayer || 
-                            (`#${entry.gegnerNummer} (Gegner)` === currentFilterPlayer);
-        const actionMatch = currentFilterAction === 'all' || entry.action === currentFilterAction;
-        return playerMatch && actionMatch;
-    });
-
     // Update Autoplay Button label
     const autoplayBtn = document.getElementById('videoAutoplayBtn');
     if (autoplayBtn) {
         autoplayBtn.innerHTML = `<i data-lucide="${isAutoplayActive ? 'stop-circle' : 'play-circle'}" style="width: 14px; height: 14px; margin-right: 5px;"></i> ${isAutoplayActive ? 'Autoplay Stoppen' : `Clips abspielen (${filteredLog.length})`}`;
-        if (window.lucide) window.lucide.createIcons();
+        if (window.lucide) window.lucide.createIcons({ root: autoplayBtn });
     }
 
     // Unified Absolute Seconds sorting helper
     const getAbsSecs = (e) => {
-        const h = e.half || (parseTime(e.officialTime || e.time || "00:00") > 1800 ? 2 : 1);
-        return (h - 1) * 1800 + parseTime(e.officialTime || e.time || "00:00");
+        const base = parseTime(e.officialTime || e.time || "00:00");
+        const actual = base + (e.manualShift || 0);
+        const h = e.half || (actual > 1800 ? 2 : 1);
+        return (h - 1) * 1800 + actual;
     };
 
     // Update internal autoplay list (always ascending for chronological playback)
@@ -483,6 +605,8 @@ function renderProtocolList(game, list) {
         const item = document.createElement('div');
         item.className = 'video-protocol-item';
         item.dataset.index = idx;
+        item.dataset.timestamp = entry.timestamp;
+        item.dataset.action = entry.action;
         item.style.display = 'flex';
         item.style.flexDirection = 'column';
         item.style.padding = '8px';
@@ -497,7 +621,7 @@ function renderProtocolList(game, list) {
             item.style.textAlign = 'center';
             item.style.fontWeight = 'bold';
         } else if (entry.action && entry.action.includes("Timeout")) {
-            item.style.borderLeft = '4px solid #3b82f6'; // Blue for timeouts
+            item.style.borderLeft = '4px solid #3b82f6';
             item.style.background = 'rgba(59, 130, 246, 0.05)';
         } else if (entry.action && entry.action.includes("Tor")) {
             item.style.borderLeft = '4px solid #22c55e';
@@ -519,12 +643,11 @@ function renderProtocolList(game, list) {
         if (entry.gegnerNummer) playerInfo = `#${entry.gegnerNummer} (Gegner)`;
         else if (entry.playerName && entry.playerName !== "SPIEL") playerInfo = entry.playerName;
         const baseSecs = parseTime(entry.officialTime || entry.time || "00:00");
-        const displayTime = formatiereZeit(baseSecs);
-        const isOfficial = !!entry.officialTime;
         const isShifted = (entry.manualShift && Math.abs(entry.manualShift) > 0.5);
 
-        // 1. Hotspot for Seeking (Time + Action)
+        // 1. Hotspot for Seeking (Covers Time, Action, and Score/VideoTime)
         const seekHotspot = document.createElement('div');
+        seekHotspot.className = 'seek-hotspot';
         seekHotspot.style.flex = '1';
         seekHotspot.style.display = 'flex';
         seekHotspot.style.alignItems = 'center';
@@ -532,216 +655,146 @@ function renderProtocolList(game, list) {
         seekHotspot.style.cursor = 'pointer';
         
         const effectiveSecs = baseSecs + (entry.manualShift || 0);
-        
-        // Show shifted status visually but keep game time text clean
         const timeColor = isShifted ? '#60a5fa' : 'var(--text-muted)';
         const timeStyle = isShifted ? 'italic' : 'normal';
-        const shiftInfo = isShifted ? `Video-Korrektur: ${entry.manualShift > 0 ? '+' : ''}${Math.round(entry.manualShift)}s` : '';
+        
+        // --- ABSOLUTE VIDEO TIME OR ESTIMATED PREVIEW ---
+        const vNow = getEstimatedVideoTime(entry);
+        const vDisplay = (entry.videoTime !== undefined && entry.videoTime !== null) 
+                         ? formatiereZeit(entry.videoTime) 
+                         : (vNow !== null ? `(${formatiereZeit(vNow)})` : "(?)");
 
         seekHotspot.innerHTML = `
-            <div style="font-family: monospace; font-weight: bold; width: 44px; color: ${timeColor}; font-style: ${timeStyle};" title="${shiftInfo}">
+            <div class="game-time-container" style="font-family: monospace; font-weight: bold; width: 80px; color: ${timeColor}; font-style: ${timeStyle}; min-width: 80px; flex-shrink: 0;">
                 ${formatiereZeit(baseSecs)}
             </div>
-            <div style="flex: 1; display: flex; flex-direction: column;">
-                <span style="font-weight: 600;">${entry.action}</span>
-                ${playerInfo ? `<span style="font-size: 0.75rem; opacity: 0.7;">${playerInfo}</span>` : ''}
+            <div class="action-text-container" style="flex: 1; display: flex; flex-direction: column; overflow: hidden; min-width: 0; padding: 0 5px;">
+                <span class="action-name" style="font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block;">${entry.action}</span>
+                ${playerInfo ? `<span class="player-info-text" style="font-size: 0.75rem; opacity: 0.7; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block;">${playerInfo}</span>` : ''}
             </div>
-            <div style="font-family: monospace; font-size: 0.7rem; opacity: 0.4; text-align: right; width: 40px; margin-right: 5px;" title="Sprungpunkt im Video: ${formatiereZeit(effectiveSecs)}">
-                ${formatiereZeit(effectiveSecs)}
-            </div>
-        `;
-        seekHotspot.addEventListener('click', () => {
-            stopAutoplay();
-            seekToEntry(entry);
-        });
-
-        // 2. Score area
-        const scoreArea = document.createElement('div');
-        scoreArea.style.display = 'flex';
-        scoreArea.style.alignItems = 'center';
-        scoreArea.style.gap = '8px';
-        scoreArea.innerHTML = `
-            <span style="font-weight: bold; font-family: monospace; color: var(--primary);">${entry.score || ''}</span>
-        `;
-
-        // 3. Edit Button area (Isolated)
-        const editArea = document.createElement('div');
-        editArea.style.display = 'flex';
-        editArea.style.alignItems = 'center';
-        editArea.style.gap = '6px';
-        
-        editArea.innerHTML = `
-            <button class="icon-btn-ghost edit-entry-time" style="padding: 6px; cursor: pointer;" title="Zeit korrigieren">
-                <i data-lucide="edit-2" style="width: 14px; height: 14px;"></i>
-            </button>
-        `;
-
-        // Inline Editor Area (Created but hidden)
-        const editor = document.createElement('div');
-        editor.className = 'entry-time-editor';
-        editor.style.marginTop = '8px';
-        editor.style.padding = '8px';
-        editor.style.background = 'rgba(255,255,255,0.05)';
-        editor.style.borderRadius = '6px';
-        editor.style.display = 'none';
-        editor.style.flexDirection = 'column';
-        editor.style.gap = '8px';
-
-        const baseTimeText = formatiereZeit(effectiveSecs);
-        
-        editor.innerHTML = `
-            <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
-                <div style="display: flex; align-items: center; gap: 4px;">
-                    <input type="text" class="hub-input" value="${baseTimeText}" style="width: 60px; height: 30px; font-size: 0.8rem; text-align: center;" title="Spielzeit">
-                    <button class="hub-btn-outline compact-btn sync-from-video" style="font-size: 0.7rem; height: 30px;" title="Vom aktuellen Video-Zeitpunkt übernehmen">
-                        Vom Video
-                    </button>
-                    <button class="hub-btn-outline compact-btn reset-entry-shift" style="font-size: 0.7rem; height: 30px; border-color: rgba(239, 68, 68, 0.3); color: #ef4444;" title="Verschiebung löschen">
-                        Reset
-                    </button>
-                    <button class="hub-btn-primary compact-btn save-entry-time" style="font-size: 0.7rem; height: 30px; background: var(--hub-green);">
-                        OK
-                    </button>
+            <div class="score-video-container" style="display: flex; align-items: center; gap: 8px; margin-right: 5px; flex-shrink: 0;">
+                <span style="font-weight: bold; font-family: monospace; color: var(--primary);">${entry.score || ''}</span>
+                <div class="video-time-display" style="font-family: monospace; font-size: 0.7rem; opacity: 0.4; text-align: right; width: 75px; min-width: 75px;">
+                    ${vDisplay}
                 </div>
             </div>
         `;
 
-        // Event for Edit Button
-        const editBtn = editArea.querySelector('.edit-entry-time');
-        const timeInput = editor.querySelector('input');
+        seekHotspot.addEventListener('click', (e) => {
+            // Don't seek if we click inside an input or on a button
+            if (e.target.tagName === 'INPUT' || e.target.tagName === 'BUTTON') return;
+            
+            stopAutoplay();
+            seekToEntry(entry);
+        });
 
+        // 2. Action Area (Pen -> OK)
+        const actionArea = document.createElement('div');
+        actionArea.className = 'action-area';
+        actionArea.style.display = 'flex';
+        actionArea.style.alignItems = 'center';
+        
+        actionArea.innerHTML = `
+            <button class="icon-btn-ghost edit-entry-btn" style="padding: 6px; cursor: pointer;" title="Zeit korrigieren">
+                <i data-lucide="edit-2" style="width: 14px; height: 14px;"></i>
+            </button>
+        `;
+
+        const editBtn = actionArea.querySelector('.edit-entry-btn');
         editBtn.addEventListener('click', (e) => {
             e.preventDefault();
             e.stopPropagation();
-            const isHidden = editor.style.display === 'none';
-            editor.style.display = isHidden ? 'flex' : 'none';
             
-            if (isHidden) {
-                // When opening the editor, show the EFFECTIVE time (Original + ManualShift)
-                const baseSecs = parseTime(entry.officialTime || entry.time || "00:00");
-                const effectiveSecs = baseSecs + (entry.manualShift || 0);
-                timeInput.value = formatiereZeit(effectiveSecs);
-                item.style.background = 'rgba(var(--primary-rgb), 0.15)';
-            } else {
-                item.style.background = (entry.action === "Tor" ? 'rgba(34, 197, 94, 0.03)' : '');
+            if (row.classList.contains('editing-row')) {
+                checkAndRenderProtocol();
+                return;
             }
-        });
 
-        // Event for "Vom Video"
-        const syncVideoBtn = editor.querySelector('.sync-from-video');
-        syncVideoBtn.addEventListener('click', () => {
-            const videoPlayer = document.getElementById('analysisVideoPlayer');
-            if (videoPlayer && !isNaN(videoPlayer.currentTime) && currentVideoGame?.gameLog) {
-                // Determine the half
-                let currentHalf = entry.half || (parseTime(entry.officialTime || entry.time || "00:00") > 1800 ? 2 : 1);
-                if (videoOffsets.h2 && videoPlayer.currentTime >= (videoOffsets.h2 - 5)) currentHalf = 2;
+            row.classList.add('editing-row');
+            item.style.background = 'rgba(var(--primary-rgb), 0.15)';
 
-                const hVideoStart = (currentHalf === 2) ? (videoOffsets.h2 || 0) : (videoOffsets.h1 || 0);
-                
-                // 1. Calculate where the entry SHOULD be in the video (wall-clock based)
-                let wallDelta = 0;
-                const anchor = currentVideoGame.gameLog.find(e => {
-                    const eh = e.half || (parseTime(e.officialTime || e.time || "00:00") > 1800 ? 2 : 1);
-                    return eh === currentHalf && e.timestamp;
-                });
-                
-                if (anchor) {
-                    const aRawSecs = parseTime(anchor.officialTime || anchor.time || "00:00");
-                    const aSecsInHalf = (currentHalf === 2 && aRawSecs >= 1800) ? (aRawSecs - 1800) : aRawSecs;
-                    const virtualHalfStartTS = anchor.timestamp - (aSecsInHalf * 1000);
-                    wallDelta = (entry.timestamp - virtualHalfStartTS) / 1000;
-                } else {
-                    // Fallback to game clock logic
-                    const rawSecs = parseTime(entry.officialTime || entry.time || "00:00");
-                    wallDelta = (currentHalf === 2 && rawSecs >= 1800) ? (rawSecs - 1800) : rawSecs;
-                }
+            const gameCont = seekHotspot.querySelector('.game-time-container');
+            const videoCont = seekHotspot.querySelector('.video-time-display');
+            const scoreVideoCont = seekHotspot.querySelector('.score-video-container');
 
-                // 2. The difference between where we ARE and where we SHOULD be is our required Shift
-                const expectedVideoPos = hVideoStart + wallDelta;
-                const requiredShift = videoPlayer.currentTime - expectedVideoPos;
-                
-                // 3. Keep the base time (official if exists) and show the result
-                const baseSecs = parseTime(entry.officialTime || entry.time || "00:00");
-                const newEffectiveSecs = Math.max(0, baseSecs + requiredShift);
-                
-                timeInput.value = formatiereZeit(newEffectiveSecs);
-                console.log(`[SyncFromVideo] Video: ${videoPlayer.currentTime.toFixed(1)}s, Expected: ${expectedVideoPos.toFixed(1)}s. Shift: ${requiredShift.toFixed(1)}s. Time: ${timeInput.value}`);
-            }
-        });
+            // Left: Game Time Input
+            gameCont.innerHTML = `<input type="text" class="inline-g-input" value="${entry.time}" style="width: 75px; height: 30px; background: #000; border: 2px solid var(--primary); color: #fff; font-size: 0.85rem; text-align: center; border-radius: 4px; font-family: monospace; outline: none;">`;
+            
+            // Right: Video Time Input
+            const initialV = getEstimatedVideoTime(entry);
+            videoCont.style.width = 'auto';
+            videoCont.style.opacity = '1';
+            videoCont.innerHTML = `
+                <div style="display: flex; align-items: center; gap: 5px;">
+                    <input type="text" class="inline-v-input" value="${formatiereZeit(initialV || 0)}" style="width: 75px; height: 30px; background: #000; border: 2px solid var(--primary); color: var(--primary); font-size: 0.85rem; text-align: center; border-radius: 4px; font-family: monospace; outline: none;">
+                    <button class="inline-sync-btn" style="padding: 0 8px; height: 30px; background: #fbbf24; color: #000; border: none; border-radius: 4px; cursor: pointer; font-size: 0.75rem; font-weight: bold; white-space: nowrap;">Vom Vid</button>
+                </div>
+            `;
+            
+            // Remove the old appending logic for button since it's now in innerHTML of videoCont
+            
+            // Change Pen to OK
+            actionArea.innerHTML = `<button class="inline-ok-btn" style="padding: 0 12px; height: 30px; background: var(--hub-green); color: #fff; border: none; border-radius: 4px; cursor: pointer; font-size: 0.8rem; font-weight: bold; margin-left: 5px;">OK</button>`;
 
-        // Event for Bulk Shift
-        const bulkBtns = editor.querySelectorAll('.bulk-shift-btn');
-        bulkBtns.forEach(btn => {
-            btn.addEventListener('click', async () => {
-                const delta = parseInt(btn.dataset.delta);
-                const startTime = entry.time;
-                if (await customConfirm(`Alle Ereignisse ab ${startTime} um ${delta} Sekunden verschieben?`, "Bulk Shift")) {
-                    await bulkShiftTimes(startTime, delta);
-                    checkAndRenderProtocol();
+            const gInp = gameCont.querySelector('input');
+            const vInp = videoCont.querySelector('.inline-v-input');
+            const syncBtn = videoCont.querySelector('.inline-sync-btn');
+            const okBtn = actionArea.querySelector('.inline-ok-btn');
+
+            syncBtn.addEventListener('click', (ev) => {
+                ev.stopPropagation();
+                const videoPlayer = document.getElementById('analysisVideoPlayer');
+                if (videoPlayer && !isNaN(videoPlayer.currentTime)) {
+                    vInp.value = formatiereZeit(videoPlayer.currentTime);
+                    entry.pendingVideoTime = videoPlayer.currentTime;
                 }
             });
-        });
 
-        // Event for Save
-        const saveBtn = editor.querySelector('.save-entry-time');
-        saveBtn.addEventListener('click', async () => {
-            const newTimeInput = editor.querySelector('input').value;
-            if (/^\d{1,3}:\d{2}$/.test(newTimeInput)) {
-                const newSecs = parseTime(newTimeInput);
-                const officialBaseSecs = parseTime(entry.officialTime || entry.time || "00:00");
-                const currentTotalSecs = officialBaseSecs + (entry.manualShift || 0);
-                const delta = newSecs - currentTotalSecs;
+            okBtn.addEventListener('click', async (ev) => {
+                ev.stopPropagation();
+                const newG = gInp.value;
+                const newV = vInp.value;
 
-                // Update manualShift of this entry
-                entry.manualShift = (entry.manualShift || 0) + delta;
+                if (/^\d{1,3}:\d{2}$/.test(newG)) {
+                    entry.time = newG;
+                    entry.manualShift = 0;
+                    entry.half = (parseTime(newG) > 1800) ? 2 : 1;
 
-                // Smart Propagate: Shift all following entries (chronologically)
-                const smartPropagate = document.getElementById('smartPropagateToggle')?.checked;
-                if (delta !== 0 && smartPropagate && currentVideoGame && currentVideoGame.gameLog) {
-                    const currentAbsSecs = getAbsSecs(entry);
-                    currentVideoGame.gameLog.forEach(logEntry => {
-                        if (logEntry === entry) return; 
-                        if (getAbsSecs(logEntry) >= currentAbsSecs) {
-                            logEntry.manualShift = (logEntry.manualShift || 0) + delta;
+                    if (entry.pendingVideoTime !== undefined) {
+                        entry.videoTime = entry.pendingVideoTime;
+                        delete entry.pendingVideoTime;
+                    } else {
+                        // If they typed a different time than what was estimated
+                        const estimated = getEstimatedVideoTime(entry);
+                        if (newV !== formatiereZeit(estimated || 0)) {
+                            entry.videoTime = parseTime(newV);
                         }
-                    });
-                }
+                    }
 
-                // Automatic Sorting: Ensure log remains chronological
-                if (currentVideoGame && currentVideoGame.gameLog) {
-                    currentVideoGame.gameLog.sort((a, b) => {
-                        const getAbsSecs = (e) => {
-                            const h = e.half || (parseTime(e.time || "00:00") > 1800 ? 2 : 1);
-                            return (h - 1) * 1800 + parseTime(e.time || "00:00");
-                        };
-                        return getAbsSecs(a) - getAbsSecs(b);
-                    });
+                    await saveUpdatedLog();
+                    row.classList.remove('editing-row'); // Unlock rerender
+                    checkAndRenderProtocol();
+                    renderTimelineMarkers();
+                } else {
+                    toast.error("Format", "MM:SS nutzen");
                 }
+            });
 
-                await saveUpdatedLog();
-                editor.style.display = 'none';
-                renderProtocolList(); // Full refresh UI
-            } else {
-                await customAlert("Bitte Zeit im Format MM:SS eingeben.", "Eingabe-Fehler");
-            }
+            gInp.focus();
+            gInp.select();
         });
 
         row.appendChild(seekHotspot);
-        row.appendChild(scoreArea);
-        row.appendChild(editArea);
+        row.appendChild(actionArea);
         item.appendChild(row);
-        item.appendChild(editor);
         list.appendChild(item);
     });
 
     if (window.lucide) window.lucide.createIcons();
 }
 
-async function saveUpdatedLog() {
-    if (!currentVideoGame) return;
-    const { updateHistorieSpiel } = await import('./history.js');
-    await updateHistorieSpiel(currentVideoGame);
-}
+
+// --- Bulk Shift Helper ---
 
 async function bulkShiftTimes(startTimeStr, deltaSeconds) {
     if (!currentVideoGame || !currentVideoGame.gameLog) return;
@@ -758,60 +811,92 @@ async function bulkShiftTimes(startTimeStr, deltaSeconds) {
     });
 
     // Re-sort after bulk shift
-    currentVideoGame.gameLog.sort((a, b) => parseTime(a.time) - parseTime(b.time));
+    currentVideoGame.gameLog.sort((a, b) => {
+        const getT = (e) => {
+            const bS = parseTime(e.officialTime || e.time || "00:00");
+            const act = bS + (e.manualShift || 0);
+            const h = e.half || (act > 1800 ? 2 : 1);
+            return (h - 1) * 1800 + act;
+        };
+        return getT(a) - getT(b);
+    });
 
     await saveUpdatedLog();
+}function getEstimatedVideoTime(entry) {
+    if (!entry) return null;
+    if (entry.videoTime !== undefined && entry.videoTime !== null) return entry.videoTime;
+
+    const baseSecs = parseTime(entry.officialTime || entry.time || "00:00");
+    const gameSecs = baseSecs + (entry.manualShift || 0);
+    const h = (gameSecs > 1800) ? 2 : 1;
+
+    const syncEnabled = document.getElementById('syncFollowToggle')?.checked;
+
+    let anchorEntry = null;
+    if (syncEnabled && currentVideoGame && currentVideoGame.gameLog) {
+        const getAbs = (e) => {
+            const b = parseTime(e.officialTime || e.time || "00:00");
+            const act = b + (e.manualShift || 0);
+            const halfNum = e.half || (act > 1800 ? 2 : 1);
+            return (halfNum - 1) * 1800 + act;
+        };
+        const entryAbs = getAbs(entry);
+        
+        // Find closest preceding entry with videoTime in same half
+        let bestCandidate = null;
+        currentVideoGame.gameLog.forEach(logE => {
+            if (logE === entry) return;
+            const candHalf = logE.half || (parseTime(logE.time) > 1800 ? 2 : 1);
+            if (candHalf !== h) return; // Only anchor within same half
+
+            if (logE.videoTime !== undefined && logE.videoTime !== null) {
+                const candAbs = getAbs(logE);
+                if (candAbs <= entryAbs) {
+                    if (!bestCandidate || candAbs > getAbs(bestCandidate)) {
+                        bestCandidate = logE;
+                    }
+                }
+            }
+        });
+        anchorEntry = bestCandidate;
+    }
+
+    if (anchorEntry) {
+        // --- HIGH PRECISION: Unix Timestamp based (Real-world time) ---
+        if (entry.timestamp && anchorEntry.timestamp) {
+            const msDelta = entry.timestamp - anchorEntry.timestamp;
+            return anchorEntry.videoTime + (msDelta / 1000);
+        }
+
+        // --- FALLBACK: Protocol Game Time based (Rounded seconds) ---
+        const anchorAbs = (parseTime(anchorEntry.officialTime || anchorEntry.time || "00:00") + (anchorEntry.manualShift || 0));
+        const deltaProtocol = gameSecs - anchorAbs;
+        return anchorEntry.videoTime + deltaProtocol;
+    }
+
+    // Fallback: Global Half Offsets
+    const activeOffsets = (currentVideoGame && currentVideoGame.videoOffsets) ? currentVideoGame.videoOffsets : videoOffsets;
+    const hVideoStart = (h === 2) ? activeOffsets.h2 : activeOffsets.h1;
+    const isOffsetSet = (h === 1) ? (activeOffsets.h1 !== undefined && activeOffsets.h1 !== null) : (activeOffsets.h2 !== undefined && activeOffsets.h2 !== null && activeOffsets.h2 !== 0);
+    
+    if (!isOffsetSet && hVideoStart <= 0) return null;
+
+    const secsInHalf = (h === 2 && gameSecs >= 1800) ? (gameSecs - 1800) : gameSecs;
+    return hVideoStart + secsInHalf;
 }
 
 function seekToEntry(entry) {
-    const videoPlayer = document.getElementById('analysisVideoPlayer');
-    if (!videoPlayer || !currentVideoGame || !currentVideoGame.gameLog) return;
+    const video = document.getElementById('analysisVideoPlayer');
+    if (!video || !entry) return;
 
-    let targetTime = 0;
+    const targetVideoTime = getEstimatedVideoTime(entry);
     
-    // Unified Half Detection
-    const currentHalf = entry.half || (parseTime(entry.officialTime || entry.time || "00:00") > 1800 ? 2 : 1);
-
-    // 1. TIMESTAMP-BASED SEEKING (Modern Precision)
-    if (entry.timestamp && currentVideoGame.gameLog) {
-        // Find an anchor in the SAME determined half
-        const anchor = currentVideoGame.gameLog.find(e => {
-            const eh = e.half || (parseTime(e.officialTime || e.time || "00:00") > 1800 ? 2 : 1);
-            return eh === currentHalf && e.timestamp;
-        });
-        
-        if (anchor) {
-            // Seconds from START OF HALF to anchor
-            const aRawSecs = parseTime(anchor.officialTime || anchor.time || "00:00");
-            const aSecsInHalf = (currentHalf === 2 && aRawSecs >= 1800) ? (aRawSecs - 1800) : aRawSecs;
-            
-            const virtualHalfStartTS = anchor.timestamp - (aSecsInHalf * 1000);
-            const wallDeltaSinceHalfStart = (entry.timestamp - virtualHalfStartTS) / 1000;
-            
-            const hVideoStart = (currentHalf === 2) ? (videoOffsets.h2 || 0) : (videoOffsets.h1 || 0);
-            targetTime = hVideoStart + wallDeltaSinceHalfStart + (entry.manualShift || 0);
-            
-            console.log(`[Seek] TS Mode (Half ${currentHalf}): Delta ${wallDeltaSinceHalfStart.toFixed(1)}s from Start ${hVideoStart.toFixed(1)}s`);
-        }
-    } 
-    
-    // 2. FALLBACK: GAME-CLOCK BASED (Classic)
-    if (targetTime === 0) {
-        if (entry.videoTime !== undefined) {
-            targetTime = entry.videoTime;
-        } else {
-            const rawSecs = parseTime(entry.officialTime || entry.time || "00:00");
-            const secsInHalf = (currentHalf === 2 && rawSecs >= 1800) ? (rawSecs - 1800) : rawSecs;
-            const hVideoStart = (currentHalf === 2) ? (videoOffsets.h2 || 0) : (videoOffsets.h1 || 0);
-            
-            targetTime = hVideoStart + secsInHalf + (entry.manualShift || 0);
-        }
-        console.log(`[Seek] Fallback Mode (Half ${currentHalf}): ${targetTime.toFixed(1)}s`);
+    if (targetVideoTime !== null && targetVideoTime >= 0) {
+        video.currentTime = Math.max(0, targetVideoTime - videoLeadTime);
+        video.play().catch(() => {});
+    } else {
+        toast.error("Nicht synchronisiert", "Bitte setze erst den Startpunkt für dieses Spiel.");
     }
-
-    // Start a bit earlier for context (using user preference)
-    videoPlayer.currentTime = Math.max(0, targetTime - videoLeadTime);
-    videoPlayer.play();
 }
 
 /**
@@ -877,10 +962,242 @@ function playNextClip() {
     currentAutoplayIndex++;
 }
 
-function parseTime(timeStr) {
-    const parts = timeStr.split(':');
-    if (parts.length === 2) {
-        return parseInt(parts[0]) * 60 + parseInt(parts[1]);
+function toggleCinemaMode() {
+    isCinemaMode = !isCinemaMode;
+    const sidebar = document.getElementById('videoSidebar');
+    const toggleBtn = document.getElementById('videoSidebarToggle');
+    const cinemaBtn = document.getElementById('videoCinemaModeBtn');
+    
+    if (isCinemaMode) {
+        if (sidebar) sidebar.style.display = 'none';
+        if (toggleBtn) toggleBtn.classList.remove('versteckt');
+        if (cinemaBtn) cinemaBtn.innerHTML = `<i data-lucide="layout" style="width: 14px; height: 14px; margin-right: 4px;"></i> Standard`;
+    } else {
+        if (sidebar) sidebar.style.display = 'flex';
+        if (toggleBtn) toggleBtn.classList.add('versteckt');
+        if (cinemaBtn) cinemaBtn.innerHTML = `<i data-lucide="monitor" style="width: 14px; height: 14px; margin-right: 4px;"></i> Kino`;
     }
-    return 0;
+    if (window.lucide) window.lucide.createIcons();
+    
+    // Explicitly re-render timeline to ensure visibility and correct width
+    renderTimelineMarkers();
+}
+
+function syncProtocolWithVideo() {
+    const video = document.getElementById('analysisVideoPlayer');
+    const syncFollow = document.getElementById('syncFollowToggle');
+    const list = document.getElementById('videoAnalysisProtocolList');
+    if (!video || !currentVideoGame || !list) return;
+
+    // Use a small throttle to avoid vibrating the scroll
+    const now = Date.now();
+    if (now - lastSyncTime < 300) return;
+    lastSyncTime = now;
+
+    const curV = video.currentTime;
+    const log = currentVideoGame.gameLog || [];
+    
+    // Find active entry (the latest one that has already started)
+    let activeEntry = null;
+    for (let i = log.length - 1; i >= 0; i--) {
+        const estV = getEstimatedVideoTime(log[i]);
+        if (estV !== null && curV >= estV - 0.5) { 
+            activeEntry = log[i];
+            break;
+        }
+    }
+
+    if (activeEntry) {
+        const rows = Array.from(list.children);
+        rows.forEach(child => {
+            const isMatch = (child.dataset.timestamp == activeEntry.timestamp);
+            if (isMatch) {
+                if (!child.classList.contains('active-highlight')) {
+                    child.classList.add('active-highlight');
+                    child.style.backgroundColor = 'rgba(var(--primary-rgb), 0.2)';
+                    child.style.borderLeftColor = 'var(--primary)';
+                    
+                    if (syncFollow && syncFollow.checked) {
+                        // Silent update: Using direct scrollTop assignment prevents 
+                        // modern browsers from "helping" by scrolling parent containers.
+                        const targetScroll = offsetTop - (containerHeight / 2) + (itemHeight / 2);
+                        list.scrollTop = targetScroll; 
+                    }
+                }
+            } else {
+                if (child.classList.contains('active-highlight')) {
+                    child.classList.remove('active-highlight');
+                    // Restore original background
+                    const action = child.dataset.action;
+                    if (action === "Tor") child.style.borderLeft = '4px solid #22c55e';
+                    child.style.backgroundColor = (action === "Tor" ? 'rgba(34, 197, 94, 0.03)' : '');
+                }
+            }
+        });
+    }
+}
+
+function updateTimelineProgress() {
+    const video = document.getElementById('analysisVideoPlayer');
+    const progress = document.getElementById('timelineProgress');
+    const label = document.getElementById('timelineTimeLabel');
+    if (!video || !progress || !video.duration || !videoOffsets.h1) return;
+
+    const HALF_DUR = 1800; // 30 minutes in seconds
+    const TOTAL_GAME_TIME = HALF_DUR * 2;
+    
+    const curV = video.currentTime;
+    const log = currentVideoGame.gameLog || [];
+    
+    // Find latest entry that has passed in video (Search backwards)
+    let lastPassedEntry = null;
+    for (let i = log.length - 1; i >= 0; i--) {
+        const estV = getEstimatedVideoTime(log[i]);
+        if (estV !== null && curV >= estV) {
+            lastPassedEntry = log[i];
+            break;
+        }
+    }
+
+    let virtualTime = 0;
+    if (lastPassedEntry) {
+        const baseSecs = parseTime(lastPassedEntry.officialTime || lastPassedEntry.time || "00:00");
+        const gameSecs = baseSecs + (lastPassedEntry.manualShift || 0);
+        const estV = getEstimatedVideoTime(lastPassedEntry);
+        
+        // Virtual time = Game Time of entry + time passed in video since then
+        virtualTime = gameSecs + (curV - estV);
+    } else {
+        // Fallback before any entries: Use H1/H2 global logic
+        if (curV < videoOffsets.h1) {
+            virtualTime = 0;
+        } else if (curV < videoOffsets.h1 + HALF_DUR) {
+            virtualTime = curV - videoOffsets.h1;
+        } else if (videoOffsets.h2 > 0 && curV >= videoOffsets.h2) {
+            virtualTime = HALF_DUR + Math.min(HALF_DUR, curV - videoOffsets.h2);
+        } else {
+            virtualTime = HALF_DUR;
+        }
+    }
+
+    // Clamp to 60 mins
+    virtualTime = Math.max(0, Math.min(TOTAL_GAME_TIME, virtualTime));
+
+    const pct = (virtualTime / TOTAL_GAME_TIME) * 100;
+    progress.style.width = pct + '%';
+
+    if (label) {
+        // Show the actual GAME time in the label for better context
+        const m = Math.floor(virtualTime / 60);
+        const s = Math.floor(virtualTime % 60);
+        label.textContent = `Spielzeit: ${m}:${s.toString().padStart(2, '0')} / 60:00`;
+    }
+}
+
+function renderTimelineMarkers() {
+    const video = document.getElementById('analysisVideoPlayer');
+    const markersContainer = document.getElementById('timelineMarkers');
+    const timelineContainer = document.getElementById('videoTimelineContainer');
+
+    if (!video || !video.duration || !currentVideoGame || !markersContainer) return;
+    if (!videoOffsets.h1) return; // Need at least H1 sync for the new scale
+
+    timelineContainer.classList.remove('versteckt');
+    markersContainer.innerHTML = '';
+    
+    // Ensure parent container doesn't clip timeline in cinema mode
+    const mainSection = document.getElementById('videoAnalyseBereich');
+    if (mainSection) mainSection.style.overflowY = 'auto';
+
+    const log = currentVideoGame.gameLog || [];
+    const HALF_DUR = 1800;
+    const TOTAL_GAME_TIME = HALF_DUR * 2;
+    
+    log.forEach(entry => {
+        const baseSecs = parseTime(entry.officialTime || entry.time || "00:00");
+        const gameSecs = baseSecs + (entry.manualShift || 0);
+        
+        const h = entry.half || (gameSecs > 1800 ? 2 : 1);
+        const offset = (h === 1) ? videoOffsets.h1 : videoOffsets.h2;
+        
+        // --- POSITIONING LOGIC ---
+        // For virtual timeline width, we still need calculated game times
+        let virtualEventTime = 0;
+        if (h === 1) {
+            virtualEventTime = Math.min(1800, gameSecs);
+        } else {
+            const h2GameSecs = gameSecs > 1800 ? (gameSecs - 1800) : gameSecs;
+            virtualEventTime = 1800 + Math.min(1800, h2GameSecs);
+        }
+
+        const pct = (virtualEventTime / 3600) * 100;
+        
+        // --- SEEKING LOGIC (Marker specific) ---
+        // Use the unified estimation logic (Anchor/Timestamp/Linear)
+        const markerVTime = getEstimatedVideoTime(entry);
+        if (markerVTime === null || markerVTime === -1) return; 
+
+        const dot = document.createElement('div');
+        // ... rest of dot creation ...
+        dot.className = 'timeline-marker';
+        dot.style.position = 'absolute';
+        dot.style.left = pct + '%';
+        
+        // --- NEW TRACK LOGIC (Home vs Away) ---
+        const action = (entry.action || "").toLowerCase();
+        const isOpponent = action.includes("gegner") || action.includes("gast") || entry.gegnerNummer;
+        
+        // Base Y position (Home: 10-45%, Away: 55-90%)
+        let yBase = isOpponent ? 55 : 10;
+        let yOffset = 15; 
+        let color = 'rgba(255,255,255,0.6)';
+        
+        if (action.includes("tor")) {
+            yOffset = 8; 
+            color = '#22c55e';
+        } else if (action.includes("fehlwurf") || action.includes("pfosten") || action.includes("latte") || action.includes("gehalten")) {
+            yOffset = 8; 
+            color = '#ef4444';
+        } else if (action.includes("karte") || action.includes("minuten") || action.includes("hinausstellung") || action.includes("bestrafung") || action.includes("gelb") || action.includes("rot") || action.includes("2 min")) {
+            yOffset = 25; 
+            color = '#eab308';
+        } else if (action.includes("timeout")) {
+            yOffset = 35; 
+            color = '#3b82f6';
+        } else {
+            yOffset = 35;
+        }
+
+        const finalTop = yBase + yOffset;
+        const displayTime = formatiereZeit(gameSecs);
+        
+        dot.style.top = finalTop + '%';
+        dot.style.transform = 'translate(-50%, -50%)';
+        dot.style.width = '10px';
+        dot.style.height = '10px';
+        dot.style.borderRadius = '50%';
+        dot.style.border = '2px solid rgba(255,255,255,1)';
+        dot.style.zIndex = '3';
+        dot.style.cursor = 'pointer';
+        dot.style.background = color;
+        dot.title = `${displayTime}: ${entry.playerName || ''} - ${entry.action}`;
+
+        // Large invisible hit target
+        const hitArea = document.createElement('div');
+        hitArea.style.position = 'absolute';
+        hitArea.style.width = '20px';
+        hitArea.style.height = '30px'; 
+        hitArea.style.left = '50%';
+        hitArea.style.top = '50%';
+        hitArea.style.transform = 'translate(-50%, -50%)';
+        hitArea.style.cursor = 'pointer';
+        dot.appendChild(hitArea);
+
+        dot.addEventListener('click', (e) => {
+            e.stopPropagation();
+            video.currentTime = Math.max(0, markerVTime - videoLeadTime);
+        });
+
+        markersContainer.appendChild(dot);
+    });
 }

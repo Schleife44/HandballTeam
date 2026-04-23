@@ -109,11 +109,29 @@ export async function syncGameWithHandballNet(game, hnetUrl) {
             });
             matchesCount++;
         } else {
-            // Track unmatched local event
-            unmatchedLocal.push({
-                ...localEntry,
-                type: normalizeAction(localEntry.action)
-            });
+            // Track unmatched local event ONLY if it's an official ticker type
+            const action = localEntry.action.toLowerCase();
+            const isOfficialType = 
+                (action.includes("tor") || 
+                 action.includes("7m") || 
+                 action.includes("gelb") || 
+                 action.includes("2 min") || 
+                 action.includes("zeitstrafe") || 
+                 action.includes("rot") || 
+                 action.includes("blau") || 
+                 action.includes("timeout") ||
+                 action.includes("disqualifikation") ||
+                 action.includes("hinausstellung")) &&
+                !action.includes("provoziert") &&
+                !action.includes("7m+2min") &&
+                !action.includes("verworfen");
+
+            if (isOfficialType) {
+                unmatchedLocal.push({
+                    ...localEntry,
+                    type: normalizeAction(localEntry.action)
+                });
+            }
         }
     });
 

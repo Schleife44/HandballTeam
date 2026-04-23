@@ -29,9 +29,10 @@ export function berechneStatistiken(overrideGameLog, overrideRoster) {
     const log = getSource(overrideGameLog);
 
     roster.forEach(player => {
-        statsMap.set(player.number, {
+        const playerNum = String(player.number);
+        statsMap.set(playerNum, {
             name: player.name,
-            number: player.number,
+            number: playerNum,
             fehlwurf: 0,
             ballverlust: 0,
             stuermerfoul: 0,
@@ -97,11 +98,14 @@ export function berechneStatistiken(overrideGameLog, overrideRoster) {
             }
         }
 
-        if (!eintrag.playerId || !statsMap.has(eintrag.playerId)) {
+        const rawId = eintrag.playerId;
+        const normalizedId = (rawId !== undefined && rawId !== null) ? String(rawId) : null;
+
+        if (!normalizedId || !statsMap.has(normalizedId)) {
             continue;
         }
 
-        const stats = statsMap.get(eintrag.playerId);
+        const stats = statsMap.get(normalizedId);
 
         if (eintrag.action === "Steal" || eintrag.action === "Assist" ||
             eintrag.action === "Abwehr" || eintrag.action === "Guter Pass" ||
@@ -167,7 +171,11 @@ export function berechneGegnerStatistiken(overrideGameLog, players = []) {
     // Initialize from Players (Roster) first to catch those with time but no actions
     if (players && Array.isArray(players)) {
         players.forEach(p => {
-            const nummer = p.number;
+            if (p.number === undefined || p.number === null) return;
+            // Aggressive normalization: "02" -> 2 -> "2"
+            const numVal = parseInt(p.number);
+            const nummer = isNaN(numVal) ? String(p.number).trim() : String(numVal);
+            
             const name = p.name || `Gegner #${nummer}`;
             gegnerStatsMap.set(nummer, {
                 name: name,
@@ -216,31 +224,44 @@ export function berechneGegnerStatistiken(overrideGameLog, players = []) {
         let isDirectAction = false;
         let isAttribution = false;
 
-        if (eintrag.action.startsWith("Gegner") || eintrag.gegnerNummer) {
+        const actionText = (eintrag.action || "").toLowerCase();
+        const hasGegnerPrefix = actionText.includes("gegner");
+
+        if (hasGegnerPrefix || eintrag.gegnerNummer) {
             const val = eintrag.gegnerNummer;
-            nummer = (val !== undefined && val !== null) ? parseInt(val) : "Team";
+            nummer = (val !== undefined && val !== null && val !== "") ? String(val) : "TEAM_OPP";
             isDirectAction = true;
-        } else if ((eintrag.action === "1und1" || eintrag.action === "1v1") &&
+        } else if ((actionText.includes("1und1") || actionText.includes("1v1")) &&
             eintrag.attributedPlayer &&
             (eintrag.attributedPlayer.isOpponent || eintrag.attributedPlayer.teamKey === 'opponent')) {
-            nummer = parseInt(eintrag.attributedPlayer.number);
+            nummer = String(eintrag.attributedPlayer.number);
             isAttribution = true;
-        } else if (eintrag.action.includes("Block") &&
+        } else if (actionText.includes("block") &&
             eintrag.attributedPlayer &&
             (eintrag.attributedPlayer.isOpponent || eintrag.attributedPlayer.teamKey === 'opponent')) {
             const val = eintrag.attributedPlayer.number !== undefined ? eintrag.attributedPlayer.number : eintrag.attributedPlayer.nummer;
-            nummer = parseInt(val);
+            nummer = String(val);
             isAttribution = true;
         }
 
         if (!nummer) continue;
 
-        const name = (nummer === "Team") ? "Gegner (Team)" : `Gegner #${nummer}`;
+        let name = (nummer === "TEAM_OPP") ? "Mannschaft (Gegner)" : `Gegner #${nummer}`;
+        // Look up real name from lineup
+        if (players && players.length > 0) {
+            const playerInLineup = players.find(p => String(p.number) === String(nummer));
+            if (playerInLineup && playerInLineup.name) {
+                name = playerInLineup.name;
+            }
+        }
 
-        if (!gegnerStatsMap.has(nummer)) {
-            gegnerStatsMap.set(nummer, {
+        const numVal = parseInt(nummer);
+        const normalizedNum = isNaN(numVal) ? String(nummer).trim() : String(numVal);
+        
+        if (!gegnerStatsMap.has(normalizedNum)) {
+            gegnerStatsMap.set(normalizedNum, {
                 name: name,
-                number: nummer,
+                number: normalizedNum,
                 tore: 0,
                 fehlwurf: 0,
                 techFehler: 0,
@@ -269,55 +290,53 @@ export function berechneGegnerStatistiken(overrideGameLog, players = []) {
                 }
             });
         }
-
-        const stats = gegnerStatsMap.get(nummer);
+ 
+        const stats = gegnerStatsMap.get(normalizedNum);
 
         if (isAttribution) {
             // Handle Attributed Actions (Heim -> Opponent)
-            if (eintrag.action === "1und1" || eintrag.action === "1v1") {
+            if (eintrag.action.includes("1und1") || eintrag.action.includes("1v1")) {
                 stats.oneOnOneLost++;
             } else if (eintrag.action.includes("Block")) {
                 stats.block++;
             }
         } else {
             // Handle Direct Actions
-            if (eintrag.action === "Gegner Tor") {
+            const actLower = eintrag.action.toLowerCase();
+            if (actLower.includes("tor")) {
                 stats.tore++;
-            } else if (eintrag.action === "Gegner 7m Tor") {
-                stats.tore++;
-                stats.siebenMeterTore++;
-                stats.siebenMeterVersuche++;
-            } else if (eintrag.action === "Gegner Wurf Vorbei" ||
-                eintrag.action === "Gegner Wurf Gehalten" ||
-                eintrag.action === "Gehalten") {
+                if (actLower.includes("7m")) {
+                    stats.siebenMeterTore++;
+                    stats.siebenMeterVersuche++;
+                }
+            } else if (actLower.includes("fehlwurf") || 
+                       actLower.includes("vorbei") || 
+                       actLower.includes("gehalten") || 
+                       actLower.includes("parade")) {
                 stats.fehlwurf++;
-            } else if (eintrag.action === "Gegner 7m Verworfen" ||
-                eintrag.action === "Gegner 7m Gehalten") {
-                stats.fehlwurf++;
-                stats.siebenMeterVersuche++;
-            } else if (eintrag.action.startsWith("Gegner Gute Aktion")) {
+                if (actLower.includes("7m")) stats.siebenMeterVersuche++;
+            } else if (actLower.startsWith("gegner gute aktion") || actLower.includes("gute aktion")) {
                 stats.guteAktion++;
-            } else if (eintrag.action === "Gegner TF" || eintrag.action === "Gegner Technischer Fehler" || eintrag.action === "Gegner Ballverlust") {
+            } else if (actLower.includes("tf") || actLower.includes("technischer fehler") || actLower.includes("ballverlust")) {
                 stats.techFehler++;
                 stats.ballverlust++;
-            } else if (eintrag.action === "Gegner Stürmerfoul" || eintrag.action === "Gegner Foul") {
+            } else if (actLower.includes("stürmerfoul") || actLower.includes("stuermerfoul")) {
                 stats.stuermerfoul++;
-            } else if (eintrag.action === "Gegner Gelb") {
+            } else if (actLower.includes("gelb") || actLower.includes("gelbe karte")) {
                 stats.gelb++;
-            } else if (eintrag.action === "Gegner 2 min") {
+            } else if (actLower.includes("2 minuten") || actLower.includes("2min")) {
                 stats.zweiMinuten++;
-            } else if (eintrag.action === "Gegner Rot") {
+            } else if (actLower.includes("rot") || actLower.includes("rote karte")) {
                 stats.rot++;
-            } else if (eintrag.action === "Gegner 1und1" || eintrag.action === "Gegner 1v1" || eintrag.action === "Gegner 1v1 Gewonnen") {
+            } else if (actLower.includes("blau") || actLower.includes("blaue karte")) {
+                stats.blau++;
+            } else if (actLower.includes("block")) {
+                stats.block++;
+            } else if (actLower.includes("assist")) {
+                stats.assist++;
+                stats.guteAktion++;
+            } else if (actLower.includes("1und1") || actLower.includes("1v1")) {
                 stats.gewonnen1v1++;
-            } else if (eintrag.action === "Gegner Block") {
-                // stats.block++; // Removed
-                stats.fehlwurf++; // Count as miss for the shooter
-
-            } else if (eintrag.action === "Gegner 2min Provoziert") {
-                stats.rausgeholt2min++;
-            } else if (eintrag.action === "Gegner 7m Provoziert") {
-                stats.rausgeholt7m++;
             } else if (eintrag.action === "Gegner 7m+2min") {
                 stats.rausgeholt7m++;
                 stats.rausgeholt2min++;
@@ -325,11 +344,24 @@ export function berechneGegnerStatistiken(overrideGameLog, players = []) {
         }
     }
 
-    return Array.from(gegnerStatsMap.values()).sort((a, b) => {
-        const numA = parseInt(a.number) || 999;
-        const numB = parseInt(b.number) || 999;
-        return numA - numB;
-    });
+    return Array.from(gegnerStatsMap.values())
+        .filter(s => {
+            // Keep if they have any significant stats
+            const hasStats = s.tore > 0 || s.fehlwurf > 0 || s.gelb > 0 || s.zweiMinuten > 0 || s.guteAktion > 0;
+            // Keep if they have a real number or real name
+            const isRealPlayer = s.number !== "null" && s.number !== "?" && !s.name.includes("Spieler #?");
+            // Keep if it's the team account
+            const isTeamAccount = s.number === "TEAM_OPP" || s.number === "TEAM_US";
+            
+            return hasStats || isRealPlayer || isTeamAccount;
+        })
+        .sort((a, b) => {
+            if (a.number === "TEAM_OPP" || a.number === "TEAM_US") return 1;
+            if (b.number === "TEAM_OPP" || b.number === "TEAM_US") return -1;
+            const numA = parseInt(a.number) || 999;
+            const numB = parseInt(b.number) || 999;
+            return numA - numB;
+        });
 }
 
 export function berechneWurfbilder(overrideGameLog) {
