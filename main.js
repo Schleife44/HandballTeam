@@ -3,7 +3,7 @@
 
 import { 
     ladeSpielstandDaten, spielstand, speichereSpielstand, 
-    mergeRemoteSpielstand, resetSpielstand 
+    mergeRemoteSpielstand, resetSpielstand, isUserAssigned
 } from './modules/state.js';
 import { 
     onAuthChange, firebaseLogin, firebaseRegister, loginWithGoogle, redeemInviteToken,
@@ -22,7 +22,7 @@ import { berechneStatistiken } from './modules/stats.js';
 import {
     applyTheme, updateScoreDisplay,
     zeichneRosterListe, updateSuspensionDisplay, zeichneSpielerRaster,
-    updateProtokollAnzeige, zeichneStatistikTabelle, applyGameMode
+    updateProtokollAnzeige, zeichneStatistikTabelle, applyGameMode, initSidebarGroups
 } from './modules/ui.js';
 import { sanitizeHTML, escapeHTML } from './modules/utils.js';
 import { registerEventListeners } from './modules/eventListeners.js';
@@ -52,6 +52,7 @@ function initApp(skipLocalLoad = false) {
     if (rosterTeamNameGegner) rosterTeamNameGegner.value = spielstand.settings.teamNameGegner || '';
 
     applyTheme();
+    initSidebarGroups();
 
     // Restore state-based UI elements if necessary 
     // (Note: Router will handle view switching via handleRouting)
@@ -110,6 +111,17 @@ export function refreshUIFromState() {
     updateSuspensionDisplay();
     updateProtokollAnzeige();
     syncSettingsVisuals();
+    initSidebarGroups();
+    
+    // Additional view refreshes
+    const hash = window.location.hash || '#dashboard';
+    if (hash === '#dashboard') {
+        import('./modules/dashboardView.js').then(m => m.showDashboardInline());
+    } else if (hash === '#calendar') {
+        import('./calendar.js').then(m => m.renderCalendar());
+    } else if (hash === '#roster') {
+        zeichneRosterListe();
+    }
 }
 
 // Global Fallbacks
@@ -122,15 +134,39 @@ window.applyGameMode = applyGameMode;
  */
 function initRealtimeSync() {
     import('./modules/firebase.js').then(m => {
-        console.log('[Main] Starting Realtime Sync...');
+        const teamId = m.getActiveTeamId();
+        const uid = m.getAuthUid();
+        if (!teamId || !uid) return;
+
+        console.log('[Main] Starting Realtime Sync for Team:', teamId);
         let firstLoad = true;
-        m.startSpielstandListener((remoteData) => {
+        
+        m.startSpielstandListener(async (remoteData) => {
             mergeRemoteSpielstand(remoteData);
-            refreshUIFromState();
+            
             if (firstLoad) {
                 firstLoad = false;
-                // Force router to re-evaluate so roster/calendar render with loaded data
+                console.log('[Main] First cloud snapshot received.');
+
+                // Reactive Onboarding: Only prompt if sync shows we are missing
+                if (!isUserAssigned(uid)) {
+                    // Check if they are owner - if so, maybe they dont want a player slot
+                    const profile = m.getCurrentUserProfile();
+                    const teamRec = profile?.teams?.find(t => String(t.teamId) === String(teamId));
+                    const isTrainer = teamRec && (teamRec.role === 'trainer' || teamRec.role === 'owner');
+
+                    if (!isTrainer) {
+                        const name = await customPrompt('Willkommen im Team! Wie heißt du? (Wird im Kader angezeigt)', 'Dein Name');
+                        if (name && name.trim()) {
+                            await linkMemberToRoster(teamId, name.trim());
+                        }
+                    }
+                }
+                
+                // Success: full navigation refresh
                 window.dispatchEvent(new Event('hashchange'));
+            } else {
+                refreshUIFromState();
             }
         });
     });
@@ -144,60 +180,45 @@ onAuthChange(
         if (overlay) overlay.style.display = 'none';
         initCustomDialogs();
 
-        // Redeem pending invite if any
+        // 1. Invite Tokens
         const pendingInvite = sessionStorage.getItem('pendingInviteToken');
         if (pendingInvite) {
             sessionStorage.removeItem('pendingInviteToken');
             const res = await redeemInviteToken(pendingInvite);
             if (res.success) {
                 await customAlert(`Erfolgreich dem Team "${res.teamName}" beigetreten!`, 'Willkommen!');
-            } else {
-                customAlert(`Einladung konnte nicht eingelöst werden: ${res.error}`);
             }
         }
 
-        // Ensure team is selected if not restored
+        // 2. Resolve Active Team
         const restoredId = getActiveTeamId();
 
         if (!restoredId) {
-            initApp(true); // Initialize without local data first
             showTeamSelectionOverlay(profile, async (teamId) => {
-                // Team selected, check if onboarding needed
-                const needsOnboarding = await checkIfOnboardingNeeded(teamId);
-                if (needsOnboarding) {
-                    const name = await customPrompt('Willkommen im Team! Wie heißt du? (Wird im Kader angezeigt)', 'Dein Name');
-                    if (name && name.trim()) {
-                        await linkMemberToRoster(teamId, name.trim());
-                        await customAlert(`Du wurdest als "${name}" im Kader eingetragen.`, 'Erfolg ✓');
-                    }
-                }
-
-                // Refresh UI and start sync
-                refreshUIFromState();
+                // setActiveTeam(teamId) is already called in teamsView.js
                 initRealtimeSync();
             });
         } else {
-            // Already have a team, just start sync but verify membership first
-            (async () => {
-                const isStillMember = await verifyMembership(restoredId);
-                if (!isStillMember) {
-                    await handleAccessDenied();
-                } else {
-                    initApp(); // Now safe to initialize with data
-                    initRealtimeSync();
-                }
-            })();
+            const isStillMember = await verifyMembership(restoredId);
+            if (!isStillMember) {
+                await handleAccessDenied();
+            } else {
+                initRealtimeSync();
+            }
         }
     },
     () => {
         // Logged out
         const overlay = document.getElementById('firebaseLoginOverlay');
         if (overlay) overlay.style.display = 'flex';
+        resetSpielstand();
     }
 );
 
 // Setup Login Form Listeners
 document.addEventListener('DOMContentLoaded', () => {
+    initApp();
+
     // Check for invite token in URL and save it
     const urlParams = new URLSearchParams(window.location.search);
     const inviteToken = urlParams.get('invite');

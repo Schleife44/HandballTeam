@@ -1,0 +1,2900 @@
+<!DOCTYPE html>
+<html lang="de">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sechsmeter.de</title>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="icon" type="image/png" href="Logo/Logo_Square.png">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Anton&family=Bebas+Neue&family=Chakra+Petch:wght@400;700&family=Inter:wght@400;700&family=Kanit:wght@400;700&family=Lobster&family=Montserrat:wght@400;700&family=Oswald:wght@400;700&family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=Righteous&family=Roboto+Condensed:wght@400;700&family=Saira+Extra+Condensed:wght@400;700&family=Teko:wght@400;700&family=Titillium+Web:wght@400;700&display=swap" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script type="module" src="main.js?v=v4_safety_net"></script>
+</head>
+
+<body class="dark-mode">
+
+    <!-- Mobile Menu Toggle Button -->
+    <button id="mobileMenuBtn" class="mobile-menu-btn" data-action="toggle-mobile-menu">☰</button>
+
+    <!-- Sidebar Navigation -->
+    <div id="sidebar">
+        <div class="sidebar-header hub-sidebar-brand" style="border-bottom: none; padding-bottom: 10px;">
+            <div class="sidebar-logo-container" style="padding: 15px 0;">
+                <img src="Logo/LogomText.png" alt="Sechsmeter" style="height: 50px; width: auto; max-width: 100%;">
+            </div>
+        </div>
+        <nav class="sidebar-nav">
+            <div class="nav-group-label" style="text-transform: none; color: var(--hub-muted); font-size: 0.8rem; padding-bottom: 8px;">Main Menu</div>
+            <div class="nav-item active" data-action="nav" data-view="dashboard">
+                <span class="nav-icon"><i data-lucide="layout-dashboard"></i></span>
+                <span class="nav-label">Überblick</span>
+            </div>
+            <div class="nav-item" data-action="nav" data-view="calendar">
+                <span class="nav-icon"><i data-lucide="calendar"></i></span>
+                <span class="nav-label">Kalender</span>
+            </div>
+            <div class="nav-item" data-action="nav" data-view="tacticalboard">
+                <span class="nav-icon"><i data-lucide="clipboard-list"></i></span>
+                <span class="nav-label">Taktikboard</span>
+            </div>
+
+            <div class="nav-group-label" style="text-transform: none; color: var(--hub-muted); font-size: 0.8rem; padding-bottom: 8px;">Spieltag</div>
+            <div class="nav-item" data-action="nav" data-view="game">
+                <span class="nav-icon"><i data-lucide="play-circle"></i></span>
+                <span class="nav-label">Spiel</span>
+                <span id="sidebarTimer" class="sidebar-timer versteckt">00:00</span>
+            </div>
+            <div class="nav-item" data-action="nav" data-view="roster">
+                <span class="nav-icon"><i data-lucide="users"></i></span>
+                <span class="nav-label">Kader</span>
+            </div>
+
+            <div class="nav-group-label" data-action="toggle-nav-group" data-group="live" style="text-transform: none; color: var(--hub-muted); font-size: 0.8rem; padding-bottom: 8px;">
+                <span>Analytics</span>
+                <i data-lucide="chevron-down" class="nav-group-toggle"></i>
+            </div>
+            <div class="nav-group-content" id="nav-group-live">
+                <div class="nav-item" data-action="nav" data-view="overview">
+                    <span class="nav-icon"><i data-lucide="bar-chart-2"></i></span>
+                    <span class="nav-label">Übersicht</span>
+                </div>
+                <div class="nav-item" data-action="nav" data-view="shots">
+                    <span class="nav-icon"><i data-lucide="crosshair"></i></span>
+                    <span class="nav-label">Wurfbilder</span>
+                </div>
+                <div class="nav-item" data-action="nav" data-view="heatmap">
+                    <span class="nav-icon"><i data-lucide="flame"></i></span>
+                    <span class="nav-label">Heatmap</span>
+                </div>
+                <div class="nav-item" data-action="nav" data-view="protocol">
+                    <span class="nav-icon"><i data-lucide="list"></i></span>
+                    <span class="nav-label">Protokoll</span>
+                </div>
+            </div>
+
+            <div class="nav-group-label" data-action="toggle-nav-group" data-group="archiv" style="text-transform: none; color: var(--hub-muted); font-size: 0.8rem; padding-bottom: 8px;">
+                <span>Archiv</span>
+                <i data-lucide="chevron-down" class="nav-group-toggle"></i>
+            </div>
+            <div class="nav-group-content" id="nav-group-archiv">
+                <div class="nav-item" data-action="nav" data-view="history">
+                    <span class="nav-icon"><i data-lucide="history"></i></span>
+                    <span class="nav-label">Historie</span>
+                </div>
+                <div class="nav-item" data-action="nav" data-view="videoanalyse">
+                    <span class="nav-icon"><i data-lucide="video"></i></span>
+                    <span class="nav-label">Video Analyse</span>
+                </div>
+                <div class="nav-item" data-action="nav" data-view="seasonStats">
+                    <span class="nav-icon"><i data-lucide="bar-chart-2"></i></span>
+                    <span class="nav-label">Saison Statistiken</span>
+                </div>
+            </div>
+
+            <div class="nav-group-label">System</div>
+
+            <div class="nav-item" data-action="nav" data-view="socialmedia">
+                <span class="nav-icon"><i data-lucide="camera"></i></span>
+                <span class="nav-label">Social Media</span>
+            </div>
+
+            <div class="nav-item" data-action="nav" data-view="fines">
+                <span class="nav-icon"><i data-lucide="banknote"></i></span>
+                <span class="nav-label">Mannschaftskasse</span>
+            </div>
+
+            <div class="nav-item" data-action="nav" data-view="settings">
+                <span class="nav-icon"><i data-lucide="settings"></i></span>
+                <span class="nav-label">Einstellungen</span>
+            </div>
+
+            <!-- Firebase Status + Logout -->
+            <div id="firebaseStatusBar" style="
+                margin: 8px 12px 4px;
+                padding: 8px 12px;
+                background: rgba(255,255,255,0.05);
+                border-radius: 10px;
+                border: 1px solid rgba(255,255,255,0.08);
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                gap: 8px;
+            ">
+                <div style="display: flex; align-items: center; gap: 8px;">
+                    <div id="firebaseStatusDot" style="
+                        width: 8px; height: 8px;
+                        border-radius: 50%;
+                        background: #6b7280;
+                        flex-shrink: 0;
+                        transition: background 0.3s, box-shadow 0.3s;
+                    "></div>
+                    <span id="firebaseStatusLabel" style="font-size: 0.75rem; color: var(--text-muted);">Offline</span>
+                </div>
+                <button id="firebaseLogoutBtn" data-action="logout" title="Abmelden" style="
+                    background: none; border: none;
+                    cursor: pointer;
+                    color: var(--text-muted);
+                    padding: 2px 4px;
+                    border-radius: 4px;
+                    display: flex; align-items: center;
+                    opacity: 0.6;
+                    transition: opacity 0.2s;
+                " onmouseover="this.style.opacity='1'" onmouseout="this.style.opacity='0.6'">
+                    <i data-lucide="log-out" style="width:14px;height:14px;"></i>
+                </button>
+            </div>
+        </nav>
+    </div>
+    <div id="sidebarOverlay" class="sidebar-overlay" data-action="toggle-mobile-menu"></div>
+
+    <!-- Main Content Area -->
+    <div id="main-content">
+
+        <!-- SECTION: CALENDAR -->
+        <div id="calendarBereich" class="content-section versteckt">
+            <div class="calendar-header-modern">
+                <div class="cal-nav-modern">
+                    <button id="prevMonthBtn" class="icon-btn-ghost"><i data-lucide="chevron-left"></i></button>
+                    <h2 id="currentMonthLabel">Januar 2026</h2>
+                    <button id="nextMonthBtn" class="icon-btn-ghost"><i data-lucide="chevron-right"></i></button>
+                </div>
+                <div class="cal-actions">
+                    <button id="manageCalendarBtn" class="hub-btn-outline" title="Kalender verwalten">
+                        <i data-lucide="settings"></i> <span class="mobile-hidden">Einstellungen</span>
+                    </button>
+                    <button id="addAbsenceBtn" class="hub-btn-outline">
+                        <i data-lucide="user-x"></i> <span class="mobile-hidden">Abwesenheit</span>
+                    </button>
+                    <button id="addEventBtn" class="hub-btn-primary">
+                        <i data-lucide="plus-circle" style="width: 18px; height: 18px;"></i> <span class="mobile-hidden">Termin</span>
+                    </button>
+                </div>
+            </div>
+
+            <div class="calendar-container">
+                <div class="calendar-header-days">
+                    <div>Mo</div>
+                    <div>Di</div>
+                    <div>Mi</div>
+                    <div>Do</div>
+                    <div>Fr</div>
+                    <div>Sa</div>
+                    <div>So</div>
+                </div>                <!-- MANAGE MODAL -->
+        <!-- MANAGE MODAL (Hub Modern) -->
+        <div id="manageCalendarOverlay" class="modal-overlay hub-overlay-modern versteckt">
+            <div id="manageCalendarModal" class="hub-modal-card" style="width: 500px;">
+                <div class="hub-modal-header">
+                    <h2>Kalender verwalten</h2>
+                    <button id="closeManageBtn" class="icon-btn-ghost"><i data-lucide="x"></i></button>
+                </div>
+                
+                <div class="hub-modal-body">
+                    <!-- SECTION: Add Subscription -->
+                    <div class="hub-field-group">
+                        <label class="hub-label">Neues Abo hinzufügen</label>
+                        <div style="display: flex; gap: 10px;">
+                            <input type="text" id="manageUrlInput" placeholder="https://... (ICS/Webcal)" class="hub-input" style="flex: 1;" />
+                            <button id="addSubBtn" class="hub-btn-primary" style="width: 44px; padding: 0;">
+                                <i data-lucide="plus"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 24px;">
+                        <label class="hub-radio-pill" title="Grundpflicht bei Absage/Vlt">
+                            <input type="checkbox" id="subRequireReason">
+                            <span>Grundpflicht</span>
+                        </label>
+                        <label class="hub-radio-pill" title="Standardmäßig als 'Dabei' markieren">
+                            <input type="checkbox" id="subDefaultStatus">
+                            <span>Auto-Dabei</span>
+                        </label>
+                    </div>
+
+                    <div class="hub-field-group" style="margin-top: 10px; flex-direction: row; align-items: center; gap: 12px;">
+                        <label class="hub-label" style="margin-bottom: 0;">Abmeldefrist (Std.):</label>
+                        <input type="number" id="subDeadlineHours" value="0" class="hub-input" style="width: 80px;">
+                    </div>
+
+                    <!-- SECTION: Subscriptions -->
+                    <div class="hub-attendance-section" style="margin-top: 24px;">
+                        <h3 style="font-size: 0.8rem; font-weight: 800; color: #64748b; text-transform: uppercase;">Abonnierte Kalender</h3>
+                        <div id="subsList" class="manage-list-modern" style="margin-top: 12px; max-height: 180px;">
+                            <!-- Dynamic Cards -->
+                        </div>
+                    </div>
+
+                    <!-- SECTION: Series -->
+                    <div class="hub-attendance-section" style="margin-top: 24px;">
+                        <h3 style="font-size: 0.8rem; font-weight: 800; color: #64748b; text-transform: uppercase;">Serien</h3>
+                        <div id="seriesList" class="manage-list-modern" style="margin-top: 12px; max-height: 180px;">
+                            <!-- Dynamic Cards -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+            <div id="calendarGrid" class="calendar-grid">
+                    <!-- Javascript generated days -->
+                </div>
+            </div>
+        </div>
+
+        <!-- SECTION: TACTICAL BOARD -->
+        <div id="tacticalBoardBereich" class="content-section versteckt">
+            <div class="section-header">
+                <h1>Taktikboard</h1>
+                <p class="text-muted">Entwirf und animiere deine Spielzüge</p>
+            </div>
+            <div id="tacticalBoardContainer" class="tactical-board-main">
+                <!-- Content will be injected by tacticalBoardView.js -->
+            </div>
+        </div>
+
+        <!-- POPOVER: Add/Edit Event (Hub Modern) -->
+        <div id="addEventOverlay" class="modal-overlay hub-overlay-modern versteckt">
+            <div id="addEventModal" class="hub-modal-card">
+                <div class="hub-modal-header">
+                    <h2 id="addEventModalTitle">Termin erstellen</h2>
+                    <button id="closeEventModal" class="icon-btn-ghost"><i data-lucide="x"></i></button>
+                </div>
+                
+                <div class="hub-modal-body" style="padding: 20px;">
+                    <div class="hub-field-group" style="margin-bottom: 15px;">
+                        <label class="hub-label">Titel</label>
+                        <input type="text" id="eventTitleInput" class="hub-input" placeholder="Training, Spiel, Teamevent...">
+                    </div>
+                    
+                    <div class="hub-field-group" style="margin-bottom: 15px;">
+                        <label class="hub-label">Typ</label>
+                        <div class="hub-radio-group">
+                            <label class="hub-radio-pill training" style="padding: 8px 12px;">
+                                <input type="radio" name="eventType" value="training" checked>
+                                <span style="font-size: 0.85rem;">Training</span>
+                            </label>
+                            <label class="hub-radio-pill game" style="padding: 8px 12px;">
+                                <input type="radio" name="eventType" value="game">
+                                <span style="font-size: 0.85rem;">Spiel</span>
+                            </label>
+                            <label class="hub-radio-pill other" style="padding: 8px 12px;">
+                                <input type="radio" name="eventType" value="other">
+                                <span style="font-size: 0.85rem;">Sonstiges</span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 15px;">
+                        <div class="hub-field-group" style="margin-bottom: 0;">
+                            <label class="hub-label">Datum</label>
+                            <input type="date" id="eventDateInput" class="hub-input">
+                        </div>
+                        <div class="hub-field-group" style="margin-bottom: 0;">
+                            <label class="hub-label">Uhrzeit</label>
+                            <input type="time" id="eventTimeInput" class="hub-input">
+                        </div>
+                    </div>
+
+                    <div style="display: grid; grid-template-columns: 1.5fr 1fr; gap: 15px; margin-bottom: 15px;">
+                        <div class="hub-field-group" style="margin-bottom: 0;">
+                            <label class="hub-label">Ort</label>
+                            <input type="text" id="eventLocationInput" class="hub-input" placeholder="Halle, Sportplatz...">
+                        </div>
+                        <div class="hub-field-group" style="margin-bottom: 0;">
+                            <label class="hub-label">Wiederholung</label>
+                            <select id="eventRepeatInput" class="hub-input">
+                                <option value="none">Nein</option>
+                                <option value="weekly">Wöchentlich</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div id="recurrenceOptions" class="hub-field-group versteckt">
+                        <label class="hub-label">Bis Datum</label>
+                        <input type="date" id="eventRepeatEndInput" class="hub-input">
+                    </div>
+
+                    <div class="hub-field-group" style="border-top: 1px solid rgba(255,255,255,0.05); padding-top: 12px; margin-top: 5px; margin-bottom: 15px;">
+                        <label class="hub-label" style="margin-bottom: 8px;">Teilnahme-Regeln</label>
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                            <label class="hub-radio-pill" title="Grundpflicht bei Absage" style="padding: 8px 12px;">
+                                <input type="checkbox" id="eventRequireReasonInput">
+                                <span style="font-size: 0.8rem;">Grundpflicht Absage</span>
+                            </label>
+                            <label class="hub-radio-pill" title="Standardmäßig als 'Dabei' markieren" style="padding: 8px 12px;">
+                                <input type="checkbox" id="eventDefaultStatusInput">
+                                <span style="font-size: 0.8rem;">Automatisch Dabei</span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <div class="hub-field-group" style="display: flex; flex-direction: row; align-items: center; gap: 12px; margin-bottom: 5px;">
+                        <label class="hub-label" style="margin-bottom: 0;">Abmeldefrist (Std.):</label>
+                        <input type="number" id="eventDeadlineInput" class="hub-input" style="width: 80px;" min="0" value="0">
+                    </div>
+                </div>
+
+                <div class="hub-modal-footer">
+                    <button id="cancelEventBtn" class="hub-btn-outline">Abbrechen</button>
+                    <button id="saveEventBtn" class="hub-btn-primary">Speichern</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- POPOVER: Event Details (Hub Premium) -->
+        <div id="eventDetailsOverlay" class="modal-overlay hub-overlay-modern versteckt">
+            <div id="eventDetailsModal" class="hub-modal-card" style="width: 480px;">
+                <div class="hub-modal-header" style="padding-bottom: 20px; border-bottom: 1px solid rgba(255,255,255,0.05);">
+                    <div style="display: flex; flex-direction: column; gap: 8px; flex: 1;">
+                        <div style="display: flex; align-items: center; gap: 10px;">
+                            <span id="detailsCategoryBadge" style="font-weight:700; padding: 4px 10px; border-radius: 6px; font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.05em;">Laden...</span>
+                            <h2 id="detailsTitle" style="font-size: 1.4rem; margin: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 250px;">Termin-Details</h2>
+                        </div>
+                        <div id="detailsInfoRow" style="display: flex; align-items: center; gap: 8px; color: #64748b; font-size: 0.95rem; font-weight: 500;">
+                            <i data-lucide="calendar" style="width: 16px; height: 16px;"></i>
+                            <span id="detailsFullInfo">Laden...</span>
+                        </div>
+                    </div>
+                    <div style="display: flex; gap: 4px; align-self: flex-start;">
+                        <button id="modalDetailsBtn" class="icon-btn-ghost" title="Teilnehmerliste"><i data-lucide="users"></i></button>
+                        <button id="editEventBtn" class="icon-btn-ghost" title="Bearbeiten"><i data-lucide="edit-3"></i></button>
+                        <button id="deleteEventBtn" class="icon-btn-ghost" style="color: #ef4444;" title="Löschen"><i data-lucide="trash-2"></i></button>
+                        <button id="closeDetailsBtn" class="icon-btn-ghost" title="Schließen"><i data-lucide="x"></i></button>
+                    </div>
+                </div>
+                
+                <div class="hub-modal-body" style="padding-top: 20px;">
+                    <div id="detailsLocationRow" class="hub-field-group" style="margin-bottom: 20px; background: rgba(255,255,255,0.02); padding: 12px 16px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.04); display: flex; align-items: center; gap: 12px;">
+                        <i data-lucide="map-pin" style="width: 18px; color: #22c55e;"></i>
+                        <span id="detailsLocation" style="color: #94a3b8; font-size: 0.95rem;">Laden...</span>
+                    </div>
+
+                    <div id="attendanceReasonContainer" class="hub-field-group versteckt" style="margin-bottom: 20px;">
+                        <label class="hub-label">Grund (erforderlich)</label>
+                        <div style="display: flex; gap: 10px;">
+                            <input type="text" id="attendanceReasonInput" class="hub-input" placeholder="Warum kannst du nicht?" style="flex: 1;">
+                            <button id="saveAttendanceReasonBtn" class="hub-btn-primary" style="width: 44px; padding: 0;">
+                                <i data-lucide="check"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    <div id="attendanceFullList" class="manage-list-modern versteckt" style="margin-top: 0; max-height: 300px; border-top: 1px solid rgba(255,255,255,0.05); padding-top: 16px;">
+                        <!-- Full list content -->
+                    </div>
+                </div>
+
+                <div class="hub-modal-footer" style="padding-top: 0; border-top: none;">
+                    <div class="dash-rsvp-group-modern" style="width: 100%;">
+                        <button class="dash-rsvp-modern-btn att-btn" data-status="going">
+                            <i data-lucide="thumbs-up"></i>
+                            <span id="detailsCountGoing">0</span>
+                        </button>
+                        <button class="dash-rsvp-modern-btn att-btn" data-status="maybe">
+                            <i data-lucide="help-circle"></i>
+                            <span id="detailsCountMaybe">0</span>
+                        </button>
+                        <button class="dash-rsvp-modern-btn att-btn" data-status="not-going">
+                            <i data-lucide="thumbs-down"></i>
+                            <span id="detailsCountMissing">0</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="rosterBereich" class="content-section versteckt">
+            <!-- Roster Top Section -->
+            <div class="roster-top-section">
+                <!-- Team Namen Eingabe -->
+                <div class="roster-form-card" style="margin-bottom: 20px;">
+                    <div class="roster-form-grid"
+                        style="grid-template-columns: 1fr auto 1fr; align-items: end; gap: 15px;">
+                        <div class="roster-input-group">
+                            <label for="rosterTeamNameHeim">Heim Team Name</label>
+                            <div style="display: flex; gap: 10px; align-items: center;">
+                                <div style="position: relative; flex: 1;">
+                                    <input type="text" id="rosterTeamNameHeim" placeholder="Heim Team"
+                                        style="width: 100%; padding-right: 30px;">
+                                    <i id="rosterHeimLockIcon" data-lucide="lock"
+                                        style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); width: 16px; height: 16px; color: #64748b; display: none;"></i>
+                                </div>
+                                <div class="color-picker-wrapper" title="Trikotfarbe wählen"
+                                    style="position: relative; cursor: pointer;">
+                                    <button id="teamColorTrigger" class="shadcn-btn-outline"
+                                        style="width: 36px; height: 36px; padding: 0; display: flex; align-items: center; justify-content: center; border-radius: 8px;">
+                                        <i data-lucide="shirt" style="width: 20px; height: 20px;"></i>
+                                    </button>
+                                    <input type="color" id="teamColorInput" value="#dc3545"
+                                        style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer;">
+                                </div>
+                            </div>
+                        </div>
+
+                        <button id="rosterSwapTeamsBtn" class="shadcn-btn-outline" title="Seiten wechseln"
+                            style="margin-bottom: 2px; height: 36px; width: 36px; padding: 0; display: flex; align-items: center; justify-content: center;">
+                            <i data-lucide="arrow-left-right" style="width: 20px; height: 20px;"></i>
+                        </button>
+
+                        <div class="roster-input-group">
+                            <label for="rosterTeamNameGegner">Gast Team Name</label>
+                            <div style="display: flex; gap: 10px; align-items: center;">
+                                <div style="position: relative; flex: 1;">
+                                    <input type="text" id="rosterTeamNameGegner" placeholder="Gast Team"
+                                        style="width: 100%; padding-right: 30px;">
+                                    <i id="rosterGegnerLockIcon" data-lucide="lock"
+                                        style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); width: 16px; height: 16px; color: #64748b; display: none;"></i>
+                                </div>
+                                <div class="color-picker-wrapper" title="Trikotfarbe wählen"
+                                    style="position: relative; cursor: pointer;">
+                                    <button id="teamColorTriggerGegner" class="shadcn-btn-outline"
+                                        style="width: 36px; height: 36px; padding: 0; display: flex; align-items: center; justify-content: center; border-radius: 8px;">
+                                        <div class="lock-icon-container">
+                                            <i data-lucide="shirt" style="width: 20px; height: 20px;"></i>
+                                        </div>
+                                    </button>
+                                    <input type="color" id="teamColorInputGegner" value="#2563eb"
+                                        style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer;">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Add Player Card -->
+                <div class="roster-form-card" style="padding: 1rem;">
+                    <div class="roster-form-header" style="margin-bottom: 1rem;">
+                        <h2 style="margin:0; font-size: 1.2rem;">Kader verwalten</h2>
+                    </div>
+                    <!-- Compact Form - Single Row -->
+                    <form id="addPlayerForm" style="display: flex; gap: 10px; align-items: flex-end;">
+                        <input type="hidden" id="editPlayerIndex">
+                        <div style="flex: 2;">
+                            <label for="playerNameInput"
+                                style="font-size: 0.8rem; display: block; margin-bottom: 4px;">Name</label>
+                            <input type="text" id="playerNameInput" class="shadcn-input" placeholder="Spielername">
+                        </div>
+                        <div style="flex: 1; min-width: 70px;">
+                            <label for="playerNumberInput"
+                                style="font-size: 0.8rem; display: block; margin-bottom: 4px;">Nummer</label>
+                            <input type="number" id="playerNumberInput" class="shadcn-input" placeholder="#" min="1"
+                                max="99">
+                        </div>
+                        <div style="flex: 0 0 auto; min-width: 50px;">
+                            <label for="playerTorwartInput"
+                                style="font-size: 0.8rem; display: block; margin-bottom: 4px; text-align: center;">TW</label>
+                            <div
+                                style="height: 40px; display: flex; align-items: center; justify-content: center; border: 1px solid var(--border-color); border-radius: 6px; background: var(--bg-card);">
+                                <input type="checkbox" id="playerTorwartInput"
+                                    style="width: 18px; height: 18px; cursor: pointer; accent-color: var(--btn-primary);">
+                            </div>
+                        </div>
+                        <div>
+                            <button type="submit" data-action="roster-save-player" class="shadcn-btn-white" style="height: 40px;">Hinzufügen</button>
+                            <button type="button" data-action="roster-cancel-edit" id="cancelEditButton" class="shadcn-btn-outline versteckt"
+                                style="height: 40px;">Abbrechen</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Roster Bottom Section -->
+            <div class="roster-bottom-section">
+                <!-- Team Management Actions -->
+                <div class="roster-manage-grid">
+                    <button id="exportTeamButton" class="shadcn-btn-outline">Team exportieren</button>
+                    <button id="importTeamButton" class="shadcn-btn-outline">Team importieren</button>
+                    <input type="file" id="importFileInput" class="versteckt" accept=".json">
+                    <button id="saveTeamButton" data-action="team-save" class="shadcn-btn-outline"
+                        style="border-color: #22c55e; color: #22c55e;">
+                        Team speichern</button>
+                    <button id="loadTeamButton" data-action="team-load-modal" class="shadcn-btn-outline"
+                        style="border-color: #3b82f6; color: #3b82f6;">
+                        Team laden</button>
+                </div>
+
+                <!-- Roster List Header -->
+                <div class="roster-header-row" style="margin-top: 2rem; margin-bottom: 1rem; display: flex; justify-content: space-between; align-items: center;">
+                    <h3 id="teamHeaderTitle" style="margin:0; font-size: 1.1rem;">Kader: HEIM</h3>
+                    <div style="display: flex; align-items: center; gap: 10px;">
+                        <span style="font-size: 0.85rem; font-weight: 600; color: var(--text-muted);">HEIM</span>
+                        <button id="teamToggle" role="switch" aria-checked="false" class="shadcn-switch">
+                            <span class="shadcn-switch-thumb"></span>
+                        </button>
+                        <span style="font-size: 0.85rem; font-weight: 600; color: var(--text-muted);">GAST</span>
+                    </div>
+                </div>
+
+                <!-- Player Cards Grid -->
+                <div id="rosterListe" class="roster-grid"></div>
+
+                <!-- Danger Zone -->
+                <div style="margin-top: 40px; border-top: 1px solid var(--border-color); padding-top: 20px;">
+                    <button id="deleteTeamButton" class="shadcn-btn-outline roster-delete-btn"
+                        data-action="delete-current-team"
+                        style="width: 100%; max-width: 300px; margin: 0 auto; height: 44px;">Aktuelles Team
+                        löschen</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Live Overview Page Section -->
+        <div id="liveOverviewBereich" class="content-section versteckt">
+            <div id="liveOverviewContent"></div>
+            <div id="liveOverviewEmptyState" class="versteckt"></div>
+        </div>
+
+        <!-- Season Overview Page Section (Legacy/Table) -->
+        <div id="seasonBereich" class="content-section versteckt">
+            <h2>Saison</h2>
+            <div id="seasonContent">
+                <p>Hier könnte die Spielplan-Übersicht oder Tabelle stehen.</p>
+            </div>
+        </div>
+
+    <!-- SECTION: SEASON STATS (Handball Hub) -->
+    <section id="seasonStatsBereich" class="versteckt">
+        <div class="hub-header-row" style="margin-bottom: 24px;">
+            <div class="hub-dashboard-title">
+                <h1>Statistiken</h1>
+                <span class="hub-season-badge">Saison 23/24</span>
+            </div>
+            
+            <div class="hub-header-actions">
+                <button id="exportHistorieButton" class="hub-btn-outline" style="display: flex; align-items: center; gap: 8px;">
+                    <i data-lucide="download" style="width: 16px; height: 16px;"></i> Export
+                </button>
+            </div>
+        </div>
+
+        <!-- Summary Grid -->
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-bottom: 24px;">
+            <div class="hub-card" style="padding: 16px; text-align: center;">
+                <label class="hub-label">Bester Torschütze</label>
+                <div id="statTopScorer" style="font-size: 1.25rem; font-weight: 700; color: var(--hub-green);">-</div>
+            </div>
+            <div class="hub-card" style="padding: 16px; text-align: center;">
+                <label class="hub-label">Gesamt Tore</label>
+                <div id="statTotalGoals" style="font-size: 1.25rem; font-weight: 700; color: var(--hub-blue);">-</div>
+            </div>
+            <div class="hub-card" style="padding: 16px; text-align: center;">
+                <label class="hub-label">Wurfquote Ø</label>
+                <div id="statAvgAccuracy" style="font-size: 1.25rem; font-weight: 700; color: var(--hub-green);">-</div>
+            </div>
+            <div class="hub-card" style="padding: 16px; text-align: center;">
+                <label class="hub-label">Gespielte Spiele</label>
+                <div id="statTotalGames" style="font-size: 1.25rem; font-weight: 700; color: #fff;">-</div>
+            </div>
+        </div>
+
+        <div class="hub-card" style="min-height: 400px;">
+            <h3 class="hub-label" style="margin-bottom: 20px;">Spieler Statistiken</h3>
+            <div class="hub-table-wrapper" style="overflow-x: auto;">
+                <table class="hub-table">
+                    <thead>
+                        <tr id="seasonStatsHead">
+                            <th>Spieler</th>
+                            <th data-sort="totalGoals">T</th>
+                            <th data-sort="fieldGoals">F</th>
+                            <th data-sort="sevenMeterGoals">7m</th>
+                            <th data-sort="missedShots">FEHL</th>
+                            <th data-sort="assists">A</th>
+                            <th data-sort="accuracy">%</th>
+                            <th data-sort="gameCount">Spiele</th>
+                        </tr>
+                    </thead>
+                    <tbody id="seasonStatsContainer"></tbody>
+                </table>
+            </div>
+        </div>
+    </section>
+
+        <!-- Shot Charts Page Section -->
+        <div id="shotsBereich" class="content-section versteckt">
+            <div id="shotsContent"></div>
+            <div id="shotsEmptyState" class="versteckt"></div>
+        </div>
+
+        <!-- Live Heatmap Page Section -->
+        <div id="liveHeatmapBereich" class="content-section versteckt">
+            <div id="heatmapContent" class="heatmap-view-container">
+                <div class="heatmap-view-header">
+                    <h1>Live Heatmap-Analyse</h1>
+                </div>
+
+                <div class="heatmap-controls-card">
+                    <!-- Row 1: Selects -->
+                    <div class="heatmap-row">
+                        <div class="roster-input-group">
+                            <label>Team</label>
+                            <div
+                                style="display: flex; align-items: center; gap: 12px; height: 40px; background: hsl(var(--muted)/0.3); padding: 0 15px; border-radius: 8px; border: 1px solid hsl(var(--border)); width: fit-content;">
+                                <span id="heatmapHeimLabel"
+                                    style="font-size: 0.85rem; font-weight: 600; color: hsl(var(--muted-foreground));">HEIM</span>
+                                <button id="heatmapTeamToggle" role="switch" aria-checked="false" data-state="unchecked"
+                                    class="shadcn-switch">
+                                    <span class="shadcn-switch-thumb"></span>
+                                </button>
+                                <span id="heatmapGegnerLabel"
+                                    style="font-size: 0.85rem; font-weight: 600; color: hsl(var(--muted-foreground));">GAST</span>
+                            </div>
+                        </div>
+                        <div class="roster-input-group">
+                            <label>Spieler</label>
+                            <select id="heatmapPlayerSelect" class="shadcn-input shadcn-select-native">
+                                <option value="all">Alle Spieler</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- Row 2: Tabs -->
+                    <div class="heatmap-tabs-row">
+                        <button class="heatmap-tab white-style active" data-tab="tor">Tor-Ansicht</button>
+                        <button class="heatmap-tab white-style" data-tab="feld">Wurf-Positionen</button>
+                        <button class="heatmap-tab white-style" data-tab="kombiniert">Kombiniert</button>
+                    </div>
+
+                    <!-- Row 3: Filters -->
+                    <div class="heatmap-filters-row">
+                        <label class="heatmap-filter-item">
+                            <input type="checkbox" id="heatmapToreFilter" checked> Feldtore
+                        </label>
+                        <label class="heatmap-filter-item">
+                            <input type="checkbox" id="heatmap7mFilter"> 7m
+                        </label>
+                        <label class="heatmap-filter-item">
+                            <input type="checkbox" id="heatmapMissedFilter" checked> Fehlwürfe
+                        </label>
+                    </div>
+                </div>
+
+                <div class="heatmap-visual-container">
+                    <svg id="heatmapSvg" viewBox="0 0 300 200" width="600" height="400"></svg>
+                </div>
+            </div>
+            <div id="heatmapEmptyState" class="versteckt"></div>
+        </div>
+
+        <!-- Protocol Page Section -->
+        <div id="protokollBereich" class="content-section versteckt">
+            <div id="protokollWrapper" style="max-width: 1000px; margin: 0 auto; padding: 20px;">
+                <div id="protokoll" class="protocol-card">
+                    <div class="protocol-header">
+                        <h3 class="player-card-title">Live Ticker</h3>
+                    </div>
+                    <div id="protokollAusgabe"></div>
+                </div>
+            </div>
+            <div id="protokollEmptyState" class="versteckt"></div>
+        </div>
+
+        <!-- SECTION: FINES (Strafenkatalog & Kasse) -->
+        <div id="finesBereich" class="content-section versteckt">
+            <div class="hub-header-row" style="margin-bottom: 24px;">
+                <div class="hub-dashboard-title">
+                    <h1>Mannschaftskasse</h1>
+                    <span class="hub-season-badge" id="finesTotalBalance">0,00 €</span>
+                </div>
+                <div class="hub-header-actions">
+                    <button data-action="fines-open-issue-modal" class="hub-btn-primary">
+                        <i data-lucide="plus-circle"></i> Strafe vergeben
+                    </button>
+                </div>
+            </div>
+
+            <!-- Tabs Navigation -->
+            <div class="heatmap-tabs-row" style="margin-bottom: 24px;">
+                <button class="heatmap-tab white-style active" data-action="fines-tab" data-tab="fines-dashboard">Dashboard</button>
+                <button class="heatmap-tab white-style" data-action="fines-tab" data-tab="fines-catalog">Katalog</button>
+                <button class="heatmap-tab white-style" data-action="fines-tab" data-tab="fines-history">Verlauf</button>
+                <button class="heatmap-tab white-style" data-action="fines-tab" data-tab="fines-settings">Einstellungen</button>
+            </div>
+
+            <!-- Tab Content: Dashboard -->
+            <div id="fines-dashboard" class="fines-tab-content">
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 24px;">
+                    <!-- Debts per Player -->
+                    <div class="hub-card">
+                        <h3 class="hub-label" style="margin-bottom: 16px;">Offene Beträge pro Spieler</h3>
+                        <div id="finesPlayerList" class="manage-list-modern" style="max-height: 500px;">
+                            <!-- Dynamic Content -->
+                        </div>
+                    </div>
+                    <!-- Stats Card -->
+                    <div style="display: flex; flex-direction: column; gap: 24px;">
+                        <div class="hub-card" style="background: linear-gradient(135deg, rgba(34, 197, 94, 0.1) 0%, rgba(34, 197, 94, 0.02) 100%);">
+                            <label class="hub-label">Bereits bezahlt</label>
+                            <div id="finesPaidTotal" style="font-size: 2rem; font-weight: 800; color: #22c55e;">0,00 €</div>
+                        </div>
+                        <div class="hub-card" style="background: linear-gradient(135deg, rgba(239, 68, 68, 0.1) 0%, rgba(239, 68, 68, 0.02) 100%); border-color: rgba(239, 68, 68, 0.2);">
+                            <label class="hub-label">Noch offen</label>
+                            <div id="finesUnpaidTotal" style="font-size: 2rem; font-weight: 800; color: #ef4444;">0,00 €</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tab Content: Catalog -->
+            <div id="fines-catalog" class="fines-tab-content versteckt">
+                <div class="hub-card">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                        <h3 class="hub-label" style="margin-bottom: 0;">Strafenkatalog definieren</h3>
+                        <button data-action="fines-open-catalog-modal" class="hub-btn-outline" style="font-size: 0.8rem;">
+                            <i data-lucide="plus"></i> Neuer Eintrag
+                        </button>
+                    </div>
+                    <div class="hub-table-wrapper">
+                        <table class="hub-table">
+                            <thead>
+                                <tr>
+                                    <th>Bezeichnung</th>
+                                    <th>Betrag</th>
+                                    <th style="text-align: right;">Aktion</th>
+                                </tr>
+                            </thead>
+                            <tbody id="finesCatalogBody"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tab Content: History -->
+            <div id="fines-history" class="fines-tab-content versteckt">
+                <div class="hub-card">
+                    <h3 class="hub-label" style="margin-bottom: 20px;">Verlauf aller Strafen</h3>
+                    <div class="hub-table-wrapper">
+                        <table class="hub-table">
+                            <thead>
+                                <tr>
+                                    <th>Datum</th>
+                                    <th>Spieler</th>
+                                    <th>Grund</th>
+                                    <th>Betrag</th>
+                                    <th>Status</th>
+                                    <th style="text-align: right;">Aktion</th>
+                                </tr>
+                            </thead>
+                            <tbody id="finesHistoryBody"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tab Content: Settings -->
+            <div id="fines-settings" class="fines-tab-content versteckt">
+                <div class="hub-card" style="max-width: 600px; margin: 0 auto;">
+                    <h3 class="hub-label" style="margin-bottom: 20px;">Monatsbeitrag & Automatisierung</h3>
+                    
+                    <div class="hub-field-group">
+                        <label class="hub-radio-pill" style="width: 100%; justify-content: flex-start; padding: 12px 16px;">
+                            <input type="checkbox" id="finesEnableMonthlyBtn">
+                            <span style="font-size: 1rem;">Automatischer Monatsbeitrag aktiviert</span>
+                        </label>
+                    </div>
+
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-top: 20px;">
+                        <div class="hub-field-group">
+                            <label class="hub-label">Standard Beitrag (€)</label>
+                            <input type="number" id="finesStandardAmountInput" step="1" class="hub-input">
+                        </div>
+                        <div class="hub-field-group">
+                            <label class="hub-label">Ermäßigt (Student/Schüler) (€)</label>
+                            <input type="number" id="finesReducedAmountInput" step="1" class="hub-input">
+                        </div>
+                    </div>
+
+                    <div class="hub-attendance-section" style="margin-top: 30px; border-top: 1px solid rgba(255,255,255,0.05); padding-top: 20px;">
+                        <h4 class="hub-label" style="margin-bottom: 12px;">Mitglieder-Status verwalten</h4>
+                        <p style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 16px;">
+                            Wähle hier, wer wie viel zahlt oder wer komplett befreit ist.
+                        </p>
+                        <div id="finesStatusList" class="manage-list-modern">
+                            <!-- Dynamic content -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- MODAL: Add Fine Event (Issue a fine) -->
+        <div id="issueFineOverlay" class="modal-overlay hub-overlay-modern versteckt">
+            <div class="hub-modal-card" style="width: 400px;">
+                <div class="hub-modal-header">
+                    <h2>Strafe vergeben</h2>
+                    <button data-action="close-modal" class="icon-btn-ghost"><i data-lucide="x"></i></button>
+                </div>
+                <div class="hub-modal-body" style="padding: 24px;">
+                    <div class="hub-field-group">
+                        <label class="hub-label">Spieler wählen</label>
+                        <select id="issueFinePlayerSelect" class="hub-input"></select>
+                    </div>
+                    <div class="hub-field-group">
+                        <label class="hub-label">Strafe wählen</label>
+                        <select id="issueFineCatalogSelect" class="hub-input"></select>
+                    </div>
+                    <div class="hub-field-group">
+                        <label class="hub-label">Alternativer Betrag (optional)</label>
+                        <input type="number" id="issueFineAmountInput" step="0.50" class="hub-input" placeholder="0,00">
+                    </div>
+                </div>
+                <div class="hub-modal-footer">
+                    <button data-action="close-modal" class="hub-btn-outline">Abbrechen</button>
+                    <button data-action="fines-confirm-issue" class="hub-btn-primary">Hinzufügen</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- MODAL: Catalog Item (Edit/New Fine Entry) -->
+        <div id="fineCatalogOverlay" class="modal-overlay hub-overlay-modern versteckt">
+            <div class="hub-modal-card" style="width: 400px;">
+                <div class="hub-modal-header">
+                    <h2 id="fineCatalogTitle">Strafen-Eintrag</h2>
+                    <button data-action="close-modal" class="icon-btn-ghost"><i data-lucide="x"></i></button>
+                </div>
+                <div class="hub-modal-body" style="padding: 24px;">
+                    <div class="hub-field-group">
+                        <label class="hub-label">Name der Strafe</label>
+                        <input type="text" id="catalogFineNameInput" class="hub-input" placeholder="z.B. Ballsack vergessen">
+                    </div>
+                    <div class="hub-field-group">
+                        <label class="hub-label">Betrag (€)</label>
+                        <input type="number" id="catalogFineAmountInput" step="0.50" class="hub-input" placeholder="2.00">
+                    </div>
+                </div>
+                <div class="hub-modal-footer">
+                    <button data-action="close-modal" class="hub-btn-outline">Abbrechen</button>
+                    <button data-action="fines-save-catalog" class="hub-btn-primary">Speichern</button>
+                </div>
+            </div>
+        </div>
+
+
+    <!-- SECTION: SETTINGS (Handball Hub) -->
+
+        <!-- Settings Page Section -->
+        <!-- SECTION: SOCIAL MEDIA -->
+        <div id="socialMediaBereich" class="content-section versteckt" style="max-width: 800px; margin: 0 auto;">
+            <div class="section-header" style="text-align: center;">
+                <h1>Social Media</h1>
+                <p class="text-muted">Designe und teile deine Spielergebnisse</p>
+            </div>
+
+            <div class="settings-grid" style="display: flex; justify-content: center; gap: 20px;">
+                <!-- Card: Design-Konfiguration -->
+                <div class="settings-card shadcn-card">
+                    <h4 style="margin-top: 0; margin-bottom: 15px; border-bottom: 2px solid #e1306c; padding-bottom: 10px; display: inline-block;">
+                        Ergebnisbild-Konfiguration
+                    </h4>
+                    <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 15px;">
+                        Konfiguriere das automatische Instagram-Ergebnisbild.
+                    </p>
+                    <div style="display: flex; flex-direction: column; gap: 16px;">
+
+                        <!-- Background Image Upload -->
+                        <div class="setting-row" style="display: flex; flex-direction: column; gap: 6px;">
+                            <label style="font-weight: 500;">Hintergrundbild</label>
+                            <div style="display: flex; gap: 8px; align-items: center;">
+                                <button id="smBgUploadBtn" class="shadcn-btn-outline" style="flex: 1; font-size: 0.8rem;">
+                                    <i data-lucide="image" style="width: 14px; height: 14px; margin-right: 6px;"></i>
+                                    Bild wählen
+                                </button>
+                                <input type="file" id="smBgFileInput" class="versteckt" accept="image/*">
+                                <div id="smBgPreview" class="sm-image-preview" style="width: 50px; height: 50px; border-radius: 8px; background: var(--bg-secondary); border: 1px solid var(--border-color); overflow: hidden; display: flex; align-items: center; justify-content: center;">
+                                    <i data-lucide="image-off" style="width: 18px; height: 18px; color: var(--text-muted);"></i>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Team Logo Upload -->
+                        <div class="setting-row" style="display: flex; flex-direction: column; gap: 6px;">
+                            <label style="font-weight: 500;">Team-Logo</label>
+                            <div style="display: flex; gap: 8px; align-items: center;">
+                                <button id="smLogoUploadBtn" class="shadcn-btn-outline" style="flex: 1; font-size: 0.8rem;">
+                                    <i data-lucide="shield" style="width: 14px; height: 14px; margin-right: 6px;"></i>
+                                    Logo wählen
+                                </button>
+                                <input type="file" id="smLogoFileInput" class="versteckt" accept="image/*">
+                                <div id="smLogoPreview" class="sm-image-preview" style="width: 50px; height: 50px; border-radius: 8px; background: var(--bg-secondary); border: 1px solid var(--border-color); overflow: hidden; display: flex; align-items: center; justify-content: center;">
+                                    <i data-lucide="shield-off" style="width: 18px; height: 18px; color: var(--text-muted);"></i>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Font Family -->
+                        <div class="setting-row" style="display: flex; justify-content: space-between; align-items: center;">
+                            <label for="smFontFamily" style="font-weight: 500;">Schriftart</label>
+                            <select id="smFontFamily" class="shadcn-input" style="width: 160px; font-size: 0.85rem;">
+                                <option value="Oswald">Oswald</option>
+                                <option value="Bebas Neue">Bebas Neue</option>
+                                <option value="Montserrat">Montserrat</option>
+                                <option value="Inter">Inter</option>
+                                <option value="Roboto Condensed">Roboto Condensed</option>
+                            </select>
+                        </div>
+
+                        <!-- Season Name -->
+                        <div class="setting-row" style="display: flex; justify-content: space-between; align-items: center;">
+                            <label for="smSeasonName" style="font-weight: 500;">Saison</label>
+                            <input type="text" id="smSeasonName" class="shadcn-input" placeholder="25/26" style="width: 120px; text-align: center;">
+                        </div>
+
+                        <!-- Team Label -->
+                        <div class="setting-row" style="display: flex; justify-content: space-between; align-items: center;">
+                            <label for="smTeamLabel" style="font-weight: 500;">Mannschaft</label>
+                            <input type="text" id="smTeamLabel" class="shadcn-input" placeholder="1. Herren" style="width: 160px;">
+                        </div>
+
+                        <!-- Overlay Opacity -->
+                        <div class="setting-row" style="display: flex; flex-direction: column; gap: 6px;">
+                            <div style="display: flex; justify-content: space-between; align-items: center;">
+                                <label style="font-weight: 500;">Bild verdunkeln</label>
+                                <span id="smOverlayValue" style="font-size: 0.8rem; color: var(--text-muted);">55%</span>
+                            </div>
+                            <input type="range" id="smOverlayOpacity" min="0" max="100" value="55" style="width: 100%; accent-color: var(--btn-primary);">
+                        </div>
+
+                        <!-- Bildunterschrift (Hashtags, Sort, Format) -->
+                        <div style="border-top: 1px solid var(--border-color); padding-top: 15px; margin-top: 5px; display: flex; flex-direction: column; gap: 12px;">
+                            <h5 style="margin: 0; font-size: 0.85rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em;">Bildunterschrift</h5>
+                            
+                            <!-- Scorer Sorting -->
+                            <div class="setting-row" style="display: flex; justify-content: space-between; align-items: center;">
+                                <label for="smScorerSort" style="font-weight: 500; font-size: 0.9rem;">Torschützen Sortierung</label>
+                                <select id="smScorerSort" class="shadcn-input" style="width: 160px; font-size: 0.8rem;">
+                                    <option value="goals_desc">Tore (absteigend)</option>
+                                    <option value="name_asc">Alphabetisch</option>
+                                    <option value="roster_order">Kader-Reihenfolge</option>
+                                </select>
+                            </div>
+
+                            <!-- Scorer Format -->
+                            <div class="setting-row" style="display: flex; justify-content: space-between; align-items: center;">
+                                <label for="smScorerFormat" style="font-weight: 500; font-size: 0.9rem;">Torschützen Format</label>
+                                <select id="smScorerFormat" class="shadcn-input" style="width: 160px; font-size: 0.8rem;">
+                                    <option value="lastname_goals">Nachname (Tore)</option>
+                                    <option value="fullname_goals">Vorname Nachname (Tore)</option>
+                                    <option value="lastname_only">Nur Nachname</option>
+                                </select>
+                            </div>
+
+                            <!-- Auto Summary -->
+                            <div class="setting-row" style="display: flex; justify-content: space-between; align-items: center;">
+                                <label for="smAutoSummary" style="font-weight: 500; font-size: 0.9rem;">Autom. Zusammenfassung</label>
+                                <label class="switch">
+                                    <input type="checkbox" id="smAutoSummary" checked>
+                                    <span class="slider round"></span>
+                                </label>
+                            </div>
+
+                            <!-- Hashtags -->
+                            <div class="setting-row" style="display: flex; flex-direction: column; gap: 6px;">
+                                <label for="smHashtags" style="font-weight: 500; font-size: 0.9rem;">Hashtags</label>
+                                <textarea id="smHashtags" class="shadcn-input" style="width: 100%; height: 60px; font-size: 0.8rem; padding: 8px; resize: none;" placeholder="#handball #ergebnis..."></textarea>
+                            </div>
+                        </div>
+
+                        <!-- Team Colors -->
+                        <div style="display: flex; gap: 12px;">
+                            <div class="setting-row" style="display: flex; align-items: center; gap: 8px; flex: 1;">
+                                <label style="font-weight: 500; font-size: 0.85rem;">Heim Farbe</label>
+                                <input type="color" id="smOwnTeamColor" value="#ffffff" style="width: 32px; height: 32px; border: none; cursor: pointer; border-radius: 6px;">
+                            </div>
+                            <div class="setting-row" style="display: flex; align-items: center; gap: 8px; flex: 1;">
+                                <label style="font-weight: 500; font-size: 0.85rem;">Gast Farbe</label>
+                                <input type="color" id="smOpponentColor" value="#ef4444" style="width: 32px; height: 32px; border: none; cursor: pointer; border-radius: 6px;">
+                            </div>
+                        </div>
+
+                        <!-- Editor Button -->
+                        <div style="margin-top: 8px; display: flex; gap: 8px;">
+                            <button id="openSmEditorBtn" class="shadcn-btn-primary" style="flex: 2;">
+                                <i data-lucide="layout-template" style="width: 16px; height: 16px; margin-right: 8px;"></i>
+                                Layout im Editor anpassen
+                            </button>
+                            <button id="manageSmDesignsBtn" class="shadcn-btn-outline" style="flex: 1; padding: 0 8px;" title="Gespeicherte Designs">
+                                <i data-lucide="library" style="width: 16px; height: 16px; margin-right: 4px;"></i>
+                                Designs
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- SECTION: PLAYER PROFILE -->
+        <div id="playerProfileBereich" class="versteckt">
+            <div style="padding: 20px; max-width: 1000px; margin: 0 auto;">
+                <!-- Header with Back Button -->
+                <div style="display: flex; align-items: center; gap: 15px; margin-bottom: 25px;">
+                    <button id="backFromProfileBtn" class="shadcn-btn-outline" style="width: 40px; height: 40px; padding: 0;">
+                        <i data-lucide="arrow-left" style="width: 20px; height: 20px;"></i>
+                    </button>
+                    <h2 id="profilePlayerName" style="margin: 0; font-size: 1.8rem;">Spieler Profil</h2>
+                </div>
+
+                <div id="playerProfileContent">
+                    <!-- Dynamic Content populated by modules/playerProfile.js -->
+                </div>
+            </div>
+        </div>
+
+    <!-- SECTION: SETTINGS (Handball Hub) -->
+    <section id="settingsBereich" class="content-section versteckt">
+        <div class="hub-header-row" style="margin-bottom: 24px;">
+            <div class="hub-dashboard-title">
+                <h1>Einstellungen</h1>
+                <span class="hub-season-badge">System & Profil</span>
+            </div>
+            <div class="hub-header-actions">
+                <button id="saveAllSettingsBtn" class="hub-btn-primary">
+                    <i data-lucide="save" style="width: 18px; height: 18px; margin-right: 8px;"></i>
+                    Alle speichern
+                </button>
+            </div>
+        </div>
+
+        <div class="hub-grid" style="grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 20px;">
+            
+            <!-- Card: Team Profile -->
+            <div class="hub-card">
+                <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 16px;">
+                    <h3 class="hub-label">MANNSCHAFTSPROFIL</h3>
+                    <div id="settingsValidatedIndicator" class="versteckt" style="color: #22c55e; display: flex; align-items: center; gap: 4px; font-size: 0.75rem;">
+                        <i data-lucide="check-circle-2" style="width: 14px; height: 14px;"></i> Validiert
+                    </div>
+                </div>
+                
+                <div style="display: flex; flex-direction: column; gap: 16px;">
+                    <div class="hub-field">
+                        <label class="hub-label">Eigener Team-Name</label>
+                        <input type="text" id="myTeamNameInput" class="hub-input" placeholder="z.B. SG Flensburg">
+                    </div>
+                    
+                    <div class="hub-field">
+                        <label class="hub-label">Team-Farbe</label>
+                        <div style="display: flex; gap: 10px; align-items: center;">
+                            <input type="color" id="myTeamColorInput" style="width: 40px; height: 40px; padding: 0; border: none; background: transparent; cursor: pointer;">
+                            <i id="myTeamColorIcon" data-lucide="shield" style="width: 24px; height: 24px;"></i>
+                        </div>
+                    </div>
+
+                    <div style="height: 1px; background: var(--hub-card-border); margin: 8px 0;"></div>
+
+                    <!-- Invite Link Section -->
+                    <div class="hub-field">
+                        <label class="hub-label">MITGLIEDER EINLADEN</label>
+                        <p style="font-size: 0.75rem; color: var(--hub-muted); margin-bottom: 12px; line-height: 1.4;">
+                            Generiere einen Link, um neue Spieler oder Trainer zu deinem Team hinzuzufügen.
+                        </p>
+                        
+                        <div id="inviteLinkContainer" class="versteckt" style="margin-bottom: 12px; animation: hub-fade-in 0.3s ease;">
+                            <div style="display: flex; gap: 8px;">
+                                <input type="text" id="inviteLinkInput" class="hub-input" readonly style="flex: 1; font-size: 0.8rem; height: 40px; background: rgba(255, 255, 255, 0.03);" value="">
+                                <button id="copyInviteBtn" class="hub-btn-outline" style="min-width: 44px; padding: 0; height: 40px;" title="Link kopieren">
+                                    <i data-lucide="copy" style="width: 16px; height: 16px;"></i>
+                                </button>
+                            </div>
+                        </div>
+
+                        <button id="generateInviteBtn" class="hub-btn-primary" style="width: 100%; height: 40px; gap: 8px;">
+                            <i data-lucide="user-plus" style="width: 18px; height: 18px;"></i>
+                            Link generieren
+                        </button>
+                    </div>
+
+                    <div style="height: 1px; background: var(--hub-card-border); margin: 8px 0;"></div>
+
+                    <button id="toggleValidationBtn" class="hub-btn-outline" style="width: 100%; justify-content: space-between; height: 40px;">
+                        <span style="display: flex; align-items: center; gap: 10px; font-size: 0.85rem;">
+                            <span class="lock-icon-container">
+                                <i id="iconLocked" data-lucide="lock" class="lock-icon hidden" style="color: #22c55e; width: 16px; height: 16px;"></i>
+                                <i id="iconUnlocked" data-lucide="lock-open" class="lock-icon visible" style="color: #9ca3af; width: 16px; height: 16px;"></i>
+                            </span>
+                            Kader bearbeiten sperren
+                        </span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Card: Tracking Modes -->
+            <div class="hub-card">
+                <h3 class="hub-label">TRACKING-EINSTELLUNGEN</h3>
+                <div style="display: flex; flex-direction: column; gap: 12px; margin-top: 16px;">
+                    
+                    <label class="setting-row" style="display: flex; justify-content: space-between; align-items: center; cursor: pointer;">
+                        <span style="font-size: 0.9rem;">Kombinierter Wurf-Modus</span>
+                        <div class="hub-switch">
+                            <input type="checkbox" id="set_toggleCombinedThrowMode">
+                            <span class="hub-slider"></span>
+                        </div>
+                    </label>
+
+                    <div style="border-top: 1px solid var(--hub-card-border); margin: 4px 0; padding-top: 8px;">
+                        <label class="setting-row" style="display: flex; justify-content: space-between; align-items: center; cursor: pointer;">
+                            <span style="font-size: 0.85rem; opacity: 0.8;">Tor-Zonen Grid (Heatmap)</span>
+                            <div class="hub-switch compact">
+                                <input type="checkbox" id="set_toggleGoalZones">
+                                <span class="hub-slider"></span>
+                            </div>
+                        </label>
+                    </div>
+
+                    <label class="setting-row" style="display: flex; justify-content: space-between; align-items: center; cursor: pointer;">
+                        <span style="font-size: 0.85rem; opacity: 0.8;">Feld-Zonen Grid (Heatmap)</span>
+                        <div class="hub-switch compact">
+                            <input type="checkbox" id="set_toggleFieldZones">
+                            <span class="hub-slider"></span>
+                        </div>
+                    </label>
+
+                    <div style="border-top: 1px solid var(--hub-card-border); margin: 4px 0; padding-top: 8px;">
+                        <div style="font-size: 0.75rem; color: var(--hub-muted); margin-bottom: 8px;">EINZEL-ABFRAGEN (Wenn Kombi-Modus AUS)</div>
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                            <label style="display: flex; align-items: center; gap: 8px; font-size: 0.8rem;">
+                                <input type="checkbox" id="set_toggleWurfbildHeim"> Wurfbild (H)
+                            </label>
+                            <label style="display: flex; align-items: center; gap: 8px; font-size: 0.8rem;">
+                                <input type="checkbox" id="set_toggleWurfbildGegner"> Wurfbild (G)
+                            </label>
+                            <label style="display: flex; align-items: center; gap: 8px; font-size: 0.8rem;">
+                                <input type="checkbox" id="set_toggleWurfpositionHeim"> Position (H)
+                            </label>
+                            <label style="display: flex; align-items: center; gap: 8px; font-size: 0.8rem;">
+                                <input type="checkbox" id="set_toggleWurfpositionGegner"> Position (G)
+                            </label>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Card: System & Appearance -->
+            <div class="hub-card">
+                <h3 class="hub-label">SYSTEM & DARSTELLUNG</h3>
+                <div style="display: flex; flex-direction: column; gap: 16px; margin-top: 16px;">
+                    
+                    <label class="setting-row" style="display: flex; justify-content: space-between; align-items: center; cursor: pointer;">
+                        <div style="display: flex; align-items: center; gap: 10px;">
+                            <i data-lucide="moon" style="width: 18px; height: 18px;"></i>
+                            <span>Dark Mode</span>
+                        </div>
+                        <div class="hub-switch">
+                            <input type="checkbox" id="set_toggleDarkMode">
+                            <span class="hub-slider"></span>
+                        </div>
+                    </label>
+
+                    <div class="hub-field">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                            <label class="hub-label">HANDBALL.NET SYNC</label>
+                            <button id="idHelpToggle" class="icon-btn-ghost" style="padding: 2px;" title="Hilfe anzeigen"><i data-lucide="help-circle" style="width: 14px; height: 14px;"></i></button>
+                        </div>
+                        <p style="font-size: 0.75rem; color: var(--hub-muted); margin: 0 0 10px 0; line-height: 1.5;">
+                            Füge den Link deiner Mannschaft auf handball.net ein. Die App lädt dann automatisch alle Spieltermine der Saison in deinen Kalender.
+                        </p>
+                        <input type="text" id="handballNetTeamUrlInput" class="hub-input" placeholder="https://www.handball.net/mannschaften/handball4all.westfalen.XXXXXXXX/">
+                        <p id="handballNetIdHelp" class="versteckt" style="font-size: 0.7rem; margin-top: 6px; padding: 8px; background: rgba(59,130,246,0.08); border: 1px solid rgba(59,130,246,0.2); border-radius: 6px; color: var(--hub-muted); line-height: 1.5;">
+                            <strong style="color: #60a5fa;">💡 So geht's:</strong><br>
+                            1. Gehe zu <a href="https://www.handball.net" target="_blank" style="color: #60a5fa;">handball.net</a><br>
+                            2. Suche deine Mannschaft<br>
+                            3. Kopiere die URL aus der Adressleiste<br>
+                            Beispiel: <code style="font-size: 0.65rem; background: rgba(0,0,0,0.3); padding: 2px 4px; border-radius: 3px;">handball.net/mannschaften/handball4all.westfalen.1289886/</code>
+                        </p>
+                        <div id="handballNetSyncStatus" class="versteckt" style="margin-top: 8px; padding: 10px 12px; border-radius: 8px; font-size: 0.8rem; display: flex; align-items: flex-start; gap: 8px;"></div>
+
+                        <!-- Default Rules for synced games -->
+                        <div style="margin-top: 14px; padding: 12px; background: rgba(255,255,255,0.03); border: 1px solid var(--hub-card-border); border-radius: 8px; display: flex; flex-direction: column; gap: 10px;">
+                            <div style="font-size: 0.7rem; color: var(--hub-muted); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 2px;">Standard-Einstellungen für Spieltermine</div>
+
+                            <!-- Absagegrund Pflicht -->
+                            <label style="display: flex; justify-content: space-between; align-items: center; cursor: pointer; font-size: 0.85rem;">
+                                <span style="display: flex; align-items: center; gap: 8px;">
+                                    <i data-lucide="message-square" style="width: 14px; height: 14px; color: var(--hub-muted);"></i>
+                                    Absagegrund Pflicht
+                                </span>
+                                <div class="hub-switch compact">
+                                    <input type="checkbox" id="hnetDefaultRequireReason">
+                                    <span class="hub-slider"></span>
+                                </div>
+                            </label>
+
+                            <!-- Automatisch als "Dabei" eintragen -->
+                            <label style="display: flex; justify-content: space-between; align-items: center; cursor: pointer; font-size: 0.85rem;">
+                                <span style="display: flex; align-items: center; gap: 8px;">
+                                    <i data-lucide="user-check" style="width: 14px; height: 14px; color: var(--hub-muted);"></i>
+                                    Autom. als "Dabei" eintragen
+                                </span>
+                                <div class="hub-switch compact">
+                                    <input type="checkbox" id="hnetDefaultAutoGoing">
+                                    <span class="hub-slider"></span>
+                                </div>
+                            </label>
+
+                            <!-- Absage-Deadline -->
+                            <div style="display: flex; justify-content: space-between; align-items: center; gap: 12px; font-size: 0.85rem;">
+                                <span style="display: flex; align-items: center; gap: 8px;">
+                                    <i data-lucide="clock" style="width: 14px; height: 14px; color: var(--hub-muted);"></i>
+                                    Absagen möglich bis
+                                </span>
+                                <div style="display: flex; align-items: center; gap: 6px;">
+                                    <input type="number" id="hnetDefaultDeadlineHours" class="hub-input" min="0" max="168" value="0"
+                                        style="width: 60px; text-align: center; height: 32px; padding: 0 8px; font-size: 0.8rem;">
+                                    <span style="font-size: 0.75rem; color: var(--hub-muted); white-space: nowrap;">Std. vorher <span style="opacity:0.5;">(0 = immer)</span></span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div style="display: flex; flex-direction: column; gap: 8px; margin-top: 10px;">
+                            <button id="syncHandballNetBtn" class="hub-btn-primary" style="width: 100%; gap: 8px; height: 40px;">
+                                <i data-lucide="refresh-cw" style="width: 16px; height: 16px;"></i>
+                                Spielplan synchronisieren
+                            </button>
+                            <button id="applyHnetRulesToAllBtn" class="hub-btn-outline" style="width: 100%; font-size: 0.75rem; height: 32px; border-color: rgba(255,255,255,0.05);">
+                                Diese Einstellungen auf alle Spiele anwenden
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+
+            <!-- Card: Data Management -->
+            <div class="hub-card">
+                <h3 class="hub-label">DATEN & SICHERHEIT</h3>
+                <div style="display: flex; flex-direction: column; gap: 12px; margin-top: 16px;">
+                    
+
+                    <button id="importSpielButtonSettings" class="hub-btn-outline" style="width: 100%; justify-content: flex-start;">
+                        <i data-lucide="upload" style="width: 18px; height: 18px; margin-right: 12px;"></i>
+                        Backup importieren (.json)
+                    </button>
+                    <input type="file" id="importSpielInputSettings" class="versteckt" accept=".json">
+                    
+                    <button id="deleteTeamBtn" class="hub-btn-outline" style="width: 100%; justify-content: flex-start; color: #f87171; border-color: rgba(248,113,113,0.2);">
+                        <i data-lucide="trash-2" style="width: 18px; height: 18px; margin-right: 12px;"></i>
+                        Team & Daten löschen
+                    </button>
+                </div>
+            </div>
+
+        </div>
+    </section>
+
+
+        <div id="spielBereich" class="content-section versteckt"
+            style="padding: 0; background: transparent; border: none; box-shadow: none;">
+            <!-- Mode Selection UI -->
+            <div id="gameModeSelection"
+                style="flex-direction: column; align-items: center; justify-content: center; height: 100%; min-height: 400px; gap: 30px;">
+                <div style="text-align: center;">
+                    <h2 style="font-size: 1.8rem; margin-bottom: 10px;">Spiel starten</h2>
+                    <p style="color: var(--text-muted);">Wähle deine Ansicht für dieses Spiel</p>
+                </div>
+
+                <div style="display: flex; gap: 20px; flex-wrap: wrap; justify-content: center;">
+                    <!-- Complex Option -->
+                    <div class="mode-selection-card" data-action="game-select-mode" data-mode="complex"
+                        style="width: 250px; padding: 25px; display: flex; flex-direction: column; align-items: center; gap: 15px; cursor: pointer;">
+                        <div
+                            style="width: 60px; height: 60px; background: rgba(var(--primary-rgb), 0.1); border-radius: 50%; display: flex; align-items: center; justify-content: center;">
+                            <i data-lucide="layout-dashboard"
+                                style="width: 32px; height: 32px; color: var(--primary);"></i>
+                        </div>
+                        <div style="text-align: center;">
+                            <h3 style="margin: 0; margin-bottom: 5px;">Komplex</h3>
+                            <p style="margin: 0; font-size: 0.9rem; color: var(--text-muted);">Dashboard & Bank</p>
+                        </div>
+                        <ul
+                            style="text-align: left; font-size: 0.8rem; color: var(--text-muted); padding-left: 20px; margin: 0;">
+                            <li>Vollständige Kontrolle</li>
+                            <li>Bank verwalten</li>
+                            <li>Inline-Aktionen</li>
+                        </ul>
+                    </div>
+
+                    <!-- Simple Option -->
+                    <div class="mode-selection-card" data-action="game-select-mode" data-mode="simple"
+                        style="width: 250px; padding: 25px; display: flex; flex-direction: column; align-items: center; gap: 15px; cursor: pointer;">
+                        <div
+                            style="width: 60px; height: 60px; background: rgba(var(--primary-rgb), 0.1); border-radius: 50%; display: flex; align-items: center; justify-content: center;">
+                            <i data-lucide="mouse-pointer-2"
+                                style="width: 32px; height: 32px; color: var(--primary);"></i>
+                        </div>
+                        <div style="text-align: center;">
+                            <h3 style="margin: 0; margin-bottom: 5px;">Einfach</h3>
+                            <p style="margin: 0; font-size: 0.9rem; color: var(--text-muted);">Klassisch (Popups)</p>
+                        </div>
+                        <ul
+                            style="text-align: left; font-size: 0.8rem; color: var(--text-muted); padding-left: 20px; margin: 0;">
+                            <li>Fokus auf Spieler</li>
+                            <li>Keine Bank</li>
+                            <li>Modal-Fenster</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Actual Game Content (Hidden initially) -->
+            <div id="gameContent" class="versteckt">
+                <div class="game-split-view">
+                    <!-- LEFT COLUMN: PLAYER ROSTER (Both Teams Side by Side) -->
+                    <div class="game-roster-column">
+                        <div class="dual-team-roster">
+                            <!-- HEIM TEAM -->
+                            <div class="team-roster-panel" id="heimTeamPanel">
+                                <h3 class="team-panel-title" id="heimPanelTitle">HEIM</h3>
+
+                                <!-- Goalkeeper -->
+                                <div class="roster-section">
+                                    <h4 class="roster-section-title">TORWART</h4>
+                                    <div id="heimGoalkeeperRoster" class="game-player-grid compact-grid">
+                                        <!-- GK injected by JS -->
+                                    </div>
+                                </div>
+
+                                <!-- Field Players -->
+                                <div class="roster-section">
+                                    <h4 class="roster-section-title">FELDSPIELER</h4>
+                                    <div id="heimActiveRoster" class="game-player-grid compact-grid">
+                                        <!-- Players injected by JS -->
+                                    </div>
+                                </div>
+
+                                <!-- Bench Players -->
+                                <div class="roster-section">
+                                    <h4 class="roster-section-title">BANK</h4>
+                                    <div id="heimBenchRoster" class="game-player-grid compact-grid">
+                                        <!-- Bench injected by JS -->
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- GAST TEAM -->
+                            <div class="team-roster-panel" id="gastTeamPanel">
+                                <h3 class="team-panel-title" id="gastPanelTitle">GAST</h3>
+
+                                <!-- Goalkeeper -->
+                                <div class="roster-section">
+                                    <h4 class="roster-section-title">TORWART</h4>
+                                    <div id="gastGoalkeeperRoster" class="game-player-grid compact-grid">
+                                        <!-- GK injected by JS -->
+                                    </div>
+                                </div>
+
+                                <!-- Field Players -->
+                                <div class="roster-section">
+                                    <h4 class="roster-section-title">FELDSPIELER</h4>
+                                    <div id="gastActiveRoster" class="game-player-grid compact-grid">
+                                        <!-- Players injected by JS -->
+                                    </div>
+                                </div>
+
+                                <!-- Bench Players -->
+                                <div class="roster-section">
+                                    <h4 class="roster-section-title">BANK</h4>
+                                    <div id="gastBenchRoster" class="game-player-grid compact-grid">
+                                        <!-- Bench injected by JS -->
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- RIGHT COLUMN: CONTROLS & ACTIONS -->
+                    <div class="game-controls-column">
+                        <!-- 1. Top Bar: Score & Timer (Reduced size) -->
+                        <div class="game-top-bar">
+                            <div id="timerContainer" class="compact-scoreboard">
+                                <div id="timerAnzeige" class="compact-timer">00:00</div>
+
+                                <div class="compact-score-display">
+                                    <!-- HEIM WRAPPER -->
+                                    <div class="score-team-wrapper heim">
+                                        <span id="teamNameHeimDisplay" class="compact-team-name">HEIM</span>
+                                        <div class="score-control-group">
+                                            <button class="score-adjust-btn plus hidden" data-team="heim"
+                                                data-delta="1">+</button>
+                                            <span id="scoreAnzeige" class="compact-score">0</span>
+                                            <button class="score-adjust-btn minus hidden" data-team="heim"
+                                                data-delta="-1">-</button>
+                                        </div>
+                                    </div>
+
+                                    <span class="compact-divider">:</span>
+
+                                    <!-- GAST WRAPPER -->
+                                    <div class="score-team-wrapper gast">
+                                        <span id="teamNameGegnerDisplay" class="compact-team-name">GAST</span>
+                                        <div class="score-control-group">
+                                            <button class="score-adjust-btn plus hidden" data-team="gegner"
+                                                data-delta="1">+</button>
+                                            <span id="scoreAnzeigeGegner" class="compact-score">0</span>
+                                            <button class="score-adjust-btn minus hidden" data-team="gegner"
+                                                data-delta="-1">-</button>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div id="suspensionContainer" class="compact-suspensions"></div>
+                            </div>
+                            <div class="game-phase-controls">
+                                <button data-action="game-timer-jump" data-seconds="-30" class="shadcn-btn-ghost compact-btn" title="-30s"
+                                    style="padding: 4px 8px; font-size: 0.8rem;">-30s</button>
+                                <button id="gamePhaseButton" data-action="game-phase" class="shadcn-btn-red">Start</button>
+                                <button id="pauseButton" data-action="game-pause" class="shadcn-btn-outline versteckt">Pause</button>
+                                <button data-action="game-timer-jump" data-seconds="30" class="shadcn-btn-ghost compact-btn" title="+30s"
+                                    style="padding: 4px 8px; font-size: 0.8rem;">+30s</button>
+                            </div>
+                        </div>
+
+                        <!-- 2. Action Dashboard -->
+                        <div id="actionDashboard" class="action-dashboard-card disabled">
+                            <div class="action-header">
+                                <span id="selectedPlayerName">Wähle einen Spieler...</span>
+                                <button id="closeActionDashboard" class="close-modal-x"
+                                    title="Schließen">&times;</button>
+                            </div>
+
+                            <!-- RESULT Section -->
+                            <div class="action-section">
+                                <h4 class="action-section-title">ERGEBNIS</h4>
+                                <div class="action-buttons-row">
+                                    <button class="action-btn btn-goal" data-action="game-btn" data-type="Tor">TOR</button>
+                                    <button class="action-btn btn-save" data-action="game-btn" data-type="Gehalten" id="actionParadeBtn">GEHALTEN</button>
+                                    <button class="action-btn btn-post" data-action="game-btn" data-type="Fehlwurf">FEHLWURF</button>
+                                    <button class="action-btn btn-lost" data-action="game-btn" data-type="Block">GEBLOCKT</button>
+                                </div>
+                            </div>
+
+                            <!-- ACTIONS Section -->
+                            <div class="action-section">
+                                <h4 class="action-section-title">AKTIONEN</h4>
+                                <div class="action-buttons-row">
+                                    <button class="action-btn btn-outline" data-action="game-btn" data-type="Foul">STÜRMERFOUL</button>
+                                    <button class="action-btn btn-outline" data-action="game-btn" data-type="Ballverlust">BALLVERLUST</button>
+                                </div>
+                                <div class="action-buttons-row">
+                                    <button class="action-btn btn-outline" data-action="game-btn" data-type="2min Provoziert">2 MIN+</button>
+                                    <button class="action-btn btn-outline" data-action="game-btn" data-type="7m Provoziert">7m+</button>
+                                    <button class="action-btn btn-outline" data-action="game-btn" data-type="1und1">1v1</button>
+                                    <button class="action-btn btn-outline" data-action="game-btn" data-type="7m+2min">7m/2m</button>
+                                </div>
+                            </div>
+
+                            <!-- SUSPENSIONS Section -->
+                            <div class="action-section">
+                                <h4 class="action-section-title">STRAFEN</h4>
+                                <div class="action-buttons-row">
+                                    <button class="action-btn btn-2min" data-action="game-btn" data-type="2 Minuten">2 MIN</button>
+                                    <button class="action-btn btn-yellow" data-action="game-btn" data-type="Gelbe Karte">GELB</button>
+                                    <button class="action-btn btn-red" data-action="game-btn" data-type="Rote Karte">ROT</button>
+                                    <button class="action-btn btn-blue" data-action="game-btn" data-type="Blaue Karte">BLAU</button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- 3. Bottom Controls -->
+                        <div class="game-bottom-controls">
+                            <button id="undoButton" class="shadcn-btn-outline" title="Letzte Aktion rückgängig"
+                                data-action="undo">
+                                <i data-lucide="undo-2" style="width: 16px; height: 16px; margin-right: 5px;"></i>
+                                Rückgängig
+                            </button>
+                            <button id="spielBeendenButton" data-action="game-finish" class="shadcn-btn-outline">Spiel beenden</button>
+                        </div>
+
+                    </div>
+                </div> <!-- End game-split-view -->
+            </div> <!-- End gameContent -->
+        </div> <!-- End spielBereich -->
+
+        <!-- Vergangene Spiele -->
+        <div id="historieBereich" class="content-section versteckt">
+            <div class="hub-header-row" style="margin-bottom: 24px;">
+                <div class="hub-dashboard-title">
+                    <h1>Spiel Historie</h1>
+                    <span class="hub-season-badge">Archiv & Analyse</span>
+                </div>
+                <div class="hub-header-actions" style="display: flex; gap: 10px;">
+                    <button id="importHandballNetButton" data-action="import-handball-net-open" class="hub-btn-outline" style="border-color: #22c55e; color: #22c55e; height: 36px; padding: 0 12px; font-size: 0.8rem;">
+                        <i data-lucide="download-cloud" style="width: 14px; height: 14px; margin-right: 6px;"></i>
+                        Handball.net
+                    </button>
+                    <button id="importSpielButton" class="hub-btn-primary" style="height: 36px; padding: 0 12px; font-size: 0.8rem;">
+                        <i data-lucide="upload" style="width: 14px; height: 14px; margin-right: 6px;"></i>
+                        Import
+                    </button>
+                    <input type="file" id="importSpielInput" class="versteckt" accept=".json">
+                </div>
+            </div>
+
+            <div class="hub-card" style="flex: 1; min-height: 0; display: flex; flex-direction: column; padding: 0; overflow: hidden;">
+                <div id="historieListe" class="history-list" style="flex: 1; overflow-y: auto; padding: 20px;">
+                    <p style="color: var(--hub-muted); text-align: center; padding: 40px;">Lade Spiele...</p>
+                </div>
+            </div>
+
+            <div style="margin-top: 24px; display: flex; justify-content: flex-end;">
+                <button id="exportHistorieButton" class="hub-btn-outline" style="font-size: 0.75rem; height: 32px; opacity: 0.7;">
+                    <i data-lucide="save" style="width: 12px; height: 12px; margin-right: 6px;"></i>
+                    Daten-Backup (.json)
+                </button>
+            </div>
+        </div>
+
+        <!-- Vergangene Spiele Detail -->
+        <div id="historieDetailBereich" class="content-section versteckt">
+            <div class="hub-header-row" style="margin-bottom: 24px;">
+                <div class="hub-dashboard-title" style="display: flex; align-items: center; gap: 16px;">
+                    <button id="backToHistoryList" class="icon-btn-ghost" style="width: 32px; height: 32px; background: rgba(255,255,255,0.05); border-radius: 50%;">
+                        <i data-lucide="arrow-left" style="width: 18px; height: 18px;"></i>
+                    </button>
+                    <div>
+                        <h1 style="font-size: 1.25rem;">Spielanalyse</h1>
+                        <span id="historieDetailSubtitle" class="hub-season-badge">Statistiken & Heatmap</span>
+                    </div>
+                </div>
+            </div>
+            
+            <div id="historieHeader" class="versteckt"></div>
+
+            <div class="heatmap-tabs">
+                <button class="heatmap-tab shadcn-btn-outline active" id="histTabHeatmap">Heatmap</button>
+                <button class="heatmap-tab shadcn-btn-outline" id="histTabProtokoll">Protokoll</button>
+                <button class="heatmap-tab shadcn-btn-outline" id="histTabTorfolge">Torfolge</button>
+            </div>
+
+
+            <!-- Detail: Heatmap -->
+            <div id="histContentHeatmap" class="versteckt" style="text-align: center;">
+                <div class="heatmap-tabs" style="margin-top: 10px;">
+                    <button class="heatmap-tab shadcn-btn-outline active" id="histSubTabTor">Tor</button>
+                    <button class="heatmap-tab shadcn-btn-outline" id="histSubTabFeld">Feld</button>
+                    <button class="heatmap-tab shadcn-btn-outline" id="histSubTabKombi">Kombiniert</button>
+                </div>
+                <div class="heatmap-controls-card"
+                    style="padding: 15px; margin-bottom: 15px; background: var(--bg-secondary); border-radius: 12px; border: 1px solid var(--border-color);">
+                    <div style="display: flex; flex-wrap: wrap; gap: 15px; align-items: flex-end;">
+                        <div class="roster-input-group" style="flex: 1; min-width: 150px;">
+                            <label
+                                style="display: block; font-size: 0.8rem; color: var(--text-muted); margin-bottom: 5px;">Team</label>
+                            <div
+                                style="display: flex; align-items: center; gap: 12px; height: 40px; background: hsl(var(--muted)/0.3); padding: 0 15px; border-radius: 8px; border: 1px solid hsl(var(--border)); width: fit-content;">
+                                <span id="histHeatTeamLabelHeim"
+                                    style="font-size: 0.85rem; font-weight: 600; color: hsl(var(--muted-foreground));">HEIM</span>
+                                <button id="histHeatmapTeamToggle" role="switch" aria-checked="false"
+                                    data-state="unchecked" class="shadcn-switch">
+                                    <span class="shadcn-switch-thumb"></span>
+                                </button>
+                                <span id="histHeatTeamLabelGegner"
+                                    style="font-size: 0.85rem; font-weight: 600; color: hsl(var(--muted-foreground));">GAST</span>
+                            </div>
+                        </div>
+
+                        <div class="roster-input-group" style="flex: 1; min-width: 150px;">
+                            <label
+                                style="display: block; font-size: 0.8rem; color: var(--text-muted); margin-bottom: 5px;">Spieler</label>
+                            <select id="histHeatmapPlayerSelect" class="shadcn-input shadcn-select-native"
+                                style="width: 100%; height: 38px;">
+                                <option value="all">Alle Spieler</option>
+                            </select>
+                        </div>
+
+                        <div style="display: flex; gap: 12px; padding-bottom: 8px;">
+                            <label class="heatmap-filter-item"
+                                style="font-size: 0.85rem; display: flex; align-items: center; gap: 6px; cursor: pointer;">
+                                <input type="checkbox" id="histHeatmapToreFilter" checked> Feldtore
+                            </label>
+                            <label class="heatmap-filter-item"
+                                style="font-size: 0.85rem; display: flex; align-items: center; gap: 6px; cursor: pointer;">
+                                <input type="checkbox" id="histHeatmap7mFilter"> 7m
+                            </label>
+                            <label class="heatmap-filter-item"
+                                style="font-size: 0.85rem; display: flex; align-items: center; gap: 6px; cursor: pointer;">
+                                <input type="checkbox" id="histHeatmapMissedFilter" checked> Fehlwürfe
+                            </label>
+                        </div>
+                    </div>
+                </div>
+                <div id="histHeatmapContainer" style="display: flex; justify-content: center; padding: 20px;">
+                    <svg id="histHeatmapSvg" viewBox="0 0 300 200" width="600" height="400"></svg>
+                </div>
+
+                <!-- Copied Statistics for Heatmap Tab -->
+                <div id="histHeatmapStatsArea" class="versteckt" style="text-align: left; margin-top: 20px;">
+                    <div class="stats-card"
+                        style="background: var(--bg-card); border-radius: 12px; padding: 15px; border: 1px solid var(--border-color); margin-bottom: 20px;">
+                        <h2 id="histHeatmapHomeTitle" class="card-title"
+                            style="margin: 0 0 15px 0; font-size: 1.1rem; border-bottom: 1px solid var(--border-color); padding-bottom: 10px;">
+                            Heim</h2>
+                        <div class="table-container" style="overflow-x: auto;">
+                            <table class="modern-stats-table" style="width: 100%; border-collapse: collapse;">
+                                <thead>
+                                    <tr style="text-align: left; color: var(--text-muted); font-size: 0.8rem;">
+                                        <th data-sort="name" style="padding: 10px; cursor:pointer;">Spieler</th>
+                                        <th data-sort="timeOnField" style="padding: 10px; cursor:pointer;" title="Spielzeit">Zeit</th>
+                                        <th data-sort="tore" style="padding: 10px; cursor:pointer;" title="Tore Gesamt">T</th>
+                                        <th data-sort="feldtore" style="padding: 10px; cursor:pointer;" title="Feldtore">F</th>
+                                        <th data-sort="assist" style="padding: 10px; cursor:pointer;" title="Assists">A</th>
+                                        <th data-sort="siebenMeter" style="padding: 10px; cursor:pointer;" title="7 Meter">7m</th>
+                                        <th data-sort="fehlwurf" style="padding: 10px; cursor:pointer;">Fehl</th>
+                                        <th data-sort="quote" style="padding: 10px; cursor:pointer;">Quote</th>
+                                        <th data-sort="guteAktion" style="padding: 10px; cursor:pointer;">Gut</th>
+                                        <th data-sort="ballverlust" style="padding: 10px; cursor:pointer;">BV</th>
+                                        <th data-sort="stuermerfoul" style="padding: 10px; cursor:pointer;">SF</th>
+                                        <th data-sort="block" style="padding: 10px; cursor:pointer;">Blk</th>
+                                        <th data-sort="gewonnen1v1" style="padding: 10px; cursor:pointer;">1v1</th>
+                                        <th data-sort="rausgeholt7m" style="padding: 10px; cursor:pointer;">7m+</th>
+                                        <th data-sort="rausgeholt2min" style="padding: 10px; cursor:pointer;">2m+</th>
+                                        <th data-sort="gelb" style="padding: 10px; cursor:pointer;">G</th>
+                                        <th data-sort="zweiMinuten" style="padding: 10px; cursor:pointer;">2'</th>
+                                        <th data-sort="rot" style="padding: 10px; cursor:pointer;">R</th>
+                                        <th style="padding: 10px;"></th>
+                                    </tr>
+                                </thead>
+                                <tbody id="histHeatmapStatsBodyHome"></tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <div class="stats-card"
+                        style="background: var(--bg-card); border-radius: 12px; padding: 15px; border: 1px solid var(--border-color);">
+                        <h2 id="histHeatmapGegnerTitle" class="card-title"
+                            style="margin: 0 0 15px 0; font-size: 1.1rem; border-bottom: 1px solid var(--border-color); padding-bottom: 10px;">
+                            Gast</h2>
+                        <div class="table-container" style="overflow-x: auto;">
+                            <table class="modern-stats-table" style="width: 100%; border-collapse: collapse;">
+                                <thead>
+                                    <tr style="text-align: left; color: var(--text-muted); font-size: 0.8rem;">
+                                        <th data-sort="name" style="padding: 10px; cursor:pointer;">Name</th>
+                                        <th data-sort="timeOnField" style="padding: 10px; cursor:pointer;" title="Spielzeit">Zeit</th>
+                                        <th data-sort="tore" style="padding: 10px; cursor:pointer;" title="Tore Gesamt">T</th>
+                                        <th data-sort="feldtore" style="padding: 10px; cursor:pointer;" title="Feldtore">F</th>
+                                        <th data-sort="assist" style="padding: 10px; cursor:pointer;" title="Assists">A</th>
+                                        <th data-sort="siebenMeter" style="padding: 10px; cursor:pointer;" title="7 Meter">7m</th>
+                                        <th data-sort="fehlwurf" style="padding: 10px; cursor:pointer;">Fehl</th>
+                                        <th data-sort="quote" style="padding: 10px; cursor:pointer;">Quote</th>
+                                        <th data-sort="guteAktion" style="padding: 10px; cursor:pointer;">Gut</th>
+                                        <th data-sort="ballverlust" style="padding: 10px; cursor:pointer;">BV</th>
+                                        <th data-sort="stuermerfoul" style="padding: 10px; cursor:pointer;">SF</th>
+                                        <th data-sort="block" style="padding: 10px; cursor:pointer;">Blk</th>
+                                        <th data-sort="gewonnen1v1" style="padding: 10px; cursor:pointer;">1v1</th>
+                                        <th data-sort="rausgeholt7m" style="padding: 10px; cursor:pointer;">7m+</th>
+                                        <th data-sort="rausgeholt2min" style="padding: 10px; cursor:pointer;">2m+</th>
+                                        <th data-sort="gelb" style="padding: 10px; cursor:pointer;">G</th>
+                                        <th data-sort="zweiMinuten" style="padding: 10px; cursor:pointer;">2'</th>
+                                        <th data-sort="rot" style="padding: 10px; cursor:pointer;">R</th>
+                                        <th style="padding: 10px;"></th>
+                                    </tr>
+                                </thead>
+                                <tbody id="histHeatmapStatsBodyGegner"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Detail: Protokoll -->
+            <div id="histContentProtokoll" class="versteckt">
+                <div id="histProtokollAusgabe"
+                    style="max-height: 80vh; overflow-y: auto; padding: 15px; background: var(--bg-card); border-radius: 8px; border: 1px solid var(--border-color);">
+                    <!-- Protocol entries will be rendered here -->
+                </div>
+            </div>
+
+            <!-- Detail: Torfolge -->
+            <div id="histContentTorfolge" class="versteckt">
+                <div
+                    style="max-width: 1200px; min-height: 400px; margin: 0 auto; padding: 20px; background: var(--bg-card); border-radius: 8px; border: 1px solid var(--border-color);">
+                    <canvas id="histTorfolgeChart"></canvas>
+                </div>
+            </div>
+        </div>
+
+
+        <!-- Video Analyse Bereich -->
+        <div id="videoAnalyseBereich" class="content-section versteckt" style="min-height: calc(100vh - 100px); display: flex; flex-direction: column; overflow-y: auto; padding-bottom: 30px;">
+            <div class="hub-header-row" style="margin-bottom: 20px; flex-shrink: 0;">
+                <div class="hub-dashboard-title">
+                    <h1>Video Analyse</h1>
+                    <span class="hub-season-badge">Review & Coaching</span>
+                </div>
+            </div>
+            <div style="display: flex; gap: 20px; flex: 1; min-height: 0; overflow: visible;">
+                <!-- Left: Game List (Sidebar) -->
+                <div id="videoSidebar"
+                    style="width: 420px; min-width: 420px; flex-shrink: 0; display: flex; flex-direction: column; gap: 10px; transition: all 0.3s ease; height: 100%; min-height: 0;">
+                    <div class="stats-card" style="flex: 1; display: flex; flex-direction: column; overflow: hidden; padding: 15px; width: 100%; min-height: 0;">
+                        <h3 class="card-title" style="flex-shrink: 0;">Spiele</h3>
+                        <div id="videoGameListContent" style="max-height: 68vh; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; padding-right: 5px;">
+                            <!-- Items injected via JS -->
+                            <p style="color: var(--text-muted); font-size: 0.9rem;">Lade Spiele...</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Side Toggle Button (absolute positioned, shown when sidebar hidden) -->
+                <button id="videoSidebarToggle" class="versteckt" style="position: absolute; left: 0; top: 50%; transform: translateY(-50%); z-index: 100; writing-mode: vertical-rl; padding: 15px 5px; border-radius: 0 8px 8px 0; background: var(--hub-green); color: var(--hub-btn-text); border: none; font-size: 0.7rem; font-weight: bold; cursor: pointer; opacity: 0.8;">
+                    SPIELE ZEIGEN
+                </button>
+
+                <!-- Right: Video Player -->
+                <div class="stats-card"
+                    style="flex: 1; display: flex; flex-direction: column; gap: 15px; padding: 20px; overflow-y: auto; min-height: 0;">
+                    <div
+                        style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-color); padding-bottom: 10px;">
+                        <h3 id="videoAnalyseTitle" class="card-title" style="margin: 0; border: none;">Kein Spiel
+                            gewählt</h3>
+                        <div style="display: flex; gap: 10px;">
+                            <div style="display: flex; flex-direction: column; gap: 4px;">
+                                <button id="setStartH1Btn" class="shadcn-btn-outline compact-btn" style="height: 32px; font-size: 0.75rem;"
+                                    title="Aktuelle Video-Position als Start der 1. HZ setzen">
+                                    <i data-lucide="clock" style="width: 12px; height: 12px; margin-right: 4px;"></i>
+                                    Sync H1
+                                </button>
+                                <button id="setStartH2Btn" class="shadcn-btn-outline compact-btn" style="height: 32px; font-size: 0.75rem;"
+                                    title="Aktuelle Video-Position als Start der 2. HZ setzen">
+                                    <i data-lucide="clock" style="width: 12px; height: 12px; margin-right: 4px;"></i>
+                                    Sync H2
+                                </button>
+                                <button id="videoCinemaModeBtn" class="shadcn-btn-outline compact-btn" style="height: 32px; font-size: 0.75rem;" title="Kino-Modus ein-/ausschalten">
+                                    <i data-lucide="monitor" style="width: 14px; height: 14px; margin-right: 4px;"></i>
+                                    Kino
+                                </button>
+                            </div>
+                            <label class="shadcn-btn-primary" style="cursor: pointer;">
+                                <i data-lucide="upload" style="width: 16px; height: 16px; margin-right: 8px;"></i>
+                                Video laden
+                                <input type="file" id="videoFileInput" accept="video/*" style="display: none;">
+                            </label>
+                        </div>
+                    </div>
+
+                    <div style="flex: 1; display: flex; flex-direction: row; gap: 15px; min-height: 0;">
+                        <!-- Video Container -->
+                        <div
+                            style="flex: 2; align-self: flex-start; display: flex; flex-direction: column; gap: 10px; width: 100%; min-width: 0;">
+                            <!-- Video Player Section -->
+                            <div style="background: #000; border-radius: 12px; overflow: hidden; display: flex; align-items: center; justify-content: center; position: relative; width: 100%; aspect-ratio: 16/9; box-shadow: 0 10px 30px rgba(0,0,0,0.5);">
+                                <video id="analysisVideoPlayer" controls
+                                    style="width: 100%; height: 100%; max-height: none;">
+                                </video>
+                                <div id="videoPlaceholder"
+                                    style="position: absolute; color: #fff; display: flex; flex-direction: column; align-items: center; gap: 10px; pointer-events: none;">
+                                    <i data-lucide="film" style="width: 48px; height: 48px; opacity: 0.5;"></i>
+                                    <span style="opacity: 0.8;">Bitte Video auswählen</span>
+                                </div>
+                            </div>
+
+                            <!-- Timeline Container (New) -->
+                            <div id="videoTimelineContainer" class="versteckt" style="width: 100%; background: var(--bg-card); border-radius: 12px; border: 1px solid var(--border-color); padding: 15px; display: flex; flex-direction: column; gap: 10px; user-select: none; margin-top: 10px;">
+                                <div style="display: flex; justify-content: space-between; align-items: center;">
+                                    <span style="font-size: 0.75rem; font-weight: 600; color: var(--text-muted); text-transform: uppercase;">Spielverlauf Timeline</span>
+                                    <div id="timelineTimeLabel" style="font-family: monospace; font-size: 0.85rem; color: var(--primary);">00:00 / 00:00</div>
+                                </div>
+                                
+                                <!-- Home/Guest Split Timeline -->
+                                <div id="videoTimelineTrack" style="width: 100%; height: 100px; background: rgba(0,0,0,0.3); border-radius: 8px; position: relative; cursor: pointer; border: 1px solid rgba(255,255,255,0.1); box-shadow: inset 0 0 10px rgba(0,0,0,0.5); margin: 30px 0;">
+                                    <!-- Progress Layer -->
+                                    <div id="timelineProgress" style="position: absolute; top: 50%; left: 0; height: 24px; background: #3b82f6; border-radius: 12px; transform: translateY(-50%); z-index: 1; min-width: 12px; box-shadow: 0 0 15px rgba(59, 130, 246, 0.4);"></div>
+                                    
+                                    <!-- Track Orientation Labels -->
+                                    <div style="position: absolute; top: 15%; left: 12px; font-size: 0.6rem; font-weight: bold; color: var(--hub-green); opacity: 0.7; z-index: 1; pointer-events: none; text-transform: uppercase; letter-spacing: 0.05em;">Heim</div>
+                                    <div style="position: absolute; top: 65%; left: 12px; font-size: 0.6rem; font-weight: bold; color: #60a5fa; opacity: 0.7; z-index: 1; pointer-events: none; text-transform: uppercase; letter-spacing: 0.05em;">Gegner</div>
+
+                                    <!-- Strong Center Line -->
+                                    <div style="position: absolute; top: 50%; left: 0; width: 100%; height: 24px; background: rgba(255,255,255,0.05); border-radius: 12px; transform: translateY(-50%); border: 1px solid rgba(255,255,255,0.1);"></div>
+
+                                    <!-- Markers Layer -->
+                                    <div id="timelineMarkers" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 2;"></div>
+                                </div>
+
+                                <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 5px;">
+                                    <div style="display: flex; gap: 15px; font-size: 0.65rem; color: var(--text-muted);">
+                                        <div style="display: flex; align-items: center; gap: 4px;"><span style="width: 8px; height: 8px; border-radius: 50%; background: #22c55e;"></span> Tor</div>
+                                        <div style="display: flex; align-items: center; gap: 4px;"><span style="width: 8px; height: 8px; border-radius: 50%; background: #ef4444;"></span> Fehlwurf</div>
+                                        <div style="display: flex; align-items: center; gap: 4px;"><span style="width: 8px; height: 8px; border-radius: 50%; background: #eab308;"></span> Bestrafung</div>
+                                    </div>
+                                    <span style="font-size: 0.6rem; color: var(--text-muted); opacity: 0.6;">Oben: Heim | Unten: Gegner</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Protocol Container -->
+                        <div id="videoAnalysisProtocol"
+                            style="flex: 1; min-height: 0; background: var(--bg-secondary); border-radius: 8px; border: 1px solid var(--border-color); display: none; flex-direction: column; overflow: hidden;">
+                            <div
+                                style="display: flex; justify-content: space-between; align-items: center; padding: 10px; border-bottom: 1px solid var(--border-color); background: var(--bg-secondary); flex-shrink: 0; z-index: 5;">
+                                <h3 style="font-size: 0.9rem; margin: 0;">Protokoll</h3>
+                                <div style="display: flex; align-items: center; gap: 8px;">
+                                    <span style="font-size: 0.7rem; opacity: 0.7;">Vorlauf:</span>
+                                    <input type="number" id="videoLeadTimeInput" value="5" min="0" max="30" step="1" 
+                                        style="width: 45px; height: 24px; font-size: 0.75rem; background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 4px; text-align: center; color: var(--text-main);">
+                                    <span style="font-size: 0.7rem; opacity: 0.7;">s</span>
+                                </div>
+                            </div>
+                            
+                            <!-- Filter Bar -->
+                            <div style="display: flex; flex-direction: column; gap: 8px; padding: 10px; border-bottom: 1px solid var(--border-color); background: var(--bg-secondary); flex-shrink: 0; z-index: 4;">
+                                <div style="display: flex; gap: 8px;">
+                                    <select id="videoFilterPlayer" class="hub-btn-outline" style="flex: 1; height: 32px; font-size: 0.75rem; padding: 0 5px; text-align: left; background: var(--bg-card);">
+                                        <option value="all">Alle Spieler</option>
+                                    </select>
+                                    <select id="videoFilterAction" class="hub-btn-outline" style="flex: 1; height: 32px; font-size: 0.75rem; padding: 0 5px; text-align: left; background: var(--bg-card);">
+                                        <option value="all">Alle Aktionen</option>
+                                    </select>
+                                </div>
+                                <div style="display: flex; gap: 8px; align-items: center;">
+                                    <button id="videoAutoplayBtn" class="hub-btn-primary compact-btn" style="flex: 2; height: 32px; font-size: 0.75rem; background: var(--primary); color: #000; font-weight: 700;">
+                                        <i data-lucide="play-circle" style="width: 14px; height: 14px; margin-right: 5px;"></i>
+                                        Clips abspielen (0)
+                                    </button>
+                                    <button id="videoClearFilters" class="hub-btn-outline compact-btn" style="flex: 1; height: 32px; font-size: 0.75rem; border: none; opacity: 0.6;">
+                                        Reset
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div id="videoAnalysisProtocolList"
+                                style="max-height: 60vh; overflow-y: auto; display: flex; flex-direction: column; gap: 4px; padding: 10px;">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal: Aktions-Menü (Handball Hub) -->
+    <div id="aktionsMenue" class="modal-overlay versteckt" style="z-index: 10030;">
+        <div class="hub-popover" style="width: 350px; max-width: 90vw;">
+            <div class="hub-modal-header">
+                <h3 id="aktionsMenueTitel">Aktion wählen</h3>
+                <button class="icon-btn-ghost" id="aktionAbbrechen"><i data-lucide="x"></i></button>
+            </div>
+            <div class="hub-modal-body" style="display: flex; flex-direction: column; gap: 10px;">
+                <button class="dash-rsvp-modern-btn active" data-status="going" data-aktion="Tor" style="height: 48px; font-size: 0.9rem;">TOR</button>
+                <button class="dash-rsvp-modern-btn" data-aktion="Fehlwurf" style="height: 48px; font-size: 0.9rem;">Fehlwurf</button>
+                <button class="dash-rsvp-modern-btn" data-aktion="7m" style="height: 48px; font-size: 0.9rem;">7-Meter</button>
+                <button class="dash-rsvp-modern-btn" id="guteAktionModalButton" style="height: 48px; font-size: 0.9rem;">Anderes</button>
+                
+                <div style="height: 1px; background: var(--hub-card-border); margin: 5px 0;"></div>
+                
+                <button class="dash-rsvp-modern-btn" data-aktion="Gelbe Karte" style="color: #fbbf24; border-color: rgba(251,191,36,0.3); height: 44px;">Gelbe Karte</button>
+                <button class="dash-rsvp-modern-btn" data-aktion="2 Minuten" style="color: #60a5fa; border-color: rgba(96,165,250,0.3); height: 44px;">2 Minuten</button>
+                <button class="dash-rsvp-modern-btn" data-aktion="Rote Karte" style="color: #f87171; border-color: rgba(248,113,113,0.3); height: 44px;">Rote Karte</button>
+            </div>
+        </div>
+    </div>
+
+        <div id="aktionVorauswahl" class="modal-overlay versteckt">
+            <div class="shadcn-modal-content">
+                <div class="shadcn-modal-header">
+                    <h3>Andere Aktionen</h3>
+                </div>
+                <div class="shadcn-modal-body"
+                    style="display: flex; flex-direction: column; gap: 8px; margin-top: 1rem;">
+                    <button class="shadcn-btn-outline" data-aktion="Steal">Steal</button>
+                    <button class="shadcn-btn-outline" data-aktion="7M Rausgeholt">7M Rausgeholt</button>
+                    <button class="shadcn-btn-outline" data-aktion="TG Pass">TG Pass</button>
+                    <button class="shadcn-btn-outline" data-aktion="Assist">Assist</button>
+                    <button class="shadcn-btn-outline" data-aktion="Fehlpass">Fehlpass</button>
+                    <button class="shadcn-btn-outline" data-aktion="Technischer Fehler">Technischer Fehler</button>
+                    <button class="shadcn-btn-outline" data-aktion="Sonstiges">Sonstiges</button>
+                </div>
+                <div class="shadcn-modal-footer">
+                    <button class="shadcn-btn-outline" id="aktionVorauswahlAbbrechen"
+                        style="width: 100%;">Zurück</button>
+                </div>
+            </div>
+        </div>
+
+    <!-- Modal: Kommentar (Handball Hub) -->
+    <div id="kommentarBereich" class="modal-overlay versteckt" style="z-index: 10035;">
+        <div class="hub-popover" style="width: 400px; max-width: 90vw;">
+            <div class="hub-modal-header">
+                <h3 id="kommentarTitel">Notiz hinzufügen</h3>
+                <button class="icon-btn-ghost" data-action="close-modal"><i data-lucide="x"></i></button>
+            </div>
+            <div class="hub-modal-body">
+                <label class="hub-label">Beschreibung (Optional)</label>
+                <input type="text" id="kommentarInput" placeholder="Was ist passiert?..." class="hub-input">
+            </div>
+            <div class="hub-modal-footer">
+                <button id="kommentarSpeichernButton" class="hub-btn-primary" style="width: 100%;">Speichern</button>
+            </div>
+        </div>
+    </div>
+
+
+        <!-- Modal: Wurfbild / Tor (Handball Hub) -->
+    <div id="wurfbildModal" class="modal-overlay versteckt" style="z-index: 10040;">
+        <div class="hub-popover" style="width: 450px; max-width: 95vw;">
+            <div class="hub-modal-header">
+                <h3>Wohin ging der Wurf?</h3>
+                <button class="icon-btn-ghost" id="closeWurfbildModal"><i data-lucide="x"></i></button>
+            </div>
+            <div class="hub-modal-body" style="padding: 10px;">
+                <div id="wurfbildTorFeld" style="width: 100%; aspect-ratio: 3/2; display: flex; align-items: center; justify-content: center;">
+                    <svg viewBox="0 0 300 200" style="width: 100%; height: 100%; max-height: 300px;">
+                        <rect x="25" y="10" width="250" height="180" fill="none" stroke="currentColor" stroke-width="3"/>
+                        <line x1="108.3" y1="10" x2="108.3" y2="190" stroke="currentColor" stroke-width="1" stroke-dasharray="5,5" opacity="0.3"/>
+                        <line x1="191.7" y1="10" x2="191.7" y2="190" stroke="currentColor" stroke-width="1" stroke-dasharray="5,5" opacity="0.3"/>
+                        <line x1="25" y1="70" x2="275" y2="70" stroke="currentColor" stroke-width="1" stroke-dasharray="5,5" opacity="0.3"/>
+                        <line x1="25" y1="130" x2="275" y2="130" stroke="currentColor" stroke-width="1" stroke-dasharray="5,5" opacity="0.3"/>
+                        <circle id="wurfbildMarker" cx="-10" cy="-10" r="5" fill="var(--hub-accent)" style="display:none;"/>
+                    </svg>
+                </div>
+            </div>
+            <div class="hub-modal-footer">
+                <button id="wurfbildUeberspringen" class="hub-btn-outline" style="width: 100%;">Überspringen</button>
+            </div>
+        </div>
+    </div>
+
+        <!-- Modal: Wurfposition / Feld (Handball Hub) -->
+    <div id="wurfpositionModal" class="modal-overlay versteckt" style="z-index: 10041;">
+        <div class="hub-popover" style="width: 500px; max-width: 95vw;">
+            <div class="hub-modal-header">
+                <h3>Von wo wurde geworfen?</h3>
+                <button class="icon-btn-ghost" id="closeWurfpositionModal"><i data-lucide="x"></i></button>
+            </div>
+            <div class="hub-modal-body" style="padding: 10px;">
+                <div id="wurfpositionFeld" style="width: 100%; aspect-ratio: 0.75; display: flex; align-items: center; justify-content: center;">
+                    <svg viewBox="0 0 300 400" style="width: 100%; height: 100%; max-height: 400px;">
+                        <rect x="10" y="10" width="280" height="380" fill="none" stroke="currentColor" stroke-width="2"/>
+                        <rect x="112" y="10" width="76" height="8" fill="currentColor" opacity="0.5"/>
+                        <path d="M 75 18 Q 75 90 150 90 Q 225 90 225 18" fill="none" stroke="currentColor" stroke-width="2" opacity="0.5"/>
+                        <path d="M 37 18 Q 37 150 150 150 Q 263 150 263 18" fill="none" stroke="currentColor" stroke-width="1" stroke-dasharray="6,3" opacity="0.5"/>
+                        <circle cx="150" cy="65" r="4" fill="currentColor" opacity="0.5"/>
+                        <line x1="10" y1="388" x2="290" y2="388" stroke="currentColor" stroke-width="2"/>
+                        <circle id="wurfpositionMarker" cx="-10" cy="-10" r="6" fill="var(--hub-accent)" style="display:none;"/>
+                    </svg>
+                </div>
+            </div>
+            <div class="hub-modal-footer">
+                <button id="wurfpositionUeberspringen" class="hub-btn-outline" style="width: 100%;">Überspringen</button>
+            </div>
+        </div>
+    </div>
+
+        <!-- Modal: Kombinierter Wurf (Handball Hub) -->
+    <div id="combinedThrowModal" class="modal-overlay versteckt" style="z-index: 10042;">
+        <div class="hub-popover" style="width: 600px; max-width: 98vw; max-height: 95vh; display: flex; flex-direction: column;">
+            <div class="hub-modal-header">
+                <h3>Wurf-Details</h3>
+                <button class="icon-btn-ghost" id="closeCombinedThrowModal"><i data-lucide="x"></i></button>
+            </div>
+            <div class="hub-modal-body" style="padding: 10px; gap: 10px;">
+                <div class="throw-section-field">
+                    <label class="hub-label">1. Feldposition</label>
+                    <div id="combinedWurfpositionFeldContainer" style="width: 100%; aspect-ratio: 1.5; border: 1px solid var(--hub-card-border); border-radius: 8px; background: rgba(0,0,0,0.2); overflow: hidden; display: flex; align-items: center; justify-content: center;">
+                        <svg id="combinedFieldSvg" viewBox="-10 -10 320 240" style="width: 100%; height: 100%; cursor: crosshair;">
+                            <!-- Field Zones (Tactical Interaction Layer) -->
+                            <g class="field-zones-layer">
+                                <path class="field-zone-path" data-zone="1" d="M 37 18 L 75 18 Q 75 39.6 81.8 54.7 L 47.2 85.3 Q 37 57.6 37 18 Z" fill="transparent"/>
+                                <path class="field-zone-path" data-zone="2" d="M 47.2 85.3 L 81.8 54.7 Q 90.8 74.9 111.8 83.5 L 92.4 138.1 Q 60.7 122.3 47.2 85.3 Z" fill="transparent"/>
+                                <path class="field-zone-path" data-zone="3" d="M 92.4 138.1 L 111.8 83.5 Q 127.5 90 150 90 Q 172.5 90 188.2 83.5 L 207.6 138.1 Q 183.9 150 150 150 Q 116.1 150 92.4 138.1 Z" fill="transparent"/>
+                                <path class="field-zone-path" data-zone="4" d="M 207.6 138.1 L 188.2 83.5 Q 209.2 74.9 218.2 54.7 L 252.8 85.3 Q 239.3 122.3 207.6 138.1 Z" fill="transparent"/>
+                                <path class="field-zone-path" data-zone="5" d="M 263 18 L 225 18 Q 225 39.6 218.2 54.7 L 252.8 85.3 Q 263 57.6 263 18 Z" fill="transparent"/>
+                                <path class="field-zone-path" data-zone="6" d="M 10 18 L 37 18 Q 37 57.6 47.2 85.3 Q 60.7 122.3 92.4 138.1 L 63.3 220 L 10 220 Z" fill="transparent"/>
+                                <path class="field-zone-path" data-zone="7" d="M 63.3 220 L 92.4 138.1 Q 116.1 150 150 150 Q 183.9 150 207.6 138.1 L 236.7 220 Z" fill="transparent"/>
+                                <path class="field-zone-path" data-zone="8" d="M 290 18 L 263 18 Q 263 57.6 252.8 85.3 Q 239.3 122.3 207.6 138.1 L 236.7 220 L 290 220 Z" fill="transparent"/>
+                                <path class="field-zone-path" data-zone="9" d="M 10 220 L 290 220 L 290 388 L 10 388 Z" fill="transparent"/>
+                            </g>
+                            <rect x="10" y="10" width="280" height="600" fill="none" stroke="currentColor" stroke-width="2"/>
+                            <rect x="112" y="10" width="76" height="8" fill="currentColor" opacity="0.5"/>
+                            <path d="M 75 18 Q 75 90 150 90 Q 225 90 225 18" fill="none" stroke="currentColor" stroke-width="2" opacity="0.5"/>
+                            <path d="M 37 18 Q 37 150 150 150 Q 263 150 263 18" fill="none" stroke="currentColor" stroke-width="1" stroke-dasharray="6,3" opacity="0.5"/>
+                            <circle cx="150" cy="65" r="4" fill="currentColor" opacity="0.5"/>
+                            
+                            <!-- Modern Pulse Marker -->
+                            <g id="combinedFieldMarker" style="display:none; pointer-events: none;">
+                                <circle cx="0" cy="0" r="10" fill="var(--hub-accent)" class="tracking-marker-pulse"/>
+                                <line x1="-12" y1="0" x2="12" y2="0" stroke="var(--hub-accent)" stroke-width="2"/>
+                                <line x1="0" y1="-12" x2="0" y2="12" stroke="var(--hub-accent)" stroke-width="2"/>
+                                <circle cx="0" cy="0" r="5" fill="var(--hub-accent)" class="tracking-marker-inner"/>
+                            </g>
+                        </svg>
+                    </div>
+                </div>
+                <div class="throw-section-goal">
+                    <label class="hub-label">2. Torbild</label>
+                    <div id="combinedWurfbildUmgebungContainer" style="width: 100%; aspect-ratio: 1.5; border: 1px solid var(--hub-card-border); border-radius: 8px; background: rgba(0,0,0,0.2); overflow: hidden; display: flex; align-items: center; justify-content: center;">
+                         <svg id="combinedGoalSvg" viewBox="10 -10 280 220" style="width: 100%; height: 100%; cursor: crosshair;">
+                             <!-- Goal Zones Grid (Tactical Interaction Layer) -->
+                             <g class="goal-zones-layer">
+                                 <rect class="goal-zone-rect" data-zone="1" x="25" y="10" width="83.3" height="60" fill="transparent"/>
+                                 <rect class="goal-zone-rect" data-zone="2" x="108.3" y="10" width="83.3" height="60" fill="transparent"/>
+                                 <rect class="goal-zone-rect" data-zone="3" x="191.7" y="10" width="83.3" height="60" fill="transparent"/>
+                                 <rect class="goal-zone-rect" data-zone="4" x="25" y="70" width="83.3" height="60" fill="transparent"/>
+                                 <rect class="goal-zone-rect" data-zone="5" x="108.3" y="70" width="83.3" height="60" fill="transparent"/>
+                                 <rect class="goal-zone-rect" data-zone="6" x="191.7" y="70" width="83.3" height="60" fill="transparent"/>
+                                 <rect class="goal-zone-rect" data-zone="7" x="25" y="130" width="83.3" height="60" fill="transparent"/>
+                                 <rect class="goal-zone-rect" data-zone="8" x="108.3" y="130" width="83.3" height="60" fill="transparent"/>
+                                 <rect class="goal-zone-rect" data-zone="9" x="191.7" y="130" width="83.3" height="60" fill="transparent"/>
+                             </g>
+                             <rect x="25" y="10" width="250" height="180" fill="none" stroke="currentColor" stroke-width="4"/>
+                             <line x1="108.3" y1="10" x2="108.3" y2="190" stroke="currentColor" stroke-width="1" stroke-dasharray="5,5" opacity="0.3"/>
+                             <line x1="191.7" y1="10" x2="191.7" y2="190" stroke="currentColor" stroke-width="1" stroke-dasharray="5,5" opacity="0.3"/>
+                             <line x1="25" y1="70" x2="275" y2="70" stroke="currentColor" stroke-width="1" stroke-dasharray="5,5" opacity="0.3"/>
+                             <line x1="25" y1="130" x2="275" y2="130" stroke="currentColor" stroke-width="1" stroke-dasharray="5,5" opacity="0.3"/>
+                             
+                             <!-- Modern Pulse Marker Goal -->
+                             <g id="combinedGoalMarker" style="display:none; pointer-events: none;">
+                                 <circle cx="0" cy="0" r="12" fill="var(--hub-accent)" class="tracking-marker-pulse"/>
+                                 <line x1="-14" y1="0" x2="14" y2="0" stroke="var(--hub-accent)" stroke-width="2"/>
+                                 <line x1="0" y1="-14" x2="0" y2="14" stroke="var(--hub-accent)" stroke-width="2"/>
+                                 <circle cx="0" cy="0" r="6" fill="var(--hub-accent)" class="tracking-marker-inner"/>
+                             </g>
+                         </svg>
+                    </div>
+                </div>
+                
+                <div class="assist-selection-section" style="margin-top: 5px;">
+                    <h4 class="hub-label" style="font-size: 0.75rem; margin-bottom: 4px;">Assist</h4>
+                    <div id="combinedAssistPlayerList" class="hub-player-grid compact-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(40px, 1fr)); gap: 4px;">
+                        <!-- JS populated -->
+                    </div>
+                    <button id="combinedAssistNone" class="assist-player-btn dash-rsvp-modern-btn" style="width: 100%; margin-top: 5px; padding: 2px; font-size: 0.7rem;">Kein Assist</button>
+                </div>
+
+                <div class="play-type-section" style="margin-top: 5px;">
+                    <h4 class="hub-label" style="font-size: 0.75rem; margin-bottom: 4px;">Wurf-Typ</h4>
+                    <div id="combinedPlayTypeList" style="display: flex; flex-wrap: wrap; gap: 6px;">
+                        <button class="playtype-btn dash-rsvp-modern-btn" data-playtype="Fernwurf" style="padding: 4px 8px; font-size: 0.75rem; height: auto;">Fern</button>
+                        <button class="playtype-btn dash-rsvp-modern-btn" data-playtype="Durchbruch" style="padding: 4px 8px; font-size: 0.75rem; height: auto;">Durchbruch</button>
+                        <button class="playtype-btn dash-rsvp-modern-btn" data-playtype="Konter" style="padding: 4px 8px; font-size: 0.75rem; height: auto;">TG</button>
+                        <button class="playtype-btn dash-rsvp-modern-btn" data-playtype="7m" style="padding: 4px 8px; font-size: 0.75rem; height: auto;">7m</button>
+                        <button class="playtype-btn dash-rsvp-modern-btn" data-playtype="Freiwurf" style="padding: 4px 8px; font-size: 0.75rem; height: auto;">Frei</button>
+                    </div>
+                </div>
+            </div>
+            <div class="hub-modal-footer" style="display: flex; gap: 8px; padding: 12px;">
+                <button id="combinedThrowSave" class="hub-btn-primary" style="flex: 1;">Speichern</button>
+                <button id="combinedThrowSkip" class="hub-btn-outline" style="flex: 1;">Abbrechen</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal: Gegner Nummer (Handball Hub) -->
+    <div id="gegnerNummerModal" class="modal-overlay versteckt" style="z-index: 10030;">
+        <div class="hub-popover" style="width: 450px; max-width: 95vw;">
+            <div class="hub-modal-header">
+                <h3 id="gegnerNummerTitel">Torschütze (Gast)</h3>
+                <button class="icon-btn-ghost" data-action="close-modal"><i data-lucide="x"></i></button>
+            </div>
+            
+            <div class="hub-modal-body">
+                <label class="hub-label">Bekannte Spieler</label>
+                <div id="bekannteGegnerListe" class="hub-player-grid compact-grid" style="margin-bottom: 20px; display: grid; grid-template-columns: repeat(auto-fill, minmax(60px, 1fr)); gap: 8px;">
+                    <!-- Managed via JS -->
+                </div>
+                
+                <div style="border-top: 1px solid var(--hub-card-border); padding-top: 16px;">
+                    <label class="hub-label">Neuer Spieler</label>
+                    <div style="display: flex; gap: 10px;">
+                        <input type="number" id="neueGegnerNummer" class="hub-input" placeholder="NR" style="width: 70px;">
+                        <input type="text" id="neueGegnerName" class="hub-input" placeholder="Name (optional)" style="flex: 1;">
+                    </div>
+                    <label style="display: flex; align-items: center; gap: 8px; margin-top: 12px; cursor: pointer; font-size: 0.85rem;">
+                        <input type="checkbox" id="neueGegnerTorwart">
+                        <span>Ist Torwart</span>
+                    </label>
+                </div>
+            </div>
+            
+            <div class="hub-modal-footer">
+                <button id="gegnerNummerUeberspringen" class="hub-btn-outline" style="margin-right: auto;">Unbekannt</button>
+                <button id="gegnerNummerSpeichern" class="hub-btn-primary">Bestätigen</button>
+            </div>
+        </div>
+    </div>
+
+        <!-- Quick Add Home Player Modal (during game) -->
+        <!-- Quick Add Home Player Modal (Shadcn Style) -->
+        <div id="quickAddPlayerModal" class="modal-overlay versteckt">
+            <div class="shadcn-modal-content">
+                <div class="shadcn-modal-header">
+                    <h3>Spieler hinzufügen</h3>
+                    <p>Nummer und optional Name eingeben:</p>
+                </div>
+                <div class="shadcn-modal-body"
+                    style="display: flex; flex-direction: column; gap: 10px; margin-top: 1rem;">
+                    <input type="number" id="quickPlayerNumber" placeholder="Nummer" class="shadcn-input">
+                    <input type="text" id="quickPlayerName" placeholder="Name (optional)" class="shadcn-input">
+                    <label class="shadcn-checkbox-label"
+                        style="display: flex; align-items: center; gap: 8px; font-size: 0.9rem; cursor: pointer; margin-top: 5px;">
+                        <input type="checkbox" id="quickPlayerTorwart" style="cursor: pointer;">
+                        <span>Torwart (TW)</span>
+                    </label>
+                </div>
+                <div class="shadcn-modal-footer">
+                    <button class="shadcn-btn-outline" id="quickAddPlayerCancel">Abbrechen</button>
+                    <button class="shadcn-btn-primary" id="quickAddPlayerSave">Hinzufügen</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Save Team Name Modal -->
+        <!-- Save Team Name Modal (Shadcn Style) -->
+        <div id="saveTeamNameModal" class="modal-overlay versteckt">
+            <div class="shadcn-modal-content">
+                <div class="shadcn-modal-header">
+                    <h3>Team speichern</h3>
+                    <p>Gib einen Namen für das Team ein:</p>
+                </div>
+                <div class="shadcn-modal-body" style="margin-top: 1rem;">
+                    <input type="text" id="saveTeamNameInput" placeholder="Team Name" class="shadcn-input">
+                </div>
+                <div class="shadcn-modal-footer">
+                    <button class="shadcn-btn-outline" id="saveTeamNameCancel">Abbrechen</button>
+                    <button class="shadcn-btn-primary" id="saveTeamNameConfirm">Speichern</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- View/Edit Team Modal -->
+        <!-- View/Edit Team Modal (Shadcn Style) -->
+        <div id="viewTeamModal" class="modal-overlay versteckt">
+            <div class="shadcn-modal-content" style="max-width: 600px;">
+                <div class="shadcn-modal-header">
+                    <h3 id="viewTeamTitle">Team anschauen</h3>
+                </div>
+                <div class="shadcn-modal-body" style="margin-top: 1rem;">
+                    <div style="margin-bottom: 15px;">
+                        <label style="display: block; margin-bottom: 5px; font-weight: bold;">Team Name:</label>
+                        <input type="text" id="editTeamNameInput" placeholder="Team Name" class="shadcn-input">
+                    </div>
+                    <div id="viewTeamPlayersList" style="max-height: 300px; overflow-y: auto; margin: 15px 0;">
+                        <!-- Players will be listed here -->
+                    </div>
+                </div>
+                <div class="shadcn-modal-footer">
+                    <button class="shadcn-btn-outline" id="viewTeamClose" style="flex: 1;">Schließen</button>
+                    <button class="shadcn-btn-primary" id="saveTeamChanges"
+                        style="flex: 1; background-color: #28a745;">Änderungen speichern</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Season Overview Modal -->
+        <!-- Season Overview Modal (Shadcn Style) -->
+        <div id="seasonOverviewModal" class="modal-overlay versteckt">
+            <div class="shadcn-modal-content"
+                style="max-width: 900px; max-height: 90vh; display: flex; flex-direction: column;">
+                <div class="shadcn-modal-header">
+                    <h2>Saison-Übersicht</h2>
+                </div>
+                <div class="shadcn-modal-body" style="overflow-y: auto; flex: 1;">
+                    <div id="seasonSummary"
+                        style="margin: 15px 0; padding: 10px; background-color: var(--bg-secondary); border-radius: 5px;">
+                        <!-- Summary stats -->
+                    </div>
+                    <div id="seasonStatsContainer" style="margin-top: 20px;">
+                        <!-- Player cards will be rendered here -->
+                    </div>
+                </div>
+                <div class="shadcn-modal-footer">
+                    <button class="shadcn-btn-outline" id="seasonOverviewClose">Schließen</button>
+                </div>
+            </div>
+        </div>
+
+
+
+        <!-- Load Team Modal -->
+        <!-- Load Team Modal (Shadcn Style) -->
+        <div id="loadTeamModal" class="modal-overlay versteckt">
+            <div class="shadcn-modal-content">
+                <div class="shadcn-modal-header">
+                    <h3>Gespeicherte Teams</h3>
+                </div>
+                <div class="shadcn-modal-body">
+                    <div id="savedTeamsList" style="max-height: 300px; overflow-y: auto; margin: 15px 0;">
+                        <!-- Teams will be listed here -->
+                    </div>
+                </div>
+                <div class="shadcn-modal-footer">
+                    <button class="shadcn-btn-outline" id="loadTeamCancel" data-action="close-modal">Abbrechen</button>
+                </div>
+            </div>
+        </div>
+
+    <!-- Modal: Gegner hinzufügen (Handball Hub) -->
+    <div id="addGegnerModal" class="modal-overlay versteckt" style="z-index: 10031;">
+        <div class="hub-popover" style="width: 400px; max-width: 95vw;">
+            <div class="hub-modal-header">
+                <h3>Gegner hinzufügen</h3>
+                <button class="icon-btn-ghost" data-action="close-modal"><i data-lucide="x"></i></button>
+            </div>
+            
+            <div class="hub-modal-body">
+                <div class="hub-field" style="margin-bottom: 16px;">
+                    <label class="hub-label">Trikotnummer</label>
+                    <input type="number" id="addGegnerNummerInput" placeholder="00" class="hub-input">
+                </div>
+                <div class="hub-field">
+                    <label class="hub-label">Name (optional)</label>
+                    <input type="text" id="addGegnerNameInput" placeholder="Spielername" class="hub-input">
+                </div>
+            </div>
+            
+            <div class="hub-modal-footer">
+                <button id="addGegnerBestatigen" class="hub-btn-primary" style="width: 100%;">Hinzufügen</button>
+            </div>
+        </div>
+    </div>
+
+        <!-- 7m Outcome Modal (Shadcn Style) -->
+        <div id="sevenMeterOutcomeModal" class="modal-overlay versteckt">
+            <div class="shadcn-modal-content">
+                <div class="shadcn-modal-header">
+                    <h3>7m Ergebnis</h3>
+                </div>
+                <div class="shadcn-modal-body"
+                    style="display: flex; flex-direction: column; gap: 8px; margin-top: 1rem;">
+                    <button class="shadcn-btn-primary" data-outcome="Tor">Tor</button>
+                    <button class="shadcn-btn-outline" data-outcome="Gehalten">Gehalten</button>
+                    <button class="shadcn-btn-outline" data-outcome="Verworfen">Verworfen (Pfosten/Aus)</button>
+                </div>
+                <!-- No footer needed if actions are definitive, or add cancel if desired. Default existing didn't have explicit cancel -->
+            </div>
+        </div>
+
+        <!-- Wurfbilder Stats Modal (Shadcn Style) -->
+        <div id="wurfbilderStatsModal" class="modal-overlay versteckt">
+            <div class="shadcn-modal-content" style="max-width: 500px; width: 95%;">
+                <div class="shadcn-modal-header">
+                    <h3>Wurfbilder Übersicht</h3>
+                </div>
+                <div class="shadcn-modal-body">
+                    <div id="wurfbilderContainer" style="max-height: 60vh; overflow-y: auto;"></div>
+                </div>
+                <div class="shadcn-modal-footer">
+                    <button class="shadcn-btn-outline" id="closeWurfbilderStats">Schließen</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Modal: Live Game Overview (Handball Hub) -->
+    <div id="liveGameOverviewModal" class="modal-overlay versteckt" style="z-index: 10050;">
+        <div class="hub-popover" style="width: 1000px; max-width: 98vw; height: 90vh; display: flex; flex-direction: column;">
+            <div class="hub-modal-header">
+                <h2>Live Spielanalyse</h2>
+                <div class="hub-header-actions">
+                    <div style="display: flex; gap: 8px;">
+                        <button id="liveOverviewTabStats" class="dash-rsvp-modern-btn active" data-status="going">Statistiken</button>
+                        <button id="liveOverviewTabHeatmap" class="dash-rsvp-modern-btn">Heatmap</button>
+                    </div>
+                    <button id="closeLiveGameOverview" class="icon-btn-ghost"><i data-lucide="x"></i></button>
+                </div>
+            </div>
+            
+            <div class="hub-modal-body" style="flex: 1; overflow-y: auto; padding: 20px;">
+                <!-- Content: Stats -->
+                <div id="liveOverviewContentStats">
+                    <div style="display: flex; flex-direction: column; gap: 30px;">
+                        <!-- Home Team -->
+                        <div class="hub-card">
+                            <h3 class="hub-label" style="font-size: 0.9rem; margin-bottom: 16px;">HEIMMANTLSCHAFT</h3>
+                            <div class="hub-table-wrapper">
+                                <table class="hub-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Spieler</th>
+                                            <th title="Tore Gesamt">T</th>
+                                            <th title="Feldtore">F</th>
+                                            <th title="7 Meter">7m</th>
+                                            <th>FEHL</th>
+                                            <th title="Assists">A</th>
+                                            <th>QUOTE</th>
+                                            <th>BALL</th>
+                                            <th>FOUL</th>
+                                            <th>BLK</th>
+                                            <th>1v1+</th>
+                                            <th>1v1-</th>
+                                            <th>7m+</th>
+                                            <th>2m+</th>
+                                            <th>G</th>
+                                            <th>2'</th>
+                                            <th>R</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="liveOverviewStatsBody"></tbody>
+                                </table>
+                            </div>
+                        </div>
+
+                        <!-- Opponent Team -->
+                        <div class="hub-card">
+                            <h3 class="hub-label" style="font-size: 0.9rem; margin-bottom: 16px;">GASTMANNSCHAFT</h3>
+                            <div class="hub-table-wrapper">
+                                <table class="hub-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Spieler</th>
+                                            <th title="Tore Gesamt">T</th>
+                                            <th title="Feldtore">F</th>
+                                            <th title="7 Meter">7m</th>
+                                            <th>FEHL</th>
+                                            <th title="Assists">A</th>
+                                            <th>QUOTE</th>
+                                            <th>BALL</th>
+                                            <th>FOUL</th>
+                                            <th>BLK</th>
+                                            <th>1v1+</th>
+                                            <th>1v1-</th>
+                                            <th>7m+</th>
+                                            <th>2m+</th>
+                                            <th>G</th>
+                                            <th>2'</th>
+                                            <th>R</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="liveOverviewStatsGegnerBody"></tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Content: Heatmap -->
+                <div id="liveOverviewContentHeatmap" class="versteckt">
+                    <div style="display: flex; flex-direction: column; align-items: center; gap: 20px;">
+                        <div style="display: flex; gap: 8px;">
+                            <button id="liveOverviewSubTabTor" class="dash-rsvp-modern-btn active" data-status="going">Tor</button>
+                            <button id="liveOverviewSubTabFeld" class="dash-rsvp-modern-btn">Feld</button>
+                            <button id="liveOverviewSubTabKombi" class="dash-rsvp-modern-btn">Kombiniert</button>
+                        </div>
+                        
+                        <div class="hub-card" style="width: 100%; max-width: 800px; text-align: center;">
+                            <div style="margin-bottom: 16px; display: flex; justify-content: center; gap: 20px; font-size: 0.85rem;">
+                                <label style="display: flex; align-items: center; gap: 6px; cursor: pointer;">
+                                    <input type="radio" name="liveOverviewHeatTeam" value="heim" checked> Heim
+                                </label>
+                                <label style="display: flex; align-items: center; gap: 6px; cursor: pointer;">
+                                    <input type="radio" name="liveOverviewHeatTeam" value="gegner"> Gegner
+                                </label>
+                                <span style="opacity: 0.2;">|</span>
+                                <label style="display: flex; align-items: center; gap: 6px; cursor: pointer;">
+                                    <input type="checkbox" id="liveOverviewHeatmapToreFilter" checked> Tore
+                                </label>
+                                <label style="display: flex; align-items: center; gap: 6px; cursor: pointer;">
+                                    <input type="checkbox" id="liveOverviewHeatmap7mFilter"> 7m
+                                </label>
+                                <label style="display: flex; align-items: center; gap: 6px; cursor: pointer;">
+                                    <input type="checkbox" id="liveOverviewHeatmapMissedFilter" checked> Fehl
+                                </label>
+                            </div>
+                            <svg id="liveOverviewHeatmapSvg" viewBox="0 0 300 200" style="width: 100%; max-height: 50vh; outline: 1px solid var(--hub-card-border);"></svg>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="hub-modal-footer">
+                <button class="hub-btn-outline" data-action="close-modal" style="width: 100%;">Schließen</button>
+            </div>
+        </div>
+    </div>
+
+
+    <!-- Modal: Bestätigung (Handball Hub) -->
+    <div id="customConfirmModal" class="modal-overlay hub-overlay-modern versteckt" style="z-index: 30000;">
+        <div class="hub-modal-card" style="width: 440px;">
+            <div class="hub-modal-header">
+                <h3 id="customConfirmTitle">Bestätigung</h3>
+                <button class="icon-btn-ghost" data-action="close-modal"><i data-lucide="x"></i></button>
+            </div>
+            <div class="hub-modal-body">
+                <p id="customConfirmMessage"></p>
+            </div>
+            <div class="hub-modal-footer" style="flex-direction: row; justify-content: flex-end; gap: 12px;">
+                <button id="customConfirmNo" class="hub-btn-outline">Abbrechen</button>
+                <button id="customConfirmYes" class="hub-btn-primary">Fortfahren</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal: Hinweis (Handball Hub) -->
+    <!-- Modal: Hinweis (Handball Hub) -->
+    <div id="customAlertModal" class="modal-overlay hub-overlay-modern versteckt" style="z-index: 35000;">
+        <div class="hub-modal-card" style="width: 440px;">
+            <div class="hub-modal-header">
+                <h3 id="customAlertTitle">Hinweis</h3>
+                <button class="icon-btn-ghost" data-action="close-modal"><i data-lucide="x"></i></button>
+            </div>
+            <div class="hub-modal-body">
+                <p id="customAlertMessage"></p>
+            </div>
+            <div class="hub-modal-footer">
+                <button id="customAlertOk" class="hub-btn-primary" style="width: 100%;">OK</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal: Eingabe (Handball Hub) -->
+    <div id="customPromptModal" class="modal-overlay hub-overlay-modern versteckt" style="z-index: 35000;">
+        <div class="hub-modal-card" style="width: 440px;">
+            <div class="hub-modal-header">
+                <h3 id="customPromptTitle">Eingabe</h3>
+                <button class="icon-btn-ghost" data-action="close-modal"><i data-lucide="x"></i></button>
+            </div>
+            <div class="hub-modal-body">
+                <p id="customPromptMessage" style="margin-bottom: 16px; opacity: 0.8;"></p>
+                <input type="text" id="customPromptInput" class="hub-input" placeholder="Text eingeben..." autocomplete="off">
+            </div>
+            <div class="hub-modal-footer" style="flex-direction: row; justify-content: flex-end; gap: 12px;">
+                <button id="customPromptCancel" class="hub-btn-outline">Abbrechen</button>
+                <button id="customPromptConfirm" class="hub-btn-primary">Bestätigen</button>
+            </div>
+        </div>
+    </div>
+
+        <!-- Load Play Modal -->
+        <div id="loadPlayModal" class="modal-overlay hub-overlay-modern versteckt">
+            <div class="hub-modal-card">
+                <div class="hub-modal-header">
+                    <h3>Spielzug laden</h3>
+                    <button id="closeLoadPlayModal" class="icon-btn-ghost"><i data-lucide="x"></i></button>
+                </div>
+                <div class="hub-modal-body">
+                    <div id="loadPlayList" class="play-list-container"
+                        style="display: flex; flex-direction: column; gap: 10px; max-height: 400px; overflow-y: auto;">
+                        <!-- Plays will be populated here -->
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </div> <!-- End of main-content -->
+
+    <!-- Attributed Player Modal (for Blocked Shot / Provoked fouls) -->
+    <div id="attributedPlayerModal" class="modal-overlay versteckt">
+        <div class="shadcn-modal-content" style="max-width: 600px;">
+            <div class="shadcn-modal-header">
+                <h3 id="attributedPlayerTitle">Spieler auswählen</h3>
+                <p id="attributedPlayerSubtitle">Wer war beteiligt?</p>
+            </div>
+            <div class="shadcn-modal-body" style="margin-top: 1rem;">
+                <div id="attributedPlayerList"
+                    style="display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 10px; max-height: 400px; overflow-y: auto; padding: 5px;">
+                    <!-- Players of the other team will be rendered here -->
+                </div>
+            </div>
+            <div class="shadcn-modal-footer">
+                <button class="shadcn-btn-outline" id="attributedPlayerCancel">Überspringen / Abbrechen</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Firebase Login Modal (shown before app loads) -->
+    <div id="firebaseLoginOverlay" style="
+        position: fixed; inset: 0;
+        z-index: 99999;
+        display: flex; align-items: center; justify-content: center;
+        background: hsl(222.2 84% 2%);
+        backdrop-filter: blur(12px);
+        transition: opacity 0.4s ease, visibility 0.4s;
+    ">
+        <div style="
+            width: 100%; max-width: 400px;
+            margin: 20px;
+            background: hsl(222.2, 84%, 4.9%);
+            border: 1px solid hsl(217.2, 32.6%, 17.5%);
+            border-radius: 0.75rem;
+            padding: 2.5rem;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+            animation: loginFadeIn 0.4s ease-out;
+            color: hsl(210, 40%, 98%);
+        ">
+            <!-- Header -->
+            <div style="text-align: center; margin-bottom: 2rem;">
+                <h1 style="font-size: 1.5rem; font-weight: 600; letter-spacing: -0.025em; margin-bottom: 0.5rem;">Sechsmeter</h1>
+                <p id="loginSubtitle" style="font-size: 0.875rem; color: hsl(215, 20.2%, 65.1%);">Melde dich an, um fortzufahren</p>
+            </div>
+
+            <!-- Form Body -->
+            <form id="loginFormElem" style="display: flex; flex-direction: column; gap: 1.25rem;">
+                <!-- Email Field -->
+                <div style="display: flex; flex-direction: column; gap: 0.5rem;">
+                    <label style="font-size: 0.875rem; font-weight: 500; line-height: 1;" for="loginEmailInput">E-Mail</label>
+                    <input id="loginEmailInput" type="email" placeholder="name@beispiel.de"
+                        autocomplete="email"
+                        style="
+                            height: 2.5rem; width: 100%;
+                            background: transparent;
+                            border: 1px solid hsl(217.2, 32.6%, 17.5%);
+                            border-radius: 0.375rem;
+                            padding: 0.5rem 0.75rem;
+                            font-size: 0.875rem;
+                            color: hsl(210, 40%, 98%);
+                            box-sizing: border-box;
+                            outline: none;
+                            transition: border-color 0.2s, ring 0.2s;
+                        "
+                        onfocus="this.style.borderColor='hsl(217.2, 91.2%, 59.8%)'; this.style.boxShadow='0 0 0 2px hsl(217.2, 91.2%, 59.8%, 0.3)'"
+                        onblur="this.style.borderColor='hsl(217.2, 32.6%, 17.5%)'; this.style.boxShadow='none'">
+                </div>
+
+                <!-- Password Field -->
+                <div style="display: flex; flex-direction: column; gap: 0.5rem;">
+                    <label style="font-size: 0.875rem; font-weight: 500; line-height: 1;" for="loginPasswordInput">Passwort</label>
+                    <input id="loginPasswordInput" type="password" placeholder="••••••••" autocomplete="current-password" style="height: 2.5rem; width: 100%; background: transparent; border: 1px solid rgb(30, 41, 59); border-radius: 0.375rem; padding: 0.5rem 0.75rem; font-size: 0.875rem; color: rgb(248, 250, 252); box-sizing: border-box; outline: none; transition: border-color 0.2s, ring 0.2s; box-shadow: none;" onfocus="this.style.borderColor='hsl(217.2, 91.2%, 59.8%)'; this.style.boxShadow='0 0 0 2px hsl(217.2, 91.2%, 59.8%, 0.3)'" onblur="this.style.borderColor='hsl(217.2, 32.6%, 17.5%)'; this.style.boxShadow='none'">
+                </div>
+
+                <!-- Error Message -->
+                <p id="loginErrorMessage" style="margin: 0; font-size: 0.8rem; color: #f87171; text-align: center; min-height: 1.25rem;"></p>
+
+                <!-- Action Button -->
+                <button id="loginSubmitBtn" type="button" style="
+                    margin-top: 0.5rem;
+                    height: 2.5rem; border-radius: 0.375rem;
+                    font-size: 0.875rem; font-weight: 500;
+                    background: hsl(210, 40%, 98%); color: hsl(222.2, 47.4%, 11.2%);
+                    border: none; cursor: pointer;
+                    transition: opacity 0.2s;
+                "
+                onmouseover="this.style.opacity='0.9'"
+                onmouseout="this.style.opacity='1'">
+                    Anmelden
+                </button>
+
+                <!-- Toggle Mode -->
+                <div style="text-align: center; margin-top: 0.5rem;">
+                    <button id="toggleAuthMode" style="
+                        background: none; border: none; 
+                        color: hsl(215, 20.2%, 65.1%); 
+                        font-size: 0.75rem; cursor: pointer;
+                        text-decoration: underline;
+                    ">Noch kein Konto? Registrieren</button>
+                </div>
+
+                <!-- Separator -->
+                <div style="position: relative; margin: 1rem 0;">
+                    <div style="position: absolute; inset: 0; display: flex; align-items: center;">
+                        <span style="width: 100%; border-top: 1px solid hsl(217.2, 32.6%, 17.5%);"></span>
+                    </div>
+                    <div style="position: relative; display: flex; justify-content: center; text-transform: uppercase; font-size: 0.75rem;">
+                        <span style="background: hsl(222.2, 84%, 4.9%); padding: 0 0.5rem; color: hsl(215, 20.2%, 65.1%);">Oder</span>
+                    </div>
+                </div>
+
+                <!-- Google Button -->
+                <button id="googleLoginBtn" style="
+                    height: 2.5rem; width: 100%;
+                    background: transparent;
+                    color: hsl(210, 40%, 98%);
+                    border: 1px solid hsl(217.2, 32.6%, 17.5%);
+                    border-radius: 0.375rem;
+                    font-size: 0.875rem; font-weight: 500;
+                    cursor: pointer;
+                    display: flex; align-items: center; justify-content: center; gap: 0.5rem;
+                    transition: background 0.2s;
+                "
+                onmouseover="this.style.background='hsl(217.2, 32.6%, 12%)'"
+                onmouseout="this.style.background='transparent'">
+                    <svg width="18" height="18" viewBox="0 0 18 18"><path d="M17.64 9.2c0-.63-.06-1.25-.16-1.84H9v3.49h4.84a4.14 4.14 0 0 1-1.8 2.71v2.24h2.92a8.83 8.83 0 0 0 2.68-6.6z" fill="#4285F4"/><path d="M9 18c2.43 0 4.47-.8 5.96-2.18l-2.92-2.24c-.81.54-1.84.87-3.04.87-2.33 0-4.3-1.58-5-3.71H.95v2.3A8.99 8.99 0 0 0 9 18z" fill="#34A853"/><path d="M4 10.74a5.4 5.4 0 0 1 0-3.48V4.96H.95a8.99 8.99 0 0 0 0 8.08L4 10.74z" fill="#FBBC05"/><path d="M9 3.58c1.32 0 2.5.45 3.44 1.35L15.02 2.3A8.99 8.99 0 0 0 9 0 8.99 8.99 0 0 0 .95 4.96L4 7.26c.7-2.13 2.67-3.68 5-3.68z" fill="#EA4335"/></svg>
+                    Google Anmeldung
+                </button>
+            </form>
+        </div>
+    </div>
+        </div>
+    </div>
+
+    <style>
+        @keyframes loginFadeIn {
+            from { opacity: 0; transform: translateY(20px) scale(0.97); }
+            to   { opacity: 1; transform: translateY(0) scale(1); }
+        }
+        #deleteTeamBtn { display: none; }
+    </style>
+
+    <!-- Modal: Subscription Settings (Hub Modern) -->
+    <div id="subSettingsOverlay" class="modal-overlay hub-overlay-modern versteckt">
+        <div id="subSettingsModal" class="hub-modal-card" style="width: 380px;">
+            <div class="hub-modal-header">
+                <h2>Abo-Einstellungen</h2>
+                <button id="closeSubSettingsBtn" class="icon-btn-ghost"><i data-lucide="x"></i></button>
+            </div>
+            <div class="hub-modal-body">
+                <div class="hub-field-group">
+                    <label class="hub-radio-pill" title="Grundpflicht bei Absage/Vlt">
+                        <input type="checkbox" id="modalSubRequireReason" />
+                        <span>Grundpflicht bei Absage/Vlt</span>
+                    </label>
+                </div>
+
+                <div class="hub-field-group" style="flex-direction: row; align-items: center; gap: 12px; margin-bottom: 24px;">
+                    <label class="hub-label" style="margin-bottom: 0;">Abmeldefrist (Std.):</label>
+                    <input type="number" id="modalSubDeadlineHours" class="hub-input" style="width: 80px;" min="0" />
+                </div>
+
+                <div class="hub-field-group">
+                    <label class="hub-radio-pill" title="Standardmäßig als 'Dabei' markieren">
+                        <input type="checkbox" id="modalSubDefaultStatus" />
+                        <span>Automatisch Dabei</span>
+                    </label>
+                </div>
+            </div>
+            <div class="hub-modal-footer">
+                <button id="saveSubSettingsBtn" class="hub-btn-primary" style="width: 100%;">Speichern</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal: Abwesenheit Melden (Hub Modern) -->
+    <div id="absenceModal" class="modal-overlay hub-overlay-modern versteckt">
+        <div class="hub-modal-card" style="width: 450px;">
+            <div class="hub-modal-header">
+                <h2>Abwesenheit melden</h2>
+                <button id="closeAbsenceBtn" class="icon-btn-ghost"><i data-lucide="x"></i></button>
+            </div>
+            
+            <div class="hub-modal-body">
+                <div class="hub-field-group">
+                    <label class="hub-label">Grund</label>
+                    <input type="text" id="absenceReasonInput" class="hub-input" placeholder="Urlaub, Verletzt, Arbeit...">
+                </div>
+                
+                <div class="hub-field-group">
+                    <label class="hub-label">Typ der Abwesenheit</label>
+                    <div class="hub-radio-group">
+                        <label class="hub-radio-pill training">
+                            <input type="radio" name="absenceType" id="absenceTypeRange" checked>
+                            <span>Zeitraum</span>
+                        </label>
+                        <label class="hub-radio-pill game">
+                            <input type="radio" name="absenceType" id="absenceTypeWeekly">
+                            <span>Wöchentlich</span>
+                        </label>
+                    </div>
+                </div>
+
+                <div id="absenceRangeSettings" class="hub-field-group" style="margin-top: 10px;">
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                        <div>
+                            <label class="hub-label">Start</label>
+                            <input type="date" id="absenceStartDate" class="hub-input">
+                        </div>
+                        <div>
+                            <label class="hub-label">Ende (Opt.)</label>
+                            <input type="date" id="absenceEndDate" class="hub-input">
+                        </div>
+                    </div>
+                </div>
+
+                <div id="absenceWeeklySettings" class="hub-field-group versteckt" style="margin-top: 10px;">
+                    <label class="hub-label">Wochentag</label>
+                    <select id="absenceWeekdaySelect" class="hub-input">
+                        <option value="1">Montag</option>
+                        <option value="2">Dienstag</option>
+                        <option value="3">Mittwoch</option>
+                        <option value="4">Donnerstag</option>
+                        <option value="5">Freitag</option>
+                        <option value="6">Samstag</option>
+                        <option value="0">Sonntag</option>
+                    </select>
+                </div>
+
+                <div id="absenceListContainer" class="hub-attendance-section" style="margin-top: 28px; border-top: 1px solid rgba(255,255,255,0.05); padding-top: 20px;">
+                    <h3 style="font-size: 0.8rem; font-weight: 800; color: #64748b; text-transform: uppercase;">Deine Meldungen</h3>
+                    <div id="absenceList" class="manage-list-modern" style="max-height: 180px; margin-top: 12px;">
+                        <!-- JS fills this -->
+                    </div>
+                </div>
+            </div>
+            
+            <div class="hub-modal-footer">
+                <button id="saveAbsenceBtn" class="hub-btn-primary" style="width: 100%;">Abspeichern</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Initialize Lucide Icons
+        if (typeof lucide !== 'undefined') {
+            lucide.createIcons();
+        } else {
+            window.addEventListener('load', () => {
+                if (typeof lucide !== 'undefined') lucide.createIcons();
+            });
+        }
+    </script>
+
+    <!-- Result Image Modal -->
+    <div id="resultImageModal" class="modal-overlay versteckt" style="z-index: 10000;">
+        <div class="result-image-modal-content">
+            <div class="result-image-header">
+                <h3 style="margin: 0; font-size: 1.1rem;">Instagram Ergebnisbild</h3>
+                <button data-action="close-modal" class="shadcn-btn-outline" style="padding: 4px 8px; border: none;">
+                    <i data-lucide="x" style="width: 18px; height: 18px;"></i>
+                </button>
+            </div>
+
+            <!-- New Toolbar above Canvas for Editor Controls -->
+            <div id="smEditorToolbar" class="versteckt" style="padding: 10px 16px; background: rgba(0,0,0,0.3); border-bottom: 1px solid var(--border-color); display: flex; flex-direction: column; gap: 8px;">
+                <div style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
+                    <div style="background: rgba(59, 130, 246, 0.1); color: #3b82f6; padding: 4px 12px; border-radius: 20px; font-size: 0.75rem; border: 1px solid rgba(59, 130, 246, 0.2);">
+                        <i data-lucide="move" style="width: 14px; height: 14px; display: inline-block; vertical-align: -2px; margin-right: 4px;"></i>
+                        Verschieben aktiv (20px Raster)
+                    </div>
+                    <div style="display: flex; gap: 4px;">
+                        <button id="smAddTextBtn" class="shadcn-btn-outline" style="height: 28px; padding: 0 10px; font-size: 0.75rem; border-radius: 6px; background: rgba(255,255,255,0.05);">+ Text</button>
+                        <button id="smAddLineBtn" class="shadcn-btn-outline" style="height: 28px; padding: 0 10px; font-size: 0.75rem; border-radius: 6px; background: rgba(255,255,255,0.05);">+ Linie</button>
+                    </div>
+                </div>
+
+                <!-- Element Properties (shown when element selected) -->
+                <div id="smElementPropsPanel" class="versteckt" style="display: flex; gap: 12px; align-items: center; background: rgba(255,255,255,0.05); padding: 8px 12px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.1); flex-wrap: wrap;">
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                        <label style="font-size: 0.75rem; color: var(--text-muted); white-space: nowrap;">Schriftgröße:</label>
+                        <input type="range" id="smElFontSize" min="10" max="250" value="24" style="width: 100px; height: 18px; accent-color: #3b82f6;">
+                        <span id="smElFontSizeVal" style="font-size: 0.75rem; color: white; min-width: 25px; font-weight: 500;">24</span>
+                    </div>
+                    <div style="height: 20px; width: 1px; background: rgba(255,255,255,0.1);"></div>
+                    <select id="smElFontFamily" style="height: 28px; font-size: 0.75rem; border-radius: 6px; background: rgba(0,0,0,0.8); border: 1px solid rgba(255,255,255,0.2); color: white; cursor: pointer; padding: 0 4px; outline: none; width: 140px;">
+                        <option value="Oswald" style="font-family: 'Oswald'; background: #1a1a1a;">Oswald</option>
+                        <option value="Inter" style="font-family: 'Inter'; background: #1a1a1a;">Inter</option>
+                        <option value="Bebas Neue" style="font-family: 'Bebas Neue'; background: #1a1a1a;">Bebas Neue</option>
+                        <option value="Anton" style="font-family: 'Anton'; background: #1a1a1a;">Anton</option>
+                        <option value="Montserrat" style="font-family: 'Montserrat'; background: #1a1a1a;">Montserrat</option>
+                        <option value="Roboto Condensed" style="font-family: 'Roboto Condensed'; background: #1a1a1a;">Roboto Condensed</option>
+                        <option value="Titillium Web" style="font-family: 'Titillium Web'; background: #1a1a1a;">Titillium Web</option>
+                        <option value="Teko" style="font-family: 'Teko'; background: #1a1a1a;">Teko</option>
+                        <option value="Kanit" style="font-family: 'Kanit'; background: #1a1a1a;">Kanit</option>
+                        <option value="Chakra Petch" style="font-family: 'Chakra Petch'; background: #1a1a1a;">Chakra Petch</option>
+                        <option value="Righteous" style="font-family: 'Righteous'; background: #1a1a1a;">Righteous</option>
+                        <option value="Saira Extra Condensed" style="font-family: 'Saira Extra Condensed'; background: #1a1a1a;">Saira Condensed</option>
+                        <option value="Lobster" style="font-family: 'Lobster'; background: #1a1a1a;">Lobster</option>
+                        <option value="Playfair Display" style="font-family: 'Playfair Display'; background: #1a1a1a;">Playfair Display</option>
+                    </select>
+                    <button id="smElBoldToggle" class="shadcn-btn-outline" style="height: 28px; width: 32px; padding: 0; font-weight: bold;" title="Fett">B</button>
+                    <button id="smElDeleteBtn" class="shadcn-btn-outline" style="height: 28px; width: 32px; padding: 0; color: #ef4444; border-color: rgba(239,68,68,0.2);" title="Element löschen">✕</button>
+                </div>
+            </div>
+
+            <div class="result-image-canvas-wrapper" style="position: relative;">
+                <canvas id="resultImageCanvas" width="1080" height="1080"></canvas>
+                <div id="resultImageEditorOverlay" class="versteckt" style="position: absolute; top: 16px; left: 16px; right: 16px; display: flex; flex-direction: column; gap: 8px; pointer-events: none;">
+                    <div style="display: flex; justify-content: flex-end; width: 100%;">
+                        <div style="display: flex; gap: 4px; pointer-events: auto;">
+                            <button class="sm-sandbox-btn" data-mock="home-win" title="Heimsieg testen" style="height: 28px; padding: 0 10px; font-size: 0.75rem; border-radius: 14px; background: rgba(0,0,0,0.7); border: 1px solid rgba(255,255,255,0.2); color: white; margin: 0;">Heim</button>
+                            <button class="sm-sandbox-btn" data-mock="draw" title="Unentschieden testen" style="height: 28px; padding: 0 10px; font-size: 0.75rem; border-radius: 14px; background: rgba(0,0,0,0.7); border: 1px solid rgba(255,255,255,0.2); color: white; margin: 0;">Remis</button>
+                            <button class="sm-sandbox-btn" data-mock="away-win" title="Niederlage testen" style="height: 28px; padding: 0 10px; font-size: 0.75rem; border-radius: 14px; background: rgba(0,0,0,0.7); border: 1px solid rgba(255,255,255,0.2); color: white; margin: 0;">Gast</button>
+                            <button class="sm-sandbox-btn" data-mock="away-loss" title="Auswärtssieg testen" style="height: 28px; padding: 0 10px; font-size: 0.75rem; border-radius: 14px; background: rgba(0,0,0,0.7); border: 1px solid rgba(255,255,255,0.2); color: white; margin: 0;">A-Sieg</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div id="resultImageEditorControlsArea" class="result-image-editor-controls" style="padding: 12px 20px; border-top: 1px solid var(--border-color, rgba(255,255,255,0.1)); display: flex; gap: 8px; background: rgba(0,0,0,0.2);">
+                <button id="toggleImageEditorBtn" class="shadcn-btn-outline" style="flex: 1; font-size: 0.85rem; padding: 6px;">
+                    <i data-lucide="edit-3" style="width: 16px; height: 16px; margin-right: 6px;"></i> Layout bearbeiten
+                </button>
+                <button id="saveStandardLayoutBtn" class="shadcn-btn-primary versteckt" style="font-size: 0.85rem; padding: 6px 12px;" title="Aktuelles Layout als Standard speichern">
+                    <i data-lucide="check" style="width: 16px; height: 16px; margin-right: 6px;"></i> Speichern
+                </button>
+                <button id="saveImageLayoutBtn" class="shadcn-btn-outline" style="font-size: 0.85rem; padding: 6px 12px;" title="Als neues Design speichern">
+                    <i data-lucide="save" style="width: 16px; height: 16px; margin-right: 6px;"></i> Als Design speichern
+                </button>
+                <button id="resetImageLayoutBtn" class="shadcn-btn-outline" style="font-size: 0.85rem; padding: 6px 12px; color: var(--text-muted);" title="Positionen zurücksetzen">
+                    <i data-lucide="rotate-ccw" style="width: 16px; height: 16px;"></i>
+                </button>
+            </div>
+
+            <!-- Correction Panel (hidden by default) -->
+            <div id="smDataCorrectionPanel" class="versteckt" style="padding: 12px 20px; border-top: 1px solid var(--border-color); background: rgba(0,0,0,0.3); animation: slideDown 0.2s ease;">
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+                    <div>
+                        <label style="font-size: 0.75rem; color: var(--text-muted); display: block; margin-bottom: 4px;">Ergebnis Korrigieren</label>
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <input type="number" id="corrScoreHeim" style="width: 50px; background: rgba(255,255,255,0.05); border: 1px solid var(--border-color); color: white; border-radius: 4px; padding: 4px;" placeholder="Heim">
+                            <span style="color: var(--text-muted)">:</span>
+                            <input type="number" id="corrScoreGegner" style="width: 50px; background: rgba(255,255,255,0.05); border: 1px solid var(--border-color); color: white; border-radius: 4px; padding: 4px;" placeholder="Gast">
+                        </div>
+                    </div>
+                    <div>
+                        <label style="font-size: 0.75rem; color: var(--text-muted); display: block; margin-bottom: 4px;">Anpfiff Korrigieren</label>
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <input type="date" id="corrDate" style="background: rgba(255,255,255,0.05); border: 1px solid var(--border-color); color: white; border-radius: 4px; padding: 4px; font-size: 0.75rem;">
+                            <input type="time" id="corrTime" style="background: rgba(255,255,255,0.05); border: 1px solid var(--border-color); color: white; border-radius: 4px; padding: 4px; font-size: 0.75rem;">
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <!-- Instagram Caption Section (New) -->
+            <div id="smInstagramCaptionArea" class="versteckt" style="padding: 12px 20px; border-top: 1px solid var(--border-color); background: rgba(0,0,0,0.2);">
+                <label style="font-size: 0.75rem; color: var(--text-muted); display: block; margin-bottom: 8px;">Instagram Bildunterschrift</label>
+                <div style="position: relative;">
+                    <textarea id="smInstagramCaptionText" readonly style="width: 100%; height: 100px; background: rgba(0,0,0,0.3); border: 1px solid var(--border-color); color: white; border-radius: 8px; padding: 10px; font-size: 0.85rem; resize: none; font-family: inherit; outline: none;"></textarea>
+                    <button id="copySmCaptionBtn" class="shadcn-btn-outline" style="position: absolute; top: 8px; right: 8px; padding: 4px 8px; height: auto; font-size: 0.7rem; background: rgba(0,0,0,0.5); border-radius: 6px;">
+                        <i data-lucide="copy" style="width: 14px; height: 14px; margin-right: 4px; display: inline-block; vertical-align: -2px;"></i> Kopieren
+                    </button>
+                </div>
+            </div>
+
+            <div id="resultImageDownloadControlsArea" class="result-image-actions" style="padding: 12px 20px; display: flex; gap: 8px;">
+                <button id="toggleDataCorrectionBtn" class="shadcn-btn-outline" style="font-size: 0.85rem; padding: 6px 12px;">
+                    <i data-lucide="settings-2" style="width: 16px; height: 16px; margin-right: 6px;"></i> Daten anpassen
+                </button>
+                <button id="downloadResultImage" class="shadcn-btn-primary" style="flex: 1;">
+                    <i data-lucide="download" style="width: 16px; height: 16px; margin-right: 8px;"></i>
+                    Bild speichern
+                </button>
+                <button data-action="close-modal" class="shadcn-btn-outline" style="flex: 1;">Schließen</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- SM Designs Presets Modal -->
+    <div id="smDesignsModal" class="modal-overlay versteckt" style="z-index: 10006;">
+        <div class="shadcn-modal-content" style="max-width: 500px; width: 95%;">
+            <div class="shadcn-modal-header" style="flex-direction: column; align-items: flex-start; padding: 20px;">
+                <h3 style="margin: 0; font-size: 1.25rem;">Gespeicherte Designs</h3>
+                <p style="margin: 4px 0 0 0; font-size: 0.85rem; color: var(--text-muted);">Verwalte deine Layout-Vorlagen für Instagram.</p>
+            </div>
+            <div id="smDesignsList" style="max-height: 400px; overflow-y: auto; padding: 0 20px 20px 20px; display: flex; flex-direction: column; gap: 10px;">
+                <!-- List items injected via JS -->
+                <div style="text-align: center; padding: 40px; color: var(--text-muted); font-size: 0.9rem;">
+                    Keine gespeicherten Designs gefunden.
+                </div>
+            </div>
+            <div class="shadcn-modal-footer" style="padding: 15px 20px; background: rgba(0,0,0,0.1); border-top: 1px solid var(--border-color);">
+                <button class="shadcn-btn-outline" data-action="close-modal" style="width: 100%;">Schließen</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Google Fonts for Social Media Images -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Montserrat:wght@400;700;900&family=Oswald:wght@400;700&family=Roboto+Condensed:wght@400;700&display=swap" rel="stylesheet">
+    <!-- Handball.net Import Modal -->
+    <div id="importHandballNetModal" class="modal-overlay versteckt" style="z-index: 10007;">
+        <div class="shadcn-modal-content" style="max-width: 500px;">
+            <div class="shadcn-modal-header">
+                <h3>Spiel von Handball.net importieren</h3>
+                <p style="font-size: 0.85rem; color: var(--text-muted);">Füge den Link zum Spielbericht ein, um Ergebnisse und Torschützen zu importieren.</p>
+            </div>
+            <div class="shadcn-modal-body" style="padding: 20px; display: flex; flex-direction: column; gap: 15px;">
+                <div style="display: flex; flex-direction: column; gap: 8px;">
+                    <label style="font-size: 0.85rem; font-weight: 500;">Spielbericht URL:</label>
+                    <input type="text" id="handballNetImportUrl" placeholder="https://www.handball.net/spiele/.../spielbericht" class="shadcn-input" style="width: 100%;">
+                </div>
+                <div id="importStatus" class="versteckt" style="padding: 10px; border-radius: 6px; font-size: 0.85rem;">
+                    <!-- Status message -->
+                </div>
+            </div>
+            <div class="shadcn-modal-footer">
+                <button id="cancelImportBtn" data-action="close-modal" class="shadcn-btn-outline">Abbrechen</button>
+                <button id="confirmImportBtn" data-action="import-handball-net-confirm" class="shadcn-btn-primary">Importieren</button>
+            </div>
+        </div>
+    </div>
+</body>
+
+</html>

@@ -70,9 +70,13 @@ import { saveCurrentTeam, showLoadTeamModal, loadSavedTeam, deleteSavedTeam, vie
 import { openSeasonOverview, closeSeasonOverview, showPlayerHeatmap, showTeamHeatmap } from './seasonView.js';
 import { customAlert } from './customDialog.js';
 import { validateTeamSettings, initSettingsPage, saveMyTeamName, saveMyTeamColor, updateRosterInputsForValidation, toggleValidation } from './settingsManager.js';
+import { addFineToCatalog, issueFine, renderFinesView, updateFinesSettings } from './fines.js';
 
 // --- Register All Event Listeners ---
+let listenersRegistered = false;
 export function registerEventListeners() {
+    if (listenersRegistered) return;
+    listenersRegistered = true;
     // === Bildschirm 1: Roster ===
     addPlayerForm.addEventListener('submit', addPlayer);
     cancelEditButton.addEventListener('click', schliesseEditModus);
@@ -1261,6 +1265,33 @@ export function registerEventListeners() {
     if (closeEventModal) closeEventModal.addEventListener('click', closeAddEventModal);
     if (cancelEventBtn) cancelEventBtn.addEventListener('click', closeAddEventModal);
     if (saveEventBtn) saveEventBtn.addEventListener('click', saveEvent);
+
+
+    // Tab Switching
+    document.querySelectorAll('[data-action="fines-tab"]').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            const tabId = e.currentTarget.dataset.tab;
+            document.querySelectorAll('.fines-tab-content').forEach(c => c.classList.add('versteckt'));
+            document.getElementById(tabId).classList.remove('versteckt');
+            document.querySelectorAll('[data-action="fines-tab"]').forEach(b => b.classList.remove('active'));
+            e.currentTarget.classList.add('active');
+        });
+    });
+
+    // Fines Settings Listeners
+    const triggerFinesUpdate = () => {
+        const enabled = document.getElementById('finesEnableMonthlyBtn').checked;
+        const std = document.getElementById('finesStandardAmountInput').value;
+        const red = document.getElementById('finesReducedAmountInput').value;
+        updateFinesSettings(enabled, std, red);
+    };
+
+    ['finesEnableMonthlyBtn', 'finesStandardAmountInput', 'finesReducedAmountInput'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) {
+            el.addEventListener('change', triggerFinesUpdate);
+        }
+    });
 }
 
 // Live Overview Filters

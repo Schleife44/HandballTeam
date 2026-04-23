@@ -52,6 +52,7 @@ let staticSaveDebounceTimer = null; // Separate timer for large/static data
 let teamsSaveDebounceTimer = null;
 let snapshotUnsubscribe = null;
 let isReceivingRemoteUpdate = false;
+let isInitialSyncDone = false; // Sync Shield: Block cloud saves until first handshake
 
 // ─── Dynamic Paths ────────────────────────────────────────────────────────────
 const getGameDoc = (teamId, gameId = 'current') => doc(db, 'teams', teamId, 'games', gameId);
@@ -793,13 +794,18 @@ export async function saveSpielstandToFirestoreImmediate(spielstand) {
  * Optimized Save: Splits data into groups to reduce writes and bandwidth.
  */
 export function saveSpielstandToFirestore(spielstand) {
-    if (!isOnline || isReceivingRemoteUpdate || !activeTeamId) return;
+    if (!isOnline || isReceivingRemoteUpdate || !activeTeamId || !isInitialSyncDone) {
+        if (!isInitialSyncDone && activeTeamId) {
+            console.log('[Firebase] Sync Shield: Blocking save until first handshake.');
+        }
+        return;
+    }
 
     // ─── 1. Volatile Data (High Frequency) ───
     // Includes Score, Timer (sync events), and active suspensions.
     clearTimeout(saveDebounceTimer);
     saveDebounceTimer = setTimeout(async () => {
-        if (isReceivingRemoteUpdate) return;
+        if (isReceivingRemoteUpdate || !isInitialSyncDone) return;
         try {
             updateStatusIndicator('saving');
             const payload = buildFirestorePayload(spielstand, 'volatile');
@@ -819,7 +825,7 @@ export function saveSpielstandToFirestore(spielstand) {
     // Includes Roster, GameLog, Settings, Calendar.
     clearTimeout(staticSaveDebounceTimer);
     staticSaveDebounceTimer = setTimeout(async () => {
-        if (isReceivingRemoteUpdate) return;
+        if (isReceivingRemoteUpdate || !isInitialSyncDone) return;
         try {
             console.log('[Firebase] Saving static/large data chunk...');
             const payload = buildFirestorePayload(spielstand, 'static');
@@ -864,6 +870,12 @@ export function startSpielstandListener(callback) {
             callback(snap.data());
             // Small debounce to prevent the immediate UI refresh from triggering a save back
             setTimeout(() => { isReceivingRemoteUpdate = false; }, 100);
+        }
+        
+        // Mark sync as initialized after first resolution (even if doc doesn't exist yet)
+        if (!isInitialSyncDone) {
+            console.log('[Firebase] Initial Sync Completed. Shield deactivated.');
+            isInitialSyncDone = true;
         }
     }, async (err) => {
         console.error('[Firebase] Snapshot error:', err);

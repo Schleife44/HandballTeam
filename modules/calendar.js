@@ -144,7 +144,7 @@ export function initCalendar() {
     // Recurrence Toggle Listener
     if (eventRepeatInput) {
         eventRepeatInput.addEventListener('change', (e) => {
-            if (e.target.checked) {
+            if (e.target.value !== 'none') {
                 recurrenceOptions.classList.remove('versteckt');
             } else {
                 recurrenceOptions.classList.add('versteckt');
@@ -725,7 +725,7 @@ export function saveEvent() {
     const type = document.querySelector('input[name="eventType"]:checked').value;
 
     // Recurrence
-    const repeat = eventRepeatInput && eventRepeatInput.checked;
+    const repeat = eventRepeatInput && eventRepeatInput.value !== 'none';
     const repeatEndStr = eventRepeatEndInput ? eventRepeatEndInput.value : null;
 
     // Optional Title for Training

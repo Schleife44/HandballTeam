@@ -88,8 +88,17 @@ export function applyViewSettings() {
 
 export function initSidebarGroups() {
     const liveGroup = document.getElementById('nav-group-live');
-    const isGameActive = spielstand.gameLog && spielstand.gameLog.length > 0;
-    if (liveGroup) liveGroup.classList.toggle('collapsed', !isGameActive);
+    const liveToggle = document.querySelector('[data-group="live"] .nav-group-toggle');
+    
+    // "Active" means game is actually running or has data and was not finished
+    const isGameActive = spielstand.isSpielAktiv || (spielstand.gameLog && spielstand.gameLog.length > 0 && spielstand.timer.gamePhase < 5);
+    
+    if (liveGroup) {
+        liveGroup.classList.toggle('collapsed', !isGameActive);
+        if (liveToggle) {
+            liveToggle.classList.toggle('rotated', !isGameActive);
+        }
+    }
 }
 
 export function updateScoreDisplay() {

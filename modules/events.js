@@ -504,6 +504,55 @@ export function initEventListeners() {
                     handleRouting();
                 }
                 break;
+            
+            // --- Fines & Cashbox ---
+            case 'fines-open-issue-modal': {
+                const overlay = document.getElementById('issueFineOverlay');
+                if (overlay) {
+                    const pSel = document.getElementById('issueFinePlayerSelect');
+                    if (pSel) {
+                        pSel.innerHTML = spielstand.roster.map(p => `<option value="${p.name}">${p.name}</option>`).join('');
+                    }
+                    const cSel = document.getElementById('issueFineCatalogSelect');
+                    if (cSel) {
+                        cSel.innerHTML = (spielstand.finesCatalog || []).map(f => `<option value="${f.id}">${f.name} (${f.amount.toFixed(2)} €)</option>`).join('');
+                    }
+                    overlay.classList.remove('versteckt');
+                }
+                break;
+            }
+            case 'fines-confirm-issue': {
+                const pName = document.getElementById('issueFinePlayerSelect')?.value;
+                const fId = document.getElementById('issueFineCatalogSelect')?.value;
+                const customAmt = document.getElementById('issueFineAmountInput')?.value;
+                if (pName && fId) {
+                    const mod = await import('./fines.js');
+                    mod.issueFine(pName, fId, customAmt);
+                    document.getElementById('issueFineOverlay')?.classList.add('versteckt');
+                    const amtInput = document.getElementById('issueFineAmountInput');
+                    if (amtInput) amtInput.value = '';
+                }
+                break;
+            }
+            case 'fines-open-catalog-modal': {
+                const overlay = document.getElementById('fineCatalogOverlay');
+                if (overlay) overlay.classList.remove('versteckt');
+                break;
+            }
+            case 'fines-save-catalog': {
+                const name = document.getElementById('catalogFineNameInput')?.value;
+                const amount = document.getElementById('catalogFineAmountInput')?.value;
+                if (name && amount) {
+                    const mod = await import('./fines.js');
+                    mod.addFineToCatalog(name, amount);
+                    document.getElementById('fineCatalogOverlay')?.classList.add('versteckt');
+                    const nameIn = document.getElementById('catalogFineNameInput');
+                    const amtIn = document.getElementById('catalogFineAmountInput');
+                    if (nameIn) nameIn.value = '';
+                    if (amtIn) amtIn.value = '';
+                }
+                break;
+            }
 
             default:
                 // If action is not handled here, it might be handled by legacy listeners 

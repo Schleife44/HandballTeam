@@ -26,7 +26,7 @@ export let spielstand = {
     },
     activeSuspensions: [],
     settings: {
-        darkMode: false,
+        darkMode: true,
 
         showWurfbildHeim: true,
         showWurfbildGegner: true,
@@ -34,7 +34,7 @@ export let spielstand = {
         showWurfpositionGegner: true,
         teamNameHeim: 'Heim',
         teamNameGegner: 'Gegner',
-        teamColor: '#dc3545', // Default Red
+        teamColor: '#84cc16', // Default Brand Green
         teamColorGegner: '#2563eb', // Default Blue
         isAuswaertsspiel: false,
         combinedThrowMode: true, // false = hintereinander, true = kombiniert
@@ -44,7 +44,7 @@ export let spielstand = {
         // Team identity settings (cross-game)
         teamSettingsValidated: false,
         myTeamName: '',
-        myTeamColor: '#dc3545',
+        myTeamColor: '#84cc16',
 
         // New Calendar Settings
         calendar: {
@@ -57,7 +57,20 @@ export let spielstand = {
     calendarEvents: [], // { id, title, type, date, time, location }
     calendarSubscriptions: [], // { id, url, title, lastUpdated }
     rosterAssignments: {}, // { uid: 'Spieler Name' } - Wer ist welcher Kader-Spieler
-    activeProfilePlayer: { index: null, isOpponent: false } // Tracking for player profile page
+    activeProfilePlayer: { index: null, isOpponent: false }, // Tracking for player profile page
+    finesStatus: {}, // { "Player Name": "standard" | "reduced" | "excluded" }
+
+    // New: Fines and Cashbox
+    finesCatalog: [], // { id, name, amount }
+    finesHistory: [],  // { id, playerId, fineId, date, paid: false, amount: 2.00, note: '' }
+
+    // Monthly Fee Settings
+    finesSettings: {
+        enabled: false,
+        amountStandard: 10,
+        amountReduced: 5,
+        lastProcessedMonth: '' // YYYY-MM
+    }
 };
 
 // --- Deep Clone of Initial State for Reset ---
@@ -107,7 +120,7 @@ export function ladeSpielstandDaten() {
         // Team identity defaults
         if (typeof spielstand.settings.teamSettingsValidated === 'undefined') spielstand.settings.teamSettingsValidated = false;
         if (!spielstand.settings.myTeamName) spielstand.settings.myTeamName = '';
-        if (!spielstand.settings.myTeamColor) spielstand.settings.myTeamColor = '#dc3545';
+        if (!spielstand.settings.myTeamColor) spielstand.settings.myTeamColor = '#84cc16';
         
         // --- SANITY CHECK: isSpielAktiv vs gamePhase ---
         // 1=Vor Spiel, 2=1. HZ, 3=Halbzeit, 4=2. HZ, 5=Beendet
@@ -140,6 +153,14 @@ export function ladeSpielstandDaten() {
 }
 
 /**
+ * Checks if a specific UID is already assigned to a player in the roster.
+ */
+export function isUserAssigned(uid) {
+    if (!uid) return false;
+    return !!(spielstand.rosterAssignments && spielstand.rosterAssignments[uid]);
+}
+
+/**
  * Merge remote Firestore data into the local spielstand.
  * Called by the onSnapshot listener whenever remote data changes.
  * @param {Object} remoteData
@@ -150,6 +171,17 @@ export function mergeRemoteSpielstand(remoteData) {
         // --- CRITICAL FIX: Preserve Local Selection ---
         // Stored local selection should not be overwritten by remote sync unless explicitly needed.
         const localSelection = JSON.parse(JSON.stringify(spielstand.selectedPlayer || { index: null, team: null, gegnerNummer: null, name: null }));
+
+        // --- SAFETY: Prevent empty remote data from wiping populated local state ---
+        // This is a secondary defense layer for the Sync Shield in firebase.js
+        if (remoteData.roster && remoteData.roster.length === 0 && spielstand.roster && spielstand.roster.length > 0) {
+            console.warn('[State] Remote roster is empty, keeping local data as safety.');
+            delete remoteData.roster;
+        }
+        if (remoteData.calendarEvents && remoteData.calendarEvents.length === 0 && spielstand.calendarEvents && spielstand.calendarEvents.length > 0) {
+            console.warn('[State] Remote calendar is empty, keeping local data as safety.');
+            delete remoteData.calendarEvents;
+        }
 
         // Synchronize all keys from remote to local
         const syncFields = [

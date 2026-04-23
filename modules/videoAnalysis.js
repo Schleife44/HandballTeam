@@ -1121,7 +1121,6 @@ function renderTimelineMarkers() {
         const offset = (h === 1) ? videoOffsets.h1 : videoOffsets.h2;
         
         // --- POSITIONING LOGIC ---
-        // For virtual timeline width, we still need calculated game times
         let virtualEventTime = 0;
         if (h === 1) {
             virtualEventTime = Math.min(1800, gameSecs);
@@ -1131,73 +1130,86 @@ function renderTimelineMarkers() {
         }
 
         const pct = (virtualEventTime / 3600) * 100;
-        
-        // --- SEEKING LOGIC (Marker specific) ---
-        // Use the unified estimation logic (Anchor/Timestamp/Linear)
         const markerVTime = getEstimatedVideoTime(entry);
         if (markerVTime === null || markerVTime === -1) return; 
 
-        const dot = document.createElement('div');
-        // ... rest of dot creation ...
-        dot.className = 'timeline-marker';
-        dot.style.position = 'absolute';
-        dot.style.left = pct + '%';
+        // Icon Mapping based on action
+        let iconName = 'circle';
+        let color = '#94a3b8';
+        const actionText = (entry.action || '').toLowerCase();
         
-        // --- NEW TRACK LOGIC (Home vs Away) ---
-        const action = (entry.action || "").toLowerCase();
-        const isOpponent = action.includes("gegner") || action.includes("gast") || entry.gegnerNummer;
-        
-        // Base Y position (Home: 10-45%, Away: 55-90%)
-        let yBase = isOpponent ? 55 : 10;
-        let yOffset = 15; 
-        let color = 'rgba(255,255,255,0.6)';
-        
-        if (action.includes("tor")) {
-            yOffset = 8; 
-            color = '#22c55e';
-        } else if (action.includes("fehlwurf") || action.includes("pfosten") || action.includes("latte") || action.includes("gehalten")) {
-            yOffset = 8; 
-            color = '#ef4444';
-        } else if (action.includes("karte") || action.includes("minuten") || action.includes("hinausstellung") || action.includes("bestrafung") || action.includes("gelb") || action.includes("rot") || action.includes("2 min")) {
-            yOffset = 25; 
-            color = '#eab308';
-        } else if (action.includes("timeout")) {
-            yOffset = 35; 
-            color = '#3b82f6';
-        } else {
-            yOffset = 35;
+        if (actionText.includes("tor")) {
+            iconName = 'circle-dot';
+            color = '#22c55e'; // Green
+        } else if (actionText.includes("fehlwurf") || actionText.includes("gehalten") || actionText.includes("pfosten")) {
+            iconName = 'x-circle';
+            color = '#ef4444'; // Red
+        } else if (actionText.includes("karte") || actionText.includes("minuten") || actionText.includes("bestrafung") || actionText.includes("gelb") || actionText.includes("rot")) {
+            iconName = 'alert-triangle';
+            color = '#eab308'; // Yellow
+        } else if (actionText.includes("timeout")) {
+            iconName = 'clock';
+            color = '#3b82f6'; // Blue
         }
 
-        const finalTop = yBase + yOffset;
-        const displayTime = formatiereZeit(gameSecs);
+        const isHome = !entry.gegnerNummer;
         
-        dot.style.top = finalTop + '%';
-        dot.style.transform = 'translate(-50%, -50%)';
-        dot.style.width = '10px';
-        dot.style.height = '10px';
-        dot.style.borderRadius = '50%';
-        dot.style.border = '2px solid rgba(255,255,255,1)';
-        dot.style.zIndex = '3';
-        dot.style.cursor = 'pointer';
-        dot.style.background = color;
-        dot.title = `${displayTime}: ${entry.playerName || ''} - ${entry.action}`;
+        const container = document.createElement('div');
+        container.className = 'timeline-marker-composite';
+        container.style.position = 'absolute';
+        container.style.left = pct + '%';
+        container.style.transform = 'translateX(-50%)';
+        container.style.display = 'flex';
+        container.style.flexDirection = 'column';
+        container.style.alignItems = 'center';
+        container.style.zIndex = '10';
+        container.style.cursor = 'pointer';
+        container.style.width = '30px'; // Wider hit area
+        
+        const iconHtml = (iconName === 'circle-dot') 
+            ? `<svg viewBox="0 0 24 24" style="width: 16px; height: 16px; fill: ${color}; stroke: none;"><circle cx="12" cy="12" r="10" opacity="0.3" /><path d="M12 2C6.47 2 2 6.47 2 12s4.47 10 10 10 10-4.47 10-10S17.53 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm0-14c-3.31 0-6 2.69-6 6s2.69 6 6 6 6-2.69 6-6-2.69-6-6-6z" /></svg>`
+            : `<i data-lucide="${iconName}" style="width: 14px; height: 14px; color: ${color}; stroke-width: 2.5px;"></i>`;
+        
+        const arrowHtml = `<div style="width: 0; height: 0; border-left: 4px solid transparent; border-right: 4px solid transparent; border-${isHome ? 'top' : 'bottom'}: 6px solid ${color}; margin: 1px 0;"></div>`;
+        const stemHtml = `<div style="width: 1.5px; height: 10px; background: ${color}; opacity: 0.6;"></div>`;
 
-        // Large invisible hit target
-        const hitArea = document.createElement('div');
-        hitArea.style.position = 'absolute';
-        hitArea.style.width = '20px';
-        hitArea.style.height = '30px'; 
-        hitArea.style.left = '50%';
-        hitArea.style.top = '50%';
-        hitArea.style.transform = 'translate(-50%, -50%)';
-        hitArea.style.cursor = 'pointer';
-        dot.appendChild(hitArea);
+        if (isHome) {
+            // Home: Tip should touch top edge of bar (38px)
+            // Container height is 32px (16+10+6), so top should be 38 - 32 = 6px
+            container.style.top = '6px';
+            container.style.height = '32px';
+            container.style.justifyContent = 'flex-end';
+            container.innerHTML = `
+                <div style="display: flex; flex-direction: column; align-items: center;">
+                    ${iconHtml}
+                    ${stemHtml}
+                    ${arrowHtml}
+                </div>
+            `;
+        } else {
+            // Guest: Tip should touch bottom edge of bar (62px)
+            container.style.top = '62px';
+            container.style.height = '32px';
+            container.style.justifyContent = 'flex-start';
+            container.innerHTML = `
+                <div style="display: flex; flex-direction: column; align-items: center;">
+                    ${arrowHtml}
+                    ${stemHtml}
+                    ${iconHtml}
+                </div>
+            `;
+        }
 
-        dot.addEventListener('click', (e) => {
+        container.title = `${formatiereZeit(baseSecs)}: ${entry.playerName || ''} - ${entry.action}`;
+        
+        container.addEventListener('click', (e) => {
             e.stopPropagation();
             video.currentTime = Math.max(0, markerVTime - videoLeadTime);
+            video.play().catch(() => {});
         });
 
-        markersContainer.appendChild(dot);
+        markersContainer.appendChild(container);
     });
+
+    if (window.lucide) window.lucide.createIcons({ root: markersContainer });
 }

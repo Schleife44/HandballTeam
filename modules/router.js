@@ -125,6 +125,12 @@ const routes = {
         hideAllSections();
         if (playerProfileBereich) playerProfileBereich.classList.remove('versteckt');
         renderPlayerProfilePage();
+    },
+    'fines': () => {
+        hideAllSections();
+        const finesBereich = document.getElementById('finesBereich');
+        if (finesBereich) finesBereich.classList.remove('versteckt');
+        import('./fines.js').then(mod => mod.renderFinesView());
     }
 };
 
@@ -143,7 +149,8 @@ function hideAllSections() {
         document.getElementById('dashboardBereich'),
         socialMediaBereich,
         historieDetailBereich,
-        playerProfileBereich
+        playerProfileBereich,
+        document.getElementById('finesBereich')
     ];
     sections.forEach(s => {
         if (s) {

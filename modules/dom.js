@@ -389,3 +389,21 @@ export const liveOverviewHeatmapToreFilter = document.getElementById('liveOvervi
 export const liveOverviewHeatmap7mFilter = document.getElementById('liveOverviewHeatmap7mFilter');
 export const liveOverviewHeatmapMissedFilter = document.getElementById('liveOverviewHeatmapMissedFilter');
 export const closeLiveGameOverview = document.getElementById('closeLiveGameOverview');
+
+// Fines & Cashbox
+export const finesBereich = document.getElementById('finesBereich');
+export const finesTotalBalance = document.getElementById('finesTotalBalance');
+export const addFineEventBtn = document.getElementById('addFineEventBtn');
+export const finesPlayerList = document.getElementById('finesPlayerList');
+export const finesCatalogBody = document.getElementById('finesCatalogBody');
+export const finesHistoryBody = document.getElementById('finesHistoryBody');
+export const issueFineOverlay = document.getElementById('issueFineOverlay');
+export const issueFinePlayerSelect = document.getElementById('issueFinePlayerSelect');
+export const issueFineCatalogSelect = document.getElementById('issueFineCatalogSelect');
+export const issueFineAmountInput = document.getElementById('issueFineAmountInput');
+export const confirmIssueFineBtn = document.getElementById('confirmIssueFineBtn');
+export const openNewFineModalBtn = document.getElementById('openNewFineModalBtn');
+export const fineCatalogOverlay = document.getElementById('fineCatalogOverlay');
+export const catalogFineNameInput = document.getElementById('catalogFineNameInput');
+export const catalogFineAmountInput = document.getElementById('catalogFineAmountInput');
+export const saveCatalogFineBtn = document.getElementById('saveCatalogFineBtn');
