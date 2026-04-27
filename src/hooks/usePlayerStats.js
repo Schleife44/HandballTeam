@@ -1,32 +1,38 @@
 import { useMemo } from 'react';
+import useStore from '../store/useStore';
 
-export const usePlayerStats = (playerName) => {
+export const usePlayerStats = (playerName, selectedSeason = 'all') => {
+  const { history, squad } = useStore();
+
   const stats = useMemo(() => {
-    const rawHistory = localStorage.getItem('handball_history_global');
-    if (!rawHistory) return null;
+    if (!history || history.length === 0) return null;
     
-    const history = JSON.parse(rawHistory);
+    // Extract unique seasons
+    const availableSeasons = Array.from(new Set([
+      squad?.settings?.currentSeason || '25/26',
+      ...history.map(g => g.season).filter(Boolean)
+    ])).sort((a, b) => b.localeCompare(a));
+
     const playerGames = [];
-    
     let totalGoals = 0;
     let totalShots = 0;
     let totalGames = 0;
 
-    // Sort games by date to get a timeline
-    const sortedGames = [...history].sort((a, b) => new Date(a.date || a.timestamp) - new Date(b.date || b.timestamp));
+    // Filter by season if needed
+    const filteredHistory = selectedSeason === 'all' 
+      ? history 
+      : history.filter(g => g.season === selectedSeason || (!g.season && selectedSeason === (squad?.settings?.currentSeason || '25/26')));
+
+    // Sort games by date
+    const sortedGames = [...filteredHistory].sort((a, b) => new Date(a.date || a.timestamp) - new Date(b.date || b.timestamp));
 
     sortedGames.forEach(game => {
-      // Find player in this game's roster to see if they were present
       const playerInRoster = game.roster?.find(p => p.name === playerName);
-      
-      // We also check if the player appears in the gameLog at all (in case they aren't in roster)
       const log = game.gameLog || [];
       const appearsInLog = log.some(e => e.playerName === playerName);
 
       if (playerInRoster || appearsInLog) {
         totalGames++;
-        
-        // Count goals and shots from gameLog (the reliable source in V2)
         let goals = 0;
         let missed = 0;
 
@@ -36,20 +42,17 @@ export const usePlayerStats = (playerName) => {
             if (action.includes('tor') && !action.includes('gegner')) {
               goals++;
             } else if (action.includes('fehlwurf') || action.includes('parade') || action.includes('verworfen')) {
-              // Note: 'parade' usually means the opponent keeper saved it, so it's a missed shot for the player
               missed++;
             }
           }
         });
 
-        // Fallback to roster data if log is empty (V1 compatibility)
         if (log.length === 0 && playerInRoster) {
           goals = playerInRoster.goals || 0;
           missed = playerInRoster.missed || 0;
         }
 
         const shots = goals + missed;
-        
         totalGoals += goals;
         totalShots += shots;
 
@@ -63,19 +66,18 @@ export const usePlayerStats = (playerName) => {
       }
     });
 
-    if (totalGames === 0) return null;
-
     return {
       summary: {
         totalGames,
         totalGoals,
         totalShots,
-        avgGoals: (totalGoals / totalGames).toFixed(1),
+        avgGoals: totalGames > 0 ? (totalGoals / totalGames).toFixed(1) : 0,
         avgEfficiency: totalShots > 0 ? Math.round((totalGoals / totalShots) * 100) : 0
       },
-      timeline: playerGames.slice(-10) // Last 10 games for the chart
+      timeline: playerGames.slice(-10),
+      availableSeasons
     };
-  }, [playerName]);
+  }, [playerName, history, selectedSeason, squad?.settings?.currentSeason]);
 
   return stats;
 };

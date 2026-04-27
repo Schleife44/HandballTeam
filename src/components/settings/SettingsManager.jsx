@@ -192,9 +192,11 @@ const SettingsManager = () => {
           <TeamConfig 
             label="Dein Teamname"
             name={settings.homeName}
+            season={settings.currentSeason}
             color={settings.homeColor}
             colors={colors}
             onUpdateName={(val) => handleUpdate('homeName', val)}
+            onUpdateSeason={(val) => handleUpdate('currentSeason', val)}
             onUpdateColor={(val) => handleUpdate('homeColor', val)}
           />
         </SettingsSection>

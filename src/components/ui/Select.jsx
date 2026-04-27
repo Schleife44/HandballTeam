@@ -24,11 +24,10 @@ const Select = ({
       <div className="relative group">
         <select 
           className={twMerge(
-            "w-full bg-zinc-950/50 border border-zinc-800 rounded-2xl px-6 py-4 text-sm font-black text-zinc-100 outline-none focus:border-brand/50 transition-all appearance-none cursor-pointer",
+            "w-full bg-zinc-900 border border-zinc-800 rounded-xl px-4 py-2.5 text-xs font-bold text-white outline-none focus:border-brand/50 transition-all cursor-pointer",
             error && "border-red-500/50 focus:border-red-500",
             className
           )}
-          style={props.value ? { fontFamily: props.value } : {}}
           {...props}
         >
           {children}
@@ -36,16 +35,12 @@ const Select = ({
             <option 
               key={opt.value} 
               value={opt.value} 
-              style={{ fontFamily: opt.value, backgroundColor: '#18181b', color: '#fff' }}
+              className="bg-zinc-900 text-white"
             >
               {opt.label}
             </option>
           ))}
         </select>
-        <ChevronDown 
-          size={16} 
-          className="absolute right-6 top-1/2 -translate-y-1/2 text-zinc-600 group-focus-within:text-brand pointer-events-none transition-colors" 
-        />
       </div>
       {error && (
         <span className="text-[9px] font-bold text-red-500 uppercase tracking-widest px-4">

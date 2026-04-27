@@ -50,7 +50,8 @@ const GameStatsTab = ({ game, onBack, onGoToVideo }) => {
   };
 
   const progressionData = useMemo(() => {
-    if (!currentGame?.gameLog && !currentGame?.log) return [];
+    if (!currentGame) return [];
+    if (!currentGame.gameLog && !currentGame.log) return [];
     const logToUse = currentGame.gameLog || currentGame.log || [];
     
     const sortedLog = [...logToUse].sort((a, b) => {
@@ -344,7 +345,7 @@ const GameStatsTab = ({ game, onBack, onGoToVideo }) => {
 
     const targetHnetId = officialDataSource.importMeta?.hnetId || officialDataSource.hnetId;
 
-    let updatedLog = currentGame.gameLog.map(entry => {
+    let updatedLog = (currentGame?.gameLog || []).map(entry => {
         if (entry === localToUpdate) {
             return {
                 ...entry,

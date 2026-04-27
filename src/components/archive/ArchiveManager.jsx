@@ -26,6 +26,8 @@ const ArchiveManager = () => {
   const activeTabId = tabs.find(t => location.pathname.startsWith(t.path))?.id || 'history';
 
   const handleGameSelect = (game, targetTab = 'game_stats') => {
+    if (!game) return;
+    
     // Normalize game data for sub-components (Legacy support)
     const normalizedGame = {
       ...game,

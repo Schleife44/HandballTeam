@@ -4,7 +4,7 @@ import {
   Play, Pause, SkipBack, SkipForward, Maximize2, Minimize2,
   Search, Filter, Clock, Save, Trash2, ArrowLeft,
   CheckCircle, Video, List, Zap, Settings, Settings2, ChevronRight, Globe,
-  Circle, Triangle, Square, Info, AlertTriangle, Volume2
+  Circle, Triangle, Square, Info, AlertTriangle, Volume2, Star
 } from 'lucide-react';
 
 // Store
@@ -21,8 +21,8 @@ import Modal from '../ui/Modal';
 // Utils
 import { formatiereZeit, parseTime } from '../../utils/timeUtils';
 
-const CLIP_DURATION = 6;
-const DEFAULT_LEAD_TIME = 3;
+const CLIP_DURATION = 5;
+const DEFAULT_LEAD_TIME = 4;
 
 const VideoAnalysisTab = ({ initialGame, onBack }) => {
   const { squad, updateHistoryGame } = useStore();
@@ -32,19 +32,42 @@ const VideoAnalysisTab = ({ initialGame, onBack }) => {
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
-  const [videoOffsets, setVideoOffsets] = useState({ h1: 0, h2: 0 });
+  const [videoOffsets, setVideoOffsets] = useState(() => {
+    return {
+      h1: initialGame?.videoOffsets?.h1 ?? null,
+      h2: initialGame?.videoOffsets?.h2 ?? null
+    };
+  });
+  
+  useEffect(() => {
+    if (currentGame?.videoOffsets) {
+      setVideoOffsets({
+        h1: currentGame.videoOffsets.h1 ?? null,
+        h2: currentGame.videoOffsets.h2 ?? null
+      });
+    }
+  }, [currentGame?.id]);
   const [leadTime, setLeadTime] = useState(DEFAULT_LEAD_TIME);
   const [showPlayOverlay, setShowPlayOverlay] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterAction, setFilterAction] = useState('all');
+  const [filterPlayer, setFilterPlayer] = useState('all');
   const [isAutoplayActive, setIsAutoplayActive] = useState(false);
   const [autoplayIndex, setAutoplayIndex] = useState(-1);
   const [clipEndTime, setClipEndTime] = useState(0);
   const [volume, setVolume] = useState(0.7);
+  const [isEditingH1, setIsEditingH1] = useState(false);
+  const [isEditingH2, setIsEditingH2] = useState(false);
+  const [manualH1, setManualH1] = useState('');
+  const [manualH2, setManualH2] = useState('');
   const [showSettings, setShowSettings] = useState(false);
+  const [isAddingHighlight, setIsAddingHighlight] = useState(false);
+  const [newHighlightName, setNewHighlightName] = useState('Taktisches Highlight');
+  const [newHighlightPlayer, setNewHighlightPlayer] = useState('');
   const [hideAdministrative, setHideAdministrative] = useState(true);
   const [syncFollow, setSyncFollow] = useState(true);
   const [isCinemaMode, setIsCinemaMode] = useState(false);
+  const [isFocusMode, setIsFocusMode] = useState(false);
 
   const [isSyncModalOpen, setIsSyncModalOpen] = useState(false);
   const [syncUrl, setSyncUrl] = useState('');
@@ -87,7 +110,11 @@ const VideoAnalysisTab = ({ initialGame, onBack }) => {
   useEffect(() => {
     if (initialGame) {
       setCurrentGame(initialGame);
-      setVideoOffsets(initialGame.videoOffsets || { h1: 0, h2: 0 });
+      let offsets = initialGame.videoOffsets || { h1: null, h2: null };
+      if (offsets.h1 === 0 && offsets.h2 === 0) {
+        offsets = { h1: null, h2: null };
+      }
+      setVideoOffsets(offsets);
     }
   }, [initialGame]);
 
@@ -119,66 +146,97 @@ const VideoAnalysisTab = ({ initialGame, onBack }) => {
     }
 
     setNotification({
-      title: `Anwurf H${half} gesetzt`,
-      message: `Video-Position: ${formatiereZeit(time)}`,
+      title: `Spielstart H${half} gesetzt`,
+      message: `Position: ${formatiereZeit(time)}`,
       type: 'success'
     });
   };
 
+  const jumpToOffset = (half) => {
+    const offset = half === 1 ? videoOffsets.h1 : videoOffsets.h2;
+    if (offset !== null && videoRef.current) {
+      videoRef.current.currentTime = offset;
+      videoRef.current.play();
+      setIsPlaying(true);
+    }
+  };
+
   const getAbsTime = (entry) => {
     if (!entry) return 0;
-    const base = getSecs(entry.officialTime || entry.time || "00:00");
+    const base = parseTime(entry.officialTime || entry.time || "00:00");
     const shift = entry.manualShift || 0;
     const total = base + shift;
     
-    if ((entry.half === 2 || entry.period === 2) && total < 1800) {
+    // Normalize to absolute match time (0-3600)
+    const isSecondHalf = entry.half === 2 || entry.period === 2 || (entry.half === undefined && entry.period === undefined && total > 1800);
+    if (isSecondHalf && total < 1800) {
       return total + 1800;
+    }
+    if (!isSecondHalf && total > 1800) {
+      return total; // Keep it as is if it's already absolute
     }
     return total;
   };
 
-  const getEstimatedVideoTime = (entry) => {
-    if (!entry) return null;
-    if (entry.videoTime !== undefined && entry.videoTime !== null) return entry.videoTime;
-
-    const gameSecs = getAbsTime(entry);
-    const h = gameSecs > 1800 ? 2 : 1;
-
-    let anchor = null;
-    const logToUse = currentGame.gameLog || currentGame.log || [];
-    if (logToUse.length > 0) {
-      logToUse.forEach(logE => {
-        if (logE.videoTime === undefined || logE.videoTime === null) return;
-        const candAbs = getAbsTime(logE);
-        const candH = candAbs > 1800 ? 2 : 1;
-        if (candH !== h) return;
-
-        if (candAbs <= gameSecs) {
-          if (!anchor || candAbs > getAbsTime(anchor)) {
-            anchor = logE;
-          }
-        }
-      });
-    }
-
-    if (anchor) {
-      if (entry.timestamp && anchor.timestamp) {
-        const msDelta = entry.timestamp - anchor.timestamp;
-        return anchor.videoTime + (msDelta / 1000);
-      }
-
-      const anchorAbs = getAbsTime(anchor);
-      const deltaProtocol = gameSecs - anchorAbs;
-      return anchor.videoTime + deltaProtocol;
-    }
-
-    const offset = h === 1 ? videoOffsets.h1 : videoOffsets.h2;
-    const relSecs = h === 1 ? gameSecs : gameSecs - 1800;
+  const getEstimatedVideoTime = (entryOrMatchSecs) => {
+    if (!entryOrMatchSecs && entryOrMatchSecs !== 0) return null;
     
-    if (offset === 0 && h === 2 && videoOffsets.h1 !== 0) {
-      return videoOffsets.h1 + 1800 + relSecs;
+    // Support both entry objects and raw seconds (for timeline clicks)
+    const isEntry = typeof entryOrMatchSecs === 'object';
+    if (isEntry && entryOrMatchSecs.videoTime != null) return entryOrMatchSecs.videoTime;
+
+    const gameSecs = isEntry ? getAbsTime(entryOrMatchSecs) : entryOrMatchSecs;
+    const h = gameSecs >= 1800 ? 2 : 1;
+
+    const h1 = videoOffsets.h1 ?? 0;
+    const h2 = videoOffsets.h2 ?? 0;
+
+    // 1. Collect all valid anchors for this half
+    const anchors = sortedLog
+      .filter(e => e.videoTime !== undefined && e.videoTime !== null && getAbsTime(e) >= (h === 1 ? 0 : 1800) && getAbsTime(e) < (h === 1 ? 1800 : 3600))
+      .sort((a, b) => getAbsTime(a) - getAbsTime(b));
+
+    // 2. Define the start anchor (Halftime offset)
+    const startAnchor = { 
+      videoTime: h === 1 ? h1 : h2, 
+      gameTime: h === 1 ? 0 : 1800,
+      timestamp: (anchors.length > 0 && anchors[0].timestamp) ? anchors[0].timestamp - (getAbsTime(anchors[0]) - (h === 1 ? 0 : 1800)) * 1000 : null
+    };
+
+    // Find surrounding anchors
+    let prev = startAnchor;
+    let next = null;
+
+    for (const a of anchors) {
+      const aAbs = getAbsTime(a);
+      if (aAbs <= gameSecs) {
+        prev = { ...a, gameTime: aAbs };
+      } else {
+        next = { ...a, gameTime: aAbs };
+        break;
+      }
     }
-    return offset + relSecs;
+
+    // 3. Interpolation Logic (between two hard anchors)
+    if (prev && next) {
+      const matchDeltaTotal = next.gameTime - prev.gameTime;
+      const videoDeltaTotal = next.videoTime - prev.videoTime;
+      if (matchDeltaTotal > 0) {
+        const progress = (gameSecs - prev.gameTime) / matchDeltaTotal;
+        return prev.videoTime + (progress * videoDeltaTotal);
+      }
+    }
+
+    // 4. Extrapolation Logic (using the closest previous anchor)
+    // High Precision: Unix Timestamp based (only if we have timestamps)
+    if (isEntry && entryOrMatchSecs.timestamp && prev.timestamp) {
+      const msDelta = entryOrMatchSecs.timestamp - prev.timestamp;
+      return prev.videoTime + (msDelta / 1000);
+    }
+
+    // Fallback: Linear offset from last anchor
+    const deltaProtocol = gameSecs - prev.gameTime;
+    return prev.videoTime + deltaProtocol;
   };
 
   const seekToEntry = (entry) => {
@@ -221,8 +279,10 @@ const VideoAnalysisTab = ({ initialGame, onBack }) => {
     setEditVideoTime(formatiereZeit(getEstimatedVideoTime(entry)));
   };
 
-  const handleSaveEdit = async (idx, entry) => {
-    const logToUse = currentGame.gameLog || currentGame.log || [];
+  const handleSaveEdit = async () => {
+    if (editingIndex === -1) return;
+    const entry = sortedLog[editingIndex];
+    const logToUse = currentGame?.gameLog || currentGame?.log || [];
     if (logToUse.length === 0) return;
     
     const newLog = [...logToUse];
@@ -232,21 +292,42 @@ const VideoAnalysisTab = ({ initialGame, onBack }) => {
       const updatedEntry = { ...newLog[originalIdx] };
       updatedEntry.time = editGameTime;
       updatedEntry.manualShift = 0;
-      updatedEntry.half = (getSecs(editGameTime) > 1800) ? 2 : 1;
+      updatedEntry.half = (parseTime(editGameTime) > 1800) ? 2 : 1;
       
       const newVTime = parseTime(editVideoTime);
-      const estV = getEstimatedVideoTime(entry);
-      if (newVTime !== estV) {
-        updatedEntry.videoTime = newVTime;
-      }
+      updatedEntry.videoTime = newVTime;
 
       newLog[originalIdx] = updatedEntry;
       const updatedGame = { ...currentGame, gameLog: newLog };
       
       setCurrentGame(updatedGame);
       updateHistoryGame(updatedGame);
+      
+      setNotification({ title: 'Gespeichert', message: 'Ereignis wurde aktualisiert.', type: 'success' });
     }
     setEditingIndex(-1);
+  };
+
+  const quickSyncEntry = (entry) => {
+    if (!videoRef.current) return;
+    const vTime = videoRef.current.currentTime;
+    
+    const logToUse = currentGame?.gameLog || currentGame?.log || [];
+    const originalIdx = logToUse.findIndex(e => e.timestamp === entry.timestamp);
+    
+    if (originalIdx !== -1) {
+      const newLog = [...logToUse];
+      if (newLog[originalIdx].videoTime !== undefined && newLog[originalIdx].videoTime !== null) {
+        newLog[originalIdx] = { ...newLog[originalIdx], videoTime: null };
+        setNotification({ title: 'Sync entfernt', message: 'Ereignis folgt nun wieder der Halbzeit.', type: 'info' });
+      } else {
+        newLog[originalIdx] = { ...newLog[originalIdx], videoTime: vTime };
+        setNotification({ title: 'Sync Erfolg', message: `Video-Zeit ${formatiereZeit(vTime)} zugewiesen.`, type: 'success' });
+      }
+      const updatedGame = { ...currentGame, gameLog: newLog };
+      setCurrentGame(updatedGame);
+      updateHistoryGame(updatedGame);
+    }
   };
 
   const handleSync = async () => {
@@ -275,6 +356,7 @@ const VideoAnalysisTab = ({ initialGame, onBack }) => {
   const [virtualGameTime, setVirtualGameTime] = useState(0);
 
   const filteredLog = useMemo(() => {
+    if (!currentGame) return [];
     const logToUse = currentGame.gameLog || currentGame.log || [];
     if (logToUse.length === 0) return [];
     return logToUse.filter(entry => {
@@ -293,8 +375,28 @@ const VideoAnalysisTab = ({ initialGame, onBack }) => {
         matchSearch = searchPool.some(val => val.includes(term));
       }
 
-      const matchAction = filterAction === 'all' || entry.action === filterAction;
+      const actionLower = (entry.action || '').toLowerCase();
+      const isGoal = actionLower.includes('tor');
+      const isOpponent = entry.isOpponent === true || actionLower.includes('gegner');
+
+      let matchAction = true;
+      if (filterAction === 'all') {
+        matchAction = true;
+      } else if (filterAction === 'important') {
+        matchAction = !!entry.isImportant;
+      } else if (filterAction === 'all_goals') {
+        matchAction = isGoal;
+      } else if (filterAction === 'home_goals') {
+        matchAction = isGoal && !isOpponent;
+      } else if (filterAction === 'away_goals') {
+        matchAction = isGoal && isOpponent;
+      } else {
+        matchAction = entry.action === filterAction;
+      }
       
+      let pId = String(entry.playerId ?? entry.playerNumber ?? entry.gegnerNummer ?? entry.number ?? entry.player ?? "");
+      const matchPlayer = filterPlayer === 'all' || pId === String(filterPlayer);
+
       if (hideAdministrative) {
         const actionText = (entry.action || '').toLowerCase();
         const adminTerms = ['halbzeit', 'spielende', 'start', 'period', 'pause', 'beginn', 'stopp', 'vorbeiting'];
@@ -306,35 +408,46 @@ const VideoAnalysisTab = ({ initialGame, onBack }) => {
         }
       }
       
-      return matchSearch && matchAction;
+      return matchSearch && matchAction && matchPlayer;
     });
-  }, [currentGame, searchTerm, filterAction, hideAdministrative]);
+  }, [currentGame, searchTerm, filterAction, filterPlayer, hideAdministrative]);
 
   const sortedLog = useMemo(() => {
     return [...filteredLog].sort((a, b) => {
-      const getAbs = (e) => {
-        const base = parseTime(e.officialTime || e.time);
-        const act = base + (e.manualShift || 0);
-        const h = e.half || (act > 1800 ? 2 : 1);
-        return (h - 1) * 1800 + act;
-      };
-      return getAbs(a) - getAbs(b);
+      return getAbsTime(a) - getAbsTime(b);
     });
   }, [filteredLog]);
 
   const uniqueActions = useMemo(() => {
     if (!currentGame || !currentGame.gameLog) return [];
-    return Array.from(new Set(currentGame.gameLog.map(e => e.action))).sort();
+    const forbidden = ['halbzeit', 'spielende', 'timeout', 'anwurf', 'pause', 'stopp', 'beginn', 'start'];
+    return Array.from(new Set(currentGame.gameLog.map(e => e.action)))
+      .filter(a => a && !forbidden.some(f => a.toLowerCase().includes(f)))
+      .sort();
   }, [currentGame]);
 
   // Sync Protocol with Video & Virtual Game Time
   useEffect(() => {
     if (!videoRef.current || !currentGame || sortedLog.length === 0) return;
 
+    const h1 = videoOffsets.h1 ?? 0;
+    const h2 = videoOffsets.h2 ?? 0;
+    const isVideoH2 = h2 > 0 && currentTime >= h2;
+
     let foundIndex = -1;
     for (let i = sortedLog.length - 1; i >= 0; i--) {
-      const estV = getEstimatedVideoTime(sortedLog[i]);
-      if (estV !== null && currentTime >= estV - leadTime - 0.1) {
+      const entry = sortedLog[i];
+      const estV = getEstimatedVideoTime(entry);
+      if (estV === null) continue;
+      
+      const entryAbs = getAbsTime(entry);
+      const isEntryH2 = entryAbs >= 1800;
+      
+      // Only match entries from the current video half to prevent jumps (e.g. 3m -> 33m)
+      if (isVideoH2 && !isEntryH2) continue; // In H2 video, but entry is H1? Skip.
+      if (!isVideoH2 && isEntryH2) continue; // In H1 video, but entry is H2? Skip.
+
+      if (currentTime >= estV - leadTime - 0.1) {
         foundIndex = i;
         break;
       }
@@ -350,18 +463,38 @@ const VideoAnalysisTab = ({ initialGame, onBack }) => {
       }
     }
 
+
     let vTime = 0;
     const activeEntry = foundIndex !== -1 ? sortedLog[foundIndex] : null;
+    
     if (activeEntry) {
-      const baseSecs = getSecs(activeEntry.officialTime || activeEntry.time || "00:00");
-      const gameSecs = baseSecs + (activeEntry.manualShift || 0);
-      const estV = getEstimatedVideoTime(activeEntry);
-      vTime = gameSecs + (currentTime - estV);
+      const gameSecs = getAbsTime(activeEntry);
+      const activeH = (activeEntry.half === 2 || activeEntry.period === 2 || gameSecs >= 1800) ? 2 : 1;
+      
+      if (activeH === 1 && h2 > 0 && currentTime >= h2) {
+         // We are in H2 video time, but the last passed event was in H1.
+         // Do not extrapolate H1 across the halftime break.
+         vTime = 1800 + Math.min(1800, currentTime - h2);
+      } else {
+         const estV = getEstimatedVideoTime(activeEntry);
+         vTime = gameSecs + (currentTime - estV);
+         
+         // Cap H1 events at 1800 (Halftime) so the clock doesn't run during the break
+         if (activeH === 1) {
+            vTime = Math.min(1800, vTime);
+         }
+      }
     } else {
-      if (currentTime < videoOffsets.h1) vTime = 0;
-      else if (currentTime < videoOffsets.h1 + 1800) vTime = currentTime - videoOffsets.h1;
-      else if (videoOffsets.h2 > 0 && currentTime >= videoOffsets.h2) vTime = 1800 + Math.min(1800, currentTime - videoOffsets.h2);
-      else vTime = 1800;
+      // Legacy fallback logic
+      if (currentTime < h1) {
+        vTime = 0;
+      } else if (currentTime < h1 + 1800) {
+        vTime = currentTime - h1;
+      } else if (h2 > 0 && currentTime >= h2) {
+        vTime = 1800 + Math.min(1800, currentTime - h2);
+      } else {
+        vTime = 1800;
+      }
     }
     setVirtualGameTime(Math.max(0, Math.min(3600, vTime)));
 
@@ -372,10 +505,24 @@ const VideoAnalysisTab = ({ initialGame, onBack }) => {
       const nextIndex = autoplayIndex + 1;
       if (nextIndex < sortedLog.length) {
         const nextEntry = sortedLog[nextIndex];
+        const nextTarget = getEstimatedVideoTime(nextEntry) - leadTime;
+        
+        // Overlap Detection: If the next clip starts very soon or has already passed 
+        // while we were watching the previous one, don't jump back. Just extend.
+        const isOverlap = nextTarget < currentTime + 2; 
+
         setAutoplayIndex(nextIndex);
-        const target = getEstimatedVideoTime(nextEntry) - leadTime;
-        videoRef.current.currentTime = Math.max(0, target);
-        setClipEndTime(target + leadTime + CLIP_DURATION);
+        
+        if (isOverlap) {
+          // Seamless transition: just set the new end time
+          setClipEndTime(nextTarget + leadTime + CLIP_DURATION);
+          // console.log("[Autoplay] Seamless transition to clip", nextIndex);
+        } else {
+          // Hard jump: the next clip is further away
+          videoRef.current.currentTime = Math.max(0, nextTarget);
+          setClipEndTime(nextTarget + leadTime + CLIP_DURATION);
+          // console.log("[Autoplay] Jumping to clip", nextIndex);
+        }
       } else {
         setIsAutoplayActive(false);
         setAutoplayIndex(-1);
@@ -459,8 +606,8 @@ const VideoAnalysisTab = ({ initialGame, onBack }) => {
         </div>
 
         <div className="flex flex-row gap-6 flex-1 min-h-0">
-          <div className={`flex flex-col gap-4 min-h-0 transition-all duration-700 
-            ${isCinemaMode ? 'w-[72%]' : 'w-[65%] flex-grow'}
+          <div className={`flex flex-col gap-4 min-h-0 transition-all duration-700 ease-in-out
+            ${isCinemaMode ? (isFocusMode ? 'w-[88%]' : 'w-[72%]') : 'w-[65%] flex-grow'}
           `}>
             <div className={`relative flex-1 bg-zinc-950 overflow-hidden border border-white/5 shadow-2xl group min-h-0 transition-all duration-700 ${isCinemaMode ? 'rounded-[40px]' : 'rounded-[32px]'}`}>
               {videoUrl ? (
@@ -496,9 +643,13 @@ const VideoAnalysisTab = ({ initialGame, onBack }) => {
               </div>
             </div>
 
-            <Card noPadding className="backdrop-blur-xl border border-white/5 rounded-[32px] flex flex-col gap-4 shadow-2xl flex-shrink-0 transition-all duration-700 p-4">
+            <Card noPadding className={`backdrop-blur-xl border border-white/5 rounded-[32px] flex flex-col shadow-2xl flex-shrink-0 transition-all duration-700 ease-in-out
+              ${isFocusMode ? 'p-2 gap-2 mt-auto' : 'p-4 gap-4'}
+            `}>
               <div className="relative">
-                <div className="absolute -top-1 left-2 right-2 flex justify-between items-center z-50 pointer-events-none">
+                <div className={`absolute left-2 right-2 flex justify-between items-center z-50 pointer-events-none transition-all
+                  ${isFocusMode ? '-top-6' : '-top-1'}
+                `}>
                   <div className="flex items-center gap-2 bg-black/80 backdrop-blur-md px-3 py-1 rounded-full border border-white/5 shadow-lg">
                     <span className="text-[7px] font-black uppercase tracking-widest text-brand">Match</span>
                     <span className="text-[11px] font-black text-zinc-100 tabular-nums italic">{formatiereZeit(virtualGameTime)}</span>
@@ -512,18 +663,17 @@ const VideoAnalysisTab = ({ initialGame, onBack }) => {
                 </div>
 
                 <div 
-                  className={`relative bg-zinc-950/80 rounded-2xl border border-white/5 cursor-crosshair group mt-3 transition-all ${isCinemaMode ? 'h-20' : 'h-12'}`}
+                  className={`relative bg-zinc-950/80 rounded-2xl border border-white/5 cursor-crosshair group transition-all
+                    ${isFocusMode ? 'h-4 mt-2' : (isCinemaMode ? 'h-20 mt-3' : 'h-12 mt-3')}
+                  `}
                   onClick={(e) => {
                     const rect = e.currentTarget.getBoundingClientRect();
                     const pct = (e.clientX - rect.left) / rect.width;
-                    const targetVTime = pct * 3600;
-                    let bestVideoTime = 0;
-                    if (targetVTime < 1800) {
-                      bestVideoTime = videoOffsets.h1 + targetVTime;
-                    } else {
-                      bestVideoTime = videoOffsets.h2 + (targetVTime - 1800);
+                    const matchSecs = pct * 3600;
+                    const estimatedV = getEstimatedVideoTime(matchSecs);
+                    if (videoRef.current && estimatedV !== null) {
+                      videoRef.current.currentTime = Math.max(0, Math.min(duration, estimatedV));
                     }
-                    if (videoRef.current) videoRef.current.currentTime = bestVideoTime;
                   }}
                 >
                   <div className="absolute top-1/2 left-0 w-full h-[1px] bg-white/5" />
@@ -561,7 +711,7 @@ const VideoAnalysisTab = ({ initialGame, onBack }) => {
                           </Card>
                         </div>
 
-                        <div className={`relative flex flex-col items-center ${marker.isGegner ? 'mt-1' : '-translate-y-full mb-1'}`}>
+                        <div className={`relative flex flex-col items-center ${marker.isGegner ? 'translate-y-1' : '-translate-y-2'}`}>
                           <div 
                             className={`p-0.5 rounded transition-all hover:scale-150 cursor-pointer shadow-lg active:scale-95
                               group-hover/marker:shadow-[0_0_15px_rgba(255,255,255,0.2)]
@@ -582,27 +732,40 @@ const VideoAnalysisTab = ({ initialGame, onBack }) => {
                 </div>
               </div>
 
-              <div className="flex items-center justify-between gap-4">
+              <div className={`flex items-center justify-between ${isFocusMode ? 'gap-2' : 'gap-4'}`}>
                 <div className="flex items-center gap-2">
-                  <div className="flex items-center gap-1">
-                    <Button variant="ghost" size="sm" icon={SkipBack} onClick={() => videoRef.current.currentTime -= 5} className="h-10 w-10 p-0" />
+                  <div className={`flex items-center gap-1 bg-black/40 rounded-2xl border border-white/5 transition-all ${isFocusMode ? 'px-1' : 'px-2 py-1'}`}>
+                    <Button variant="ghost" size="sm" icon={SkipBack} onClick={() => videoRef.current.currentTime -= 5} className={isFocusMode ? 'h-7 w-7 p-0' : 'h-10 w-10 p-0'} />
                     <button 
                       onClick={() => isPlaying ? videoRef.current.pause() : videoRef.current.play()}
-                      className="w-12 h-12 rounded-full bg-brand flex items-center justify-center text-black shadow-xl hover:scale-105 active:scale-95 transition-all"
+                      className={`rounded-full bg-brand flex items-center justify-center text-black shadow-xl hover:scale-105 transition-all
+                        ${isFocusMode ? 'w-7 h-7' : 'w-12 h-12'}
+                      `}
                     >
-                      {isPlaying ? <Pause size={20} fill="currentColor" /> : <Play size={20} fill="currentColor" className="ml-0.5" />}
+                      {isPlaying ? <Pause size={isFocusMode ? 14 : 20} fill="currentColor" /> : <Play size={isFocusMode ? 14 : 20} fill="currentColor" className="ml-0.5" />}
                     </button>
-                    <Button variant="ghost" size="sm" icon={SkipForward} onClick={() => videoRef.current.currentTime += 5} className="h-10 w-10 p-0" />
+                    <Button variant="ghost" size="sm" icon={SkipForward} onClick={() => videoRef.current.currentTime += 5} className={isFocusMode ? 'h-7 w-7 p-0' : 'h-10 w-10 p-0'} />
                   </div>
-                  <div className="h-6 w-[1px] bg-white/10 mx-2" />
-                  <div className="flex items-center gap-3 bg-black/40 px-3 py-1.5 rounded-xl border border-white/5">
+                  {!isFocusMode && <div className="h-6 w-[1px] bg-white/10 mx-2" />}
+                  <div className={`flex items-center gap-3 bg-black/40 rounded-xl border border-white/5 transition-all
+                    ${isFocusMode ? 'px-2 py-0.5 scale-75' : 'px-3 py-1.5'}
+                  `}>
                     <Volume2 size={12} className="text-zinc-400" />
                     <input 
                       type="range" min="0" max="1" step="0.1" value={volume}
                       onChange={(e) => setVolume(parseFloat(e.target.value))}
-                      className="w-16 h-1 bg-zinc-800 rounded-full appearance-none cursor-pointer accent-brand"
+                      className={`${isFocusMode ? 'w-12' : 'w-16'} h-1 bg-zinc-800 rounded-full appearance-none cursor-pointer accent-brand`}
                     />
                   </div>
+                  {isCinemaMode && (
+                    <button 
+                      onClick={() => setIsFocusMode(!isFocusMode)}
+                      className={`rounded-xl transition-all ${isFocusMode ? 'p-1.5 bg-brand text-black shadow-lg shadow-brand/20' : 'p-2 bg-white/5 text-zinc-500 hover:text-brand'}`}
+                      title={isFocusMode ? "Fokus beenden" : "Fokus Modus (Größeres Video)"}
+                    >
+                      <Maximize2 size={isFocusMode ? 12 : 14} />
+                    </button>
+                  )}
                 </div>
 
                 <div className="flex items-center gap-4 bg-black/40 px-4 py-2 rounded-2xl border border-white/5">
@@ -614,50 +777,170 @@ const VideoAnalysisTab = ({ initialGame, onBack }) => {
                   </div>
                 </div>
 
-                <div className="flex items-center gap-2 bg-black/40 p-1 rounded-2xl border border-white/5">
-                  <Button 
-                    variant={videoOffsets.h1 !== 0 ? "primary" : "ghost"} 
-                    size="sm"
-                    icon={Clock}
-                    onClick={() => setHalfOffset(1)}
-                    className="text-[9px]"
-                  >
-                    {videoOffsets.h1 !== 0 ? `${videoOffsets.h1.toFixed(0)}s` : 'Set H1'}
-                  </Button>
-                  <Button 
-                    variant={videoOffsets.h2 !== 0 ? "primary" : "ghost"} 
-                    size="sm"
-                    icon={Clock}
-                    onClick={() => setHalfOffset(2)}
-                    className="text-[9px]"
-                  >
-                    {videoOffsets.h2 !== 0 ? `${videoOffsets.h2.toFixed(0)}s` : 'Set H2'}
-                  </Button>
+                <div className={`flex items-center gap-4 bg-black/40 rounded-2xl border border-white/5 transition-all
+                    ${isFocusMode ? 'px-3 py-1 scale-90' : 'px-4 py-2'}
+                  `}>
+                  {/* H1 Offset */}
+                  <div className={`flex flex-col gap-1 ${isFocusMode ? 'min-w-[80px]' : 'min-w-[100px]'}`}>
+                    {isEditingH1 ? (
+                      <div className="flex items-center gap-1">
+                        <input 
+                          autoFocus
+                          value={manualH1}
+                          onChange={(e) => setManualH1(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') {
+                              const s = parseTime(manualH1);
+                              setVideoOffsets(prev => ({ ...prev, h1: s }));
+                              if (currentGame) {
+                                const updated = { ...currentGame, videoOffsets: { ...videoOffsets, h1: s } };
+                                updateHistoryGame(updated);
+                              }
+                              setIsEditingH1(false);
+                            }
+                            if (e.key === 'Escape') setIsEditingH1(false);
+                          }}
+                          className="w-16 h-8 bg-black/60 border border-brand/30 rounded text-[10px] font-mono text-center text-brand outline-none"
+                          placeholder="00:00"
+                        />
+                        <button 
+                          onClick={() => {
+                            const s = parseTime(manualH1);
+                            setVideoOffsets(prev => ({ ...prev, h1: s }));
+                            if (currentGame) {
+                              const updated = { ...currentGame, videoOffsets: { ...videoOffsets, h1: s } };
+                              updateHistoryGame(updated);
+                            }
+                            setIsEditingH1(false);
+                          }}
+                          className="p-1 text-brand hover:bg-brand/10 rounded"
+                        >
+                          <CheckCircle size={14} />
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="flex flex-col gap-0.5">
+                        <div className="flex items-center gap-1">
+                          <Button 
+                            variant={videoOffsets.h1 !== null ? "primary" : "ghost"} 
+                            size="sm"
+                            icon={Clock}
+                            onClick={() => setHalfOffset(1)}
+                            className={`text-[9px] flex-1 ${isFocusMode ? 'h-7' : 'h-8'}`}
+                          >
+                            {videoOffsets.h1 !== null ? `H1: ${formatiereZeit(videoOffsets.h1)}` : 'Set H1'}
+                          </Button>
+                          <button 
+                            onClick={() => {
+                              setManualH1(videoOffsets.h1 !== null ? formatiereZeit(videoOffsets.h1) : '');
+                              setIsEditingH1(true);
+                            }}
+                            className="p-1 text-zinc-500 hover:text-brand transition-all"
+                          >
+                            <Settings2 size={12} />
+                          </button>
+                        </div>
+                        {videoOffsets.h1 !== null && !isFocusMode && (
+                          <button onClick={() => jumpToOffset(1)} className="text-[8px] font-black text-brand uppercase text-center hover:underline">Jump H1</button>
+                        )}
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="h-8 w-px bg-white/5 mx-1" />
+
+                  {/* H2 Offset */}
+                  <div className={`flex flex-col gap-1 ${isFocusMode ? 'min-w-[80px]' : 'min-w-[100px]'}`}>
+                    {isEditingH2 ? (
+                      <div className="flex items-center gap-1">
+                        <input 
+                          autoFocus
+                          value={manualH2}
+                          onChange={(e) => setManualH2(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') {
+                              const s = parseTime(manualH2);
+                              setVideoOffsets(prev => ({ ...prev, h2: s }));
+                              if (currentGame) {
+                                const updated = { ...currentGame, videoOffsets: { ...videoOffsets, h2: s } };
+                                updateHistoryGame(updated);
+                              }
+                              setIsEditingH2(false);
+                            }
+                            if (e.key === 'Escape') setIsEditingH2(false);
+                          }}
+                          className="w-16 h-8 bg-black/60 border border-brand/30 rounded text-[10px] font-mono text-center text-brand outline-none"
+                          placeholder="00:00"
+                        />
+                        <button 
+                          onClick={() => {
+                            const s = parseTime(manualH2);
+                            setVideoOffsets(prev => ({ ...prev, h2: s }));
+                            if (currentGame) {
+                              const updated = { ...currentGame, videoOffsets: { ...videoOffsets, h2: s } };
+                              updateHistoryGame(updated);
+                            }
+                            setIsEditingH2(false);
+                          }}
+                          className="p-1 text-brand hover:bg-brand/10 rounded"
+                        >
+                          <CheckCircle size={14} />
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="flex flex-col gap-0.5">
+                        <div className="flex items-center gap-1">
+                          <Button 
+                            variant={videoOffsets.h2 !== null ? "primary" : "ghost"} 
+                            size="sm"
+                            icon={Clock}
+                            onClick={() => setHalfOffset(2)}
+                            className={`text-[9px] flex-1 ${isFocusMode ? 'h-7' : 'h-8'}`}
+                          >
+                            {videoOffsets.h2 !== null ? `H2: ${formatiereZeit(videoOffsets.h2)}` : 'Set H2'}
+                          </Button>
+                          <button 
+                            onClick={() => {
+                              setManualH2(videoOffsets.h2 !== null ? formatiereZeit(videoOffsets.h2) : '');
+                              setIsEditingH2(true);
+                            }}
+                            className="p-1 text-zinc-500 hover:text-brand transition-all"
+                          >
+                            <Settings2 size={12} />
+                          </button>
+                        </div>
+                        {videoOffsets.h2 !== null && !isFocusMode && (
+                          <button onClick={() => jumpToOffset(2)} className="text-[8px] font-black text-brand uppercase text-center hover:underline">Jump H2</button>
+                        )}
+                      </div>
+                    )}
+                  </div>
                 </div>
               </div>
             </Card>
           </div>
 
-          <div className={`flex flex-col min-h-0 transition-all duration-700
-            ${isCinemaMode ? 'w-[28%]' : 'w-[35%] flex-shrink-0'}
+          <div className={`flex flex-col min-h-0 transition-all duration-700 ease-in-out overflow-hidden
+            ${isCinemaMode 
+              ? (isFocusMode ? 'w-[12%]' : 'w-[28%]') 
+              : 'w-[35%] flex-shrink-0'}
           `}>
             <Card noPadding className="backdrop-blur-xl border border-white/5 rounded-[32px] flex flex-col h-full shadow-2xl overflow-hidden min-h-0">
               <div className="p-5 border-b border-white/5 bg-black/20 flex flex-col gap-4 flex-shrink-0">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <List size={16} className="text-brand" />
-                    <span className="text-[10px] font-black uppercase tracking-widest text-zinc-100">Tactical Engine</span>
-                  </div>
+                  {!isFocusMode && <span className="text-[10px] font-black uppercase tracking-widest text-zinc-100">Tactical Engine</span>}
                   <Button 
                     variant={syncFollow ? "primary" : "ghost"} 
                     size="sm"
                     onClick={() => setSyncFollow(!syncFollow)}
-                    className="text-[8px] h-auto py-1 px-2"
+                    className={`text-[8px] h-auto py-1 px-2 ${isFocusMode ? 'scale-75' : ''}`}
                   >
-                    Follow
+                    {isFocusMode ? 'F' : 'Follow'}
                   </Button>
                 </div>
-                <div className="relative">
+                <div className={`flex flex-col gap-2 ${isFocusMode ? 'opacity-50 hover:opacity-100 transition-opacity' : ''}`}>
                   <Input 
                     placeholder="Quick Filter..." 
                     value={searchTerm}
@@ -666,10 +949,129 @@ const VideoAnalysisTab = ({ initialGame, onBack }) => {
                     noPadding
                     className="border-white/5 bg-black/40 text-xs py-2"
                   />
+                  <div className="grid grid-cols-2 gap-2">
+                    <Select 
+                      value={filterAction}
+                      onChange={(e) => setFilterAction(e.target.value)}
+                      className="text-[10px] py-2 bg-black/40 border-white/5"
+                      options={[
+                        { value: 'all', label: 'Alle Aktionen' },
+                        { value: 'important', label: '⭐ Nur Highlights' },
+                        { value: 'all_goals', label: 'Alle Tore' },
+                        { value: 'home_goals', label: 'Heimtore' },
+                        { value: 'away_goals', label: 'Gegnertore' },
+                        ...uniqueActions.map(a => ({ value: a, label: a }))
+                      ]}
+                    />
+                    <Select 
+                      value={filterPlayer}
+                      onChange={(e) => setFilterPlayer(e.target.value)}
+                      className="text-[10px] py-2 bg-black/40 border-white/5"
+                      options={[
+                        { value: 'all', label: 'Alle Spieler' },
+                        ...Array.from(new Map((currentGame?.gameLog || []).map(e => [String(e.playerId || e.playerNumber || e.gegnerNummer || ''), e.playerName || `Spieler #${e.playerId || e.playerNumber || e.gegnerNummer}`])).entries())
+                          .filter(([id]) => id !== '')
+                          .map(([id, name]) => ({ value: id, label: name }))
+                      ]}
+                    />
+                  </div>
+                  
+                  <Button 
+                    variant={isAutoplayActive ? "destructive" : "primary"}
+                    size="sm"
+                    className="w-full mt-1 gap-2 h-9 shadow-lg"
+                    onClick={() => isAutoplayActive ? setIsAutoplayActive(false) : startAutoplay()}
+                    icon={isAutoplayActive ? Pause : Play}
+                  >
+                    {isAutoplayActive ? 'Clips stoppen' : 'Clips starten'}
+                  </Button>
+
+                  <Button 
+                    variant="ghost"
+                    size="sm"
+                    className="w-full mt-2 gap-2 h-9 border border-white/5 bg-white/5 hover:bg-brand/10 hover:text-brand transition-all"
+                    onClick={() => {
+                      setIsAddingHighlight(!isAddingHighlight);
+                      if (!isAddingHighlight) {
+                        // Default name or action
+                        setNewHighlightName('Taktisches Highlight');
+                      }
+                    }}
+                    icon={Zap}
+                  >
+                    {isAddingHighlight ? 'Abbrechen' : 'Highlight einfügen'}
+                  </Button>
+
+                  {isAddingHighlight && (
+                    <div className="mt-3 p-4 bg-brand/5 border border-brand/20 rounded-2xl flex flex-col gap-3 animate-in slide-in-from-top-2 duration-300">
+                      <div className="flex flex-col gap-1">
+                        <label className="text-[8px] uppercase font-black text-brand tracking-widest">Name der Aktion</label>
+                        <input 
+                          value={newHighlightName}
+                          onChange={(e) => setNewHighlightName(e.target.value)}
+                          className="w-full h-8 bg-black/60 border border-white/10 rounded-lg text-[10px] px-3 text-white focus:border-brand outline-none"
+                          placeholder="z.B. Starkes 1vs1"
+                        />
+                      </div>
+                      <div className="flex flex-col gap-1">
+                        <label className="text-[8px] uppercase font-black text-zinc-500 tracking-widest">Spieler (Optional)</label>
+                        <Select 
+                          value={newHighlightPlayer}
+                          onChange={(e) => setNewHighlightPlayer(e.target.value)}
+                          className="text-[10px] py-1.5 h-auto bg-black/40 border-white/5"
+                          options={[
+                            { value: '', label: 'Kein Spieler' },
+                            ...Array.from(new Map((currentGame?.gameLog || []).map(e => [String(e.playerId || e.playerNumber || e.gegnerNummer || ''), e.playerName || `Spieler #${e.playerId || e.playerNumber || e.gegnerNummer}`])).entries())
+                              .filter(([id]) => id !== '')
+                              .map(([id, name]) => ({ value: id, label: name }))
+                          ]}
+                        />
+                      </div>
+                      <div className="flex items-center justify-between gap-2 mt-1">
+                        <div className="flex flex-col gap-1">
+                          <label className="text-[8px] uppercase font-black text-zinc-500 tracking-widest">Video Zeit</label>
+                          <span className="text-[10px] font-mono text-zinc-300 bg-black/40 px-2 py-1 rounded border border-white/5">
+                            {formatiereZeit(videoRef.current?.currentTime || 0)}
+                          </span>
+                        </div>
+                        <Button 
+                          variant="primary" 
+                          size="sm" 
+                          className="h-9 px-4 gap-2"
+                          onClick={() => {
+                            const vTime = videoRef.current?.currentTime || 0;
+                            const estimatedMatchTime = virtualGameTime; // Current virtual clock time
+                            
+                            const newEntry = {
+                              id: `hl_${Date.now()}`,
+                              action: newHighlightName,
+                              time: formatiereZeit(estimatedMatchTime),
+                              officialTime: formatiereZeit(estimatedMatchTime),
+                              videoTime: vTime,
+                              isImportant: true,
+                              timestamp: Date.now(), // approximation
+                              playerName: newHighlightPlayer ? (currentGame?.gameLog || []).find(e => String(e.playerId || e.playerNumber || e.gegnerNummer || '') === newHighlightPlayer)?.playerName : ''
+                            };
+                            
+                            const updatedLog = [...(currentGame?.gameLog || []), newEntry];
+                            const updatedGame = { ...currentGame, gameLog: updatedLog };
+                            setCurrentGame(updatedGame);
+                            updateHistoryGame(updatedGame);
+                            setIsAddingHighlight(false);
+                            setNotification('Highlight hinzugefügt!');
+                          }}
+                        >
+                          <CheckCircle size={14} />
+                          <span className="text-[10px] font-bold uppercase text-black">Speichern</span>
+                        </Button>
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
+            </div>
 
-              <div ref={protocolListRef} className="flex-1 overflow-y-auto custom-scrollbar bg-black/10 min-h-0">
+            <div ref={protocolListRef} className="flex-1 overflow-y-auto custom-scrollbar bg-black/10 min-h-0">
                 {sortedLog.length === 0 ? (
                   <div className="flex flex-col items-center justify-center h-full text-zinc-700 opacity-30 p-8 text-center">
                     <List size={32} className="mb-2" />
@@ -680,36 +1082,162 @@ const VideoAnalysisTab = ({ initialGame, onBack }) => {
                     {sortedLog.map((entry, idx) => {
                       const estimatedVideoTime = getEstimatedVideoTime(entry);
                       const isActive = activeEntryIndex === idx;
+                      const isEditing = editingIndex === idx;
+
+                      if (isEditing) {
+                        return (
+                          <div 
+                            key={idx}
+                            className="flex flex-col p-4 bg-brand/10 border-y border-brand/30 relative overflow-hidden"
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            {/* Glow effect background */}
+                            <div className="absolute top-0 right-0 w-32 h-32 bg-brand/10 blur-[40px] -z-10 rounded-full" />
+                            
+                            <div className="flex items-center justify-between mb-4">
+                              <div className="flex items-center gap-3">
+                                <div className="flex flex-col gap-1">
+                                  <label className="text-[8px] uppercase font-black text-brand tracking-widest">Match Time</label>
+                                  <input 
+                                    value={editGameTime}
+                                    onChange={(e) => setEditGameTime(e.target.value)}
+                                    className="w-20 h-9 bg-black/80 border-2 border-brand/20 rounded-lg text-xs font-bold text-center text-white focus:border-brand transition-all outline-none"
+                                    placeholder="00:00"
+                                  />
+                                </div>
+                                <div className="h-8 w-px bg-white/10 mt-4" />
+                                <div className="flex flex-col gap-1 flex-1">
+                                  <label className="text-[8px] uppercase font-black text-zinc-500 tracking-widest">Aktion</label>
+                                  <span className="text-xs font-black text-white uppercase truncate">{entry.action}</span>
+                                </div>
+                              </div>
+
+                              <div className="flex items-center gap-2">
+                                <Button 
+                                  variant="primary" 
+                                  size="sm" 
+                                  className="h-9 px-3 gap-2 shadow-lg shadow-brand/20" 
+                                  onClick={handleSaveEdit}
+                                >
+                                  <CheckCircle size={14} />
+                                  <span className="text-[10px] font-bold uppercase">Save</span>
+                                </Button>
+                                <button 
+                                  onClick={() => {
+                                    const newLog = currentGame.gameLog.map((e, i) => 
+                                      i === idx ? { ...e, isImportant: !e.isImportant } : e
+                                    );
+                                    const updatedGame = { ...currentGame, gameLog: newLog };
+                                    setCurrentGame(updatedGame);
+                                    updateHistoryGame(updatedGame);
+                                  }}
+                                  className={`p-2 transition-all rounded-lg ${entry.isImportant ? 'bg-brand text-black shadow-lg shadow-brand/20' : 'bg-black/60 text-zinc-500 hover:text-brand'}`}
+                                  title="Wichtige Aktion markieren"
+                                >
+                                  <Star size={14} fill={entry.isImportant ? "currentColor" : "none"} />
+                                </button>
+                              </div>
+                            </div>
+
+                            <div className="flex items-center justify-between bg-black/40 p-3 rounded-xl border border-white/5">
+                              <div className="flex flex-col gap-1">
+                                <label className="text-[8px] uppercase font-black text-zinc-500 tracking-widest">Spieler / Gegner</label>
+                                <span className="text-[10px] font-bold text-zinc-300 truncate max-w-[120px]">
+                                  {entry.playerName || `Opp #${entry.gegnerNummer || '?'}`}
+                                </span>
+                              </div>
+
+                              <div className="flex items-center gap-3">
+                                <div className="flex flex-col gap-1 items-end">
+                                  <label className="text-[8px] uppercase font-black text-zinc-500 tracking-widest">Video Position</label>
+                                  <div className="flex items-center bg-black/60 rounded-lg border border-white/10 overflow-hidden h-8">
+                                    <input 
+                                      value={editVideoTime}
+                                      onChange={(e) => setEditVideoTime(e.target.value)}
+                                      className="w-16 h-full bg-transparent border-none text-[10px] font-mono text-center focus:outline-none text-white"
+                                    />
+                                    <button 
+                                      onClick={() => setEditVideoTime(formatiereZeit(videoRef.current.currentTime))}
+                                      title="Zeit vom Video übernehmen"
+                                      className="h-full px-2 bg-brand/10 hover:bg-brand hover:text-black transition-all border-l border-white/10"
+                                    >
+                                      <Clock size={12} />
+                                    </button>
+                                  </div>
+                                </div>
+                                
+                                <div className="h-8 w-px bg-white/10" />
+                                
+                                <div className="flex items-center gap-1">
+                                  <button 
+                                    onClick={() => {
+                                      if (confirm('Eintrag wirklich löschen?')) {
+                                        const newLog = currentGame.gameLog.filter((_, i) => i !== idx);
+                                        const updatedGame = { ...currentGame, gameLog: newLog };
+                                        setCurrentGame(updatedGame);
+                                        updateHistoryGame(updatedGame);
+                                        setEditingIndex(-1);
+                                      }
+                                    }}
+                                    className="p-2 hover:bg-red-500/10 text-red-500 transition-all rounded-lg"
+                                    title="Eintrag löschen"
+                                  >
+                                    <Trash2 size={14} />
+                                  </button>
+                                  <button 
+                                    onClick={() => setEditingIndex(-1)}
+                                    className="p-2 hover:bg-white/5 text-zinc-500 transition-all rounded-lg"
+                                    title="Abbrechen"
+                                  >
+                                    <ArrowLeft size={14} />
+                                  </button>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      }
+
                       return (
                         <div 
                           key={idx}
                           className={`flex flex-col p-4 border-b border-white/[0.03] cursor-pointer transition-all relative
                             ${isActive ? 'bg-brand text-black shadow-lg' : 'hover:bg-white/[0.02] text-zinc-400'}
+                            ${entry.isImportant && !isActive && !isFocusMode ? 'border-l-4 border-brand bg-brand/5' : ''}
+                            ${isFocusMode ? 'px-2 py-2' : ''}
                           `}
                           onClick={() => seekToEntry(entry)}
                         >
-                          <div className="flex items-center justify-between mb-1.5">
-                            <div className="flex items-center gap-2">
-                              <span className={`font-mono text-[10px] font-bold px-1.5 py-0.5 rounded border ${isActive ? 'border-black/20' : 'text-zinc-600 border-white/5'}`}>{entry.time}</span>
-                              <span className={`text-[11px] font-black uppercase tracking-tight ${isActive ? 'text-black' : 'text-zinc-200'}`}>{entry.action}</span>
+                          {entry.isImportant && !isActive && !isFocusMode && (
+                            <div className={`absolute top-2 right-12 flex items-center gap-1 ${isActive ? 'text-black' : 'text-brand'}`}>
+                              <Star size={8} fill="currentColor" />
+                              <span className="text-[6px] font-black uppercase">Highlight</span>
                             </div>
-                            <div className="flex items-center gap-2">
-                              <span className={`text-[10px] font-black ${isActive ? 'text-black' : 'text-brand'}`}>{entry.score}</span>
+                          )}
+                          <div className={`flex items-center justify-between ${isFocusMode ? 'mb-0.5' : 'mb-1.5'}`}>
+                            <div className="flex items-center gap-1.5 overflow-hidden">
+                              <span className={`font-mono text-[9px] font-bold px-1 py-0.5 rounded border flex-shrink-0 ${isActive ? 'border-black/20' : 'text-zinc-600 border-white/5'}`}>{entry.time}</span>
+                              <span className={`text-[10px] font-black uppercase tracking-tight truncate ${isActive ? 'text-black' : 'text-zinc-200'}`}>{entry.action}</span>
+                            </div>
+                            <div className="flex items-center gap-1 flex-shrink-0">
+                              {!isFocusMode && <span className={`text-[10px] font-black ${isActive ? 'text-black' : 'text-brand'}`}>{entry.score}</span>}
+                              
                               <button 
                                 onClick={(e) => {
                                   e.stopPropagation();
+                                  handleEditEntry(idx, entry);
                                 }}
-                                className={`p-1.5 rounded-lg transition-all ${isActive ? 'hover:bg-black/10 text-black' : 'hover:bg-brand/10 text-zinc-600 hover:text-brand'}`}
+                                className={`p-1 rounded-lg transition-all ${isActive ? 'hover:bg-black/10 text-black' : 'hover:bg-brand/10 text-zinc-600 hover:text-brand'} ${isFocusMode ? 'scale-75' : ''}`}
                               >
                                 <Settings2 size={12} />
                               </button>
                             </div>
                           </div>
-                          <div className="flex items-center justify-between opacity-80">
-                            <span className={`text-[9px] font-black uppercase tracking-widest truncate max-w-[140px] ${isActive ? 'text-black/80' : 'text-zinc-500'}`}>
+                          <div className={`flex items-center justify-between opacity-80 ${isFocusMode ? 'text-[8px]' : ''}`}>
+                            <span className={`font-black uppercase tracking-widest truncate ${isFocusMode ? 'max-w-[40px] text-[8px]' : 'max-w-[140px] text-[9px]'} ${isActive ? 'text-black/80' : 'text-zinc-500'}`}>
                               {entry.playerName || `Opp #${entry.gegnerNummer || '?'}`}
                             </span>
-                            <span className={`font-mono text-[9px] tabular-nums ${isActive ? 'text-black/60' : 'text-zinc-700'}`}>{formatiereZeit(estimatedVideoTime)}</span>
+                            <span className={`font-mono tabular-nums ${isFocusMode ? 'text-[8px]' : 'text-[9px]'} ${isActive ? 'text-black/60' : 'text-zinc-700'}`}>{formatiereZeit(estimatedVideoTime)}</span>
                           </div>
                         </div>
                       );
@@ -734,7 +1262,7 @@ const VideoAnalysisTab = ({ initialGame, onBack }) => {
             className="w-full py-4"
             onClick={handleSync}
           >
-            Initialize Synchronisation
+            Daten synchronisieren
           </Button>
         </div>
       </Modal>

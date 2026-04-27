@@ -3,13 +3,22 @@ import { User } from 'lucide-react';
 import Input from '../../ui/Input';
 import Select from '../../ui/Select';
 
-export const TeamConfig = ({ label, name, color, colors, onUpdateName, onUpdateColor }) => (
+export const TeamConfig = ({ label, name, season, color, colors, onUpdateName, onUpdateSeason, onUpdateColor }) => (
   <div className="space-y-6">
     <Input 
       label={label}
       value={name}
       onChange={(e) => onUpdateName(e.target.value)}
     />
+
+    {label.includes('Dein Teamname') && (
+      <Input 
+        label="Aktuelle Saison"
+        value={season || '25/26'}
+        placeholder="z.B. 25/26"
+        onChange={(e) => onUpdateSeason?.(e.target.value)}
+      />
+    )}
 
     <div className="space-y-4">
       <label className="text-[10px] font-black text-zinc-500 uppercase tracking-[0.3em] px-4 block">Team Farbe</label>

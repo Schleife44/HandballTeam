@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { 
   Shield, User, Trash2, 
-  ChevronDown, Crown, Star, Heart, Banknote, ShieldCheck, AlertCircle, X, Check
+  ChevronDown, Crown, Star, Heart, Banknote, ShieldCheck, AlertCircle, X, Check, Camera
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import useStore from '../../../store/useStore';
@@ -14,6 +14,7 @@ const FUNCTIONS = [
   { id: 'physio', name: 'Physio', icon: Heart, color: 'rose' },
   { id: 'co-trainer', name: 'Co-Trainer', icon: Star, color: 'blue' },
   { id: 'kapitaen', name: 'Kapitän', icon: Crown, color: 'amber' },
+  { id: 'pressewart', name: 'Pressewart', icon: Camera, color: 'purple' },
 ];
 
 const MemberManager = () => {
@@ -125,6 +126,7 @@ const MemberManager = () => {
                             func.color === 'rose' ? 'bg-rose-500/10 border-rose-500/30 text-rose-500' : 
                             func.color === 'blue' ? 'bg-blue-500/10 border-blue-500/30 text-blue-500' : 
                             func.color === 'amber' ? 'bg-amber-500/10 border-amber-500/30 text-amber-500' :
+                            func.color === 'purple' ? 'bg-purple-500/10 border-purple-500/30 text-purple-500' :
                             'bg-zinc-800/50 border-zinc-700 text-zinc-500'}`}>
                           <func.icon size={10} />
                           {func.name}

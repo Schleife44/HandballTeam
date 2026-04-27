@@ -1,3 +1,5 @@
+import syncService from '../../services/SyncService';
+
 export const initialMatchState = {
   activeMatch: null,
   history: [],
@@ -54,12 +56,14 @@ export const createMatchSlice = (set) => ({
     };
   }),
 
-  updateMatchScore: (home, away) => set((state) => ({
-    activeMatch: state.activeMatch ? {
-      ...state.activeMatch,
-      score: { home, away }
-    } : null
-  })),
+  updateMatchScore: (home, away) => set((state) => {
+    const { activeTeamId, activeMatch } = state;
+    const updatedMatch = activeMatch ? { ...activeMatch, score: { home, away } } : null;
+    if (activeTeamId && updatedMatch) {
+      syncService.saveMatch(activeTeamId, updatedMatch);
+    }
+    return { activeMatch: updatedMatch };
+  }),
 
   updateMatchLineup: (team, lineup) => set((state) => ({
     activeMatch: state.activeMatch ? {
@@ -82,29 +86,45 @@ export const createMatchSlice = (set) => ({
     } : null
   })),
 
-  updateMatchTimer: (timerUpdate) => set((state) => ({
-    activeMatch: state.activeMatch ? {
-      ...state.activeMatch,
-      timer: { ...state.activeMatch.timer, ...timerUpdate }
-    } : null
-  })),
+  updateMatchTimer: (timerUpdate) => set((state) => {
+    const { activeTeamId, activeMatch } = state;
+    const updatedMatch = activeMatch ? { ...activeMatch, timer: { ...activeMatch.timer, ...timerUpdate } } : null;
+    // Debounce timer saves slightly if it's just a tick, but for phase changes save immediately
+    if (activeTeamId && updatedMatch && (timerUpdate.phase || Math.random() > 0.95)) {
+      syncService.saveMatch(activeTeamId, updatedMatch);
+    }
+    return { activeMatch: updatedMatch };
+  }),
 
-  addToMatchLog: (entry) => set((state) => ({
-    activeMatch: state.activeMatch ? {
-      ...state.activeMatch,
-      gameLog: [entry, ...(state.activeMatch.gameLog || [])]
-    } : null
-  })),
+  addToMatchLog: (entry) => set((state) => {
+    const { activeTeamId, activeMatch } = state;
+    const updatedMatch = activeMatch ? {
+      ...activeMatch,
+      gameLog: [entry, ...(activeMatch.gameLog || [])]
+    } : null;
+    if (activeTeamId && updatedMatch) {
+      syncService.saveMatch(activeTeamId, updatedMatch);
+    }
+    return { activeMatch: updatedMatch };
+  }),
 
   finishMatch: () => set((state) => {
-    if (!state.activeMatch) return state;
+    const { activeTeamId, activeMatch } = state;
+    if (!activeMatch) return state;
     const timestamp = new Date().toISOString();
-    const gameId = state.activeMatch.id || `g_${Date.now()}`;
+    const gameId = activeMatch.id || `g_${Date.now()}`;
     const archivedGame = { 
-      ...state.activeMatch, 
+      ...activeMatch, 
       id: gameId,
       timestamp 
     };
+    
+    if (activeTeamId) {
+      syncService.saveHistoryGame(activeTeamId, archivedGame);
+      // Mark live match as ended in cloud
+      syncService.saveMatch(activeTeamId, { ...activeMatch, timer: { ...activeMatch.timer, phase: 'ENDED' } });
+    }
+
     return {
       history: [archivedGame, ...state.history],
       activeMatch: null
@@ -113,31 +133,56 @@ export const createMatchSlice = (set) => ({
 
   // History Actions
   setHistory: (history) => set({ history }),
-  addGameToHistory: (game) => set((state) => ({ 
-    history: [game, ...state.history].sort((a, b) => {
+  addGameToHistory: (game) => set((state) => {
+    const { activeTeamId, squad } = state;
+    const currentSeason = squad?.settings?.currentSeason || '25/26';
+    
+    const gameWithSeason = { 
+      ...game, 
+      season: game.season || currentSeason,
+      timestamp: game.timestamp || new Date().toISOString()
+    };
+
+    const newHistory = [gameWithSeason, ...state.history].sort((a, b) => {
       const getVal = (g) => {
         const dateStr = g.date || g.timestamp;
         if (dateStr) {
           const d = new Date(dateStr).getTime();
           if (!isNaN(d)) return d;
         }
-        const idNum = parseInt(g.id);
-        if (!isNaN(idNum) && idNum > 1000000000) return idNum;
         return 0;
       };
       return getVal(b) - getVal(a);
-    })
-  })),
-  deleteGameFromHistory: (idOrKey) => set((state) => ({
-    history: state.history.filter(g => 
-      g.id !== idOrKey && 
-      g.timestamp !== idOrKey && 
-      g.date !== idOrKey
-    )
-  })),
-  updateHistoryGame: (updatedGame) => set((state) => ({
-    history: state.history.map(g => g.id === updatedGame.id ? updatedGame : g)
-  })),
+    });
+
+    if (activeTeamId) {
+      syncService.saveHistoryGame(activeTeamId, gameWithSeason);
+    }
+
+    return { history: newHistory };
+  }),
+  deleteGameFromHistory: (idOrKey) => set((state) => {
+    const { activeTeamId } = state;
+    if (activeTeamId) {
+      syncService.deleteHistoryGame(activeTeamId, idOrKey);
+    }
+    return {
+      history: state.history.filter(g => 
+        g.id !== idOrKey && 
+        g.timestamp !== idOrKey && 
+        g.date !== idOrKey
+      )
+    };
+  }),
+  updateHistoryGame: (updatedGame) => set((state) => {
+    const { activeTeamId } = state;
+    if (activeTeamId) {
+      syncService.saveHistoryGame(activeTeamId, updatedGame);
+    }
+    return {
+      history: state.history.map(g => g.id === updatedGame.id ? updatedGame : g)
+    };
+  }),
 
   setMatchData: (data) => set((state) => {
     // Determine phase from cloud data (gamePhase: 1=PRE, 2=RUNNING, 3=HALFTIME, 5=FINISHED)

@@ -1,3 +1,5 @@
+import syncService from '../../services/SyncService';
+
 export const initialFineState = {
   fines: {
     catalog: [
@@ -22,33 +24,47 @@ export const createFineSlice = (set) => ({
 
   setFines: (fines) => set({ fines }),
 
-  updateFinesSettings: (newSettings) => set((state) => ({
-    fines: {
-      ...state.fines,
-      settings: { ...state.fines.settings, ...newSettings }
+  updateFinesSettings: (newSettings) => set((state) => {
+    const { activeTeamId, fines } = state;
+    const updatedFines = {
+      ...fines,
+      settings: { ...fines.settings, ...newSettings }
+    };
+    if (activeTeamId) {
+      syncService.saveFines(activeTeamId, updatedFines);
     }
-  })),
+    return { fines: updatedFines };
+  }),
 
-  addFineToHistory: (entry) => set((state) => ({
-    fines: {
-      ...state.fines,
-      history: [entry, ...state.fines.history]
+  addFineToHistory: (entry) => set((state) => {
+    const { activeTeamId, fines } = state;
+    const updatedFines = {
+      ...fines,
+      history: [entry, ...fines.history]
+    };
+    if (activeTeamId) {
+      syncService.saveFines(activeTeamId, updatedFines);
     }
-  })),
+    return { fines: updatedFines };
+  }),
 
-  updateFineHistory: (history) => set((state) => ({
-    fines: {
-      ...state.fines,
-      history
+  updateFineHistory: (history) => set((state) => {
+    const { activeTeamId, fines } = state;
+    const updatedFines = { ...fines, history };
+    if (activeTeamId) {
+      syncService.saveFines(activeTeamId, updatedFines);
     }
-  })),
+    return { fines: updatedFines };
+  }),
 
-  updateFineCatalog: (catalog) => set((state) => ({
-    fines: {
-      ...state.fines,
-      catalog
+  updateFineCatalog: (catalog) => set((state) => {
+    const { activeTeamId, fines } = state;
+    const updatedFines = { ...fines, catalog };
+    if (activeTeamId) {
+      syncService.saveFines(activeTeamId, updatedFines);
     }
-  })),
+    return { fines: updatedFines };
+  }),
 
   setFinesData: (data) => set((state) => ({
     fines: {

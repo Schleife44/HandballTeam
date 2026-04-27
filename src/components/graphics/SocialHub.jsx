@@ -12,10 +12,19 @@ import Modal from '../ui/Modal';
 
 const SocialHub = () => {
   const navigate = useNavigate();
-  const { history } = useStore();
+  const { history, activeMember, squad } = useStore();
   const [isHistoryOpen, setIsHistoryOpen] = useState(false);
   const [selectedGame, setSelectedGame] = useState(null);
   const [gameForEditor, setGameForEditor] = useState(null);
+
+  // Permissions
+  const myUid = activeMember?.uid || '';
+  const isOwner = myUid === (squad?.ownerUid || '');
+  const memberFunctions = Array.isArray(activeMember?.function) 
+    ? activeMember.function 
+    : (activeMember?.function ? [activeMember.function] : []);
+  const isPressewart = memberFunctions.includes('pressewart');
+  const canManageSocial = isOwner || isPressewart;
 
   const sortedHistory = [...history].sort((a, b) => {
     const dateA = new Date(a.date || a.timestamp);
@@ -48,14 +57,16 @@ const SocialHub = () => {
         <div className="space-y-8">
           {/* STUDIO CTA */}
           <div 
-            onClick={() => setGameForEditor(latestGame || {})}
-            className="group relative rounded-[3.5rem] overflow-hidden bg-gradient-to-br from-zinc-900 to-black border border-white/5 p-16 hover:border-brand/40 transition-all shadow-2xl cursor-pointer"
+            onClick={() => canManageSocial ? setGameForEditor(latestGame || {}) : null}
+            className={`group relative rounded-[3.5rem] overflow-hidden bg-gradient-to-br from-zinc-900 to-black border border-white/5 p-16 transition-all shadow-2xl
+              ${canManageSocial ? 'hover:border-brand/40 cursor-pointer' : 'opacity-60 cursor-not-allowed'}`}
           >
             <motion.div 
               initial={{ x: 60, y: 60, scale: 0.8, opacity: 0, rotate: 20 }}
               animate={{ x: 0, y: 0, scale: 1.1, opacity: 1, rotate: 12 }}
               transition={{ type: "spring", damping: 20, stiffness: 200, delay: 0.05 }}
-              className="absolute -right-10 -bottom-10 text-brand/5 group-hover:text-brand/10 transition-all group-hover:rotate-6 group-hover:scale-[1.15] duration-700 pointer-events-none"
+              className={`absolute -right-10 -bottom-10 transition-all duration-700 pointer-events-none
+                ${canManageSocial ? 'text-brand/5 group-hover:text-brand/10 group-hover:rotate-6 group-hover:scale-[1.15]' : 'text-zinc-800'}`}
             >
               <ImageIcon size={280} fill="currentColor" />
             </motion.div>
@@ -64,19 +75,23 @@ const SocialHub = () => {
               <div>
                 <h2 className="text-6xl font-black text-white uppercase italic leading-[0.95] tracking-tighter">
                   Erstelle deine <br />
-                  <span className="text-brand">Match-Grafik</span>
+                  <span className={canManageSocial ? 'text-brand' : 'text-zinc-600'}>Match-Grafik</span>
                 </h2>
                 <p className="text-sm font-bold text-zinc-500 mt-6 leading-relaxed">
-                  Nutze das Premium-Studio, um professionelle Instagram-Beiträge mit deinem Team-Design zu generieren.
+                  {canManageSocial 
+                    ? 'Nutze das Premium-Studio, um professionelle Instagram-Beiträge mit deinem Team-Design zu generieren.'
+                    : 'Nur der Pressewart oder der Super-Admin können Grafiken im Studio erstellen.'}
                 </p>
               </div>
 
               <div className="flex flex-col sm:flex-row gap-4">
                 <Button 
-                  variant="brand"
+                  variant={canManageSocial ? 'brand' : 'ghost'}
                   className="px-10 py-6 rounded-[2.5rem] text-sm group pointer-events-none"
+                  disabled={!canManageSocial}
                 >
-                  <ImageIcon size={20} strokeWidth={3} className="mr-2 group-hover:scale-110 transition-transform" /> Studio öffnen
+                  <ImageIcon size={20} strokeWidth={3} className="mr-2 group-hover:scale-110 transition-transform" /> 
+                  {canManageSocial ? 'Studio öffnen' : 'Zugriff verweigert'}
                 </Button>
               </div>
             </div>
@@ -156,7 +171,9 @@ const SocialHub = () => {
                 </div>
 
                 <div className="pt-4 border-t border-white/5 flex items-center justify-between text-brand group-hover:translate-x-2 transition-all">
-                  <span className="text-[10px] font-black uppercase">Grafik erstellen</span>
+                  <span className="text-[10px] font-black uppercase">
+                    {canManageSocial ? 'Grafik erstellen' : 'Details ansehen'}
+                  </span>
                   <ArrowRight size={16} />
                 </div>
               </Card>

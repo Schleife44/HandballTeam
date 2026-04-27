@@ -74,11 +74,4 @@ const useStore = create((set, get, ...args) => ({
   }
 }));
 
-// Cloud Sync Subscription
-useStore.subscribe((state) => {
-  if (state.isAuthenticated && state.activeTeamId) {
-    syncService.save(state.activeTeamId, state);
-  }
-});
-
 export default useStore;

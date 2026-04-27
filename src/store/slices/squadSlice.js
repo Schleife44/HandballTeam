@@ -1,3 +1,5 @@
+import syncService from '../../services/SyncService';
+
 export const initialSquadState = {
   squad: {
     home: [],
@@ -14,7 +16,8 @@ export const initialSquadState = {
       absageDeadline: 24,
       defaultMeetingOffset: 60,
       teamId: '',
-      myPlayerName: ''
+      myPlayerName: '',
+      currentSeason: '25/26'
     },
     calendarEvents: [],
     hiddenEventIds: [],
@@ -32,21 +35,35 @@ export const createSquadSlice = (set) => ({
     squad: { ...state.squad, isHydrated: val }
   })),
 
-  updateSettings: (newSettings) => set((state) => ({
-    squad: {
-      ...state.squad,
-      settings: { ...state.squad.settings, ...newSettings }
+  updateSettings: (newSettings) => set((state) => {
+    const { activeTeamId } = state;
+    const updatedSettings = { ...state.squad.settings, ...newSettings };
+    if (activeTeamId) {
+      syncService.saveSettings(activeTeamId, updatedSettings);
     }
-  })),
+    return {
+      squad: {
+        ...state.squad,
+        settings: updatedSettings
+      }
+    };
+  }),
 
   setSquad: (newSquad) => set({ squad: newSquad }),
 
   removeEvent: (eventId) => set((state) => {
+    const { activeTeamId } = state;
     const event = state.squad.calendarEvents.find(e => e.id === eventId);
     const hiddenIds = [...(state.squad.hiddenEventIds || [])];
+    
     if (event && event.hnetGameId && !hiddenIds.includes(event.hnetGameId)) {
       hiddenIds.push(event.hnetGameId);
     }
+
+    if (activeTeamId) {
+      syncService.deleteEvent(activeTeamId, eventId);
+    }
+
     return {
       squad: {
         ...state.squad,
@@ -64,11 +81,17 @@ export const createSquadSlice = (set) => ({
   })),
 
   addPlayer: (team, player) => set((state) => {
+    const { activeTeamId } = state;
     const teamKey = team === 'home' ? 'home' : 'away';
     const newPlayer = {
       ...player,
       id: player.id || Date.now().toString()
     };
+    
+    if (activeTeamId) {
+      syncService.savePlayer(activeTeamId, newPlayer, team === 'home' ? 'home' : 'away');
+    }
+
     return {
       squad: {
         ...state.squad,
@@ -78,7 +101,14 @@ export const createSquadSlice = (set) => ({
   }),
 
   updatePlayer: (team, playerId, updatedData) => set((state) => {
+    const { activeTeamId } = state;
     const teamKey = team === 'home' ? 'home' : 'away';
+    const player = state.squad[teamKey].find(p => p.id === playerId);
+    
+    if (player && activeTeamId) {
+      syncService.savePlayer(activeTeamId, { ...player, ...updatedData }, team === 'home' ? 'home' : 'away');
+    }
+
     return {
       squad: {
         ...state.squad,
@@ -88,7 +118,13 @@ export const createSquadSlice = (set) => ({
   }),
 
   removePlayer: (team, playerId) => set((state) => {
+    const { activeTeamId } = state;
     const teamKey = team === 'home' ? 'home' : 'away';
+    
+    if (activeTeamId) {
+      syncService.deletePlayer(activeTeamId, playerId);
+    }
+
     return {
       squad: {
         ...state.squad,
@@ -97,19 +133,38 @@ export const createSquadSlice = (set) => ({
     };
   }),
 
-  setCalendarEvents: (eventsOrFn) => set((state) => ({
-    squad: { 
-      ...state.squad, 
-      calendarEvents: typeof eventsOrFn === 'function' ? eventsOrFn(state.squad.calendarEvents) : eventsOrFn 
+  setCalendarEvents: (eventsOrFn) => set((state) => {
+    const { activeTeamId } = state;
+    const newEvents = typeof eventsOrFn === 'function' ? eventsOrFn(state.squad.calendarEvents) : eventsOrFn;
+    
+    if (activeTeamId && Array.isArray(newEvents)) {
+      // For bulk set, we still might want a batch or individual saves.
+      // Usually used for Hnet sync. Hnet sync handles its own saving usually.
+      // But let's ensure consistency.
+      newEvents.forEach(e => syncService.saveEvent(activeTeamId, e));
     }
-  })),
+
+    return {
+      squad: { 
+        ...state.squad, 
+        calendarEvents: newEvents 
+      }
+    };
+  }),
 
   updateEventStatus: (eventId, playerName, status, reason = '') => set((state) => {
+    const { activeTeamId } = state;
     const updatedEvents = (state.squad.calendarEvents || []).map(event => {
       if (event.id === eventId) {
         const responses = { ...(event.responses || {}) };
         responses[playerName] = { status, reason, timestamp: new Date().toISOString() };
-        return { ...event, responses };
+        const updatedEvent = { ...event, responses };
+        
+        if (activeTeamId) {
+          syncService.saveEvent(activeTeamId, updatedEvent);
+        }
+        
+        return updatedEvent;
       }
       return event;
     });

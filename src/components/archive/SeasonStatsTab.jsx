@@ -16,8 +16,8 @@ const SeasonStatsTab = () => {
   const aggregatedStats = useMemo(() => {
     const stats = {}; // Key: playerName
     
-    games.forEach(game => {
-      if (!game.gameLog) return;
+    (games || []).forEach(game => {
+      if (!game || !game.gameLog) return;
       
       game.gameLog.forEach(entry => {
         if (entry.action?.startsWith('Gegner') || entry.gegnerNummer || !entry.playerId) return;

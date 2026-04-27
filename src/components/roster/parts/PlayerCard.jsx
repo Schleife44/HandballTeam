@@ -1,10 +1,12 @@
 import React from 'react';
-import { Check, Eye, EyeOff, Edit2, Trash2, TrendingUp } from 'lucide-react';
+import { Check, Eye, EyeOff, Edit2, Trash2, TrendingUp, CheckCheck } from 'lucide-react';
 import { motion } from 'framer-motion';
 import Button from '../../ui/Button';
 import Badge from '../../ui/Badge';
 import Card from '../../ui/Card';
 import Input from '../../ui/Input';
+
+import useStore from '../../../store/useStore';
 
 const PlayerCard = ({ 
   player, 
@@ -18,6 +20,16 @@ const PlayerCard = ({
   onOpenStats,
   teamColor 
 }) => {
+  const { allMembers, activeMember, squad } = useStore();
+
+  // Permissions
+  const myName = activeMember?.playerName;
+  const myUid = activeMember?.uid;
+  const isOwner = myUid === squad?.ownerUid;
+  const isTrainer = activeMember?.role === 'trainer' || isOwner;
+  const isMe = activeMember?.playerName === player.name || activeMember?.playerId === player.id;
+  const canEdit = isTrainer || isMe;
+
   return (
     <motion.div
       layout
@@ -83,12 +95,25 @@ const PlayerCard = ({
                 {player.isInactive && <Badge variant="red">Inaktiv</Badge>}
               </div>
             </div>
+
+            {allMembers.some(m => m.playerName === player.name || m.playerId === player.id) && (
+              <div 
+                className="absolute top-3 right-5 text-brand/50 group-hover:text-brand transition-colors"
+                title="Spieler verlinkt"
+              >
+                <CheckCheck size={14} strokeWidth={3} />
+              </div>
+            )}
             
             <div className="flex gap-1 opacity-0 group-hover:opacity-100 max-w-0 group-hover:max-w-[200px] overflow-hidden transition-all duration-500 ml-auto whitespace-nowrap">
               <Button size="icon" variant="ghost" icon={TrendingUp} onClick={onOpenStats} className="text-zinc-500 hover:text-emerald-400" />
-              <Button size="icon" variant="ghost" icon={player.isInactive ? Eye : EyeOff} onClick={onToggleStatus} className="text-zinc-500 hover:text-zinc-100" />
-              <Button size="icon" variant="ghost" icon={Edit2} onClick={onEditStart} className="text-zinc-500 hover:text-brand" />
-              <Button size="icon" variant="ghost" icon={Trash2} onClick={onRemove} className="text-zinc-500 hover:text-red-500" />
+              {canEdit && (
+                <>
+                  <Button size="icon" variant="ghost" icon={player.isInactive ? Eye : EyeOff} onClick={onToggleStatus} className="text-zinc-500 hover:text-zinc-100" />
+                  <Button size="icon" variant="ghost" icon={Edit2} onClick={onEditStart} className="text-zinc-500 hover:text-brand" />
+                  <Button size="icon" variant="ghost" icon={Trash2} onClick={onRemove} className="text-zinc-500 hover:text-red-500" />
+                </>
+              )}
             </div>
           </div>
         )}

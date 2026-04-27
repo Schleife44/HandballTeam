@@ -230,6 +230,11 @@ export const mapToInternal = (rawJson, myTeamName = "") => {
   return {
     id: summary.id,
     date: new Date(summary.startsAt).toISOString(),
+    teamHome: homeTeam.name,
+    teamAway: awayTeam.name,
+    scoreHome: summary.homeGoals || 0,
+    scoreAway: summary.awayGoals || 0,
+    // Legacy support
     score: { heim: summary.homeGoals || 0, gegner: summary.awayGoals || 0 },
     teams: { heim: homeTeam.name, gegner: awayTeam.name },
     gameLog,
@@ -240,7 +245,13 @@ export const mapToInternal = (rawJson, myTeamName = "") => {
     homeTeamId: homeTeam.id,
     awayTeamId: awayTeam.id,
     timestamp: new Date(summary.startsAt).getTime(),
-    settings: { teamNameHeim: homeTeam.name, teamNameGegner: awayTeam.name, isAuswaertsspiel: isAuswaerts }
+    settings: { 
+      teamHome: homeTeam.name, 
+      teamAway: awayTeam.name, 
+      teamNameHeim: homeTeam.name, 
+      teamNameGegner: awayTeam.name, 
+      isAuswaertsspiel: isAuswaerts 
+    }
   };
 };
 
@@ -368,6 +379,8 @@ export const syncGame = async (game, url, searchName) => {
     syncReport: report,
     settings: {
       ...game.settings,
+      teamHome: hnet.teams.heim,
+      teamAway: hnet.teams.gegner,
       teamNameHeim: hnet.teams.heim,
       teamNameGegner: hnet.teams.gegner
     }

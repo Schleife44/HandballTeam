@@ -33,7 +33,14 @@ const MemoizedPlayer = memo(DraggablePlayer);
 const MemoizedPath = memo(TacticsPath);
 
 const TacticsBoard = () => {
-  const { tacticsPlays: savedPlays, addTacticsPlay, removeTacticsPlay, setTacticsPlays } = useStore();
+  const { tacticsPlays: savedPlays, addTacticsPlay, removeTacticsPlay, setTacticsPlays, activeMember, squad } = useStore();
+  
+  // Permissions
+  const myUid = activeMember?.uid || '';
+  const isOwner = myUid === (squad?.ownerUid || '');
+  const isTrainer = (activeMember?.role === 'trainer') || isOwner;
+  const canDeletePlays = isTrainer;
+
   const constraintsRef = useRef(null);
   const [frames, setFrames] = useState([INITIAL_PLAYERS]);
   const [currentFrame, setCurrentFrame] = useState(0);
@@ -151,6 +158,7 @@ const TacticsBoard = () => {
   };
 
   const deletePlay = (id) => {
+    if (!canDeletePlays) return;
     removeTacticsPlay(id);
   };
 
@@ -176,7 +184,9 @@ const TacticsBoard = () => {
             <button onClick={() => setCurrentFrame(prev => Math.min(frames.length - 1, prev + 1))} disabled={currentFrame === frames.length - 1} className="p-2 text-zinc-500 hover:text-zinc-100 disabled:opacity-20 transition-all"><ChevronRight size={18} /></button>
           </div>
           <div className="flex items-center gap-2">
-            <button onClick={removeFrame} disabled={frames.length <= 1} className="p-2 text-zinc-600 hover:text-red-500 transition-all"><Trash2 size={16} /></button>
+            {canDeletePlays && (
+              <button onClick={removeFrame} disabled={frames.length <= 1} className="p-2 text-zinc-600 hover:text-red-500 transition-all"><Trash2 size={16} /></button>
+            )}
             <button onClick={addFrame} className="p-2 bg-zinc-800 text-zinc-300 hover:text-brand hover:bg-brand/10 rounded-xl transition-all border border-zinc-700"><Plus size={18} /></button>
             <Button 
               onClick={() => setIsPlaying(!isPlaying)} 
@@ -255,7 +265,9 @@ const TacticsBoard = () => {
                     <h4 className="text-sm font-black text-zinc-200 group-hover:text-brand transition-colors">{play.name}</h4>
                     <p className="text-[10px] text-zinc-500 mt-1 font-bold uppercase tracking-widest">{play.frames.length} Phasen • {play.date}</p>
                   </div>
-                  <button onClick={(e) => { e.stopPropagation(); deletePlay(play.id); }} className="p-2 text-zinc-600 hover:text-red-500 transition-colors opacity-0 group-hover:opacity-100"><Trash2 size={16} /></button>
+                  {canDeletePlays && (
+                    <button onClick={(e) => { e.stopPropagation(); deletePlay(play.id); }} className="p-2 text-zinc-600 hover:text-red-500 transition-colors opacity-0 group-hover:opacity-100"><Trash2 size={16} /></button>
+                  )}
                 </div>
               ))
             )}

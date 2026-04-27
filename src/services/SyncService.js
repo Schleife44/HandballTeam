@@ -1,91 +1,114 @@
 import { auth, db } from './firebase';
-import { doc, onSnapshot, updateDoc, getDoc } from 'firebase/firestore';
+import { 
+  doc, onSnapshot, updateDoc, getDoc, collection, 
+  setDoc, deleteDoc, writeBatch, query, limit 
+} from 'firebase/firestore';
+
 /**
- * SyncService
- * Bridges the modular Zustand store with the existing Firebase data structure.
+ * SyncService V2 (SaaS Scale)
+ * Handles granular updates via subcollections for Events, Roster, and History.
  */
 class SyncService {
   constructor() {
-    this.unsubscribe = null;
+    this.unsubscribe = [];
     this.isApplyingRemoteChange = false;
     this.saveTimeout = null;
   }
 
   start(teamId, store) {
-    if (this.unsubscribe) {
-      if (Array.isArray(this.unsubscribe)) this.unsubscribe.forEach(u => u());
-      else this.unsubscribe();
-    }
+    this.stop(); // Ensure clean start
     if (!teamId || !store) return;
 
     const gameDocRef = doc(db, 'teams', teamId, 'games', 'current');
     const teamDocRef = doc(db, 'teams', teamId);
+    const historyColRef = collection(db, 'teams', teamId, 'history');
+    const eventsColRef = collection(db, 'teams', teamId, 'events');
+    const rosterColRef = collection(db, 'teams', teamId, 'roster');
 
-    console.log(`[Sync] Starting listeners for team: ${teamId}`);
+    console.log(`[Sync] Starting High-Scale listeners for team: ${teamId}`);
     
+    // 1. Core Game Listener (Live Match)
     const unsubGame = onSnapshot(gameDocRef, (snapshot) => {
-      if (!snapshot.exists()) {
-        console.warn('[Sync] No game data found for this team.');
-        return;
-      }
-
+      if (!snapshot.exists()) return;
       const data = snapshot.data();
       this.isApplyingRemoteChange = true;
-      
       try {
         this.hydrateSlices(data, store);
+        
+        // Migration: History
+        if (data.history && Array.isArray(data.history) && data.history.length > 0) {
+          this.migrateHistoryToCollection(teamId, data.history);
+        }
+        // Migration: Events
+        if (data.calendarEvents && Array.isArray(data.calendarEvents) && data.calendarEvents.length > 0) {
+          this.migrateEventsToCollection(teamId, data.calendarEvents);
+        }
+        // Migration: Roster
+        if (data.roster && Array.isArray(data.roster) && data.roster.length > 0) {
+          this.migrateRosterToCollection(teamId, data.roster, 'home');
+        }
+        if (data.knownOpponents && Array.isArray(data.knownOpponents) && data.knownOpponents.length > 0) {
+          this.migrateRosterToCollection(teamId, data.knownOpponents, 'away');
+        }
       } finally {
         this.isApplyingRemoteChange = false;
       }
     });
 
+    // 2. Team Settings Listener
     const unsubTeam = onSnapshot(teamDocRef, (snapshot) => {
-      if (snapshot.exists()) {
-        const teamData = snapshot.data();
-        store.setSquadData?.({
-          ownerUid: teamData.ownerUid,
-          name: teamData.name
+      if (!snapshot.exists()) return;
+      const teamData = snapshot.data();
+      store.setSquadData?.({
+        ownerUid: teamData.ownerUid,
+        name: teamData.name
+      });
+      if (teamData.settings) {
+        store.updateSettings?.({
+          ...teamData.settings,
+          homeName: teamData.settings.homeName || teamData.name || 'Mein Team'
         });
       }
     });
 
-    this.unsubscribe = [unsubGame, unsubTeam];
+    // 3. History Listener
+    const unsubHistory = onSnapshot(historyColRef, (snapshot) => {
+      const history = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      store.setHistory?.(history);
+    });
+
+    // 4. Events Listener (Calendar)
+    const unsubEvents = onSnapshot(eventsColRef, (snapshot) => {
+      const events = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      store.setCalendarEvents?.(events);
+    });
+
+    // 5. Roster Listener
+    const unsubRoster = onSnapshot(rosterColRef, (snapshot) => {
+      const allPlayers = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      const home = allPlayers.filter(p => p.teamType === 'home' || !p.teamType);
+      const away = allPlayers.filter(p => p.teamType === 'away');
+      store.setSquadData?.({ home, away });
+    });
+
+    this.unsubscribe = [unsubGame, unsubTeam, unsubHistory, unsubEvents, unsubRoster];
   }
 
   stop() {
     if (this.unsubscribe) {
-      if (Array.isArray(this.unsubscribe)) this.unsubscribe.forEach(u => u());
-      else this.unsubscribe();
-      this.unsubscribe = null;
+      this.unsubscribe.forEach(u => u());
+      this.unsubscribe = [];
     }
   }
 
-  /**
-   * Maps legacy v1 data to modular v2 slices.
-   */
   hydrateSlices(data, store) {
     if (!store) return;
-    const isAuswaerts = data.settings?.isAuswaertsspiel || false;
-
-    // 1. Squad Sync
-    if (data.roster) {
-      const rawRoster = Array.isArray(data.roster) ? data.roster : Object.values(data.roster);
-      const roster = rawRoster.map(p => ({
-        id: p.id || Math.random().toString(36).substr(2, 9),
-        ...p
-      }));
-
-      const rawOpponents = Array.isArray(data.knownOpponents) ? data.knownOpponents : Object.values(data.knownOpponents || {});
-
-      store.setSquadData?.({
-        home: isAuswaerts ? rawOpponents : roster,
-        away: isAuswaerts ? roster : rawOpponents
-      });
-    }
-
-    // 2. Match Sync
+    
+    // Match Sync (Live Ticker)
     if (data.score || data.timer || data.gameLog) {
       store.setMatchData?.({
+        scoreHome: data.score?.scoreHome || data.score?.home || data.score?.heim || 0,
+        scoreAway: data.score?.scoreAway || data.score?.away || data.score?.gegner || 0,
         score: data.score || { heim: 0, gegner: 0 },
         gameLog: data.gameLog || [],
         timer: data.timer || { gamePhase: 1, verstricheneSekundenBisher: 0 },
@@ -94,7 +117,7 @@ class SyncService {
       });
     }
 
-    // 3. Fines Sync
+    // Fines Sync
     if (data.finesCatalog || data.finesHistory) {
       store.setFinesData?.({
         catalog: data.finesCatalog,
@@ -104,136 +127,162 @@ class SyncService {
       });
     }
 
-    // 4. Calendar Sync (Part of Squad in v2)
-    if (data.calendarEvents || data.calendarSubscriptions) {
-      const rawEvents = Array.isArray(data.calendarEvents) ? data.calendarEvents : Object.values(data.calendarEvents || {});
-      const rawSubs = Array.isArray(data.calendarSubscriptions) ? data.calendarSubscriptions : Object.values(data.calendarSubscriptions || {});
-      
+    // Subscriptions & Hidden IDs (still in core doc for simplicity)
+    if (data.calendarSubscriptions || data.hiddenEventIds) {
       store.setSquadData?.({
-        calendarEvents: rawEvents,
-        subscriptions: rawSubs,
+        subscriptions: data.calendarSubscriptions || [],
         hiddenEventIds: data.hiddenEventIds || []
       });
     }
 
-    // 5. Settings Sync
-    if (data.settings) {
-      store.updateSettings?.({
-        ...data.settings,
-        homeName: data.settings.teamNameHeim || data.settings.homeName || 'Mein Team',
-        awayName: data.settings.teamNameGegner || data.settings.awayName || 'Gegner',
-        homeColor: data.settings.homeColor || '#84cc16',
-        awayColor: data.settings.awayColor || '#3f3f46'
-      });
-    }
-
-    // 6. History Sync
-    if (data.history) {
-      store.setHistory?.(data.history);
-    }
-
     store.setHydrated?.(true);
-    console.log('[Sync] Store hydrated from Cloud.');
   }
 
   /**
-   * Debounced save to Firestore.
-   * This should be called by the store whenever relevant data changes.
+   * Save Granular: Live Game
    */
-  save(teamId, storeState) {
+  saveMatch(teamId, matchState) {
     if (this.isApplyingRemoteChange || !teamId) return;
+    const docRef = doc(db, 'teams', teamId, 'games', 'current');
+    
+    const payload = {
+      scoreHome: matchState.score?.home || 0,
+      scoreAway: matchState.score?.away || 0,
+      // Legacy Score support
+      score: { heim: matchState.score?.home || 0, gegner: matchState.score?.away || 0 },
+      gameLog: matchState.log || [],
+      timer: {
+        verstricheneSekundenBisher: (matchState.timer?.elapsedMs || 0) / 1000,
+        istPausiert: matchState.timer?.isPaused ?? true,
+        gamePhase: matchState.timer?.phase === 'ENDED' ? 5 :
+                   (matchState.timer?.phase === 'HALF_TIME' ? 3 : 2)
+      },
+      activeSuspensions: matchState.suspensions || [],
+      lastUpdated: new Date().toISOString()
+    };
 
-    // Clear any existing timeout to restart the debounce timer
-    if (this.saveTimeout) {
-      clearTimeout(this.saveTimeout);
-    }
-
-    this.saveTimeout = setTimeout(async () => {
-      this.saveTimeout = null; // Reset timeout ref
-      
-      const gameDocRef = doc(db, 'teams', teamId, 'games', 'current');
-      
-      // Prepare the payload (merging modular state back to legacy structure)
-      const squad = storeState.squad || {};
-      const match = storeState.activeMatch || {}; 
-      const history = storeState.history || [];
-      const fines = storeState.fines || {};
-
-      const payload = {
-        roster: squad.home || [], 
-        knownOpponents: squad.away || [],
-        settings: {
-          ...squad.settings,
-          teamNameHeim: squad.settings?.homeName || 'Heim',
-          teamNameGegner: squad.settings?.awayName || 'Gegner',
-          homeColor: squad.settings?.homeColor || '#84cc16',
-          awayColor: squad.settings?.awayColor || '#3f3f46'
-        },
-        mode: match?.mode || null,
-        score: { heim: match?.score?.home || 0, gegner: match?.score?.away || 0 },
-        gameLog: match?.log || [],
-        timer: {
-          verstricheneSekundenBisher: (match?.timer?.elapsedMs || 0) / 1000,
-          istPausiert: match?.timer?.isPaused ?? true,
-          gamePhase: match?.timer?.phase === 'ENDED' || !storeState.activeMatch ? 5 :
-                     (match?.timer?.phase === 'HALF_TIME' ? 3 : 
-                     (match?.timer?.phase === 'FIRST_HALF' || match?.timer?.phase === 'SECOND_HALF' || match?.timer?.phase === 'LIVE' ? 2 : 1))
-        },
-        activeSuspensions: match?.suspensions || [],
-        finesCatalog: fines.catalog || [],
-        finesHistory: fines.history || [],
-        finesSettings: fines.settings || {},
-        finesStatus: fines.status || {},
-        calendarEvents: this.stripFunctions(squad.calendarEvents || []),
-        calendarSubscriptions: this.stripFunctions(squad.subscriptions || []),
-        hiddenEventIds: squad.hiddenEventIds || [],
-        history: this.stripFunctions(history),
-        lastUpdated: new Date().toISOString()
-      };
-
-      try {
-        // 1. Save Game Data (to current game doc)
-        console.log('[Sync] Saving Game Data to Cloud:', teamId, payload);
-        await updateDoc(gameDocRef, this.stripFunctions(payload));
-
-        // 2. Save Team Settings (to root team doc)
-        if (storeState.squad?.settings) {
-          const teamDocRef = doc(db, 'teams', teamId);
-          console.log('[Sync] Saving Team Settings to Cloud:', teamId, storeState.squad.settings);
-          await updateDoc(teamDocRef, this.stripFunctions({
-            name: storeState.squad.settings.homeName,
-            settings: storeState.squad.settings
-          }));
-        }
-
-        console.log('[Sync] All data saved to Cloud.');
-      } catch (error) {
-        console.error('[Sync] Save failed:', error);
-      }
-    }, 500); // 500ms debounce
+    updateDoc(docRef, this.stripFunctions(payload)).catch(e => console.error('[Sync] Match save failed:', e));
   }
 
   /**
-   * Recursively removes functions from an object/array to make it Firestore-safe.
+   * Save Granular: Settings
    */
+  async saveSettings(teamId, settings) {
+    if (!teamId || !settings) return;
+    const teamRef = doc(db, 'teams', teamId);
+    const gameRef = doc(db, 'teams', teamId, 'games', 'current');
+
+    const update = {
+      name: settings.homeName,
+      settings: this.stripFunctions(settings)
+    };
+
+    try {
+      await updateDoc(teamRef, update);
+      // Legacy support: also update settings in current doc
+      await updateDoc(gameRef, { settings: update.settings });
+    } catch (e) {
+      console.error('[Sync] Settings save failed:', e);
+    }
+  }
+
+  /**
+   * Save Granular: Fines
+   */
+  async saveFines(teamId, fines) {
+    if (!teamId || !fines) return;
+    const gameRef = doc(db, 'teams', teamId, 'games', 'current');
+    const payload = {
+      finesCatalog: fines.catalog || [],
+      finesHistory: fines.history || [],
+      finesSettings: fines.settings || {},
+      finesStatus: fines.status || {}
+    };
+    updateDoc(gameRef, this.stripFunctions(payload)).catch(e => console.error('[Sync] Fines save failed:', e));
+  }
+
+  /**
+   * History Docs
+   */
+  async saveHistoryGame(teamId, game) {
+    const docRef = doc(db, 'teams', teamId, 'history', game.id || `h_${Date.now()}`);
+    setDoc(docRef, this.stripFunctions(game), { merge: true });
+  }
+
+  async deleteHistoryGame(teamId, gameId) {
+    deleteDoc(doc(db, 'teams', teamId, 'history', gameId));
+  }
+
+  /**
+   * Event Docs (Calendar)
+   */
+  async saveEvent(teamId, event) {
+    if (!teamId || !event.id) return;
+    const docRef = doc(db, 'teams', teamId, 'events', event.id);
+    setDoc(docRef, this.stripFunctions(event), { merge: true });
+  }
+
+  async deleteEvent(teamId, eventId) {
+    if (!teamId || !eventId) return;
+    deleteDoc(doc(db, 'teams', teamId, 'events', eventId));
+  }
+
+  /**
+   * Roster Docs (Players)
+   */
+  async savePlayer(teamId, player, teamType = 'home') {
+    if (!teamId || !player.id) return;
+    const docRef = doc(db, 'teams', teamId, 'roster', player.id);
+    setDoc(docRef, this.stripFunctions({ ...player, teamType }), { merge: true });
+  }
+
+  async deletePlayer(teamId, playerId) {
+    if (!teamId || !playerId) return;
+    deleteDoc(doc(db, 'teams', teamId, 'roster', playerId));
+  }
+
+  /**
+   * MIGRATIONS
+   */
+  async migrateHistoryToCollection(teamId, legacyHistory) {
+    const batch = writeBatch(db);
+    legacyHistory.forEach(g => batch.set(doc(db, 'teams', teamId, 'history', g.id || `h_${Math.random()}`), this.stripFunctions(g)));
+    batch.update(doc(db, 'teams', teamId, 'games', 'current'), { history: null });
+    await batch.commit();
+  }
+
+  async migrateEventsToCollection(teamId, legacyEvents) {
+    console.log(`[Migration] Moving ${legacyEvents.length} events to subcollection...`);
+    const batch = writeBatch(db);
+    legacyEvents.forEach(e => {
+      const id = e.id || `e_${Math.random().toString(36).substr(2, 9)}`;
+      batch.set(doc(db, 'teams', teamId, 'events', id), this.stripFunctions({ ...e, id }));
+    });
+    batch.update(doc(db, 'teams', teamId, 'games', 'current'), { calendarEvents: null });
+    await batch.commit();
+  }
+
+  async migrateRosterToCollection(teamId, legacyRoster, teamType) {
+    console.log(`[Migration] Moving ${legacyRoster.length} ${teamType} players to subcollection...`);
+    const batch = writeBatch(db);
+    legacyRoster.forEach(p => {
+      const id = p.id || `p_${Math.random().toString(36).substr(2, 9)}`;
+      batch.set(doc(db, 'teams', teamId, 'roster', id), this.stripFunctions({ ...p, id, teamType }));
+    });
+    const field = teamType === 'home' ? 'roster' : 'knownOpponents';
+    batch.update(doc(db, 'teams', teamId, 'games', 'current'), { [field]: null });
+    await batch.commit();
+  }
+
   stripFunctions(obj) {
     if (obj === null || typeof obj !== 'object') return obj;
-    if (obj instanceof Date) return obj; // Keep Dates
-    
-    if (Array.isArray(obj)) {
-      return obj
-        .map(item => this.stripFunctions(item))
-        .filter(item => item !== undefined && typeof item !== 'function');
-    }
-
+    if (obj instanceof Date) return obj;
+    if (Array.isArray(obj)) return obj.map(item => this.stripFunctions(item)).filter(item => item !== undefined && typeof item !== 'function');
     const cleaned = {};
     for (const key in obj) {
       if (Object.prototype.hasOwnProperty.call(obj, key)) {
         const value = obj[key];
-        // Remove undefined and functions
-        if (value !== undefined && typeof value !== 'function') {
-          cleaned[key] = this.stripFunctions(value);
-        }
+        if (value !== undefined && typeof value !== 'function') cleaned[key] = this.stripFunctions(value);
       }
     }
     return cleaned;
