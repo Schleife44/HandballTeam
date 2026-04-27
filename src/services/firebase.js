@@ -3,13 +3,13 @@ import { getFirestore } from 'firebase/firestore';
 import { getAuth } from 'firebase/auth';
 
 const firebaseConfig = {
-    apiKey: 'AIzaSyCUxWf2FWD_M-74kja16hDB9QXyct2BTw0',
-    authDomain: 'handball-tracker-322a1.firebaseapp.com',
-    projectId: 'handball-tracker-322a1',
-    storageBucket: 'handball-tracker-322a1.firebasestorage.app',
-    messagingSenderId: '543345608323',
-    appId: '1:543345608323:web:f126e979414ec5305b7db6',
-    measurementId: 'G-S35J20GMHM'
+    apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
+    authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
+    projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
+    storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
+    messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
+    appId: import.meta.env.VITE_FIREBASE_APP_ID,
+    measurementId: import.meta.env.VITE_FIREBASE_MEASUREMENT_ID
 };
 
 const app = initializeApp(firebaseConfig);
