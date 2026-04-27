@@ -1,0 +1,239 @@
+import React, { useState, useEffect } from 'react';
+import { 
+  format, 
+  addMonths, 
+  subMonths, 
+  addWeeks,
+  setHours,
+  setMinutes,
+  parse,
+  getDay
+} from 'date-fns';
+import { de } from 'date-fns/locale';
+import { AnimatePresence, motion } from 'framer-motion';
+
+// Hooks
+import { useCalendarData } from '../../hooks/useCalendarData';
+
+// Sub-Components
+import CalendarHeader from './parts/CalendarHeader';
+import DayLabels from './parts/DayLabels';
+import CalendarGrid from './parts/CalendarGrid';
+import EventSidebar from './parts/EventSidebar';
+import EventModal from './parts/EventModal';
+import AbsenceModal from './parts/AbsenceModal';
+import ManagementHub from './parts/ManagementHub';
+import DeleteConfirmation from './parts/DeleteConfirmation';
+
+const Calendar = () => {
+  // --- DATA HOOK ---
+  const {
+    events, setEvents,
+    absences, setAbsences,
+    subscriptions, setSubscriptions,
+    series, setSeries,
+    settings,
+    homeSquad,
+    isSyncing,
+    syncFromHnet,
+    handleUpdateStatus,
+    handleAddAbsence,
+    executeDeletion,
+    saveSeriesTitle
+  } = useCalendarData();
+
+  // --- UI STATE ---
+  const [currentMonth, setCurrentMonth] = useState(new Date());
+  const [selectedDate, setSelectedDate] = useState(new Date());
+  const [expandedEventId, setExpandedEventId] = useState(null);
+  const [activeModal, setActiveModal] = useState(null); 
+  const [confirmDelete, setConfirmDelete] = useState({ type: null, id: null, title: '' });
+  const [editingSeriesId, setEditingSeriesId] = useState(null);
+  const [tempSeriesTitle, setTempSeriesTitle] = useState('');
+  const [formError, setFormError] = useState(null);
+
+  // Form states
+  const [newAbo, setNewAbo] = useState({ url: '', isMandatory: false, isAutoGoing: false, deadline: 0, meetingOffset: 60 });
+  const [absenceData, setAbsenceData] = useState({ type: 'Einmalig', start: format(new Date(), 'yyyy-MM-dd'), end: format(new Date(), 'yyyy-MM-dd'), day: 1, reason: '' });
+  const [eventData, setEventData] = useState({ id: null, title: '', type: 'Training', date: format(new Date(), 'yyyy-MM-dd'), time: '19:00', meetingTime: '', location: '', repeat: 'Keine', endDate: format(addMonths(new Date(), 3), 'yyyy-MM-dd'), isMandatory: false, isAutoGoing: false, deadline: 0 });
+
+  useEffect(() => {
+    if (!eventData.id) {
+      setEventData(prev => ({ ...prev, date: format(selectedDate, 'yyyy-MM-dd') }));
+    }
+  }, [selectedDate]);
+
+
+  // --- HANDLERS ---
+  const handleSaveEvent = () => {
+    setFormError(null);
+    if (!eventData.title || !eventData.date) {
+      setFormError("Bitte Titel und Datum ausfüllen.");
+      return;
+    }
+    
+    try {
+      const datePart = parse(eventData.date, 'yyyy-MM-dd', new Date());
+      const [h, m] = eventData.time.split(':');
+      const baseDate = setMinutes(setHours(datePart, parseInt(h) || 0), parseInt(m) || 0);
+
+      const initialResponses = {};
+      if (eventData.isAutoGoing) {
+        homeSquad.forEach(player => {
+          if (player.name) initialResponses[player.name] = { status: 'going', reason: '' };
+        });
+      }
+
+      if (eventData.id) {
+        setEvents(prev => prev.map(e => e.id === eventData.id ? { 
+          ...e, title: eventData.title, type: eventData.type, date: format(datePart, 'yyyy-MM-dd'), time: eventData.time, meetingTime: eventData.meetingTime, location: eventData.location, isMandatory: eventData.isMandatory, isAutoGoing: eventData.isAutoGoing, deadline: eventData.deadline
+        } : e));
+      } else {
+        if (eventData.repeat === 'Keine') {
+          setEvents(prev => [...prev, { 
+            id: Date.now(), title: eventData.title, type: eventData.type, date: format(datePart, 'yyyy-MM-dd'), time: eventData.time, meetingTime: eventData.meetingTime, location: eventData.location || 'Halle', isMandatory: eventData.isMandatory, isAutoGoing: eventData.isAutoGoing, deadline: eventData.deadline, responses: initialResponses 
+          }]);
+        } else {
+          const stopDate = parse(eventData.endDate, 'yyyy-MM-dd', new Date());
+          let current = baseDate;
+          let newEvents = [];
+          let i = 0;
+          while (current <= stopDate && i < 100) {
+            newEvents.push({ 
+              id: Date.now() + i, 
+              title: eventData.title, 
+              type: eventData.type, 
+              date: format(current, 'yyyy-MM-dd'), 
+              time: eventData.time, 
+              meetingTime: eventData.meetingTime, 
+              location: eventData.location || 'Halle', 
+              isMandatory: eventData.isMandatory, 
+              isAutoGoing: eventData.isAutoGoing, 
+              deadline: eventData.deadline, 
+              responses: { ...initialResponses } 
+            });
+            current = addWeeks(current, eventData.repeat === 'Alle 2 Wochen' ? 2 : 1);
+            i++;
+          }
+          setEvents(prev => [...prev, ...newEvents]);
+          setSeries(prev => [...prev, { id: Date.now(), title: eventData.title, rule: `${format(baseDate, 'eeee', { locale: de })}s – Serie bis ${format(stopDate, 'dd.MM.yy')}`, day: getDay(baseDate) }]);
+        }
+      }
+      setActiveModal(null);
+    } catch (err) {
+      setFormError("Systemfehler: " + err.message);
+    }
+  };
+
+  return (
+    <>
+      <div className="hub-card overflow-hidden flex flex-col lg:flex-row min-h-[85vh] border-zinc-900 bg-zinc-950/20 animate-in fade-in duration-500">
+        <div className="flex-1 flex flex-col border-r border-zinc-900 overflow-hidden">
+           
+           <CalendarHeader 
+              currentMonth={currentMonth}
+              onPrevMonth={() => setCurrentMonth(subMonths(currentMonth, 1))}
+              onNextMonth={() => setCurrentMonth(addMonths(currentMonth, 1))}
+              onManage={() => setActiveModal('manage')}
+              onAbsence={() => setActiveModal('absence')}
+              onAddEvent={() => {
+                setEventData({ id: null, title: '', type: 'Training', date: format(selectedDate, 'yyyy-MM-dd'), time: '19:00', meetingTime: '', location: '', repeat: 'Keine', isMandatory: false, isAutoGoing: false, deadline: 0 });
+                setActiveModal('event');
+              }}
+           />
+
+           <DayLabels />
+
+          <div className="overflow-y-auto no-scrollbar relative flex-1 min-h-[400px]">
+            <AnimatePresence mode="wait" initial={false}>
+              <motion.div
+                key={currentMonth.toISOString()}
+                initial={{ opacity: 0, x: 10 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -10 }}
+                transition={{ duration: 0.15, ease: "easeOut" }}
+                className="w-full"
+              >
+                <CalendarGrid 
+                  currentMonth={currentMonth}
+                  selectedDate={selectedDate}
+                  setSelectedDate={setSelectedDate}
+                  events={events}
+                  absences={absences}
+                />
+              </motion.div>
+            </AnimatePresence>
+          </div>
+          
+          <div className="flex justify-center mt-6 pb-4">
+            <p className="text-xs text-zinc-500 opacity-50">
+              Datenquelle: handball.net / DHB
+            </p>
+          </div>
+        </div>
+
+        <EventSidebar 
+          selectedDate={selectedDate}
+          events={events}
+          expandedEventId={expandedEventId}
+          setExpandedEventId={setExpandedEventId}
+          handleUpdateStatus={handleUpdateStatus}
+          setEventData={setEventData}
+          setActiveModal={setActiveModal}
+          setConfirmDelete={setConfirmDelete}
+          settings={settings}
+          setFormError={setFormError}
+        />
+      </div>
+
+      {/* MODALS */}
+      <EventModal 
+        isOpen={activeModal === 'event'}
+        onClose={() => setActiveModal(null)}
+        eventData={eventData}
+        setEventData={setEventData}
+        handleSaveEvent={handleSaveEvent}
+        selectedDate={selectedDate}
+        formError={formError}
+      />
+
+      <AbsenceModal 
+        isOpen={activeModal === 'absence'}
+        onClose={() => setActiveModal(null)}
+        absenceData={absenceData}
+        setAbsenceData={setAbsenceData}
+        handleAddAbsence={() => {
+          handleAddAbsence(absenceData);
+          setAbsenceData({ ...absenceData, reason: '' });
+        }}
+        absences={absences}
+        setAbsences={setAbsences}
+      />
+
+      <ManagementHub 
+        isOpen={activeModal === 'manage'}
+        onClose={() => setActiveModal(null)}
+        newAbo={newAbo}
+        setNewAbo={setNewAbo}
+        handleImportICS={() => syncFromHnet(newAbo.meetingOffset)}
+        isSyncing={isSyncing}
+        subscriptions={subscriptions}
+        series={series}
+        editingSeriesId={editingSeriesId}
+        setEditingSeriesId={setEditingSeriesId}
+        tempSeriesTitle={tempSeriesTitle}
+        setTempSeriesTitle={setTempSeriesTitle}
+        saveSeriesTitle={(id) => saveSeriesTitle(id, tempSeriesTitle)}
+        setConfirmDelete={setConfirmDelete}
+      />
+
+      <DeleteConfirmation 
+        confirmDelete={confirmDelete}
+        setConfirmDelete={setConfirmDelete}
+        executeDeletion={() => executeDeletion(confirmDelete.type, confirmDelete.id)}
+      />
+    </>
+  );
+};
+
+export default Calendar;

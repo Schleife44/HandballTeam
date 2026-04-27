@@ -9,22 +9,37 @@ service cloud.firestore {
       allow read, write: if request.auth != null && request.auth.uid == uid;
     }
 
-    // ─── Teams (Recursive) ────────────────────────────────────────────────────
+    // ─── Teams ────────────────────────────────────────────────────────────────
+    match /teams/{teamId} {
+      // Allow any logged in user to create a team
+      allow create: if request.auth != null;
+      // Allow read/write if the user is a member OR the owner
+      allow read, write: if request.auth != null && (
+        exists(/databases/$(database)/documents/teams/$(teamId)/members/$(request.auth.uid)) ||
+        request.auth.uid == resource.data.ownerUid
+      );
+    }
+
+    // Members subcollection
     match /teams/{teamId}/members/{memberUid} {
-      // Allow users to join a team (create their own).
-      allow create: if request.auth != null && request.auth.uid == memberUid;
-      // Allow users to leave (delete themselves) OR allow trainers to kick them.
+      // Allow a user to add themselves as a member during team creation 
+      // OR allow trainers to add members
+      allow create, update: if request.auth != null && (
+        request.auth.uid == memberUid ||
+        get(/databases/$(database)/documents/teams/$(teamId)).data.ownerUid == request.auth.uid
+      );
+      allow read: if request.auth != null;
       allow delete: if request.auth != null && (
         request.auth.uid == memberUid ||
         get(/databases/$(database)/documents/teams/$(teamId)/members/$(request.auth.uid)).data.role == 'trainer'
       );
     }
 
-    // Only members registered in the team's 'members' subcollection or the owner can read/write.
-    match /teams/{teamId}/{document=**} {
+    // Sub-collections of teams (games, etc.)
+    match /teams/{teamId}/{subcollection}/{docId} {
       allow read, write: if request.auth != null && (
         exists(/databases/$(database)/documents/teams/$(teamId)/members/$(request.auth.uid)) ||
-        request.auth.uid == get(/databases/$(database)/documents/teams/$(teamId)).data.ownerUid
+        get(/databases/$(database)/documents/teams/$(teamId)).data.ownerUid == request.auth.uid
       );
     }
 

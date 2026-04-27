@@ -3,7 +3,7 @@
     "rules": "firestore.rules"
   },
   "hosting": {
-    "public": ".",
+    "public": "dist",
     "ignore": [
       "firebase.json",
       "**/.*",
@@ -14,6 +14,10 @@
       ".firebaserc"
     ],
     "rewrites": [
+      {
+        "source": "/legacy/**",
+        "destination": "/legacy/index.html"
+      },
       {
         "source": "**",
         "destination": "/index.html"
