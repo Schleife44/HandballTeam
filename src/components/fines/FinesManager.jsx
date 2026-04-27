@@ -20,7 +20,7 @@ import Modal from '../ui/Modal';
 import { useFinesData } from '../../hooks/useFinesData';
 
 const FinesManager = () => {
-  const { squad } = useStore();
+  const { squad, activeMember } = useStore();
   const { 
     fines, 
     issueFine, 
@@ -42,6 +42,15 @@ const FinesManager = () => {
   const [customNote, setCustomNote] = useState('');
 
   const roster = squad?.home || [];
+  
+  // Permissions
+  const myUid = activeMember?.uid || '';
+  const isOwner = myUid === (squad?.ownerUid || '');
+  const memberFunctions = Array.isArray(activeMember?.function) 
+    ? activeMember.function 
+    : (activeMember?.function ? [activeMember.function] : []);
+  const isKassenwart = memberFunctions.includes('kassenwart');
+  const canManageMoney = isOwner || isKassenwart;
 
   // Calculations
   const history = fines?.history || [];
@@ -97,31 +106,33 @@ const FinesManager = () => {
           <p className="text-[10px] font-black uppercase text-zinc-600 tracking-[0.4em]">Mannschaftskasse & Strafenkatalog</p>
         </div>
 
-        <div className="flex items-center gap-3">
-          <Button 
-            variant="outline"
-            onClick={() => setModalType('expense')}
-            icon={TrendingDown}
-            className="text-red-500 border-red-500/20 hover:bg-red-500/10"
-          >
-            Ausgabe
-          </Button>
-          <Button 
-            variant="outline"
-            onClick={() => setModalType('income')}
-            icon={TrendingUp}
-            className="text-blue-500 border-blue-500/20 hover:bg-blue-500/10"
-          >
-            Einnahme
-          </Button>
-          <Button 
-            variant="primary"
-            onClick={() => setModalType('fine')}
-            icon={Plus}
-          >
-            Strafe
-          </Button>
-        </div>
+        {canManageMoney && (
+          <div className="flex items-center gap-3">
+            <Button 
+              variant="outline"
+              onClick={() => setModalType('expense')}
+              icon={TrendingDown}
+              className="text-red-500 border-red-500/20 hover:bg-red-500/10"
+            >
+              Ausgabe
+            </Button>
+            <Button 
+              variant="outline"
+              onClick={() => setModalType('income')}
+              icon={TrendingUp}
+              className="text-blue-500 border-blue-500/20 hover:bg-blue-500/10"
+            >
+              Einnahme
+            </Button>
+            <Button 
+              variant="primary"
+              onClick={() => setModalType('fine')}
+              icon={Plus}
+            >
+              Strafe
+            </Button>
+          </div>
+        )}
       </div>
 
       {/* NAVIGATION TABS */}
@@ -129,9 +140,9 @@ const FinesManager = () => {
         {[
           { id: 'dashboard', label: 'Übersicht', icon: Wallet },
           { id: 'history', label: 'Historie', icon: History },
-          { id: 'catalog', label: 'Strafenkatalog', icon: Settings2 },
-          { id: 'settings', label: 'Einstellungen', icon: Users }
-        ].map(tab => (
+          { id: 'catalog', label: 'Strafenkatalog', icon: Settings2, restricted: true },
+          { id: 'settings', label: 'Einstellungen', icon: Users, restricted: true }
+        ].filter(tab => !tab.restricted || canManageMoney).map(tab => (
           <button
             key={tab.id}
             onClick={() => setActiveView(tab.id)}
@@ -273,7 +284,9 @@ const FinesManager = () => {
                           )}
                         </td>
                         <td className="py-5 px-4 text-right">
-                          <Button variant="ghost" size="icon" icon={Trash2} onClick={() => removeHistoryEntry(h.id)} className="text-zinc-600 hover:text-red-500" />
+                          {canManageMoney && (
+                            <Button variant="ghost" size="icon" icon={Trash2} onClick={() => removeHistoryEntry(h.id)} className="text-zinc-600 hover:text-red-500" />
+                          )}
                         </td>
                       </tr>
                     ))}

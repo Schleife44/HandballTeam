@@ -67,7 +67,8 @@ const useStore = create((set, get, ...args) => ({
       ...initialFineState,
       ...initialSocialState,
       ...initialTacticsState,
-      activeMember: null 
+      activeMember: null,
+      allMembers: [] 
     });
     console.log('[Store] Local state reset complete.');
   }

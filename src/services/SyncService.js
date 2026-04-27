@@ -12,14 +12,18 @@ class SyncService {
   }
 
   start(teamId, store) {
-    if (this.unsubscribe) this.unsubscribe();
+    if (this.unsubscribe) {
+      if (Array.isArray(this.unsubscribe)) this.unsubscribe.forEach(u => u());
+      else this.unsubscribe();
+    }
     if (!teamId || !store) return;
 
     const gameDocRef = doc(db, 'teams', teamId, 'games', 'current');
+    const teamDocRef = doc(db, 'teams', teamId);
 
-    console.log(`[Sync] Starting listener for team: ${teamId}`);
+    console.log(`[Sync] Starting listeners for team: ${teamId}`);
     
-    this.unsubscribe = onSnapshot(gameDocRef, (snapshot) => {
+    const unsubGame = onSnapshot(gameDocRef, (snapshot) => {
       if (!snapshot.exists()) {
         console.warn('[Sync] No game data found for this team.');
         return;
@@ -34,11 +38,24 @@ class SyncService {
         this.isApplyingRemoteChange = false;
       }
     });
+
+    const unsubTeam = onSnapshot(teamDocRef, (snapshot) => {
+      if (snapshot.exists()) {
+        const teamData = snapshot.data();
+        store.setSquadData?.({
+          ownerUid: teamData.ownerUid,
+          name: teamData.name
+        });
+      }
+    });
+
+    this.unsubscribe = [unsubGame, unsubTeam];
   }
 
   stop() {
     if (this.unsubscribe) {
-      this.unsubscribe();
+      if (Array.isArray(this.unsubscribe)) this.unsubscribe.forEach(u => u());
+      else this.unsubscribe();
       this.unsubscribe = null;
     }
   }

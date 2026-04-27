@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { 
   Save, Shield, Sword, Target, Users,
-  RefreshCw, Calendar, RotateCcw, Info, Check, XCircle
+  RefreshCw, Calendar, RotateCcw, Info, Check, XCircle, AlertTriangle
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -16,15 +16,22 @@ import { TeamConfig, PlayerProfile } from './parts/IdentitySection';
 import SyncSection from './parts/SyncSection';
 import HiddenEventsList from './parts/HiddenEventsList';
 import DataManagementSection from './parts/DataManagementSection';
+import MemberManager from './parts/MemberManager';
+import Modal from '../ui/Modal';
 
 const SettingsManager = () => {
   // --- STORE ---
-  const { squad, updateSettings, setCalendarEvents, resetAll, activeTeamId, restoreEvent } = useStore();
+  const { squad, updateSettings, setCalendarEvents, resetAll, activeTeamId, restoreEvent, activeMember, deleteTeam, leaveTeam } = useStore();
   const { settings = {}, home = [], away = [], hiddenEventIds = [] } = squad || {};
+
+  const myUid = activeMember?.uid || '';
+  const ownerUid = squad?.ownerUid || '';
+  const isOwner = myUid === ownerUid;
 
   const [hasChanges, setHasChanges] = useState(false);
   const [notification, setNotification] = useState(null);
   const [showResetConfirm, setShowResetConfirm] = useState(false);
+  const [confirmModal, setConfirmModal] = useState(null); // 'delete' | 'leave'
   const [isSyncing, setIsSyncing] = useState(false);
 
   const notify = (msg, type = 'success') => {
@@ -234,8 +241,13 @@ const SettingsManager = () => {
           </div>
         </SettingsSection>
 
+        {/* Member Management */}
+        <SettingsSection title="Mitglieder-Verwaltung" icon={Shield} iconColor="blue" className="md:col-span-2 relative z-[30] !overflow-visible">
+          <MemberManager />
+        </SettingsSection>
+
         {/* Sync & Calendar */}
-        <SettingsSection title="Handball.net & Kalender" icon={Calendar} iconColor="brand" className="md:col-span-2">
+        <SettingsSection title="Handball.net & Kalender" icon={Calendar} iconColor="brand" className="md:col-span-2 relative z-10">
           <SyncSection 
             hnetUrl={settings.hnetUrl}
             onUrlChange={(val) => {
@@ -256,7 +268,7 @@ const SettingsManager = () => {
         </SettingsSection>
 
         {/* Data Management */}
-        <SettingsSection title="Daten-Verwaltung" icon={RotateCcw} iconColor="red" className="md:col-span-2">
+        <SettingsSection title="Gefahrenzone" icon={RotateCcw} iconColor="red" className="md:col-span-2">
           <DataManagementSection 
             showResetConfirm={showResetConfirm}
             onReset={handleReset}
@@ -268,8 +280,45 @@ const SettingsManager = () => {
                 handleReset();
               }
             }}
+            isOwner={isOwner}
+            onDeleteTeam={() => setConfirmModal('delete')}
+            onLeaveTeam={() => setConfirmModal('leave')}
           />
         </SettingsSection>
+
+        {/* Custom Confirmation Modals */}
+        <Modal
+          isOpen={!!confirmModal}
+          onClose={() => setConfirmModal(null)}
+          title={confirmModal === 'delete' ? 'Team permanent löschen' : 'Team verlassen'}
+          footer={
+            <div className="flex gap-4 w-full">
+              <Button variant="ghost" className="flex-1" onClick={() => setConfirmModal(null)}>Abbrechen</Button>
+              <Button 
+                variant="danger" 
+                className="flex-1" 
+                onClick={async () => {
+                  if (confirmModal === 'delete') await deleteTeam();
+                  else await leaveTeam();
+                  window.location.reload();
+                }}
+              >
+                {confirmModal === 'delete' ? 'Team löschen' : 'Team verlassen'}
+              </Button>
+            </div>
+          }
+        >
+          <div className="py-6 text-center space-y-4">
+            <div className="w-16 h-16 bg-red-500/10 rounded-full flex items-center justify-center mx-auto text-red-500">
+              <AlertTriangle size={32} />
+            </div>
+            <p className="text-zinc-400 text-sm leading-relaxed">
+              {confirmModal === 'delete' 
+                ? 'Möchtest du das gesamte Team wirklich permanent löschen? Alle Daten gehen unwiderruflich verloren.' 
+                : 'Möchtest du das Team wirklich verlassen? Du hast danach keinen Zugriff mehr auf den Kader und die Kasse.'}
+            </p>
+          </div>
+        </Modal>
       </div>
 
       {/* Footer Info */}

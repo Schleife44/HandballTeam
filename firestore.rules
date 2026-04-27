@@ -3,55 +3,92 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
+    // Helper functions
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isTeamMember(teamId) {
+      return exists(/databases/$(database)/documents/teams/$(teamId)/members/$(request.auth.uid));
+    }
+
+    function isTeamOwner(teamId) {
+      return get(/databases/$(database)/documents/teams/$(teamId)).data.ownerUid == request.auth.uid;
+    }
+
+    function getMemberData(teamId) {
+      return get(/databases/$(database)/documents/teams/$(teamId)/members/$(request.auth.uid)).data;
+    }
+
     // ─── User Profiles ─────────────────────────────────────────────────────────
-    // Users can only read and write their own profile data
     match /users/{uid} {
-      allow read, write: if request.auth != null && request.auth.uid == uid;
+      allow read, write: if isAuthenticated() && request.auth.uid == uid;
     }
 
     // ─── Teams ────────────────────────────────────────────────────────────────
     match /teams/{teamId} {
-      // Allow any logged in user to create a team
-      allow create: if request.auth != null;
-      // Allow read/write if the user is a member OR the owner
-      allow read, write: if request.auth != null && (
-        exists(/databases/$(database)/documents/teams/$(teamId)/members/$(request.auth.uid)) ||
-        request.auth.uid == resource.data.ownerUid
-      );
+      allow create: if isAuthenticated();
+      allow read: if isAuthenticated() && (isTeamMember(teamId) || isTeamOwner(teamId));
+      
+      // Only owner or trainer can update root team settings (name, etc.)
+      allow update: if isAuthenticated() && (isTeamOwner(teamId) || getMemberData(teamId).role == 'trainer');
+      // Only owner can delete
+      allow delete: if isAuthenticated() && isTeamOwner(teamId);
     }
 
     // Members subcollection
     match /teams/{teamId}/members/{memberUid} {
-      // Allow a user to add themselves as a member during team creation 
-      // OR allow trainers to add members
-      allow create, update: if request.auth != null && (
-        request.auth.uid == memberUid ||
-        get(/databases/$(database)/documents/teams/$(teamId)).data.ownerUid == request.auth.uid
+      allow read: if isAuthenticated() && (isTeamMember(teamId) || isTeamOwner(teamId));
+      
+      allow create: if isAuthenticated() && (
+        request.auth.uid == memberUid || // Join themselves
+        isTeamOwner(teamId) || 
+        getMemberData(teamId).role == 'trainer'
       );
-      allow read: if request.auth != null;
-      allow delete: if request.auth != null && (
-        request.auth.uid == memberUid ||
-        get(/databases/$(database)/documents/teams/$(teamId)/members/$(request.auth.uid)).data.role == 'trainer'
+
+      allow update: if isAuthenticated() && (
+        request.auth.uid == memberUid || // Update own profile
+        isTeamOwner(teamId) || 
+        getMemberData(teamId).role == 'trainer'
+      );
+
+      allow delete: if isAuthenticated() && (
+        request.auth.uid == memberUid || // Leave team
+        (isTeamOwner(teamId) && memberUid != request.auth.uid) || // Owner kicks someone
+        (getMemberData(teamId).role == 'trainer' && 
+         get(/databases/$(database)/documents/teams/$(teamId)/members/$(memberUid)).data.role != 'trainer' &&
+         get(/databases/$(database)/documents/teams/$(teamId)).data.ownerUid != memberUid) // Trainer kicks non-trainer
       );
     }
 
-    // Sub-collections of teams (games, etc.)
+    // Sub-collections of teams (games, fines, etc.)
     match /teams/{teamId}/{subcollection}/{docId} {
-      allow read, write: if request.auth != null && (
-        exists(/databases/$(database)/documents/teams/$(teamId)/members/$(request.auth.uid)) ||
-        get(/databases/$(database)/documents/teams/$(teamId)).data.ownerUid == request.auth.uid
+      allow read: if isAuthenticated() && (isTeamMember(teamId) || isTeamOwner(teamId));
+      
+      allow write: if isAuthenticated() && (
+        // Everyone can track games and history (game results)
+        ((subcollection == 'games' || subcollection == 'history') && isTeamMember(teamId)) ||
+        
+        // Fines: Only Kassenwart or Owner
+        (subcollection == 'fines' && (
+          isTeamOwner(teamId) || 
+          getMemberData(teamId).function == 'kassenwart' ||
+          (getMemberData(teamId).function is list && getMemberData(teamId).function.hasAny(['kassenwart']))
+        )) ||
+        
+        // Everything else: Trainer or Owner
+        (isTeamOwner(teamId) || getMemberData(teamId).role == 'trainer')
       );
     }
 
     // ─── Legacy Support (Sessions) ───────────────────────────────────────────
     match /sessions/{docId} {
-      allow read, write: if request.auth != null;
+      allow read, write: if isAuthenticated();
     }
 
     // ─── Invitations ──────────────────────────────────────────────────────────
-    // Anyone authenticated can read/create invites (Phase 4 will refine this)
     match /invites/{tokenId} {
-      allow read, create: if request.auth != null;
+      allow read, create: if isAuthenticated();
     }
 
     // Default: Deny everything else

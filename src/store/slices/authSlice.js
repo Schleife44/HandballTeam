@@ -7,7 +7,7 @@ import {
   GoogleAuthProvider,
   signInWithPopup
 } from 'firebase/auth';
-import { doc, getDoc, setDoc, updateDoc, collection, serverTimestamp, arrayUnion } from 'firebase/firestore';
+import { doc, getDoc, getDocs, setDoc, updateDoc, deleteDoc, collection, serverTimestamp, arrayUnion, query, where } from 'firebase/firestore';
 import syncService from '../../services/SyncService';
 
 export const initialAuthState = {
@@ -17,6 +17,7 @@ export const initialAuthState = {
   isAuthLoading: true,
   activeTeamId: null,
   activeMember: null, // Data for the current user IN the active team
+  allMembers: [], // List of all members in the current team
 };
 
 export const createAuthSlice = (set, get) => ({
@@ -49,6 +50,7 @@ export const createAuthSlice = (set, get) => ({
           console.log(`[Auth] Resuming sync for team: ${storedTeamId}`);
           syncService.start(storedTeamId, get());
           await get().fetchActiveMember();
+          await get().fetchAllMembers();
         }
       } else {
         console.log('[Auth] User logged out');
@@ -58,10 +60,27 @@ export const createAuthSlice = (set, get) => ({
           isAuthenticated: false, 
           isAuthLoading: false,
           activeTeamId: null,
-          activeMember: null
+          activeMember: null,
+          allMembers: []
         });
       }
     });
+  },
+
+  fetchAllMembers: async () => {
+    const { activeTeamId } = get();
+    if (!activeTeamId) return [];
+
+    try {
+      const membersRef = collection(db, 'teams', activeTeamId, 'members');
+      const snap = await getDocs(membersRef);
+      const members = snap.docs.map(doc => ({ uid: doc.id, ...doc.data() }));
+      set({ allMembers: members });
+      return members;
+    } catch (e) {
+      console.error('[Auth] Failed to fetch all members:', e);
+      return [];
+    }
   },
 
   fetchActiveMember: async () => {
@@ -308,6 +327,114 @@ export const createAuthSlice = (set, get) => ({
       return { success: true };
     } catch (error) {
       console.error('[Auth] Join Team error:', error);
+      return { success: false, error: error.message };
+    }
+  },
+
+  kickMember: async (memberUid) => {
+    const { activeTeamId } = get();
+    if (!activeTeamId) return { success: false };
+
+    try {
+      const memberRef = doc(db, 'teams', activeTeamId, 'members', memberUid);
+      await deleteDoc(memberRef);
+      return { success: true };
+    } catch (error) {
+      console.error('[Auth] Kick member error:', error);
+      return { success: false, error: error.message };
+    }
+  },
+
+  leaveTeam: async () => {
+    const { user, activeTeamId, profile } = get();
+    if (!user || !activeTeamId) return { success: false };
+
+    try {
+      // 1. Remove from members collection
+      const memberRef = doc(db, 'teams', activeTeamId, 'members', user.uid);
+      await deleteDoc(memberRef);
+
+      // 2. Remove from user profile
+      const userRef = doc(db, 'users', user.uid);
+      const updatedTeams = (profile?.teams || []).filter(t => t.teamId !== activeTeamId);
+      await updateDoc(userRef, { 
+        teams: updatedTeams,
+        lastActiveTeamId: updatedTeams[0]?.teamId || null
+      });
+
+      // 3. Clear local state and stop sync
+      syncService.stop();
+      set({ 
+        activeTeamId: null, 
+        activeMember: null,
+        profile: { ...profile, teams: updatedTeams } 
+      });
+      await get().resetAll();
+
+      return { success: true };
+    } catch (error) {
+      console.error('[Auth] Leave team error:', error);
+      return { success: false, error: error.message };
+    }
+  },
+
+  updateMemberRole: async (memberUid, newRole) => {
+    const { activeTeamId } = get();
+    if (!activeTeamId) return { success: false };
+
+    try {
+      const memberRef = doc(db, 'teams', activeTeamId, 'members', memberUid);
+      await updateDoc(memberRef, { role: newRole, updatedAt: serverTimestamp() });
+      return { success: true };
+    } catch (error) {
+      console.error('[Auth] Update role error:', error);
+      return { success: false, error: error.message };
+    }
+  },
+
+  updateMemberFunction: async (memberUid, newFunction) => {
+    const { activeTeamId } = get();
+    if (!activeTeamId) return { success: false };
+
+    try {
+      const memberRef = doc(db, 'teams', activeTeamId, 'members', memberUid);
+      await updateDoc(memberRef, { function: newFunction, updatedAt: serverTimestamp() });
+      return { success: true };
+    } catch (error) {
+      console.error('[Auth] Update function error:', error);
+      return { success: false, error: error.message };
+    }
+  },
+
+  deleteTeam: async () => {
+    const { activeTeamId, user, profile } = get();
+    if (!activeTeamId || !user) return { success: false };
+
+    try {
+      // For safety, we only "deactivate" or delete the main doc in this phase
+      // A full recursive delete of subcollections should ideally happen in a Cloud Function
+      const teamRef = doc(db, 'teams', activeTeamId);
+      await deleteDoc(teamRef);
+
+      // Remove from profile
+      const userRef = doc(db, 'users', user.uid);
+      const updatedTeams = (profile?.teams || []).filter(t => t.teamId !== activeTeamId);
+      await updateDoc(userRef, { 
+        teams: updatedTeams,
+        lastActiveTeamId: updatedTeams[0]?.teamId || null
+      });
+
+      syncService.stop();
+      set({ 
+        activeTeamId: null, 
+        activeMember: null,
+        profile: { ...profile, teams: updatedTeams } 
+      });
+      await get().resetAll();
+
+      return { success: true };
+    } catch (error) {
+      console.error('[Auth] Delete team error:', error);
       return { success: false, error: error.message };
     }
   }
