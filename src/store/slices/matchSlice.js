@@ -110,7 +110,7 @@ export const createMatchSlice = (set) => ({
     };
 
     if (activeTeamId) {
-      syncService.addMatchLogEntry(activeTeamId, enrichedEntry);
+      syncService.recordAction(activeTeamId, enrichedEntry);
     }
 
     return {
@@ -142,12 +142,8 @@ export const createMatchSlice = (set) => ({
     };
 
     if (activeTeamId) {
-      // 1. Add log entry via arrayUnion (Efficient)
-      syncService.addMatchLogEntry(activeTeamId, enrichedEntry);
-      // 2. Update score if changed
-      if (scoreUpdate) {
-        syncService.saveMatch(activeTeamId, updatedMatch);
-      }
+      // ATOMIC SaaS OPTIMIZATION: Combine Log and Score into ONE write
+      syncService.recordAction(activeTeamId, enrichedEntry, scoreUpdate ? updatedMatch : null);
     }
 
     return { activeMatch: updatedMatch };

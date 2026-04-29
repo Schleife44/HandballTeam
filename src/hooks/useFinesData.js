@@ -9,7 +9,8 @@ export const useFinesData = () => {
     updateFinesSettings, 
     addFineToHistory, 
     updateFineHistory, 
-    updateFineCatalog 
+    updateFineCatalog,
+    removeFineFromHistory
   } = useStore();
 
   const { home: roster } = squad;
@@ -120,7 +121,7 @@ export const useFinesData = () => {
   };
 
   const removeHistoryEntry = (eventId) => {
-    updateFineHistory(fines.history.filter(e => e.id !== eventId));
+    removeFineFromHistory(eventId);
   };
 
   const addCatalogItem = (name, amount) => {

@@ -2,7 +2,7 @@ import { auth, db } from './firebase';
 import { 
   doc, onSnapshot, updateDoc, getDoc, collection, 
   setDoc, deleteDoc, writeBatch, query, limit, orderBy, where,
-  serverTimestamp, arrayUnion
+  serverTimestamp, arrayUnion, deleteField
 } from 'firebase/firestore';
 
 /**
@@ -95,7 +95,19 @@ class SyncService {
       if (!snapshot.exists()) return;
       const data = snapshot.data();
       if (this.isMigrating) return;
-      this.hydrateSlices(data, store);
+      this.hydrateSlices(teamId, data, store);
+    });
+
+    // SaaS OPTIMIZATION: Fine History as subcollection
+    this.subscribeToFines(teamId, store);
+  }
+
+  subscribeToFines(teamId, store) {
+    if (!teamId || !store) return;
+    const q = query(collection(db, 'teams', teamId, 'fines'), orderBy('date', 'desc'), limit(200));
+    return this._subscribe(`fines_${teamId}`, q, (snapshot) => {
+      const history = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      store.setFinesHistory?.(history);
     });
   }
 
@@ -142,9 +154,20 @@ class SyncService {
   // HYDRATION
   // =============================================================================
 
-  hydrateSlices(data, store) {
+  hydrateSlices(teamId, data, store) {
     if (!store) return;
     
+    // SaaS MIGRATION: If legacy finesHistory exists, move to subcollection
+    if (data.finesHistory && Array.isArray(data.finesHistory) && data.finesHistory.length > 0) {
+      console.log(`[Sync] 🚀 Migrating ${data.finesHistory.length} fines for team ${teamId}...`);
+      data.finesHistory.forEach(fine => {
+        this.saveFineEntry(teamId, fine);
+      });
+      // Clear legacy field to prevent re-migration
+      const gameRef = doc(db, 'teams', String(teamId), 'games', 'current');
+      updateDoc(gameRef, { finesHistory: deleteField() });
+    }
+
     if (data.score || data.timer || data.gameLog) {
       store.setMatchData?.({
         scoreHome: data.score?.scoreHome || data.score?.home || data.score?.heim || 0,
@@ -160,10 +183,10 @@ class SyncService {
       });
     }
 
-    if (data.finesCatalog || data.finesHistory) {
+    if (data.finesCatalog || data.finesSettings) {
       store.setFinesData?.({
         catalog: data.finesCatalog,
-        history: data.finesHistory,
+        // history: data.finesHistory, // Legacy fallback removed for SaaS-Ready
         settings: data.finesSettings,
         status: data.finesStatus
       });
@@ -212,8 +235,46 @@ class SyncService {
   saveMatch(teamId, matchState) {
     if (this.isApplyingRemoteChange || !teamId) return;
     const docRef = doc(db, 'teams', teamId, 'games', 'current');
+    const payload = this._buildMatchPayload(matchState);
+    updateDoc(docRef, this.stripFunctions(payload)).catch(e => console.error('[Sync] Match save failed:', e));
+  }
+
+  /**
+   * ATOMIC SaaS OPTIMIZATION: Combine Log Entry and Match State into ONE write.
+   * This reduces Firestore costs and ensures data consistency.
+   */
+  async recordAction(teamId, entry, matchState = null) {
+    if (this.isApplyingRemoteChange || !teamId) return;
+    const docRef = doc(db, 'teams', teamId, 'games', 'current');
     
-    const payload = {
+    const uniqueEntry = {
+      ...entry,
+      id: entry.id || `log_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`
+    };
+
+    const updatePayload = {
+      gameLog: arrayUnion(this.stripFunctions(uniqueEntry)),
+      lastUpdated: serverTimestamp()
+    };
+
+    // If matchState is provided, merge it into the same update call
+    if (matchState) {
+      const matchPayload = this._buildMatchPayload(matchState);
+      Object.assign(updatePayload, matchPayload);
+    }
+
+    try {
+      await updateDoc(docRef, this.stripFunctions(updatePayload));
+    } catch (e) {
+      console.error('[Sync] Atomic recordAction failed:', e);
+    }
+  }
+
+  /**
+   * Internal helper to build the match state payload
+   */
+  _buildMatchPayload(matchState) {
+    return {
       score: { 
         heim: matchState.score?.home || 0, 
         gegner: matchState.score?.away || 0 
@@ -229,18 +290,14 @@ class SyncService {
       activeSuspensions: matchState.suspensions || [],
       lastUpdated: serverTimestamp()
     };
-
-    updateDoc(docRef, this.stripFunctions(payload)).catch(e => console.error('[Sync] Match save failed:', e));
   }
 
   async saveSettings(teamId, settings) {
     if (this.isApplyingRemoteChange || !teamId || !settings) return;
     const teamRef = doc(db, 'teams', teamId);
-    const gameRef = doc(db, 'teams', teamId, 'games', 'current');
     const update = { name: settings.homeName, settings: this.stripFunctions(settings) };
     try {
       await updateDoc(teamRef, update);
-      await updateDoc(gameRef, { settings: update.settings });
     } catch (e) { console.error('[Sync] Settings save failed:', e); }
   }
 
@@ -259,11 +316,28 @@ class SyncService {
     const gameRef = doc(db, 'teams', String(teamId), 'games', 'current');
     const payload = {
       finesCatalog: fines.catalog || [],
-      finesHistory: fines.history || [],
       finesSettings: fines.settings || {},
       finesStatus: fines.status || {}
     };
     updateDoc(gameRef, this.stripFunctions(payload)).catch(e => console.error('[Sync] Fines save failed:', e));
+  }
+
+  /**
+   * SaaS OPTIMIZATION: Granular Fine Entry Save
+   */
+  async saveFineEntry(teamId, fine) {
+    if (this.isApplyingRemoteChange || !teamId || !fine.id) return;
+    const fineRef = doc(db, 'teams', String(teamId), 'fines', String(fine.id));
+    setDoc(fineRef, this.stripFunctions(fine), { merge: true }).catch(e => console.error('[Sync] Fine entry save failed:', e));
+  }
+
+  /**
+   * SaaS OPTIMIZATION: Granular Fine Entry Delete
+   */
+  async deleteFineEntry(teamId, fineId) {
+    if (!teamId || !fineId) return;
+    const fineRef = doc(db, 'teams', String(teamId), 'fines', String(fineId));
+    deleteDoc(fineRef).catch(e => console.error('[Sync] Fine entry delete failed:', e));
   }
 
   async saveHistoryGame(teamId, game) {

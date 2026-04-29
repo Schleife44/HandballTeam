@@ -23,6 +23,10 @@ export const createFineSlice = (set) => ({
   ...initialFineState,
 
   setFines: (fines) => set({ fines }),
+  
+  setFinesHistory: (history) => set((state) => ({
+    fines: { ...state.fines, history }
+  })),
 
   updateFinesSettings: (newSettings) => set((state) => {
     const { activeTeamId, fines } = state;
@@ -38,23 +42,38 @@ export const createFineSlice = (set) => ({
 
   addFineToHistory: (entry) => set((state) => {
     const { activeTeamId, fines } = state;
-    const updatedFines = {
-      ...fines,
-      history: [entry, ...fines.history]
-    };
     if (activeTeamId) {
-      syncService.saveFines(activeTeamId, updatedFines);
+      syncService.saveFineEntry(activeTeamId, entry);
     }
-    return { fines: updatedFines };
+    return { 
+      fines: { ...fines, history: [entry, ...fines.history] } 
+    };
   }),
 
   updateFineHistory: (history) => set((state) => {
     const { activeTeamId, fines } = state;
-    const updatedFines = { ...fines, history };
+    // SaaS OPTIMIZATION: If we update the whole list (e.g. bulk paid status), we should ideally do it granularly.
+    // For now, if activeTeamId is present, we rely on the subscription to keep us in sync,
+    // but we need to trigger the cloud updates for each changed item.
     if (activeTeamId) {
-      syncService.saveFines(activeTeamId, updatedFines);
+      history.forEach(entry => {
+        const oldEntry = fines.history.find(h => h.id === entry.id);
+        if (JSON.stringify(oldEntry) !== JSON.stringify(entry)) {
+          syncService.saveFineEntry(activeTeamId, entry);
+        }
+      });
     }
-    return { fines: updatedFines };
+    return { fines: { ...fines, history } };
+  }),
+
+  removeFineFromHistory: (fineId) => set((state) => {
+    const { activeTeamId, fines } = state;
+    if (activeTeamId) {
+      syncService.deleteFineEntry(activeTeamId, fineId);
+    }
+    return {
+      fines: { ...fines, history: fines.history.filter(f => f.id !== fineId) }
+    };
   }),
 
   updateFineCatalog: (catalog) => set((state) => {
