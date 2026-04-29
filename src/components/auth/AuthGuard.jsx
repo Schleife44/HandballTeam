@@ -88,10 +88,10 @@ export default function AuthGuard({ children }) {
   // If we have a team but no name/ID assigned to this user yet, prompt for it
   // SKIP this for Club Mode
   if (!isClubMode) {
-    // CRITICAL: Ensure the loaded squad actually matches our activeTeamId (using internal contextId)
-    // AND ensure the roster is fully loaded before we check for names/IDs
+    // SaaS OPTIMIZATION: Don't wait for the roster indefinitely in the global guard
+    // We only wait if we are NOT timed out and REALLY need the core hydration
     const isCorrectTeamLoaded = squad?.contextId === activeTeamId;
-    const isActuallyLoading = !squad?.isHydrated || !squad?.isRosterHydrated || !isCorrectTeamLoaded || isMemberLoading;
+    const isActuallyLoading = !hydrationTimedOut && (!squad?.isHydrated || !isCorrectTeamLoaded || isMemberLoading);
 
     if (isActuallyLoading) {
       return (

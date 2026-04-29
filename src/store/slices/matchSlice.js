@@ -24,6 +24,36 @@ export const createMatchSlice = (set) => ({
     }
   })),
 
+  // SaaS OPTIMIZATION: Helper to generate a light-weight summary of a game
+  // This summary stays in the 'history' collection for fast list/dashboard views.
+  calculateGameSummary: (game) => {
+    if (!game) return null;
+    const log = game.gameLog || game.log || [];
+    const playerStats = {};
+    const playerNames = {};
+
+    log.forEach(entry => {
+      if (entry.action?.startsWith('Gegner') || entry.isOpponent === true) return;
+      
+      const pId = entry.playerId || entry.playerNumber || entry.number;
+      if (!pId) return;
+
+      if (!playerStats[pId]) {
+        playerStats[pId] = { goals: 0, missed: 0, yellow: 0, suspensions: 0, red: 0 };
+        playerNames[pId] = entry.playerName || `Spieler #${pId}`;
+      }
+
+      const action = (entry.action || "").toLowerCase();
+      if (action.includes('tor')) playerStats[pId].goals++;
+      else if (action.includes('fehlwurf') || action.includes('verworfen')) playerStats[pId].missed++;
+      else if (action.includes('gelbe')) playerStats[pId].yellow++;
+      else if (action.includes('2 min')) playerStats[pId].suspensions++;
+      else if (action.includes('rote')) playerStats[pId].red++;
+    });
+
+    return { playerStats, playerNames };
+  },
+
   tickPlayingTime: (playerIds) => set((state) => {
     if (!state.activeMatch || state.activeMatch.mode !== 'COMPLEX') return state;
     const pt = { ...(state.activeMatch.playingTime || {}) };
@@ -165,8 +195,14 @@ export const createMatchSlice = (set) => ({
       syncService.saveMatch(activeTeamId, { ...activeMatch, timer: { ...activeMatch.timer, phase: 'ENDED' } });
     }
 
+    // SaaS OPTIMIZATION: Only store 'Light' version in local history state
+    // Details will be fetched on-demand if needed.
+    // We include a 'statsSummary' so dashboard/season views stay fast.
+    const statsSummary = state.calculateGameSummary(archivedGame);
+    const { gameLog, lineup, playingTime, ...lightGame } = archivedGame;
+
     return {
-      history: [archivedGame, ...state.history],
+      history: [{ ...lightGame, statsSummary }, ...state.history],
       activeMatch: null
     };
   }),
@@ -184,7 +220,15 @@ export const createMatchSlice = (set) => ({
       timestamp: game.timestamp || new Date().toISOString()
     };
 
-    const newHistory = [gameWithSeason, ...state.history].sort((a, b) => {
+    const statsSummary = state.calculateGameSummary(gameWithSeason);
+    const { gameLog, lineup, playingTime, ...lightGame } = gameWithSeason;
+    const finalLightGame = { ...lightGame, statsSummary };
+
+    if (activeTeamId) {
+      syncService.saveHistoryGame(activeTeamId, { ...gameWithSeason, statsSummary });
+    }
+
+    return { history: [finalLightGame, ...state.history].sort((a, b) => {
       const getVal = (g) => {
         const dateStr = g.date || g.timestamp;
         if (dateStr) {
@@ -194,13 +238,7 @@ export const createMatchSlice = (set) => ({
         return 0;
       };
       return getVal(b) - getVal(a);
-    });
-
-    if (activeTeamId) {
-      syncService.saveHistoryGame(activeTeamId, gameWithSeason);
-    }
-
-    return { history: newHistory };
+    }) };
   }),
   deleteGameFromHistory: (idOrKey) => set((state) => {
     const { activeTeamId } = state;

@@ -138,15 +138,23 @@ export function useDashboardStats() {
           if (gScore > oScore) recentWins++;
         }
 
-        if (g.roster || g.gameLog) {
+        if (g.statsSummary && g.statsSummary.playerStats) {
+          const { playerStats, playerNames: pNames } = g.statsSummary;
+          Object.entries(playerStats).forEach(([id, s]) => {
+            if (s.goals > 0) {
+              playerGoals[id] = (playerGoals[id] || 0) + s.goals;
+              if (pNames[id]) playerNames[id] = pNames[id];
+            }
+          });
+        } else if (g.roster || g.gameLog) {
           g.roster?.forEach(p => { if (p.number && p.name) playerNames[p.number] = p.name; });
           g.gameLog?.forEach(evt => {
-            const isGoal = evt.action?.toLowerCase().includes('tor') || 
-                          evt.type?.toLowerCase().includes('goal') ||
-                          evt.action === 'GOAL';
+            const action = (evt.action || "").toLowerCase();
+            const isGoal = action.includes('tor') || action.includes('goal');
             
-            if (!evt.action?.startsWith('Gegner') && evt.playerId && isGoal) {
+            if (!action.startsWith('gegner') && evt.playerId && isGoal) {
               playerGoals[evt.playerId] = (playerGoals[evt.playerId] || 0) + 1;
+              if (evt.playerName) playerNames[evt.playerId] = evt.playerName;
             }
           });
         }

@@ -62,7 +62,14 @@ class SyncService {
   subscribeToCore(teamId, store) {
     if (!teamId || !store) return;
 
+    // SaaS Resilienz: Falls die Quota voll ist, soll die App nicht ewig hängen
+    const hydrationTimeout = setTimeout(() => {
+      console.warn('[Sync] Hydration timeout reached (likely Quota Exceeded). Forcing hydration...');
+      store.setHydrated?.(true);
+    }, 4000);
+
     this._subscribe(`team_${teamId}`, doc(db, 'teams', teamId), (snapshot) => {
+      clearTimeout(hydrationTimeout);
       if (!snapshot.exists()) {
         store.setHydrated?.(true);
         return;
@@ -157,16 +164,6 @@ class SyncService {
   hydrateSlices(teamId, data, store) {
     if (!store) return;
     
-    // SaaS MIGRATION: If legacy finesHistory exists, move to subcollection
-    if (data.finesHistory && Array.isArray(data.finesHistory) && data.finesHistory.length > 0) {
-      console.log(`[Sync] 🚀 Migrating ${data.finesHistory.length} fines for team ${teamId}...`);
-      data.finesHistory.forEach(fine => {
-        this.saveFineEntry(teamId, fine);
-      });
-      // Clear legacy field to prevent re-migration
-      const gameRef = doc(db, 'teams', String(teamId), 'games', 'current');
-      updateDoc(gameRef, { finesHistory: deleteField() });
-    }
 
     if (data.score || data.timer || data.gameLog) {
       store.setMatchData?.({
@@ -340,14 +337,55 @@ class SyncService {
     deleteDoc(fineRef).catch(e => console.error('[Sync] Fine entry delete failed:', e));
   }
 
-  async saveHistoryGame(teamId, game) {
+  /**
+   * SaaS OPTIMIZATION: Two-Tier Archive
+   * Saves metadata to 'history' and full log to 'history_details'
+   */
+   async saveHistoryGame(teamId, game) {
     if (this.isApplyingRemoteChange || !teamId) return;
     const gameId = String(game.id || `h_${Date.now()}`);
-    setDoc(doc(db, 'teams', String(teamId), 'history', gameId), this.stripFunctions(game), { merge: true });
+    
+    // 1. Metadata (Light version for list views)
+    // Exclude heavy tactical data: gameLog, lineup, and playingTime
+    const { gameLog, lineup, playingTime, ...metadata } = game;
+    const historyRef = doc(db, 'teams', String(teamId), 'history', gameId);
+    await setDoc(historyRef, this.stripFunctions(metadata), { merge: true });
+
+    // 2. Details (Full tactical data)
+    if (gameLog || lineup || playingTime) {
+      const detailsRef = doc(db, 'teams', String(teamId), 'history', gameId, 'details', 'tactical');
+      await setDoc(detailsRef, this.stripFunctions({ 
+        gameLog: gameLog || [], 
+        lineup: lineup || { home: [], away: [] },
+        playingTime: playingTime || {} 
+      }), { merge: true });
+    }
+  }
+
+  /**
+   * SaaS OPTIMIZATION: On-demand loading of tactical details
+   */
+  async fetchHistoryDetails(teamId, gameId) {
+    if (!teamId || !gameId) return null;
+    try {
+      const detailsRef = doc(db, 'teams', String(teamId), 'history', String(gameId), 'details', 'tactical');
+      const snap = await getDoc(detailsRef);
+      if (snap.exists()) return snap.data();
+    } catch (e) {
+      console.error('[Sync] Failed to fetch history details:', e);
+    }
+    return null;
   }
 
   async deleteHistoryGame(teamId, gameId) {
-    deleteDoc(doc(db, 'teams', String(teamId), 'history', String(gameId)));
+    if (!teamId || !gameId) return;
+    const gameIdStr = String(gameId);
+    
+    // Delete main record
+    await deleteDoc(doc(db, 'teams', String(teamId), 'history', gameIdStr));
+    
+    // Attempt to delete details (won't error if it doesn't exist)
+    await deleteDoc(doc(db, 'teams', String(teamId), 'history', gameIdStr, 'details', 'tactical'));
   }
 
   async saveEvent(teamId, event) {

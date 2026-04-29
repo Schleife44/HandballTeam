@@ -18,6 +18,28 @@ const SeasonStatsTab = () => {
     const stats = {}; // Key: playerName
     
     (games || []).forEach(game => {
+      // SaaS OPTIMIZATION: Use pre-calculated summary if available
+      if (game.statsSummary && game.statsSummary.playerStats) {
+        const { playerStats, playerNames } = game.statsSummary;
+        Object.entries(playerStats).forEach(([pId, s]) => {
+          const pName = playerNames[pId] || `Spieler #${pId}`;
+          const key = normalizeSearchString(pName);
+
+          if (!stats[key]) {
+            stats[key] = { id: pId, name: pName, tore: 0, fehlwurf: 0, siebenMeterTore: 0, siebenMeterVersuche: 0, gelb: 0, zweiMinuten: 0, rot: 0, games: new Set() };
+          }
+          
+          stats[key].games.add(game.id);
+          stats[key].tore += s.goals || 0;
+          stats[key].fehlwurf += s.missed || 0;
+          stats[key].gelb += s.yellow || 0;
+          stats[key].zweiMinuten += s.suspensions || 0;
+          stats[key].rot += s.red || 0;
+        });
+        return;
+      }
+
+      // Legacy Fallback: Process raw log
       const log = game?.gameLog || game?.log;
       if (!game || !log) return;
       
@@ -25,38 +47,28 @@ const SeasonStatsTab = () => {
         if (entry.action?.startsWith('Gegner') || entry.gegnerNummer) return;
         if (!entry.playerId && !entry.playerName) return;
         
-        const pId = entry.playerId || 'N/A';
+        const pId = entry.playerId || entry.playerNumber || entry.number || 'N/A';
         const pName = entry.playerName || `Spieler #${pId}`;
         const key = normalizeSearchString(pName);
 
         if (!stats[key]) {
-          stats[key] = {
-            id: pId,
-            name: pName,
-            tore: 0,
-            fehlwurf: 0,
-            siebenMeterTore: 0,
-            siebenMeterVersuche: 0,
-            gelb: 0,
-            zweiMinuten: 0,
-            rot: 0,
-            games: new Set()
-          };
+          stats[key] = { id: pId, name: pName, tore: 0, fehlwurf: 0, siebenMeterTore: 0, siebenMeterVersuche: 0, gelb: 0, zweiMinuten: 0, rot: 0, games: new Set() };
         }
 
         stats[key].games.add(game.id);
         
-        if (entry.action === 'Tor') stats[key].tore++;
-        if (entry.action === 'Fehlwurf') stats[key].fehlwurf++;
-        if (entry.action === '7mTor') {
+        const action = (entry.action || "").toLowerCase();
+        if (action === 'tor' || action === 'goal') stats[key].tore++;
+        if (action === 'fehlwurf' || action === 'miss') stats[key].fehlwurf++;
+        if (action === '7mtor') {
           stats[key].tore++;
           stats[key].siebenMeterTore++;
           stats[key].siebenMeterVersuche++;
         }
-        if (entry.action === '7mVerworfen') stats[key].siebenMeterVersuche++;
-        if (entry.action === 'Gelbe Karte') stats[key].gelb++;
-        if (entry.action === '2 Minuten') stats[key].zweiMinuten++;
-        if (entry.action === 'Rote Karte') stats[key].rot++;
+        if (action === '7mverworfen') stats[key].siebenMeterVersuche++;
+        if (action === 'gelbe karte' || action === 'yellow') stats[key].gelb++;
+        if (action === '2 minuten' || action === 'penalty') stats[key].zweiMinuten++;
+        if (action === 'rote karte' || action === 'red') stats[key].rot++;
       });
     });
 

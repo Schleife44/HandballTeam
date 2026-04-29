@@ -26,13 +26,34 @@ const ArchiveManager = () => {
 
   const activeTabId = tabs.find(t => location.pathname.startsWith(t.path))?.id || 'history';
 
-  const handleGameSelect = (game, targetTab = 'game_stats') => {
+  const [isDetailLoading, setIsDetailLoading] = React.useState(false);
+  const { activeTeamId } = useStore();
+
+  const handleGameSelect = async (game, targetTab = 'game_stats') => {
     if (!game) return;
     
+    // SaaS OPTIMIZATION: Check if we need to load heavy tactical details
+    // If gameLog is missing, it's a 'Light' document from the history list
+    let fullGame = { ...game };
+    if (!game.gameLog || game.gameLog.length === 0) {
+      setIsDetailLoading(true);
+      try {
+        const { default: sync } = await import('../../services/SyncService');
+        const details = await sync.fetchHistoryDetails(activeTeamId, game.id);
+        if (details) {
+          fullGame = { ...fullGame, ...details };
+        }
+      } catch (e) {
+        console.error('[Archive] Failed to load details:', e);
+      } finally {
+        setIsDetailLoading(false);
+      }
+    }
+
     // Normalize game data for sub-components (Legacy support)
     const normalizedGame = {
-      ...game,
-      gameLog: game.gameLog || game.log || []
+      ...fullGame,
+      gameLog: fullGame.gameLog || fullGame.log || []
     };
     
     setSelectedGame(normalizedGame);
@@ -72,6 +93,15 @@ const ArchiveManager = () => {
           ))}
         </div>
       </div>
+
+      {isDetailLoading && (
+        <div className="fixed inset-0 bg-zinc-950/80 backdrop-blur-sm z-50 flex items-center justify-center">
+          <div className="flex flex-col items-center gap-4">
+            <div className="w-12 h-12 border-4 border-zinc-800 border-t-brand rounded-full animate-spin"></div>
+            <p className="text-xs font-black uppercase tracking-widest text-zinc-400">Analysedaten werden geladen...</p>
+          </div>
+        </div>
+      )}
 
       <div className="min-h-[600px]">
         <Routes>
