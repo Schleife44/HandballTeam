@@ -17,6 +17,7 @@ import SyncSection from './parts/SyncSection';
 import HiddenEventsList from './parts/HiddenEventsList';
 import DataManagementSection from './parts/DataManagementSection';
 import MemberManager from './parts/MemberManager';
+import ClubMemberManager from './parts/ClubMemberManager';
 import Modal from '../ui/Modal';
 
 const SettingsManager = () => {
@@ -24,9 +25,11 @@ const SettingsManager = () => {
   const { squad, updateSettings, setCalendarEvents, resetAll, activeTeamId, restoreEvent, activeMember, deleteTeam, leaveTeam } = useStore();
   const { settings = {}, home = [], away = [], hiddenEventIds = [] } = squad || {};
 
+  const isClubMode = activeTeamId === 'CLUB_OVERVIEW';
   const myUid = activeMember?.uid || '';
   const ownerUid = squad?.ownerUid || '';
   const isOwner = myUid === ownerUid;
+  const isTrainer = activeMember?.role === 'trainer' || isOwner;
 
   const [hasChanges, setHasChanges] = useState(false);
   const [notification, setNotification] = useState(null);
@@ -101,7 +104,16 @@ const SettingsManager = () => {
       };
 
       const { syncToCalendar } = await import('../../services/handballNetService');
-      const hnetEvents = await syncToCalendar(settings.teamId, settings.homeName);
+      
+      // Fallback: If teamId is missing or seems to be the wrong ID (e.g. Firebase ID), 
+      // try to extract it from the URL before syncing.
+      let effectiveTeamId = settings.teamId;
+      if ((!effectiveTeamId || effectiveTeamId.length > 15) && settings.hnetUrl) {
+        const match = settings.hnetUrl.match(/mannschaften\/([^/]+)/);
+        if (match && match[1]) effectiveTeamId = match[1];
+      }
+
+      const hnetEvents = await syncToCalendar(effectiveTeamId, settings.homeName);
       
       const existingEvents = squad.calendarEvents || [];
 
@@ -154,6 +166,37 @@ const SettingsManager = () => {
 
   const colors = ['#84cc16', '#dc3545', '#2563eb', '#f59e0b', '#7c3aed', '#ec4899', '#3f3f46', '#ffffff'];
 
+  if (isClubMode) {
+    return (
+      <div className="max-w-[1000px] mx-auto space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500 pb-20">
+        <div>
+          <h2 className="text-3xl font-black tracking-tighter uppercase italic text-zinc-100">Mitglieder & Rechte</h2>
+          <p className="text-xs font-bold text-zinc-500 uppercase tracking-widest mt-1">Verwalte alle Nutzer deiner Organisation</p>
+        </div>
+        
+        <SettingsSection title="Globale Mitglieder-Verwaltung" icon={Shield} iconColor="purple" className="relative z-[30] !overflow-visible">
+          <ClubMemberManager />
+        </SettingsSection>
+
+        {/* Notifications */}
+        <AnimatePresence>
+          {notification && (
+            <motion.div 
+              initial={{ y: 50, opacity: 0 }}
+              animate={{ y: 0, opacity: 1 }}
+              exit={{ y: 50, opacity: 0 }}
+              className={`fixed bottom-8 left-1/2 -translate-x-1/2 px-6 py-4 rounded-2xl shadow-2xl z-[100] border backdrop-blur-xl flex items-center gap-3
+                ${notification.type === 'error' ? 'bg-red-500/90 border-red-500 text-white' : 'bg-zinc-900/90 border-brand/50 text-brand'}`}
+            >
+              {notification.type === 'error' ? <XCircle size={18} /> : <Check size={18} />}
+              <span className="text-[10px] font-black uppercase tracking-widest">{notification.msg}</span>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
+    );
+  }
+
   return (
     <div className="max-w-[1000px] mx-auto space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500 pb-20">
       
@@ -164,7 +207,7 @@ const SettingsManager = () => {
           <p className="text-xs font-bold text-zinc-500 uppercase tracking-widest mt-1">Konfiguriere dein Sechsmeter Erlebnis</p>
         </div>
         
-        {hasChanges && (
+        {hasChanges && isTrainer && (
           <Button 
             variant="primary" 
             size="lg" 
@@ -198,6 +241,7 @@ const SettingsManager = () => {
             onUpdateName={(val) => handleUpdate('homeName', val)}
             onUpdateSeason={(val) => handleUpdate('currentSeason', val)}
             onUpdateColor={(val) => handleUpdate('homeColor', val)}
+            isTrainer={isTrainer}
           />
         </SettingsSection>
 
@@ -209,6 +253,7 @@ const SettingsManager = () => {
             colors={colors}
             onUpdateName={(val) => handleUpdate('awayName', val)}
             onUpdateColor={(val) => handleUpdate('awayColor', val)}
+            isTrainer={isTrainer}
           />
         </SettingsSection>
 
@@ -262,6 +307,7 @@ const SettingsManager = () => {
             onSync={handleSync}
             onApplyToAll={handleApplyToAll}
             isSyncing={isSyncing}
+            isTrainer={isTrainer}
           />
           <HiddenEventsList 
             hiddenIds={hiddenEventIds} 
@@ -270,23 +316,25 @@ const SettingsManager = () => {
         </SettingsSection>
 
         {/* Data Management */}
-        <SettingsSection title="Gefahrenzone" icon={RotateCcw} iconColor="red" className="md:col-span-2">
-          <DataManagementSection 
-            showResetConfirm={showResetConfirm}
-            onReset={handleReset}
-            onConfirmToggle={() => {
-              if(!showResetConfirm) {
-                setShowResetConfirm(true);
-                setTimeout(() => setShowResetConfirm(false), 5000);
-              } else {
-                handleReset();
-              }
-            }}
-            isOwner={isOwner}
-            onDeleteTeam={() => setConfirmModal('delete')}
-            onLeaveTeam={() => setConfirmModal('leave')}
-          />
-        </SettingsSection>
+        {isTrainer && (
+          <SettingsSection title="Gefahrenzone" icon={RotateCcw} iconColor="red" className="md:col-span-2">
+            <DataManagementSection 
+              showResetConfirm={showResetConfirm}
+              onReset={handleReset}
+              onConfirmToggle={() => {
+                if(!showResetConfirm) {
+                  setShowResetConfirm(true);
+                  setTimeout(() => setShowResetConfirm(false), 5000);
+                } else {
+                  handleReset();
+                }
+              }}
+              isOwner={isOwner}
+              onDeleteTeam={() => setConfirmModal('delete')}
+              onLeaveTeam={() => setConfirmModal('leave')}
+            />
+          </SettingsSection>
+        )}
 
         {/* Custom Confirmation Modals */}
         <Modal

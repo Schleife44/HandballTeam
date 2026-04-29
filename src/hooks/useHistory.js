@@ -22,6 +22,27 @@ export const useHistory = () => {
   const [importUrl, setImportUrl] = useState('');
   const [importStatus, setImportStatus] = useState({ type: '', message: '' });
   const [gameToDelete, setGameToDelete] = useState(null);
+  const [isSyncing, setIsSyncing] = useState(false);
+
+  // --- LAZY LOADING: Real-time Firestore Sync ---
+  useEffect(() => {
+    if (activeTeamId) {
+      const subKey = `history_${activeTeamId}`;
+      let isMounted = true;
+      let sync;
+      
+      import('../services/SyncService').then(({ default: syncService }) => {
+        if (!isMounted) return;
+        sync = syncService;
+        syncService.subscribeToHistory(activeTeamId, useStore.getState(), 30);
+      });
+
+      return () => {
+        isMounted = false;
+        if (sync) sync.unsubscribe(subKey);
+      };
+    }
+  }, [activeTeamId]);
 
   // Migration logic (scoped to activeTeamId)
   useEffect(() => {

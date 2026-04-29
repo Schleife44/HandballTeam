@@ -6,6 +6,7 @@ import VideoAnalysisTab from './VideoAnalysisTab';
 import SeasonStatsTab from './SeasonStatsTab';
 import GameStatsTab from './GameStatsTab';
 import useStore from '../../store/useStore';
+import SubscriptionGuard from '../auth/SubscriptionGuard';
 
 const ArchiveManager = () => {
   const navigate = useNavigate();
@@ -83,8 +84,16 @@ const ArchiveManager = () => {
               onGoToVideo={() => navigate('/history/video')} 
             />
           } />
-          <Route path="video" element={<VideoAnalysisTab initialGame={selectedGame} onBack={() => navigate('/history/list')} />} />
-          <Route path="stats" element={<SeasonStatsTab />} />
+          <Route path="video" element={
+            <SubscriptionGuard title="Video-Analyse" description="Schneide Spielszenen, erstelle Playlists und analysiere dein Team im Video. Nur im Pro-Paket verfügbar.">
+              <VideoAnalysisTab initialGame={selectedGame} onBack={() => navigate('/history/list')} />
+            </SubscriptionGuard>
+          } />
+          <Route path="stats" element={
+            <SubscriptionGuard title="Saison-Statistiken" description="Behalte den Überblick über die gesamte Saison. Detaillierte Spieler-Analysen und Trends sind im Pro-Paket enthalten.">
+              <SeasonStatsTab />
+            </SubscriptionGuard>
+          } />
         </Routes>
       </div>
     </div>

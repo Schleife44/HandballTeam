@@ -3,8 +3,13 @@ import { Calendar, Trash2, Video, BarChart2, ChevronRight, Globe, Activity, Chec
 import Button from '../../ui/Button';
 import Card from '../../ui/Card';
 import Badge from '../../ui/Badge';
+import useStore from '../../../store/useStore';
 
 const GameCard = ({ game, onSelect, onDelete }) => {
+  const { activeMember, squad } = useStore();
+  const isOwner = activeMember?.uid === squad?.ownerUid;
+  const isTrainer = activeMember?.role === 'trainer' || activeMember?.role === 'admin' || isOwner;
+
   const d = new Date(game.timestamp || game.date || game.id);
   const formattedDate = isNaN(d.getTime()) ? 'Unbekannt' : d.toLocaleDateString('de-DE');
 
@@ -39,16 +44,18 @@ const GameCard = ({ game, onSelect, onDelete }) => {
               </Badge>
             )}
           </div>
-          <Button 
-            variant="ghost" 
-            size="icon" 
-            icon={Trash2} 
-            onClick={(e) => { 
-              e.stopPropagation(); 
-              onDelete(game.id || game.timestamp || game.date); 
-            }}
-            className="text-zinc-600 hover:text-red-500"
-          />
+          {isTrainer && (
+            <Button 
+              variant="ghost" 
+              size="icon" 
+              icon={Trash2} 
+              onClick={(e) => { 
+                e.stopPropagation(); 
+                onDelete(game.id || game.timestamp || game.date); 
+              }}
+              className="text-zinc-600 hover:text-red-500"
+            />
+          )}
         </div>
 
         <div className="flex flex-col gap-1">

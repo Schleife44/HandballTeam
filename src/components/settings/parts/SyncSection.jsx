@@ -8,7 +8,8 @@ const SyncSection = ({
   onUpdate, 
   onSync,
   onApplyToAll,
-  isSyncing
+  isSyncing,
+  isTrainer
 }) => (
   <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
     <div className="space-y-6">
@@ -19,6 +20,7 @@ const SyncSection = ({
           placeholder="https://www.handball.net/mannschaften/..."
           value={hnetUrl || ''}
           onChange={(e) => onUrlChange(e.target.value)}
+          disabled={!isTrainer}
           className="w-full bg-black/40 border border-zinc-800 rounded-2xl px-6 py-4 text-sm font-black text-zinc-100 focus:border-brand outline-none transition-all"
         />
         <p className="text-[8px] font-bold text-zinc-600 uppercase px-2 leading-relaxed">
@@ -38,6 +40,7 @@ const SyncSection = ({
             type="checkbox" 
             checked={settings.absageGrundPflicht}
             onChange={(e) => onUpdate('absageGrundPflicht', e.target.checked)}
+            disabled={!isTrainer}
             className="w-5 h-5 accent-brand rounded"
           />
         </div>
@@ -51,6 +54,7 @@ const SyncSection = ({
             type="checkbox" 
             checked={settings.autoDabei}
             onChange={(e) => onUpdate('autoDabei', e.target.checked)}
+            disabled={!isTrainer}
             className="w-5 h-5 accent-brand rounded"
           />
         </div>
@@ -65,6 +69,7 @@ const SyncSection = ({
               type="number" 
               value={settings.absageDeadline ?? 24}
               onChange={(e) => onUpdate('absageDeadline', parseInt(e.target.value) || 0)}
+              disabled={!isTrainer}
               className="w-16 bg-black/60 border border-zinc-800 rounded-xl py-2 px-3 text-center text-xs font-black text-brand"
             />
             <span className="text-[10px] font-bold text-zinc-600 uppercase tracking-widest whitespace-nowrap">Std. vorher (0 = immer)</span>
@@ -81,6 +86,7 @@ const SyncSection = ({
               type="number" 
               value={settings.defaultMeetingOffset ?? 60}
               onChange={(e) => onUpdate('defaultMeetingOffset', parseInt(e.target.value) || 0)}
+              disabled={!isTrainer}
               className="w-16 bg-black/60 border border-zinc-800 rounded-xl py-2 px-3 text-center text-xs font-black text-brand"
             />
             <span className="text-[10px] font-bold text-zinc-600 uppercase tracking-widest whitespace-nowrap">Min. vorher</span>
@@ -90,21 +96,25 @@ const SyncSection = ({
     </div>
 
     <div className="flex flex-col gap-4 justify-end">
-      <button 
-        onClick={onSync}
-        disabled={isSyncing}
-        className="w-full py-5 bg-brand text-black rounded-[2rem] text-sm font-black uppercase tracking-widest flex items-center justify-center gap-3 hover:scale-[1.02] active:scale-95 transition-all shadow-xl shadow-brand/20 disabled:opacity-50"
-      >
-        <RefreshCw size={20} className={isSyncing ? 'animate-spin' : ''} />
-        <span>{isSyncing ? 'Synchronisiere...' : 'Spielplan synchronisieren'}</span>
-      </button>
+      {isTrainer && (
+        <>
+          <button 
+            onClick={onSync}
+            disabled={isSyncing}
+            className="w-full py-5 bg-brand text-black rounded-[2rem] text-sm font-black uppercase tracking-widest flex items-center justify-center gap-3 hover:scale-[1.02] active:scale-95 transition-all shadow-xl shadow-brand/20 disabled:opacity-50"
+          >
+            <RefreshCw size={20} className={isSyncing ? 'animate-spin' : ''} />
+            <span>{isSyncing ? 'Synchronisiere...' : 'Spielplan synchronisieren'}</span>
+          </button>
 
-      <button 
-        onClick={onApplyToAll}
-        className="w-full py-5 bg-zinc-900 border border-zinc-800 text-zinc-400 rounded-[2rem] text-[10px] font-black uppercase tracking-[0.2em] hover:text-zinc-100 transition-all active:scale-95"
-      >
-        Diese Einstellungen auf alle Spiele anwenden
-      </button>
+          <button 
+            onClick={onApplyToAll}
+            className="w-full py-5 bg-zinc-900 border border-zinc-800 text-zinc-400 rounded-[2rem] text-[10px] font-black uppercase tracking-[0.2em] hover:text-zinc-100 transition-all active:scale-95"
+          >
+            Diese Einstellungen auf alle Spiele anwenden
+          </button>
+        </>
+      )}
     </div>
   </div>
 );

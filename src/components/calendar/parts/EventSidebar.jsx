@@ -140,7 +140,11 @@ const EventSidebar = ({
             const isPending = pendingEventId === event.id;
             const { isPast, deadlineDate } = getDeadlineInfo(event);
             
-            const responseList = Object.entries(event.responses || {}).map(([name, data]) => ({ name, ...data }));
+            const rosterNames = new Set((squad?.home || []).map(p => p.name).filter(Boolean));
+            const responseList = Object.entries(event.responses || {})
+              .filter(([name]) => rosterNames.has(name))
+              .map(([name, data]) => ({ name, ...data }));
+              
             const goingCount = responseList.filter(r => r.status === 'going').length;
             const maybeCount = responseList.filter(r => r.status === 'maybe').length;
             const declinedCount = responseList.filter(r => r.status === 'declined' || r.status === 'not-going').length;
@@ -164,6 +168,9 @@ const EventSidebar = ({
                       <div className="flex items-center gap-2">
                         <span className="text-[9px] font-black uppercase text-zinc-600 tracking-[0.2em]">{event.type}</span>
                         <span className="text-[9px] font-black text-brand bg-brand/10 px-1.5 py-0.5 rounded-md uppercase tracking-wider">{event.time} Uhr</span>
+                        {event.meetingTime && (
+                          <span className="text-[9px] font-black text-zinc-400 bg-zinc-800/50 px-1.5 py-0.5 rounded-md uppercase tracking-wider">Treffen: {event.meetingTime}</span>
+                        )}
                       </div>
                     </div>
                   </div>

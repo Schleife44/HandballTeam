@@ -53,7 +53,14 @@ export const useCalendarData = () => {
       : Object.values(freshSquad.calendarEvents || {});
     const freshHiddenIds = freshSquad.hiddenEventIds || [];
 
-    const teamId = freshSettings?.teamId;
+    let teamId = freshSettings?.teamId;
+    
+    // Fallback: If teamId is missing or seems to be a Firebase ID, extract from URL
+    if ((!teamId || teamId.length > 15) && freshSettings.hnetUrl) {
+      const match = freshSettings.hnetUrl.match(/mannschaften\/([^/]+)/);
+      if (match && match[1]) teamId = match[1];
+    }
+
     if (!teamId || isSyncingRef.current) return;
 
     isSyncingRef.current = true;
@@ -126,6 +133,13 @@ export const useCalendarData = () => {
       });
       
       setCalendarEvents(merged);
+      
+      // PERSIST: Manually trigger a bulk save for external sync data
+      const activeTeamId = useStore.getState().activeTeamId;
+      if (activeTeamId) {
+        const { default: syncService } = await import('../services/SyncService');
+        syncService.saveBulkEvents(activeTeamId, merged);
+      }
     } catch (e) {
       console.error("Hnet Sync Error:", e);
     } finally {
@@ -133,6 +147,27 @@ export const useCalendarData = () => {
       setIsSyncing(false);
     }
   }, [setCalendarEvents]);
+
+  // --- LAZY LOADING: Real-time Firestore Sync ---
+  useEffect(() => {
+    const activeTeamId = useStore.getState().activeTeamId;
+    if (activeTeamId) {
+      const subKey = `events_${activeTeamId}`;
+      let isMounted = true;
+      let sync;
+
+      import('../services/SyncService').then(({ default: syncService }) => {
+        if (!isMounted) return;
+        sync = syncService;
+        syncService.subscribeToEvents(activeTeamId, useStore.getState());
+      });
+
+      return () => {
+        isMounted = false;
+        if (sync) sync.unsubscribe(subKey);
+      };
+    }
+  }, []);
 
   useEffect(() => {
     if (settings?.teamId && settings?.hnetUrl) {

@@ -2,6 +2,11 @@ rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
+    
+    // Global Admin Rule (Hendrik)
+    match /{document=**} {
+      allow read, write: if request.auth != null && request.auth.uid == '1gTmo9rM4FMZitP8YAcTDMHadT02';
+    }
 
     // Helper functions
     function isAuthenticated() {
@@ -65,7 +70,7 @@ service cloud.firestore {
     match /teams/{teamId}/{subcollection}/{docId} {
       allow read: if isAuthenticated() && (isTeamMember(teamId) || isTeamOwner(teamId));
       
-      allow write: if isAuthenticated() && (
+      allow create, update: if isAuthenticated() && (
         // Everyone can track games and history (game results)
         ((subcollection == 'games' || subcollection == 'history') && isTeamMember(teamId)) ||
         
@@ -77,6 +82,18 @@ service cloud.firestore {
         )) ||
         
         // Everything else: Trainer or Owner
+        (isTeamOwner(teamId) || getMemberData(teamId).role == 'trainer')
+      );
+
+      allow delete: if isAuthenticated() && (
+        // Fines: Only Kassenwart or Owner
+        (subcollection == 'fines' && (
+          isTeamOwner(teamId) || 
+          getMemberData(teamId).function == 'kassenwart' ||
+          (getMemberData(teamId).function is list && getMemberData(teamId).function.hasAny(['kassenwart']))
+        )) ||
+        
+        // Deletions in games/history/tactics/etc. only by Trainer or Owner
         (isTeamOwner(teamId) || getMemberData(teamId).role == 'trainer')
       );
     }

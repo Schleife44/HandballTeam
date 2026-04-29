@@ -5,7 +5,8 @@ import {
   createUserWithEmailAndPassword, 
   signOut,
   GoogleAuthProvider,
-  signInWithPopup
+  signInWithPopup,
+  signInWithRedirect
 } from 'firebase/auth';
 import { doc, getDoc, getDocs, setDoc, updateDoc, deleteDoc, collection, serverTimestamp, arrayUnion, query, where } from 'firebase/firestore';
 import syncService from '../../services/SyncService';
@@ -18,10 +19,19 @@ export const initialAuthState = {
   activeTeamId: null,
   activeMember: null, // Data for the current user IN the active team
   allMembers: [], // List of all members in the current team
+  allTeams: [], // Global list of all teams owned by the user (for Club Mode)
+  subscription: {
+    tier: 'starter', // starter | pro | elite
+    status: 'active', // active | trial | past_due | none
+    expiresAt: null
+  },
+  isMemberLoading: false, // Tracks if we are currently fetching the activeMember data
 };
 
 export const createAuthSlice = (set, get) => ({
   ...initialAuthState,
+  
+  setSubscription: (sub) => set({ subscription: { ...get().subscription, ...sub } }),
 
   initAuth: () => {
     onAuthStateChanged(auth, async (user) => {
@@ -35,23 +45,33 @@ export const createAuthSlice = (set, get) => ({
         console.log(`[Auth] User logged in: ${user.uid}`);
         const profile = await get().fetchProfile(user.uid);
         
-        // Use a unique key per user for the active team
-        const storedTeamId = localStorage.getItem(`handballActiveTeam_${user.uid}`);
+        // Priority: Profile lastActiveTeamId > localStorage > null
+        const storedTeamId = profile?.lastActiveTeamId || localStorage.getItem(`handballActiveTeam_${user.uid}`);
         
+        // Step 1: Set user and team info
         set({ 
           user, 
           profile, 
           isAuthenticated: true, 
-          isAuthLoading: false,
           activeTeamId: storedTeamId 
         });
 
+        // Step 2: Resume Context
         if (storedTeamId) {
-          console.log(`[Auth] Resuming sync for team: ${storedTeamId}`);
-          syncService.start(storedTeamId, get());
-          await get().fetchActiveMember();
-          await get().fetchAllMembers();
+          if (storedTeamId === 'CLUB_OVERVIEW') {
+            console.log('[Auth] Resuming Club Mode overview');
+            await get().fetchAllTeams();
+          } else {
+            console.log(`[Auth] Resuming core sync for team: ${storedTeamId}`);
+            set({ isMemberLoading: true });
+            syncService.subscribeToCore(storedTeamId, get());
+            await get().fetchActiveMember();
+          }
         }
+
+        // Step 3: Unlock the UI
+        set({ isAuthLoading: false });
+
       } else {
         console.log('[Auth] User logged out');
         set({ 
@@ -66,6 +86,8 @@ export const createAuthSlice = (set, get) => ({
       }
     });
   },
+
+  setAllMembers: (members) => set({ allMembers: members }),
 
   fetchAllMembers: async () => {
     const { activeTeamId } = get();
@@ -85,19 +107,24 @@ export const createAuthSlice = (set, get) => ({
 
   fetchActiveMember: async () => {
     const { user, activeTeamId } = get();
-    if (!user || !activeTeamId) return null;
+    if (!user || !activeTeamId) {
+      set({ isMemberLoading: false });
+      return null;
+    }
 
+    set({ isMemberLoading: true });
     try {
       const memberRef = doc(db, 'teams', activeTeamId, 'members', user.uid);
       const snap = await getDoc(memberRef);
       if (snap.exists()) {
         const data = snap.data();
-        set({ activeMember: data });
+        set({ activeMember: data, isMemberLoading: false });
         return data;
       }
     } catch (e) {
       console.error('[Auth] Failed to fetch active member:', e);
     }
+    set({ isMemberLoading: false });
     return null;
   },
 
@@ -186,9 +213,11 @@ export const createAuthSlice = (set, get) => ({
   loginWithGoogle: async () => {
     try {
       const provider = new GoogleAuthProvider();
+      // Using popup again as COOP policy is now handled in vite.config.js
       await signInWithPopup(auth, provider);
       return { success: true };
     } catch (error) {
+      console.error('[Auth] Google Login Error:', error);
       return { success: false, error: error.message };
     }
   },
@@ -202,16 +231,57 @@ export const createAuthSlice = (set, get) => ({
   },
 
   setActiveTeam: async (teamId) => {
-    if (get().user) {
-      localStorage.setItem(`handballActiveTeam_${get().user.uid}`, teamId);
+    const user = get().user;
+    
+    // 1. STOP Sync and CLEAR data immediately to prevent stale flicker
+    syncService.stop();
+    set((state) => ({
+      activeTeamId: teamId,
+      activeMember: null,
+      squad: { 
+        ...state.squad, 
+        isHydrated: false,
+        contextId: '', // Clear context to prevent flicker
+        settings: { ...state.squad.settings },
+        home: [], 
+        away: [],
+        calendarEvents: [],
+        history: []
+      },
+      isMemberLoading: teamId && teamId !== 'CLUB_OVERVIEW' ? true : false
+    }));
+
+    if (user) {
+      localStorage.setItem(`handballActiveTeam_${user.uid}`, teamId);
+      const userRef = doc(db, 'users', user.uid);
+      await updateDoc(userRef, { lastActiveTeamId: teamId }).catch(e => console.error('[Auth] Failed to persist teamId:', e));
     }
-    set({ activeTeamId: teamId });
-    if (teamId) {
-      syncService.start(teamId, get());
+    
+    if (teamId && teamId !== 'CLUB_OVERVIEW') {
+      syncService.subscribeToCore(teamId, get());
       await get().fetchActiveMember();
-    } else {
-      syncService.stop();
-      set({ activeMember: null });
+    } else if (teamId === 'CLUB_OVERVIEW') {
+      await get().fetchAllTeams();
+    }
+  },
+
+  fetchAllTeams: async () => {
+    const user = get().user;
+    if (!user) return [];
+
+    try {
+      console.log('[Auth] Fetching all teams for owner:', user.uid);
+      const teamsRef = collection(db, 'teams');
+      const q = query(teamsRef, where('ownerUid', '==', user.uid));
+      const snap = await getDocs(q);
+      const teams = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      
+      // We'll store this in a new property in authSlice to keep it clean
+      set({ allTeams: teams });
+      return teams;
+    } catch (e) {
+      console.error('[Auth] Failed to fetch all teams:', e);
+      return [];
     }
   },
 
@@ -232,6 +302,8 @@ export const createAuthSlice = (set, get) => ({
         name: teamName,
         ownerUid: user.uid,
         createdAt: new Date().toISOString(),
+        subscriptionTier: 'starter',
+        subscriptionStatus: 'active',
         settings: {
           homeName: teamName,
           homeColor: teamColor,

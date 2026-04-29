@@ -4,16 +4,23 @@ import {
   Area, 
   XAxis, 
   YAxis, 
-  CartesianGrid, 
-  Tooltip, 
+  CartesianGrid,
+  Tooltip,
   ResponsiveContainer 
 } from 'recharts';
+import { Activity } from 'lucide-react';
+import EmptyState from '../../ui/EmptyState';
 
 const PerformanceChart = ({ data }) => {
   if (!data || data.length === 0) {
     return (
-      <div className="w-full h-[220px] flex items-center justify-center bg-zinc-900/20 rounded-3xl border border-zinc-800/40 border-dashed">
-        <p className="text-[10px] font-black text-zinc-700 uppercase tracking-widest italic">Keine Spieldaten für Analyse verfügbar</p>
+      <div className="py-6">
+        <EmptyState 
+          icon={Activity}
+          title="Keine Spieldaten"
+          description="Starte dein erstes Spiel im Live-Modus, um hier die Performance deines Teams zu sehen."
+          variant="glass"
+        />
       </div>
     );
   }

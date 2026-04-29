@@ -4,9 +4,9 @@
  */
 
 const PROXIES = [
-  { name: 'CORSProxy.io', getUrl: (u) => `https://corsproxy.io/?url=${encodeURIComponent(u)}`, parse: async (res) => await res.text() },
   { name: 'Codetabs', getUrl: (u) => `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(u)}`, parse: async (res) => await res.text() },
-  { name: 'AllOrigins', getUrl: (u) => `https://api.allorigins.win/get?url=${encodeURIComponent(u)}`, parse: async (res) => { const data = await res.json(); return data.contents; } }
+  { name: 'AllOrigins', getUrl: (u) => `https://api.allorigins.win/get?url=${encodeURIComponent(u)}`, parse: async (res) => { const data = await res.json(); return data.contents; } },
+  { name: 'CORSProxy.io', getUrl: (u) => `https://corsproxy.io/?url=${encodeURIComponent(u)}`, parse: async (res) => await res.text() }
 ];
 
 export const fetchWithProxy = async (url, options = { json: true }) => {
@@ -407,7 +407,22 @@ export const fetchTournamentSchedule = async (tournamentId, dateFrom, dateTo, te
   return [];
 };
 export const syncToCalendar = async (inputTeamId, teamName = "Wir") => {
-  const fullId = inputTeamId.trim();
+  let fullId = (inputTeamId || "").trim();
+  
+  // Guard: If the ID looks like a Firebase ID and is NOT a URL, we can't sync unless we extract it from a URL
+  // But since we only have fullId here, we'll try to extract if it IS a URL, 
+  // or fail gracefully if it looks like a Firebase ID (long hash)
+  if (fullId.length > 20 && !fullId.includes('.') && !fullId.includes('handball.net')) {
+    console.error("[Hnet] syncToCalendar called with invalid ID (looks like Firebase ID):", fullId);
+    return []; // Return empty instead of crashing
+  }
+
+  // Robustness: If the input is a full URL, extract the ID
+  if (fullId.includes('handball.net/mannschaften/')) {
+    const match = fullId.match(/mannschaften\/([^/]+)/);
+    if (match && match[1]) fullId = match[1];
+  }
+
   const numericId = (fullId.match(/(\d+)$/) || [])[1] || fullId;
   const teamId = fullId; // For compatibility with existing logic below
   

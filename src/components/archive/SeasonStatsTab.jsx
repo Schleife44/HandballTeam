@@ -7,6 +7,7 @@ import useStore from '../../store/useStore';
 // UI
 import Card from '../ui/Card';
 import Input from '../ui/Input';
+import { fuzzyMatch, normalizeSearchString } from '../../utils/searchUtils';
 
 const SeasonStatsTab = () => {
   const { history: games } = useStore();
@@ -17,14 +18,16 @@ const SeasonStatsTab = () => {
     const stats = {}; // Key: playerName
     
     (games || []).forEach(game => {
-      if (!game || !game.gameLog) return;
+      const log = game?.gameLog || game?.log;
+      if (!game || !log) return;
       
-      game.gameLog.forEach(entry => {
-        if (entry.action?.startsWith('Gegner') || entry.gegnerNummer || !entry.playerId) return;
+      log.forEach(entry => {
+        if (entry.action?.startsWith('Gegner') || entry.gegnerNummer) return;
+        if (!entry.playerId && !entry.playerName) return;
         
-        const pId = entry.playerId;
+        const pId = entry.playerId || 'N/A';
         const pName = entry.playerName || `Spieler #${pId}`;
-        const key = pName;
+        const key = normalizeSearchString(pName);
 
         if (!stats[key]) {
           stats[key] = {
@@ -66,7 +69,7 @@ const SeasonStatsTab = () => {
   }, [games]);
 
   const sortedStats = useMemo(() => {
-    const sorted = [...aggregatedStats].filter(p => p.name.toLowerCase().includes(searchTerm.toLowerCase()));
+    const sorted = [...aggregatedStats].filter(p => fuzzyMatch(p.name, searchTerm));
     if (sortConfig.key) {
       sorted.sort((a, b) => {
         if (a[sortConfig.key] < b[sortConfig.key]) return sortConfig.direction === 'asc' ? -1 : 1;

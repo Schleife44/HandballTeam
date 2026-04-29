@@ -3,12 +3,13 @@ import { User } from 'lucide-react';
 import Input from '../../ui/Input';
 import Select from '../../ui/Select';
 
-export const TeamConfig = ({ label, name, season, color, colors, onUpdateName, onUpdateSeason, onUpdateColor }) => (
+export const TeamConfig = ({ label, name, season, color, colors, onUpdateName, onUpdateSeason, onUpdateColor, isTrainer }) => (
   <div className="space-y-6">
     <Input 
       label={label}
       value={name}
       onChange={(e) => onUpdateName(e.target.value)}
+      disabled={!isTrainer}
     />
 
     {label.includes('Dein Teamname') && (
@@ -17,6 +18,7 @@ export const TeamConfig = ({ label, name, season, color, colors, onUpdateName, o
         value={season || '25/26'}
         placeholder="z.B. 25/26"
         onChange={(e) => onUpdateSeason?.(e.target.value)}
+        disabled={!isTrainer}
       />
     )}
 
@@ -26,8 +28,9 @@ export const TeamConfig = ({ label, name, season, color, colors, onUpdateName, o
         {colors.map(c => (
           <button
             key={c}
-            onClick={() => onUpdateColor(c)}
-            className={`w-10 h-10 rounded-full border-2 transition-all ${color === c ? 'border-white scale-110 shadow-lg' : 'border-transparent hover:scale-110'}`}
+            onClick={() => isTrainer && onUpdateColor(c)}
+            disabled={!isTrainer}
+            className={`w-10 h-10 rounded-full border-2 transition-all ${color === c ? 'border-white scale-110 shadow-lg' : 'border-transparent'} ${isTrainer ? 'hover:scale-110 cursor-pointer' : 'cursor-default opacity-50'}`}
             style={{ backgroundColor: c }}
           />
         ))}

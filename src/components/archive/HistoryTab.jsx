@@ -11,6 +11,7 @@ import Button from '../ui/Button';
 import Card from '../ui/Card';
 import Input from '../ui/Input';
 import Modal from '../ui/Modal';
+import EmptyState from '../ui/EmptyState';
 
 // Sub-components
 import GameCard from './components/GameCard';
@@ -97,9 +98,13 @@ const HistoryTab = ({ onSelectGame }) => {
       {/* Games Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {filteredGames.length === 0 ? (
-          <div className="col-span-full py-20 flex flex-col items-center justify-center text-zinc-600 gap-4">
-            <Calendar size={48} className="opacity-20" />
-            <p className="text-sm font-bold uppercase tracking-widest">Keine Spiele gefunden</p>
+          <div className="col-span-full py-12">
+            <EmptyState 
+              icon={Calendar}
+              title={searchTerm ? 'Nichts gefunden' : 'Archiv ist leer'}
+              description={searchTerm ? 'Es gibt keine Spiele, die zu deiner Suche passen.' : 'Hier landen alle absolvierten Spiele und Video-Analysen. Importiere Spiele über Handball.net oder spiele sie im Live-Modus.'}
+              variant="glass"
+            />
           </div>
         ) : (
           filteredGames.map(game => (

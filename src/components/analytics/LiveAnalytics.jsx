@@ -14,6 +14,7 @@ import ShotChartsTab from './tabs/ShotChartsTab';
 import HeatmapTab from './tabs/HeatmapTab';
 import ProtocolTab from './tabs/ProtocolTab';
 import useStore from '../../store/useStore';
+import SubscriptionGuard from '../auth/SubscriptionGuard';
 
 const LiveAnalytics = () => {
   const navigate = useNavigate();
@@ -90,8 +91,16 @@ const LiveAnalytics = () => {
         <Routes>
           <Route path="/" element={<Navigate to="overview" replace />} />
           <Route path="overview" element={<OverviewTab match={matchData} squad={squadData} />} />
-          <Route path="shots" element={<ShotChartsTab match={matchData} squad={squadData} />} />
-          <Route path="heatmap" element={<HeatmapTab match={matchData} squad={squadData} />} />
+          <Route path="shots" element={
+            <SubscriptionGuard title="Wurfbild-Analyse" description="Analysiere Trefferquoten und Wurfpositionen im Detail. Nur im Pro-Paket verfügbar.">
+              <ShotChartsTab match={matchData} squad={squadData} />
+            </SubscriptionGuard>
+          } />
+          <Route path="heatmap" element={
+            <SubscriptionGuard title="Taktische Heatmaps" description="Sieh genau, wo die Action auf dem Spielfeld stattfindet. Upgrade auf Pro für volle Heatmap-Power.">
+              <HeatmapTab match={matchData} squad={squadData} />
+            </SubscriptionGuard>
+          } />
           <Route path="protocol" element={<ProtocolTab match={matchData} squad={squadData} />} />
         </Routes>
       </div>

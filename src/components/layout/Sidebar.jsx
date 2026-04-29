@@ -13,7 +13,8 @@ import {
   Layout,
   Euro,
   Share2,
-  RefreshCw
+  RefreshCw,
+  Building2
 } from 'lucide-react';
 import useStore from '../../store/useStore';
 
@@ -66,7 +67,9 @@ function SidebarItem({ icon: Icon, label, to, badge, isSidebarOpen }) {
 }
 
 export default function Sidebar({ isSidebarOpen }) {
-  const { setActiveTeam, logout } = useStore();
+  const { setActiveTeam, logout, squad, subscription, activeTeamId } = useStore();
+  const isClubMode = activeTeamId === 'CLUB_OVERVIEW';
+
   return (
     <aside className={`
       ${isSidebarOpen ? 'w-52' : 'w-20'} 
@@ -82,96 +85,121 @@ export default function Sidebar({ isSidebarOpen }) {
       </div>
 
       <nav className="flex-1 space-y-1 overflow-y-auto no-scrollbar pr-2">
-        <div className="pb-6">
-           <AnimatePresence>
-             {isSidebarOpen && (
-               <motion.p 
-                 initial={{ opacity: 0, height: 0, marginBottom: 0 }}
-                 animate={{ opacity: 1, height: 'auto', marginBottom: 16 }}
-                 exit={{ opacity: 0, height: 0, marginBottom: 0 }}
-                 className="text-[9px] font-black text-zinc-600 uppercase tracking-[0.3em] px-4 overflow-hidden"
-               >
-                 Main Menu
-               </motion.p>
-             )}
-           </AnimatePresence>
-           <SidebarItem 
-            icon={LayoutDashboard} 
-            label="Überblick" 
-            to="/dashboard"
-            isSidebarOpen={isSidebarOpen}
-          />
-           <SidebarItem 
-            icon={CalendarIcon} 
-            label="Kalender" 
-            to="/calendar"
-            isSidebarOpen={isSidebarOpen}
-          />
-           <SidebarItem 
-            icon={Layout} 
-            label="Taktikboard" 
-            to="/tactics"
-            isSidebarOpen={isSidebarOpen}
-          />
-        </div>
+        {!isClubMode ? (
+          <>
+            <div className="pb-6">
+               <AnimatePresence>
+                 {isSidebarOpen && (
+                   <motion.p 
+                     initial={{ opacity: 0, height: 0, marginBottom: 0 }}
+                     animate={{ opacity: 1, height: 'auto', marginBottom: 16 }}
+                     exit={{ opacity: 0, height: 0, marginBottom: 0 }}
+                     className="text-[9px] font-black text-zinc-600 uppercase tracking-[0.3em] px-4 overflow-hidden"
+                   >
+                     Main Menu
+                   </motion.p>
+                 )}
+               </AnimatePresence>
+               <SidebarItem 
+                icon={LayoutDashboard} 
+                label="Überblick" 
+                to="/dashboard"
+                isSidebarOpen={isSidebarOpen}
+              />
+               <SidebarItem 
+                icon={CalendarIcon} 
+                label="Kalender" 
+                to="/calendar"
+                isSidebarOpen={isSidebarOpen}
+              />
+               <SidebarItem 
+                icon={Layout} 
+                label="Taktikboard" 
+                to="/tactics"
+                isSidebarOpen={isSidebarOpen}
+              />
+            </div>
 
-        <div className="py-4 border-t border-zinc-900/50">
-           <AnimatePresence>
-             {isSidebarOpen && (
-               <motion.p 
-                 initial={{ opacity: 0, height: 0, marginBottom: 0 }}
-                 animate={{ opacity: 1, height: 'auto', marginBottom: 12 }}
-                 exit={{ opacity: 0, height: 0, marginBottom: 0 }}
-                 className="text-[8px] font-black text-zinc-600 uppercase tracking-[0.3em] px-4 overflow-hidden"
-               >
-                 Spieltag
-               </motion.p>
-             )}
-           </AnimatePresence>
-           <SidebarItem 
-            icon={PlayCircle} 
-            label="Spiel" 
-            to="/game"
-            badge="LIVE"
-            isSidebarOpen={isSidebarOpen}
-          />
-            <SidebarItem 
-             icon={BarChart2} 
-             label="Live Analytics" 
-             to="/analytics"
-             isSidebarOpen={isSidebarOpen}
-           />
-           <SidebarItem 
-            icon={Users} 
-            label="Kader" 
-            to="/roster"
-            isSidebarOpen={isSidebarOpen}
-          />
-        </div>
+            <div className="py-4 border-t border-zinc-900/50">
+               <AnimatePresence>
+                 {isSidebarOpen && (
+                   <motion.p 
+                     initial={{ opacity: 0, height: 0, marginBottom: 0 }}
+                     animate={{ opacity: 1, height: 'auto', marginBottom: 12 }}
+                     exit={{ opacity: 0, height: 0, marginBottom: 0 }}
+                     className="text-[8px] font-black text-zinc-600 uppercase tracking-[0.3em] px-4 overflow-hidden"
+                   >
+                     Spieltag
+                   </motion.p>
+                 )}
+               </AnimatePresence>
+               <SidebarItem 
+                icon={PlayCircle} 
+                label="Spiel" 
+                to="/game"
+                badge="LIVE"
+                isSidebarOpen={isSidebarOpen}
+              />
+                <SidebarItem 
+                 icon={BarChart2} 
+                 label="Live Analytics" 
+                 to="/analytics"
+                 isSidebarOpen={isSidebarOpen}
+               />
+               <SidebarItem 
+                icon={Users} 
+                label="Kader" 
+                to="/roster"
+                isSidebarOpen={isSidebarOpen}
+              />
+            </div>
 
-        <div className="py-6 border-t border-zinc-900/50">
-           <div className="flex items-center justify-between pr-4">
-              <AnimatePresence>
-                {isSidebarOpen && (
-                  <motion.p 
-                    initial={{ opacity: 0, x: -10 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    exit={{ opacity: 0, x: -10 }}
-                    className="text-[9px] font-black text-zinc-600 uppercase tracking-[0.3em] mb-4 px-4 whitespace-nowrap overflow-hidden"
-                  >
-                    Analytics
-                  </motion.p>
-                )}
-              </AnimatePresence>
-             {isSidebarOpen && <ChevronRight size={10} className="text-zinc-700 mb-4" />}
-           </div>
-           <SidebarItem 
-            icon={BarChart2} 
-            label="Archiv" 
-            to="/history"
-            isSidebarOpen={isSidebarOpen}
-          />
-        </div>
+            <div className="py-6 border-t border-zinc-900/50">
+               <div className="flex items-center justify-between pr-4">
+                  <AnimatePresence>
+                    {isSidebarOpen && (
+                      <motion.p 
+                        initial={{ opacity: 0, x: -10 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        exit={{ opacity: 0, x: -10 }}
+                        className="text-[9px] font-black text-zinc-600 uppercase tracking-[0.3em] mb-4 px-4 whitespace-nowrap overflow-hidden"
+                      >
+                        Analytics
+                      </motion.p>
+                    )}
+                  </AnimatePresence>
+                 {isSidebarOpen && <ChevronRight size={10} className="text-zinc-700 mb-4" />}
+               </div>
+               <SidebarItem 
+                icon={BarChart2} 
+                label="Archiv" 
+                to="/history"
+                isSidebarOpen={isSidebarOpen}
+              />
+            </div>
+          </>
+        ) : (
+          <div className="pb-6">
+             <AnimatePresence>
+               {isSidebarOpen && (
+                 <motion.p 
+                   initial={{ opacity: 0, height: 0, marginBottom: 0 }}
+                   animate={{ opacity: 1, height: 'auto', marginBottom: 16 }}
+                   exit={{ opacity: 0, height: 0, marginBottom: 0 }}
+                   className="text-[9px] font-black text-zinc-600 uppercase tracking-[0.3em] px-4 overflow-hidden"
+                 >
+                   Club Headquarters
+                 </motion.p>
+               )}
+             </AnimatePresence>
+             <SidebarItem 
+              icon={Building2} 
+              label="Vereins-Zentrale" 
+              to="/club"
+              isSidebarOpen={isSidebarOpen}
+            />
+          </div>
+        )}
 
         <div className="py-6 border-t border-zinc-900/50">
            <AnimatePresence>
@@ -186,22 +214,26 @@ export default function Sidebar({ isSidebarOpen }) {
                </motion.p>
              )}
            </AnimatePresence>
-           <SidebarItem 
-            icon={Share2} 
-            label="Social Media" 
-            to="/social"
-            isSidebarOpen={isSidebarOpen}
-          />
-           <SidebarItem 
-            icon={Euro} 
-            label="Mannschaftskasse" 
-            to="/fines"
-            isSidebarOpen={isSidebarOpen}
-          />
+           {!isClubMode && (
+             <>
+               <SidebarItem 
+                icon={Share2} 
+                label="Social Media" 
+                to="/social"
+                isSidebarOpen={isSidebarOpen}
+              />
+               <SidebarItem 
+                icon={Euro} 
+                label="Mannschaftskasse" 
+                to="/fines"
+                isSidebarOpen={isSidebarOpen}
+              />
+             </>
+           )}
            <SidebarItem 
             icon={Settings} 
-            label="Einstellungen" 
-            to="/settings"
+            label={isClubMode ? "Mitglieder & Rechte" : "Einstellungen"} 
+            to={isClubMode ? "/clubsettings" : "/settings"}
             isSidebarOpen={isSidebarOpen}
           />
         </div>

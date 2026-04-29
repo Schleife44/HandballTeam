@@ -24,7 +24,9 @@ export const initialSquadState = {
     absences: [],
     subscriptions: [],
     series: [],
-    isHydrated: false
+    isHydrated: false,
+    isRosterHydrated: false,
+    contextId: ''
   }
 };
 
@@ -33,6 +35,10 @@ export const createSquadSlice = (set) => ({
 
   setHydrated: (val) => set((state) => ({
     squad: { ...state.squad, isHydrated: val }
+  })),
+
+  setRosterHydrated: (val) => set((state) => ({
+    squad: { ...state.squad, isRosterHydrated: val }
   })),
 
   updateSettings: (newSettings) => set((state) => {
@@ -62,6 +68,7 @@ export const createSquadSlice = (set) => ({
 
     if (activeTeamId) {
       syncService.deleteEvent(activeTeamId, eventId);
+      syncService.saveHiddenEventIds(activeTeamId, hiddenIds);
     }
 
     return {
@@ -125,6 +132,10 @@ export const createSquadSlice = (set) => ({
       syncService.deletePlayer(activeTeamId, playerId);
     }
 
+    // SaaS OPTIMIZATION: We stop the "Write-Bomb" cleanup.
+    // Preserving the player name in old calendar responses maintains historical integrity
+    // and avoids dozens of unnecessary Firestore writes.
+
     return {
       squad: {
         ...state.squad,
@@ -134,16 +145,7 @@ export const createSquadSlice = (set) => ({
   }),
 
   setCalendarEvents: (eventsOrFn) => set((state) => {
-    const { activeTeamId } = state;
     const newEvents = typeof eventsOrFn === 'function' ? eventsOrFn(state.squad.calendarEvents) : eventsOrFn;
-    
-    if (activeTeamId && Array.isArray(newEvents)) {
-      // For bulk set, we still might want a batch or individual saves.
-      // Usually used for Hnet sync. Hnet sync handles its own saving usually.
-      // But let's ensure consistency.
-      newEvents.forEach(e => syncService.saveEvent(activeTeamId, e));
-    }
-
     return {
       squad: { 
         ...state.squad, 
@@ -179,12 +181,21 @@ export const createSquadSlice = (set) => ({
     squad: { ...state.squad, absences: (state.squad.absences || []).filter(a => a.id !== id) }
   })),
 
-  updateSubscriptions: (subsOrFn) => set((state) => ({
-    squad: { 
-      ...state.squad, 
-      subscriptions: typeof subsOrFn === 'function' ? subsOrFn(state.squad.subscriptions) : subsOrFn 
+  updateSubscriptions: (subsOrFn) => set((state) => {
+    const { activeTeamId } = state;
+    const newSubs = typeof subsOrFn === 'function' ? subsOrFn(state.squad.subscriptions) : subsOrFn;
+    
+    if (activeTeamId) {
+      syncService.saveSubscriptions(activeTeamId, newSubs);
     }
-  })),
+
+    return {
+      squad: { 
+        ...state.squad, 
+        subscriptions: newSubs
+      }
+    };
+  }),
 
   updateSeries: (seriesOrFn) => set((state) => ({
     squad: { 

@@ -7,7 +7,8 @@ import {
   Shield,
   Trophy,
   List,
-  Play
+  Play,
+  Settings
 } from 'lucide-react';
 
 // Store
@@ -18,6 +19,8 @@ import { useDashboardStats } from '../../hooks/useDashboardStats';
 
 // UI
 import Badge from '../ui/Badge';
+import EmptyState from '../ui/EmptyState';
+import Button from '../ui/Button';
 
 // Modular Parts
 import DashboardCard from './parts/DashboardCard';
@@ -127,10 +130,10 @@ export default function Dashboard() {
         <div className="space-y-8 lg:space-y-12 order-2 lg:order-2">
           
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-6">
-            <StatCard label="Tore Gesamt" value={stats.totalGoals} icon={Target} trend={12} />
-            <StatCard label="Win Rate" value={`${stats.winRate}%`} icon={Trophy} trend={5} />
-            <StatCard label="Gegentore" value={stats.totalConceded} icon={Shield} trend={-8} />
-            <StatCard label="Ø Tore" value={stats.avgGoals} icon={TrendingUp} trend={3} />
+            <StatCard label="Tore Gesamt" value={stats.totalGoals} icon={Target} trend={stats.goalsTrend} />
+            <StatCard label="Win Rate" value={`${stats.winRate}%`} icon={Trophy} trend={stats.winRateTrend} />
+            <StatCard label="Gegentore" value={stats.totalConceded} icon={Shield} trend={stats.concededTrend} invertTrendColor />
+            <StatCard label="Ø Tore" value={stats.avgGoals} icon={TrendingUp} trend={stats.goalsTrend} />
           </div>
 
           <DashboardCard title="Performance Analytics" icon={TrendingUp}>
@@ -161,7 +164,25 @@ export default function Dashboard() {
                       <td className="py-5 px-6 text-right font-black tabular-nums text-sm italic">{t.points}</td>
                     </tr>
                   )) : (
-                    <tr><td colSpan="5" className="py-20 text-center text-zinc-800 uppercase text-[10px] tracking-widest italic">Waiting for connection to Handball.net...</td></tr>
+                    <tr>
+                      <td colSpan="5" className="py-12">
+                        <EmptyState 
+                          icon={Settings}
+                          title="Keine Liga-Daten"
+                          description="Verknüpfe dein Team mit Handball.net, um die Live-Tabelle zu sehen."
+                          variant="glass"
+                          action={
+                            <Button 
+                              variant="primary" 
+                              className="w-full"
+                              onClick={() => navigate('/settings')}
+                            >
+                              Zu den Einstellungen
+                            </Button>
+                          }
+                        />
+                      </td>
+                    </tr>
                   )}
                 </tbody>
               </table>

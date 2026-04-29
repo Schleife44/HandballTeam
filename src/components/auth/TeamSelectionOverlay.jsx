@@ -3,13 +3,46 @@ import { Plus, Users, ArrowRight, Loader2, Trophy } from 'lucide-react';
 import useStore from '../../store/useStore';
 
 export default function TeamSelectionOverlay() {
-  const { profile, createTeam, setActiveTeam, logout } = useStore();
+  const { profile, createTeam, setActiveTeam, logout, user } = useStore();
   const [showCreate, setShowCreate] = useState(false);
   const [newTeamName, setNewTeamName] = useState('');
   const [teamColor, setTeamColor] = useState('#84cc16');
   const [playerName, setPlayerName] = useState('');
   const [hnetUrl, setHnetUrl] = useState('');
   const [loading, setLoading] = useState(false);
+
+  // --- CLEANUP LOGIC ---
+  // If a team is in the profile but no longer exists in Firestore, we should remove it
+  React.useEffect(() => {
+    const cleanupGhostTeams = async () => {
+      if (!profile?.teams || !user?.uid) return;
+      
+      const { doc, getDoc, updateDoc } = await import('firebase/firestore');
+      const { db } = await import('../../services/firebase');
+      
+      let hasChanges = false;
+      const validTeams = [];
+
+      for (const team of profile.teams) {
+        const teamRef = doc(db, 'teams', team.teamId);
+        const teamSnap = await getDoc(teamRef);
+        if (teamSnap.exists()) {
+          validTeams.push(team);
+        } else {
+          console.warn(`[Cleanup] Team ${team.teamId} (${team.teamName}) no longer exists. Removing from profile.`);
+          hasChanges = true;
+        }
+      }
+
+      if (hasChanges) {
+        const userRef = doc(db, 'users', user.uid);
+        await updateDoc(userRef, { teams: validTeams });
+        // The store listener will pick this up automatically
+      }
+    };
+
+    cleanupGhostTeams();
+  }, [profile?.teams, user?.uid]);
 
   const colors = ['#84cc16', '#dc3545', '#2563eb', '#f59e0b', '#7c3aed', '#ec4899', '#3f3f46', '#ffffff'];
 
@@ -53,6 +86,23 @@ export default function TeamSelectionOverlay() {
           <div className="space-y-4">
             {teams.length > 0 && (
               <div className="grid grid-cols-1 gap-3">
+                {/* Elite Club Access */}
+                <button
+                  onClick={() => setActiveTeam('CLUB_OVERVIEW')}
+                  className="group bg-purple-600/10 border border-purple-500/20 hover:border-purple-500 p-6 rounded-2xl flex items-center justify-between transition-all hover:bg-purple-600/20"
+                >
+                  <div className="flex items-center gap-4">
+                    <div className="w-12 h-12 rounded-xl bg-purple-500/20 flex items-center justify-center text-purple-400">
+                      <Trophy size={24} />
+                    </div>
+                    <div className="text-left">
+                      <h3 className="text-lg font-black text-white italic uppercase group-hover:text-purple-400 transition-colors">Verein Verwalten</h3>
+                      <p className="text-purple-500/60 text-[10px] uppercase tracking-widest font-black">Elite Club Management</p>
+                    </div>
+                  </div>
+                  <ArrowRight className="text-purple-500/30 group-hover:text-purple-500 group-hover:translate-x-1 transition-all" />
+                </button>
+
                 {teams.map((team) => (
                   <button
                     key={team.teamId}
@@ -60,7 +110,7 @@ export default function TeamSelectionOverlay() {
                     className="group bg-zinc-950 border border-zinc-900 hover:border-brand/50 p-6 rounded-2xl flex items-center justify-between transition-all hover:bg-zinc-900"
                   >
                     <div className="flex items-center gap-4">
-                      <div className="w-12 h-12 rounded-xl bg-brand/10 flex items-center justify-center text-brand">
+                      <div className="w-12 h-12 rounded-xl bg-zinc-900 flex items-center justify-center text-zinc-600 group-hover:text-brand transition-all">
                         <Users size={24} />
                       </div>
                       <div className="text-left">

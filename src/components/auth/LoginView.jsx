@@ -1,15 +1,23 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Mail, Lock, LogIn, Globe, AlertCircle, Loader2 } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import useStore from '../../store/useStore';
 
 export default function LoginView() {
+  const navigate = useNavigate();
   const [isLogin, setIsLogin] = useState(true);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   
-  const { login, register, loginWithGoogle } = useStore();
+  const { login, register, loginWithGoogle, isAuthenticated } = useStore();
+
+  useEffect(() => {
+    if (isAuthenticated) {
+      navigate('/dashboard');
+    }
+  }, [isAuthenticated, navigate]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();

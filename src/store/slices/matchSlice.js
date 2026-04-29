@@ -89,8 +89,11 @@ export const createMatchSlice = (set) => ({
   updateMatchTimer: (timerUpdate) => set((state) => {
     const { activeTeamId, activeMatch } = state;
     const updatedMatch = activeMatch ? { ...activeMatch, timer: { ...activeMatch.timer, ...timerUpdate } } : null;
-    // Debounce timer saves slightly if it's just a tick, but for phase changes save immediately
-    if (activeTeamId && updatedMatch && (timerUpdate.phase || Math.random() > 0.95)) {
+    
+    // SaaS OPTIMIZATION: Only save to cloud on significant state changes
+    const isStateChange = timerUpdate.phase !== undefined || timerUpdate.isPaused !== undefined;
+    
+    if (activeTeamId && updatedMatch && isStateChange) {
       syncService.saveMatch(activeTeamId, updatedMatch);
     }
     return { activeMatch: updatedMatch };
@@ -98,13 +101,55 @@ export const createMatchSlice = (set) => ({
 
   addToMatchLog: (entry) => set((state) => {
     const { activeTeamId, activeMatch } = state;
-    const updatedMatch = activeMatch ? {
-      ...activeMatch,
-      gameLog: [entry, ...(activeMatch.gameLog || [])]
-    } : null;
-    if (activeTeamId && updatedMatch) {
-      syncService.saveMatch(activeTeamId, updatedMatch);
+    if (!activeMatch) return state;
+
+    const enrichedEntry = {
+      ...entry,
+      id: entry.id || `log_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
+      timestamp: entry.timestamp || new Date().toISOString()
+    };
+
+    if (activeTeamId) {
+      syncService.addMatchLogEntry(activeTeamId, enrichedEntry);
     }
+
+    return {
+      activeMatch: {
+        ...activeMatch,
+        gameLog: [enrichedEntry, ...(activeMatch.gameLog || [])]
+      }
+    };
+  }),
+
+  // Optimized combined action (Reduces writes and bandwidth)
+  recordMatchAction: (entry, scoreUpdate = null) => set((state) => {
+    const { activeTeamId, activeMatch } = state;
+    if (!activeMatch) return state;
+
+    const enrichedEntry = {
+      ...entry,
+      id: entry.id || `log_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
+      timestamp: entry.timestamp || new Date().toISOString(),
+      // Snapshotting for history integrity (Soft Delete support)
+      playerNameSnapshot: entry.playerName || 'Unbekannt',
+      playerNumberSnapshot: entry.playerNumber || '?'
+    };
+
+    const updatedMatch = {
+      ...activeMatch,
+      gameLog: [enrichedEntry, ...(activeMatch.gameLog || [])],
+      score: scoreUpdate ? { home: scoreUpdate.home, away: scoreUpdate.away } : activeMatch.score
+    };
+
+    if (activeTeamId) {
+      // 1. Add log entry via arrayUnion (Efficient)
+      syncService.addMatchLogEntry(activeTeamId, enrichedEntry);
+      // 2. Update score if changed
+      if (scoreUpdate) {
+        syncService.saveMatch(activeTeamId, updatedMatch);
+      }
+    }
+
     return { activeMatch: updatedMatch };
   }),
 
@@ -121,7 +166,6 @@ export const createMatchSlice = (set) => ({
     
     if (activeTeamId) {
       syncService.saveHistoryGame(activeTeamId, archivedGame);
-      // Mark live match as ended in cloud
       syncService.saveMatch(activeTeamId, { ...activeMatch, timer: { ...activeMatch.timer, phase: 'ENDED' } });
     }
 
@@ -139,6 +183,7 @@ export const createMatchSlice = (set) => ({
     
     const gameWithSeason = { 
       ...game, 
+      id: game.id ? String(game.id) : `h_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
       season: game.season || currentSeason,
       timestamp: game.timestamp || new Date().toISOString()
     };
@@ -185,12 +230,19 @@ export const createMatchSlice = (set) => ({
   }),
 
   setMatchData: (data) => set((state) => {
-    // Determine phase from cloud data (gamePhase: 1=PRE, 2=RUNNING, 3=HALFTIME, 5=FINISHED)
     const cloudPhase = data.timer?.gamePhase;
-    const cloudSeconds = data.timer?.verstricheneSekundenBisher || 0;
+    const cloudIsRunning = data.timer?.isRunning ?? false;
+    const cloudOffset = data.timer?.offsetSeconds || 0;
+    const cloudStartTime = data.timer?.startTime;
 
-    // If cloud says finished (5) or it's just a fresh/empty doc (phase 1) 
-    // and we don't have an active match locally, don't force one.
+    // TIMER INTERPOLATION: Accurate sync without frequent writes
+    let interpolatedMs = cloudOffset * 1000;
+    if (cloudIsRunning && cloudStartTime) {
+      // startTime is handled as a plain JS number (ms) after hydration in SyncService
+      const startMs = typeof cloudStartTime === 'number' ? cloudStartTime : (cloudStartTime?.toMillis ? cloudStartTime.toMillis() : new Date(cloudStartTime).getTime());
+      interpolatedMs += Math.max(0, Date.now() - startMs);
+    }
+
     if ((cloudPhase === 5 || !cloudPhase || cloudPhase === 1) && !state.activeMatch) {
       return { activeMatch: null };
     }
@@ -199,7 +251,7 @@ export const createMatchSlice = (set) => ({
     if (cloudPhase === 5) detectedPhase = 'ENDED';
     else if (cloudPhase === 3) detectedPhase = 'HALF_TIME';
     else if (cloudPhase === 2) {
-      detectedPhase = cloudSeconds < 1800 ? 'FIRST_HALF' : 'SECOND_HALF';
+      detectedPhase = (interpolatedMs / 1000) < 1800 ? 'FIRST_HALF' : 'SECOND_HALF';
     } else if (cloudPhase === 1) detectedPhase = 'PRE_GAME';
 
     return {
@@ -210,8 +262,8 @@ export const createMatchSlice = (set) => ({
         gameLog: data.gameLog || [],
         lineup: data.lineup || state.activeMatch?.lineup || { home: [], away: [] },
         timer: { 
-          elapsedMs: cloudSeconds * 1000,
-          isPaused: data.timer?.istPausiert ?? true,
+          elapsedMs: interpolatedMs,
+          isPaused: !cloudIsRunning,
           phase: detectedPhase
         },
         suspensions: data.activeSuspensions || [],

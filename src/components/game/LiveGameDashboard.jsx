@@ -26,7 +26,7 @@ const LiveGameDashboard = () => {
     updateMatchLineup, 
     addMatchSuspension, 
     updateMatchSuspensions,
-    addToMatchLog,
+    recordMatchAction,
     toggleEmptyGoal
   } = useStore();
 
@@ -101,32 +101,32 @@ const LiveGameDashboard = () => {
     const finalIsHome = isHomePlayer;
 
     let newScore = { ...activeMatch.score };
+    let scoreUpdate = null;
+
+    if (actionId === 'GOAL' || actionId === '7M_GOAL') {
+      if (finalIsHome) newScore.home += 1;
+      else newScore.away += 1;
+      scoreUpdate = { home: newScore.home, away: newScore.away };
+    }
 
     const newLogEntry = {
-      timestamp: Math.floor(Date.now() / 1000), // Unix timestamp in seconds (Handball.net style)
+      timestamp: Math.floor(Date.now() / 1000),
       time: formatTime(activeMatch.timer.elapsedMs),
-      matchTimeMs: activeMatch.timer.elapsedMs, // Internal high-resolution time
+      matchTimeMs: activeMatch.timer.elapsedMs,
       type: actionId,
       isOpponent: !finalIsHome,
       playerId: playerToUse.id,
       playerNumber: playerToUse.number,
       playerName: playerToUse.name,
       team: finalIsHome ? 'home' : 'away',
-      action: getActionLabel(actionId), // Human readable for stats/legacy
+      action: getActionLabel(actionId),
       score: `${newScore.home}:${newScore.away}`,
       details: actionId.startsWith('7M') ? {
         ...extraData,
-        fieldPos: { x: 50, y: 35 } // Force precise coordinates for 7m heatmap
+        fieldPos: { x: 50, y: 35 }
       } : extraData,
       isEmptyGoal: activeMatch.isEmptyGoal && !finalIsHome
     };
-
-    if (actionId === 'GOAL' || actionId === '7M_GOAL') {
-      if (finalIsHome) newScore.home += 1;
-      else newScore.away += 1;
-      newLogEntry.score = `${newScore.home}:${newScore.away}`;
-      updateMatchScore(newScore.home, newScore.away);
-    }
 
     if (actionId === 'TWO_MIN') {
       addMatchSuspension({
@@ -138,14 +138,13 @@ const LiveGameDashboard = () => {
       });
     }
 
-    // Auto-remove from lineup for RED/BLUE/TWO_MIN
     if (actionId === 'RED' || actionId === 'BLUE' || actionId === 'TWO_MIN') {
       const currentLineup = activeMatch.lineup[playerToUse.team] || [];
       const newLineup = currentLineup.filter(id => id !== playerToUse.id);
       updateMatchLineup(playerToUse.team, newLineup);
     }
 
-    addToMatchLog(newLogEntry);
+    recordMatchAction(newLogEntry, scoreUpdate);
     setSelectedPlayer(null);
     setActiveShotAction(null);
     setSevenMeterFlow(null);
