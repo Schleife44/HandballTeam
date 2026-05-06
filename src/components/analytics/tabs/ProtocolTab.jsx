@@ -13,7 +13,8 @@ import {
 const ProtocolTab = ({ match }) => {
   const [searchTerm, setSearchTerm] = useState('');
 
-  const filteredLog = match.log.filter(entry => {
+  const gameLog = match?.gameLog || match?.log || [];
+  const filteredLog = gameLog.filter(entry => {
     const searchString = `${entry.playerName} ${entry.type} ${entry.details?.fieldPos || ''}`.toLowerCase();
     return searchString.includes(searchTerm.toLowerCase());
   });

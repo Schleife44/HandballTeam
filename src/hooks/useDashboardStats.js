@@ -30,8 +30,11 @@ export function useDashboardStats() {
       
       // If teamId is missing OR looks like a Firebase ID (long string), fallback to URL extraction
       if ((!effectiveTeamId || effectiveTeamId.length > 15) && currentSettings.hnetUrl) {
-        const fullId = currentSettings.hnetUrl.trim().replace(/\/$/, '');
-        effectiveTeamId = (fullId.match(/(\d+)$/) || [])[1] || fullId.split('/').pop();
+        const fullUrl = currentSettings.hnetUrl.trim().replace(/\/$/, '');
+        // Extract the full slug (e.g. handball4all.we.123456)
+        const slugMatch = fullUrl.match(/mannschaften\/([^/?]+)/);
+        const slug = slugMatch ? slugMatch[1] : fullUrl.split('/').pop();
+        effectiveTeamId = slug;
       }
       
       const myName = activeMember?.playerName;

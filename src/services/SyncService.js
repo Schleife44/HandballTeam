@@ -15,12 +15,40 @@ class SyncService {
     this.subscriptions = new Map();
     this.isApplyingRemoteChange = false;
     this.isMigrating = false;
+    
+    // Rate Limiting & Debugging
+    this.writeHistory = [];
+    this.lastWriteTime = 0;
+    this.writesInLastSecond = 0;
+  }
+
+  _checkRateLimit(methodName) {
+    const now = Date.now();
+    if (now - this.lastWriteTime < 1000) {
+      this.writesInLastSecond++;
+    } else {
+      this.writesInLastSecond = 1;
+      this.lastWriteTime = now;
+    }
+
+    if (this.writesInLastSecond > 8) {
+      console.error(`[Sync] ⚠️ RATE LIMIT HIT! Blocking write from ${methodName}. Check for infinite loops!`);
+      return false;
+    }
+
+    // Verbose Logging for Debugging
+    console.group(`[Sync] 📤 WRITE: ${methodName}`);
+    console.log('Timestamp:', new Date().toLocaleTimeString());
+    this.writeHistory.push({ method: methodName, time: now });
+    if (this.writeHistory.length > 50) this.writeHistory.shift();
+    
+    return true;
   }
 
   /**
    * Internal helper to manage subscriptions
    */
-  _subscribe(key, docRefOrQuery, callback) {
+  _subscribe(key, docRefOrQuery, callback, store) {
     if (this.subscriptions.has(key)) return this.subscriptions.get(key);
 
     console.log(`[Sync] 🛰️ Subscribing to: ${key}`);
@@ -33,6 +61,11 @@ class SyncService {
       }
     }, (err) => {
       console.error(`[Sync] Subscription error for ${key}:`, err);
+      if (err.code === 'quota-exceeded' || err.message?.includes('quota')) {
+        store?.setSyncStatus?.('quota_exceeded');
+      } else {
+        store?.setSyncStatus?.('offline');
+      }
     });
 
     this.subscriptions.set(key, unsub);
@@ -66,6 +99,7 @@ class SyncService {
     const hydrationTimeout = setTimeout(() => {
       console.warn('[Sync] Hydration timeout reached (likely Quota Exceeded). Forcing hydration...');
       store.setHydrated?.(true);
+      store.setRosterHydrated?.(true);
     }, 4000);
 
     this._subscribe(`team_${teamId}`, doc(db, 'teams', teamId), (snapshot) => {
@@ -89,24 +123,35 @@ class SyncService {
         });
       }
 
+      // SaaS FIX: Do not trigger store.updateSettings from here. 
+      // It causes a write-loop because updateSettings calls syncService.saveSettings.
+      // Settings are already part of the team snapshot and can be accessed via squad.settings.
       if (teamData.settings) {
-        store.updateSettings?.({
+        // Just set the data in store WITHOUT triggering a cloud save
+        store.setSettingsData?.({
           ...teamData.settings,
           homeName: teamData.settings.homeName || teamData.name || 'Mein Team'
         });
       }
       store.setHydrated?.(true);
-    });
+    }, store);
 
     this._subscribe(`game_${teamId}`, doc(db, 'teams', teamId, 'games', 'current'), (snapshot) => {
       if (!snapshot.exists()) return;
       const data = snapshot.data();
       if (this.isMigrating) return;
       this.hydrateSlices(teamId, data, store);
-    });
+    }, store);
 
     // SaaS OPTIMIZATION: Fine History as subcollection
     this.subscribeToFines(teamId, store);
+    
+    // Roster must be loaded globally for AuthGuard identity check
+    this.subscribeToRoster(teamId, store);
+
+    // Dashboard Data
+    this.subscribeToEvents(teamId, store);
+    this.subscribeToHistory(teamId, store);
   }
 
   subscribeToFines(teamId, store) {
@@ -115,7 +160,7 @@ class SyncService {
     return this._subscribe(`fines_${teamId}`, q, (snapshot) => {
       const history = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
       store.setFinesHistory?.(history);
-    });
+    }, store);
   }
 
   subscribeToEvents(teamId, store) {
@@ -124,7 +169,7 @@ class SyncService {
     return this._subscribe(`events_${teamId}`, q, (snapshot) => {
       const events = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
       store.setCalendarEvents?.(events);
-    });
+    }, store);
   }
 
   subscribeToRoster(teamId, store) {
@@ -136,7 +181,7 @@ class SyncService {
       const away = allPlayers.filter(p => p.teamType === 'away');
       store.setSquadData?.({ home, away });
       store.setRosterHydrated?.(true);
-    });
+    }, store);
   }
 
   subscribeToHistory(teamId, store, limitCount = 20) {
@@ -145,7 +190,7 @@ class SyncService {
     return this._subscribe(`history_${teamId}`, q, (snapshot) => {
       const history = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
       store.setHistory?.(history);
-    });
+    }, store);
   }
 
   subscribeToMembers(teamId, store) {
@@ -154,7 +199,7 @@ class SyncService {
     return this._subscribe(`members_${teamId}`, colRef, (snapshot) => {
       const members = snapshot.docs.map(doc => ({ uid: doc.id, ...doc.data() }));
       store.setAllMembers?.(members);
-    });
+    }, store);
   }
 
   // =============================================================================
@@ -166,17 +211,35 @@ class SyncService {
     
 
     if (data.score || data.timer || data.gameLog) {
+      const ts = data.timer?.startTime;
+      let parsedStartTime = null;
+      if (ts) {
+        if (typeof ts.toMillis === 'function') parsedStartTime = ts.toMillis();
+        else if (typeof ts === 'number') parsedStartTime = ts;
+        else if (ts.seconds) parsedStartTime = ts.seconds * 1000 + (ts.nanoseconds || 0) / 1000000;
+        else if (ts instanceof Date) parsedStartTime = ts.getTime();
+        else if (typeof ts === 'string') parsedStartTime = new Date(ts).getTime();
+      }
+
       store.setMatchData?.({
-        scoreHome: data.score?.scoreHome || data.score?.home || data.score?.heim || 0,
-        scoreAway: data.score?.scoreAway || data.score?.away || data.score?.gegner || 0,
-        gameLog: data.gameLog || [],
+        score: {
+          home: data.score?.scoreHome || data.score?.home || data.score?.heim || 0,
+          away: data.score?.scoreAway || data.score?.away || data.score?.gegner || 0,
+        },
+        gameLog: Array.isArray(data.gameLog) ? [...data.gameLog].sort((a, b) => {
+          const tA = a.timestamp ? new Date(a.timestamp).getTime() : 0;
+          const tB = b.timestamp ? new Date(b.timestamp).getTime() : 0;
+          return tB - tA; // Newest first
+        }) : [],
         timer: {
           isRunning: data.timer?.isRunning ?? false,
-          startTime: data.timer?.startTime?.toMillis() || null,
-          offsetSeconds: data.timer?.offsetSeconds || 0,
-          gamePhase: data.timer?.gamePhase || 1
+          startTime: parsedStartTime,
+          elapsedMs: (data.timer?.offsetSeconds || data.timer?.elapsedMs / 1000 || 0) * 1000,
+          phase: this._getPhaseString(data.timer?.gamePhase || data.timer?.phase || 1, (data.timer?.offsetSeconds || data.timer?.elapsedMs / 1000 || 0) * 1000)
         },
-        activeSuspensions: data.activeSuspensions || []
+        suspensions: data.activeSuspensions || data.suspensions || [],
+        mode: data.mode || 'SIMPLE',
+        isEmptyGoal: data.isEmptyGoal ?? false
       });
     }
 
@@ -226,14 +289,35 @@ class SyncService {
     }
   }
 
+  async deleteCurrentMatch(teamId) {
+    if (!teamId) return;
+    try {
+      const docRef = doc(db, 'teams', teamId, 'games', 'current');
+      await deleteDoc(docRef);
+      console.log('[Sync] Current match cleared.');
+    } catch (e) {
+      console.error('[Sync] Failed to clear current match:', e);
+    }
+  }
+
   /**
    * Optimized: Save Match State (Excluding Logs to avoid bloat)
    */
-  saveMatch(teamId, matchState) {
+  async saveMatch(teamId, matchState) {
     if (this.isApplyingRemoteChange || !teamId) return;
-    const docRef = doc(db, 'teams', teamId, 'games', 'current');
-    const payload = this._buildMatchPayload(matchState);
-    updateDoc(docRef, this.stripFunctions(payload)).catch(e => console.error('[Sync] Match save failed:', e));
+    if (!this._checkRateLimit('saveMatch')) return;
+
+    try {
+      console.group('Sync: saveMatch');
+      const docRef = doc(db, 'teams', teamId, 'games', 'current');
+      const payload = this._buildMatchPayload(matchState);
+      await setDoc(docRef, this.stripFunctions(payload), { merge: true });
+      console.log('Payload:', payload);
+    } catch (e) {
+      console.error('Failed:', e);
+    } finally {
+      console.groupEnd();
+    }
   }
 
   /**
@@ -242,28 +326,35 @@ class SyncService {
    */
   async recordAction(teamId, entry, matchState = null) {
     if (this.isApplyingRemoteChange || !teamId) return;
-    const docRef = doc(db, 'teams', teamId, 'games', 'current');
-    
-    const uniqueEntry = {
-      ...entry,
-      id: entry.id || `log_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`
-    };
-
-    const updatePayload = {
-      gameLog: arrayUnion(this.stripFunctions(uniqueEntry)),
-      lastUpdated: serverTimestamp()
-    };
-
-    // If matchState is provided, merge it into the same update call
-    if (matchState) {
-      const matchPayload = this._buildMatchPayload(matchState);
-      Object.assign(updatePayload, matchPayload);
-    }
+    if (!this._checkRateLimit('recordAction')) return;
 
     try {
-      await updateDoc(docRef, this.stripFunctions(updatePayload));
+      console.group('Sync: recordAction');
+      const docRef = doc(db, 'teams', teamId, 'games', 'current');
+      
+      const uniqueEntry = {
+        ...entry,
+        id: entry.id || `log_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`
+      };
+
+      const updatePayload = {
+        gameLog: arrayUnion(this.stripFunctions(uniqueEntry)),
+        lastUpdated: serverTimestamp()
+      };
+
+
+      // If matchState is provided, merge it into the same update call
+      if (matchState) {
+        const matchPayload = this._buildMatchPayload(matchState);
+        Object.assign(updatePayload, matchPayload);
+      }
+
+      await setDoc(docRef, this.stripFunctions(updatePayload), { merge: true });
+      console.log('Entry:', uniqueEntry);
     } catch (e) {
-      console.error('[Sync] Atomic recordAction failed:', e);
+      console.error('Failed:', e);
+    } finally {
+      console.groupEnd();
     }
   }
 
@@ -271,31 +362,70 @@ class SyncService {
    * Internal helper to build the match state payload
    */
   _buildMatchPayload(matchState) {
-    return {
-      score: { 
-        heim: matchState.score?.home || 0, 
-        gegner: matchState.score?.away || 0 
+    // CRITICAL BUG FIX: Only set startTime if it's missing or if the timer just started.
+    // If it's already running, we MUST preserve the existing Firestore startTime.
+    const isRunning = !matchState.timer?.isPaused;
+    
+    const payload = {
+      score: {
+        heim: matchState.score?.home || 0,
+        gegner: matchState.score?.away || 0
       },
       timer: {
-        isRunning: !matchState.timer?.isPaused,
-        startTime: !matchState.timer?.isPaused ? serverTimestamp() : null,
-        offsetSeconds: (matchState.timer?.elapsedMs || 0) / 1000,
-        gamePhase: matchState.timer?.phase === 'ENDED' ? 5 :
-                   (matchState.timer?.phase === 'HALF_TIME' ? 3 : 
-                   (matchState.timer?.phase === 'PRE_GAME' ? 1 : 2))
+        isRunning: isRunning,
+        phase: this._getPhaseNumber(matchState.timer?.phase || 'PRE_GAME')
       },
+      isEmptyGoal: !!matchState.isEmptyGoal,
+      mode: matchState.mode || 'SIMPLE',
       activeSuspensions: matchState.suspensions || [],
       lastUpdated: serverTimestamp()
     };
+
+    // Only touch startTime if we are changing state or it's missing
+    if (isRunning && !matchState.timer?.startTime) {
+      payload.timer.startTime = serverTimestamp();
+      payload.timer.offsetSeconds = (matchState.timer?.elapsedMs || 0) / 1000;
+    } else if (!isRunning) {
+      payload.timer.startTime = null;
+      payload.timer.offsetSeconds = (matchState.timer?.elapsedMs || 0) / 1000;
+    }
+
+    return payload;
+  }
+
+  _getPhaseNumber(phase) {
+    const map = { 'ENDED': 5, 'HALF_TIME': 3, 'PRE_GAME': 1, 'FIRST_HALF': 2, 'SECOND_HALF': 2 };
+    return map[phase] || 2;
+  }
+
+  _getPhaseString(phaseNum, elapsedMs = 0) {
+    const map = { 5: 'ENDED', 3: 'HALF_TIME', 1: 'PRE_GAME' };
+    if (phaseNum === 2) {
+      return (elapsedMs / 1000) < 1800 ? 'FIRST_HALF' : 'SECOND_HALF';
+    }
+    return map[phaseNum] || 'FIRST_HALF';
   }
 
   async saveSettings(teamId, settings) {
     if (this.isApplyingRemoteChange || !teamId || !settings) return;
-    const teamRef = doc(db, 'teams', teamId);
-    const update = { name: settings.homeName, settings: this.stripFunctions(settings) };
+    if (!this._checkRateLimit('saveSettings')) return;
+
     try {
+      console.group('Sync: saveSettings');
+      const teamRef = doc(db, 'teams', teamId);
+      
+      const update = { 
+        name: settings.homeName, 
+        settings: this.stripFunctions(settings) 
+      };
+      
       await updateDoc(teamRef, update);
-    } catch (e) { console.error('[Sync] Settings save failed:', e); }
+      console.log('Success');
+    } catch (e) {
+      console.error('Failed:', e);
+    } finally {
+      console.groupEnd();
+    }
   }
 
   async saveHiddenEventIds(teamId, hiddenIds) {
@@ -310,13 +440,18 @@ class SyncService {
 
   async saveFines(teamId, fines) {
     if (this.isApplyingRemoteChange || !teamId || !fines) return;
-    const gameRef = doc(db, 'teams', String(teamId), 'games', 'current');
-    const payload = {
-      finesCatalog: fines.catalog || [],
-      finesSettings: fines.settings || {},
-      finesStatus: fines.status || {}
-    };
-    updateDoc(gameRef, this.stripFunctions(payload)).catch(e => console.error('[Sync] Fines save failed:', e));
+    if (!this._checkRateLimit('saveFines')) return;
+
+    try {
+      console.group('Sync: saveFines');
+      const docRef = doc(db, 'teams', teamId);
+      await updateDoc(docRef, { fines: this.stripFunctions(fines) });
+      console.log('Success');
+    } catch (e) {
+      console.error('Failed:', e);
+    } finally {
+      console.groupEnd();
+    }
   }
 
   /**
@@ -324,8 +459,18 @@ class SyncService {
    */
   async saveFineEntry(teamId, fine) {
     if (this.isApplyingRemoteChange || !teamId || !fine.id) return;
-    const fineRef = doc(db, 'teams', String(teamId), 'fines', String(fine.id));
-    setDoc(fineRef, this.stripFunctions(fine), { merge: true }).catch(e => console.error('[Sync] Fine entry save failed:', e));
+    if (!this._checkRateLimit('saveFineEntry')) return;
+
+    try {
+      console.group('Sync: saveFineEntry');
+      const docRef = doc(db, 'teams', teamId, 'fines', fine.id);
+      await setDoc(docRef, this.stripFunctions(fine));
+      console.log('Success');
+    } catch (e) {
+      console.error('Failed:', e);
+    } finally {
+      console.groupEnd();
+    }
   }
 
   /**
@@ -341,24 +486,19 @@ class SyncService {
    * SaaS OPTIMIZATION: Two-Tier Archive
    * Saves metadata to 'history' and full log to 'history_details'
    */
-   async saveHistoryGame(teamId, game) {
+   async saveHistoryGame(teamId, gameData) {
     if (this.isApplyingRemoteChange || !teamId) return;
-    const gameId = String(game.id || `h_${Date.now()}`);
-    
-    // 1. Metadata (Light version for list views)
-    // Exclude heavy tactical data: gameLog, lineup, and playingTime
-    const { gameLog, lineup, playingTime, ...metadata } = game;
-    const historyRef = doc(db, 'teams', String(teamId), 'history', gameId);
-    await setDoc(historyRef, this.stripFunctions(metadata), { merge: true });
+    if (!this._checkRateLimit('saveHistoryGame')) return;
 
-    // 2. Details (Full tactical data)
-    if (gameLog || lineup || playingTime) {
-      const detailsRef = doc(db, 'teams', String(teamId), 'history', gameId, 'details', 'tactical');
-      await setDoc(detailsRef, this.stripFunctions({ 
-        gameLog: gameLog || [], 
-        lineup: lineup || { home: [], away: [] },
-        playingTime: playingTime || {} 
-      }), { merge: true });
+    try {
+      console.group('Sync: saveHistoryGame');
+      const docRef = doc(db, 'teams', teamId, 'history', gameData.id);
+      await setDoc(docRef, this.stripFunctions(gameData));
+      console.log('Success');
+    } catch (e) {
+      console.error('Failed:', e);
+    } finally {
+      console.groupEnd();
     }
   }
 
@@ -421,6 +561,10 @@ class SyncService {
   stripFunctions(obj) {
     if (obj === null || typeof obj !== 'object') return obj;
     if (obj instanceof Date) return obj;
+    // Skip Firestore FieldValues and Timestamps (they have an isEqual method in v9)
+    if (typeof obj.isEqual === 'function') return obj;
+    if (typeof obj.toMillis === 'function') return obj;
+    
     if (Array.isArray(obj)) return obj.map(item => this.stripFunctions(item)).filter(item => item !== undefined && typeof item !== 'function');
     const cleaned = {};
     for (const key in obj) {

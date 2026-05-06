@@ -11,7 +11,8 @@ import {
   CloudLightning,
   ChevronRight,
   Menu,
-  X
+  X,
+  Users
 } from 'lucide-react';
 import './LandingPage.css';
 
@@ -58,28 +59,30 @@ const LandingPage = () => {
       desc: "Markiere Schlüsselmomente in Echtzeit. Unsere Timeline macht Spielzüge lesbar und Schwachstellen sichtbar.",
       icon: <ScanEye size={24} />,
       size: "large",
-      img: "/assets/marketing/feature-video.png"
+      img: "/assets/marketing/vismall.png",
+      link: "/features/video-intelligence"
     },
     {
-      title: "Taktische Heatmaps",
-      desc: "Dominanz durch Daten. Analysiere Wurfbilder und gegnerische Laufwege mit höchster Detailtiefe.",
-      icon: <Flame size={24} />,
+      title: "Team Management",
+      desc: "RSVP, Anwesenheit und Strafenkasse. Das Ende des WhatsApp-Chaos für dein Team.",
+      icon: <Users size={24} />,
       size: "medium",
-      img: "/assets/marketing/feature-heatmap.png"
+      img: "/assets/marketing/orgdetail.png",
+      link: "/features/team-management"
+    },
+    {
+      title: "Social Engine",
+      desc: "High-End Matchgrafiken für deine Community. Automatisch aus deinen Spieldaten generiert.",
+      icon: <Share2 size={24} />,
+      size: "small",
+      link: "/features/social-engine"
     },
     {
       title: "Live Analyse",
       desc: "Keine Latenz. Daten direkt während des Spiels erfassen.",
       icon: <Zap size={24} />,
       size: "small",
-      gradient: "linear-gradient(135deg, #f59e0b, transparent)"
-    },
-    {
-      title: "Social Engine",
-      desc: "High-End Matchgrafiken für deine Community. Automatisch.",
-      icon: <Share2 size={24} />,
-      size: "small",
-      gradient: "linear-gradient(135deg, #ec4899, transparent)"
+      link: "/features/live-analysis"
     }
   ];
 
@@ -120,8 +123,8 @@ const LandingPage = () => {
           </div>
           
           <div className="landing-nav-links-center">
-            <a href="#intelligence">Intelligence</a>
-            <a href="#vision">Vision</a>
+            <a href="#features">Analyse</a>
+            <a href="#workflow">Dein Matchplan</a>
             <button onClick={() => navigate('/pricing')} className="landing-nav-link-btn">Preise</button>
           </div>
           
@@ -168,23 +171,26 @@ const LandingPage = () => {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8 }}
           >
-            <div className="landing-hero-badge">Handball Innovation &bull; Elite Access</div>
-            <h1 className="landing-gradient-text">Taktische Dominanz.<br />Präzise Analysiert.</h1>
-            <p>Sechsmeter verwandelt Video-Daten in deinen entscheidenden Vorsprung am Wochenende. Entwickelt für Trainer, die den Sieg planen.</p>
+            <div className="landing-hero-badge">Professionelle Handball Analyse</div>
+            <h1>
+              Taktik schlägt<br />
+              <span>Zufall.</span>
+            </h1>
+            <p>Sechsmeter ist das digitale Werkzeug für Trainer, die nichts dem Zufall überlassen wollen. Analysiere deine Spiele, erkenne Muster und gewinne das nächste Spiel.</p>
             <div className="landing-hero-actions">
               <button onClick={() => navigate('/login')} className="landing-btn landing-btn-primary magnetic">
-                Jetzt Initialisieren
+                Team erstellen
               </button>
-              <a href="#intelligence" className="landing-btn landing-btn-outline magnetic">
-                System Überblick
+              <a href="#features" className="landing-btn landing-btn-outline magnetic">
+                Features entdecken
               </a>
             </div>
           </motion.div>
         </div>
       </section>
 
-      {/* Intelligence (Bento Grid) */}
-      <section id="intelligence" className="landing-section">
+      {/* Features (Bento Grid) */}
+      <section id="features" className="landing-section">
         <div className="landing-container">
           <div className="landing-section-header">
             <motion.h2
@@ -192,7 +198,7 @@ const LandingPage = () => {
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
             >
-              Intelligence Core.
+              Mehr als nur Statistik.
             </motion.h2>
             <motion.p
               initial={{ opacity: 0, y: 20 }}
@@ -209,6 +215,8 @@ const LandingPage = () => {
               <motion.div 
                 key={idx}
                 className={`landing-bento-item ${item.size || ''}`}
+                style={{ cursor: item.link ? 'pointer' : 'default' }}
+                onClick={() => item.link && navigate(item.link)}
                 initial={{ opacity: 0, y: 30 }}
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
@@ -236,11 +244,11 @@ const LandingPage = () => {
       </section>
 
       {/* Workflow */}
-      <section id="vision" className="landing-stats">
+      <section id="workflow" className="landing-stats">
         <div className="landing-container">
           <div className="landing-section-header">
             <h2>Vom Video zum Sieg.</h2>
-            <p>Drei Schritte, die deine Spielvorbereitung revolutionieren.</p>
+            <p>Drei Schritte für deine perfekte Spielvorbereitung.</p>
           </div>
           <div className="landing-stats-grid">
             {[
@@ -302,11 +310,10 @@ const LandingPage = () => {
               <p>Handball Analyse neu definiert. Für Trainer, die am Wochenende gewinnen wollen.</p>
             </div>
             <div className="landing-footer-col">
-              <h4>Navigation</h4>
+              <h4>Kontakt</h4>
               <ul>
-                <li><a href="#intelligence">Intelligence</a></li>
-                <li><a href="#vision">Vision</a></li>
-                <li><button onClick={() => navigate('/login')} className="text-zinc-500 hover:text-white transition-colors">Login</button></li>
+                <li><a href="mailto:info@sechsmeter.de">info@sechsmeter.de</a></li>
+                <li><button onClick={() => navigate('/login')} className="landing-footer-link">Login</button></li>
               </ul>
             </div>
             <div className="landing-footer-col">

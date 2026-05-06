@@ -49,8 +49,8 @@ const PricingPage = () => {
   };
 
   const prices = {
-    starter: { monthly: 5.90, yearly: 4.16 },
-    pro: { monthly: 19.90, yearly: 13.93 }
+    starter: { monthly: 4.90, yearly: 3.99 }, // Unterbietet SpielerPlus (53,99€/Jahr) deutlich
+    pro: { monthly: 19.90, yearly: 14.90 }   // Premium-Tool für Video & Taktik
   };
 
   const formatPrice = (val) => {
@@ -162,9 +162,9 @@ const PricingPage = () => {
             </div>
             <ul className="price-features">
               <li><Users size={16} /> Unbegrenzte Mitglieder</li>
-              <li><Calendar size={16} /> Kalender Sync (iCal/Google)</li>
-              <li><CheckCircle size={16} /> RSVP & Anwesenheit</li>
+              <li><Calendar size={16} /> RSVP & Anwesenheit (SpielerPlus)</li>
               <li><Banknote size={16} /> Strafenkatalog & Kasse</li>
+              <li><Layers size={16} className="text-brand" /> Handball.net Integration</li>
               <li><FileText size={16} /> PDF/CSV Exporte</li>
             </ul>
             <button onClick={() => handleCheckout('starter')} className="landing-btn landing-btn-outline" style={{ width: '100%' }}>
@@ -190,9 +190,9 @@ const PricingPage = () => {
             <ul className="price-features">
               <li><Plus size={16} /> Alles aus Starter</li>
               <li><Video size={16} /> Hochpräzise Video-Analyse</li>
-              <li><Flame size={16} /> Taktische Heatmaps</li>
+              <li><Layers size={16} /> Taktische Timeline & Heatmaps</li>
               <li><Share2 size={16} /> Social Engine (Matchgrafiken)</li>
-              <li><Shield size={16} /> Team Branding</li>
+              <li><Shield size={16} /> Team Branding & Design</li>
             </ul>
             <button onClick={() => handleCheckout('pro')} className="landing-btn landing-btn-primary" style={{ width: '100%' }}>
               Jetzt Upgraden
@@ -233,7 +233,8 @@ const PricingPage = () => {
 
       <footer className="landing-footer">
         <div className="landing-container">
-          <div className="landing-footer-top" style={{ justifyContent: 'center', gap: '3rem' }}>
+          <div className="landing-footer-top" style={{ justifyContent: 'center', gap: '3rem', flexWrap: 'wrap' }}>
+            <a href="mailto:info@sechsmeter.de" className="landing-footer-link" style={{ color: 'var(--primary)', fontWeight: 'bold' }}>info@sechsmeter.de</a>
             <button onClick={() => navigate('/impressum')} className="landing-footer-link">Impressum</button>
             <button onClick={() => navigate('/datenschutz')} className="landing-footer-link">Datenschutz</button>
           </div>

@@ -45,13 +45,15 @@ const MatchLog = ({ log }) => {
               <p className="text-[10px] font-black uppercase tracking-widest">Warten auf Anpfiff...</p>
             </div>
           ) : (
-            log.map((entry, index) => (
-              <motion.div
-                key={entry.timestamp}
-                initial={{ opacity: 0, x: -20 }}
-                animate={{ opacity: 1, x: 0 }}
-                className="flex items-center gap-4 p-4 bg-black/20 border border-zinc-800/50 rounded-2xl group hover:border-zinc-700 transition-all"
-              >
+            [...log]
+              .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp))
+              .map((entry) => (
+                <motion.div
+                  key={entry.id || entry.timestamp}
+                  initial={{ opacity: 0, x: -20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  className="flex items-center gap-4 p-4 bg-black/20 border border-zinc-800/50 rounded-2xl group hover:border-zinc-700 transition-all"
+                >
                 <span className="text-[10px] font-black text-zinc-500 tabular-nums w-12">{entry.time}</span>
                 
                 <div className="p-2 bg-zinc-800 rounded-lg">

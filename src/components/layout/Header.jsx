@@ -5,7 +5,8 @@ import useStore from '../../store/useStore';
 
 export default function Header({ isSidebarOpen, setIsSidebarOpen }) {
   const location = useLocation();
-  const { user, logout } = useStore();
+  const user = useStore(state => state.user);
+  const logout = useStore(state => state.logout);
 
   const getInitials = () => {
     if (!user) return '??';

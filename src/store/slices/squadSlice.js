@@ -55,6 +55,13 @@ export const createSquadSlice = (set) => ({
     };
   }),
 
+  setSettingsData: (newSettings) => set((state) => ({
+    squad: {
+      ...state.squad,
+      settings: { ...state.squad.settings, ...newSettings }
+    }
+  })),
+
   setSquad: (newSquad) => set({ squad: newSquad }),
 
   removeEvent: (eventId) => set((state) => {

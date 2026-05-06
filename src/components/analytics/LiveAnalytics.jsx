@@ -20,8 +20,9 @@ const LiveAnalytics = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { activeMatch: matchData, squad: squadData } = useStore();
+  const gameLog = matchData?.gameLog || matchData?.log || [];
 
-  if (!matchData || !matchData.log || matchData.log.length === 0) {
+  if (!matchData || gameLog.length === 0) {
     return (
       <div className="h-[70vh] flex flex-col items-center justify-center space-y-6 animate-in fade-in zoom-in-95 duration-500">
         <div className="w-24 h-24 bg-zinc-900 rounded-[2.5rem] flex items-center justify-center border border-zinc-800 shadow-2xl shadow-brand/5">

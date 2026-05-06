@@ -261,29 +261,54 @@ const SettingsManager = () => {
         <SettingsSection title="Mitspieler einladen" icon={Users} iconColor="brand" className="md:col-span-2 bg-gradient-to-br from-brand/10 to-transparent">
           <div className="flex flex-col md:flex-row gap-6 items-center">
             <div className="flex-1 space-y-2">
-              <h4 className="text-sm font-black text-white uppercase italic">Dein Team-Beitrittslink</h4>
+              <h4 className="text-sm font-black text-white uppercase italic">Sicherer Team-Beitrittslink</h4>
               <p className="text-[10px] font-bold text-zinc-500 uppercase leading-relaxed">
-                Kopiere diesen Link und schicke ihn an deine Mitspieler. Sie können dann ihren Namen und ihre Nummer eingeben und treten deinem Team sofort bei.
+                Generiere einen Link mit Sicherheitstoken. Dieser Link ist aus Sicherheitsgründen 48 Stunden gültig. 
+                Veraltete Links verlieren automatisch ihre Gültigkeit.
               </p>
+              {settings.inviteToken && (
+                <div className="flex items-center gap-2 mt-2">
+                  <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
+                  <span className="text-[9px] font-black text-zinc-400 uppercase tracking-widest">
+                    Aktiver Token: {settings.inviteToken} (Gültig bis: {new Date(settings.inviteTokenExpiresAt).toLocaleString('de-DE')})
+                  </span>
+                </div>
+              )}
             </div>
-            <div className="w-full md:w-auto flex gap-2">
+            <div className="w-full md:w-auto flex flex-col md:flex-row gap-2">
               <div className="relative flex-1 md:w-80">
                 <input 
                   readOnly
-                  value={`${window.location.origin}/join/${activeTeamId || ''}`}
+                  value={settings.inviteToken ? `${window.location.origin}/join/${activeTeamId || ''}?token=${settings.inviteToken}` : 'Kein aktiver Link'}
                   className="w-full bg-black/60 border border-zinc-800 rounded-2xl px-6 py-4 text-xs font-bold text-zinc-400 outline-none focus:border-brand transition-all"
                 />
               </div>
-              <Button 
-                variant="primary" 
-                size="lg"
-                onClick={() => {
-                  navigator.clipboard.writeText(`${window.location.origin}/join/${activeTeamId || ''}`);
-                  notify('Einladungslink kopiert!');
-                }}
-              >
-                Kopieren
-              </Button>
+              <div className="flex gap-2">
+                {settings.inviteToken && (
+                  <Button 
+                    variant="primary" 
+                    size="lg"
+                    onClick={() => {
+                      navigator.clipboard.writeText(`${window.location.origin}/join/${activeTeamId || ''}?token=${settings.inviteToken}`);
+                      notify('Sicherheits-Link kopiert!');
+                    }}
+                  >
+                    Kopieren
+                  </Button>
+                )}
+                <Button 
+                  variant="outline" 
+                  size="lg"
+                  icon={RefreshCw}
+                  onClick={async () => {
+                    const { generateInviteToken } = useStore.getState();
+                    await generateInviteToken();
+                    notify('Neuer Sicherheits-Link generiert!');
+                  }}
+                >
+                  {settings.inviteToken ? 'Erneuern' : 'Generieren'}
+                </Button>
+              </div>
             </div>
           </div>
         </SettingsSection>

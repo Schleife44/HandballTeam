@@ -26,12 +26,14 @@ export const initialAuthState = {
     expiresAt: null
   },
   isMemberLoading: false, // Tracks if we are currently fetching the activeMember data
+  syncStatus: 'online', // online | offline | quota_exceeded
 };
 
 export const createAuthSlice = (set, get) => ({
   ...initialAuthState,
   
   setSubscription: (sub) => set({ subscription: { ...get().subscription, ...sub } }),
+  setSyncStatus: (status) => set({ syncStatus: status }),
 
   initAuth: () => {
     onAuthStateChanged(auth, async (user) => {
@@ -358,13 +360,31 @@ export const createAuthSlice = (set, get) => ({
     }
   },
 
-  joinTeam: async (teamId, playerData) => {
+  joinTeam: async (teamId, playerData, token = null) => {
     const { name, number } = playerData;
     const user = get().user;
     if (!user) return { success: false, error: 'Nicht angemeldet' };
 
     try {
       const teamRef = doc(db, 'teams', teamId);
+      const teamSnap = await getDoc(teamRef);
+      if (!teamSnap.exists()) throw new Error('Team existiert nicht mehr');
+      const teamData = teamSnap.data();
+
+      // TOKEN VERIFICATION
+      const dbToken = teamData.settings?.inviteToken;
+      const dbExpiry = teamData.settings?.inviteTokenExpiresAt;
+      
+      // If a token is set in the DB, we MUST verify it
+      if (dbToken) {
+        if (!token || token !== dbToken) {
+          return { success: false, error: 'Ungültiger Einladungs-Token. Bitte fordere einen neuen Link an.' };
+        }
+        if (dbExpiry && new Date(dbExpiry) < new Date()) {
+          return { success: false, error: 'Dieser Einladungs-Link ist abgelaufen.' };
+        }
+      }
+
       const memberRef = doc(db, 'teams', teamId, 'members', user.uid);
       const userRef = doc(db, 'users', user.uid);
 
@@ -379,10 +399,6 @@ export const createAuthSlice = (set, get) => ({
       }, { merge: true });
 
       // 2. Add team to user profile
-      const teamSnap = await getDoc(teamRef);
-      if (!teamSnap.exists()) throw new Error('Team existiert nicht mehr');
-      const teamData = teamSnap.data();
-
       const currentTeams = get().profile?.teams || [];
       if (!currentTeams.some(t => t.teamId === teamId)) {
         const updatedTeams = [...currentTeams, { teamId, teamName: teamData.name, role: 'spieler' }];
@@ -400,6 +416,36 @@ export const createAuthSlice = (set, get) => ({
     } catch (error) {
       console.error('[Auth] Join Team error:', error);
       return { success: false, error: error.message };
+    }
+  },
+
+  generateInviteToken: async () => {
+    const { activeTeamId, squad } = get();
+    if (!activeTeamId) return null;
+
+    const token = Math.random().toString(36).substring(2, 12).toUpperCase();
+    const expiry = new Date();
+    expiry.setHours(expiry.getHours() + 48); // 48h validity
+
+    try {
+      const teamRef = doc(db, 'teams', activeTeamId);
+      const updatedSettings = {
+        ...squad.settings,
+        inviteToken: token,
+        inviteTokenExpiresAt: expiry.toISOString()
+      };
+      
+      await updateDoc(teamRef, { settings: updatedSettings });
+      
+      // Update local state via existing updateSettings if available, or manual set
+      if (get().updateSettings) {
+        get().updateSettings(updatedSettings);
+      }
+      
+      return token;
+    } catch (e) {
+      console.error('[Auth] Token generation failed:', e);
+      return null;
     }
   },
 

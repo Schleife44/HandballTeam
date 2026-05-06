@@ -1,19 +1,35 @@
 import React from 'react';
-import { NavLink } from 'react-router-dom';
+import { NavLink, useLocation } from 'react-router-dom';
 import { 
   LayoutDashboard, 
   Calendar, 
   PlayCircle, 
   BarChart2, 
-  Settings 
+  Settings,
+  TrendingUp,
+  History
 } from 'lucide-react';
+import useStore from '../../store/useStore';
 
 export default function MobileNav() {
+  const location = useLocation();
+  const activeMatch = useStore(state => state.activeMatch);
+  const isGameActive = activeMatch && activeMatch.timer?.phase !== 'PRE_GAME' && activeMatch.timer?.phase !== 'ENDED';
+
+  const isInGame = location.pathname.startsWith('/game');
+  const isInAnalytics = location.pathname.startsWith('/analytics');
+
   const items = [
     { icon: LayoutDashboard, label: 'Home', to: '/dashboard' },
     { icon: Calendar, label: 'Termine', to: '/calendar' },
-    { icon: PlayCircle, label: 'Spiel', to: '/game' },
-    { icon: BarChart2, label: 'Archiv', to: '/history' },
+    // Toggle Button Logic
+    isGameActive 
+      ? (isInGame 
+          ? { icon: TrendingUp, label: 'Analyse', to: '/analytics' }
+          : { icon: PlayCircle, label: 'Spiel', to: '/game' }
+        )
+      : { icon: PlayCircle, label: 'Spiel', to: '/game' },
+    { icon: History, label: 'Archiv', to: '/history' },
     { icon: Settings, label: 'Settings', to: '/settings' },
   ];
 
@@ -25,7 +41,7 @@ export default function MobileNav() {
           to={item.to}
           className={({ isActive }) => `
             flex flex-col items-center gap-1 transition-colors
-            ${isActive ? 'text-brand' : 'text-zinc-500'}
+            ${isActive || (isGameActive && ((isInGame && item.label === 'Analyse') || (isInAnalytics && item.label === 'Spiel'))) ? 'text-brand' : 'text-zinc-500'}
           `}
         >
           <item.icon size={20} />

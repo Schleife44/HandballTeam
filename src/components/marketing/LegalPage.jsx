@@ -90,12 +90,18 @@ const LegalPage = () => {
       </section>
 
       <section>
-        <h2>4. Registrierung auf dieser Website</h2>
+        <h2>5. Verantwortung für Spielerdaten & Gesundheitsdaten (Wichtig für Trainer & Vereine)</h2>
+        <p>Sechsmeter ist ein Tool zur Organisation und Analyse von Handballmannschaften. Die Eingabe von personenbezogenen Spielerdaten (Namen, Geburtsdaten, Leistungswerte) sowie Informationen über Abwesenheiten (z.B. Krankmeldungen) erfolgt durch die jeweiligen Trainer, Vereinsverantwortlichen oder die Spieler selbst.</p>
+        <p><strong>Haftungshinweis & Nutzungsbedingung:</strong> Der jeweilige Nutzer (Trainer/Verein/Spieler) trägt die alleinige Verantwortung dafür, dass für alle im System eingetragenen Daten die notwendigen Einverständniserklärungen vorliegen. Dies gilt insbesondere für Gesundheitsdaten (Art. 9 DSGVO), die im Rahmen von Abwesenheitsnotizen freiwillig eingegeben werden können. Sechsmeter stellt lediglich die technische Plattform bereit und führt keine Prüfung der Zulässigkeit dieser Dateneingaben durch.</p>
+      </section>
+
+      <section>
+        <h2>5. Registrierung auf dieser Website</h2>
         <p>Sie können sich auf dieser Website registrieren, um zusätzliche Funktionen auf der Seite zu nutzen. Die dazu eingegebenen Daten verwenden wir nur zum Zwecke der Nutzung des jeweiligen Angebotes oder Dienstes, für den Sie sich registriert haben. Die bei der Registrierung abgefragten Pflichtangaben müssen vollständig angegeben werden. Andernfalls werden wir die Registrierung ablehnen.</p>
       </section>
 
       <section>
-        <h2>5. Analyse-Tools und Tools von Dritt­anbietern</h2>
+        <h2>6. Analyse-Tools und Tools von Dritt­anbietern</h2>
         <p>Beim Besuch dieser Website kann Ihr Surf-Verhalten statistisch ausgewertet werden. Das geschieht vor allem mit Cookies und mit sogenannten Analyseprogrammen. Die Analyse Ihres Surf-Verhaltens erfolgt in der Regel anonym; das Surf-Verhalten kann nicht zu Ihnen zurückverfolgt werden.</p>
       </section>
       

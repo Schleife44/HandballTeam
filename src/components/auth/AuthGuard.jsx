@@ -8,7 +8,12 @@ import { Loader2 } from 'lucide-react';
 const LoginView = React.lazy(() => import('./LoginView'));
 
 export default function AuthGuard({ children }) {
-  const { isAuthenticated, isAuthLoading, activeTeamId, activeMember, squad, isMemberLoading } = useStore();
+  const isAuthenticated = useStore(state => state.isAuthenticated);
+  const isAuthLoading = useStore(state => state.isAuthLoading);
+  const activeTeamId = useStore(state => state.activeTeamId);
+  const activeMember = useStore(state => state.activeMember);
+  const squad = useStore(state => state.squad);
+  const isMemberLoading = useStore(state => state.isMemberLoading);
   const navigate = useNavigate();
   const location = useLocation();
   
@@ -91,7 +96,7 @@ export default function AuthGuard({ children }) {
     // SaaS OPTIMIZATION: Don't wait for the roster indefinitely in the global guard
     // We only wait if we are NOT timed out and REALLY need the core hydration
     const isCorrectTeamLoaded = squad?.contextId === activeTeamId;
-    const isActuallyLoading = !hydrationTimedOut && (!squad?.isHydrated || !isCorrectTeamLoaded || isMemberLoading);
+    const isActuallyLoading = !hydrationTimedOut && (!squad?.isHydrated || !squad?.isRosterHydrated || !isCorrectTeamLoaded || isMemberLoading);
 
     if (isActuallyLoading) {
       return (
@@ -110,8 +115,15 @@ export default function AuthGuard({ children }) {
     const idExists = playerId && roster.some(p => p.id === playerId);
     const nameExists = effectiveName && roster.some(p => p.name === effectiveName); 
 
-    // Only prompt if we REALLY have no name or the name isn't found anywhere in the roster
-    if (!effectiveName || effectiveName === 'Gast' || (!idExists && !nameExists)) {
+    // SaaS STABILIZATION:
+    // Only prompt if:
+    // 1. Roster is HYDRATED (we actually have data or confirmed empty)
+    // 2. Roster is NOT empty (if it's empty, a prompt is useless and likely causes a loop)
+    // 3. We are 100% sure the name/ID doesn't exist.
+    const rosterIsEmpty = roster.length === 0;
+    const shouldPrompt = !isClubMode && squad?.isRosterHydrated && !rosterIsEmpty && (!effectiveName || effectiveName === 'Gast' || (!idExists && !nameExists));
+
+    if (shouldPrompt) {
       console.log('[AuthGuard] Identity invalid or lost, showing NamePromptOverlay');
       return <NamePromptOverlay />;
     }

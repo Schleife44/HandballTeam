@@ -3,30 +3,53 @@
   Scoped for React
 */
 
-html, body {
-    overflow-x: hidden;
-    width: 100%;
+html {
     margin: 0;
     padding: 0;
+    width: 100%;
+    height: auto !important;
+    overflow-y: scroll !important; /* The only allowed scrollbar */
+    overflow-x: hidden !important;
+    scroll-behavior: smooth;
+}
+
+body {
+    margin: 0;
+    padding: 0;
+    width: 100%;
+    min-height: 100vh;
+    overflow: visible !important; /* Prevent body from scrolling separately */
 }
 
 .landing-root {
-    --bg-deep: #020202;
-    --bg-card: #0a0a0a;
+    --bg-deep: #09090b;
+    --bg-card: #18181b;
     --primary: #84cc16;
-    --accent: #a3e635;
-    --text-main: #ffffff;
-    --text-muted: #888888;
-    --border: rgba(255, 255, 255, 0.08);
-    --glass: rgba(255, 255, 255, 0.03);
-    --glass-border: rgba(255, 255, 255, 0.05);
+    --accent: #bef264;
+    --text-main: #fafafa;
+    --text-muted: #71717a;
+    --border: #27272a;
+    --glass: rgba(24, 24, 27, 0.8);
+    --glass-border: #3f3f46;
 
     background-color: var(--bg-deep);
+    background-image: 
+        linear-gradient(rgba(132, 204, 22, 0.03) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(132, 204, 22, 0.03) 1px, transparent 1px);
+    background-size: 40px 40px;
+    background-position: center center;
     color: var(--text-main);
     font-family: 'Inter', system-ui, sans-serif;
     line-height: 1.5;
     position: relative;
     min-height: 100vh;
+    overflow: visible !important;
+}
+
+/* Fix für doppelte Scrollbar auf Landing/Pricing Pages */
+.pricing-page, .landing-root {
+    height: auto !important;
+    overflow-y: visible !important;
 }
 
 .landing-container {
@@ -259,18 +282,24 @@ html, body {
 }
 
 .landing-hero h1 {
-    font-size: 6rem;
+    font-size: 5.5rem;
     font-weight: 900;
-    line-height: 0.95;
-    letter-spacing: -0.04em;
+    line-height: 1;
+    letter-spacing: -0.05em;
     margin-bottom: 2rem;
     color: #fff;
+    text-transform: uppercase;
+    font-style: italic;
 }
 
 .landing-gradient-text {
-    background: linear-gradient(135deg, #fff 0%, var(--primary) 100%);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
+    color: #fff;
+    display: block;
+}
+
+.landing-hero-content h1 span {
+    color: var(--primary);
+    display: block;
 }
 
 .landing-hero p {
@@ -506,17 +535,51 @@ html, body {
 @media (max-width: 1024px) {
     .landing-hero h1 { font-size: 4rem; }
     .landing-bento-grid { grid-template-columns: repeat(2, 1fr); grid-template-rows: auto; }
+    .pricing-grid { grid-template-columns: repeat(2, 1fr); gap: 1.5rem; }
 }
 
 @media (max-width: 768px) {
-    .landing-nav-links { display: none; }
+    .landing-nav { padding: 1rem 0; }
+    .landing-nav-links-center, .landing-nav-right, .main-nav { display: none; }
     .landing-menu-toggle { display: block; }
-    .landing-hero h1 { font-size: 3rem; }
-    .landing-stats-grid { grid-template-columns: 1fr; }
-    .landing-bento-grid { grid-template-columns: 1fr; }
-    .landing-bento-item.large, .landing-bento-item.medium { grid-column: span 1; }
-    .landing-cta-card { padding: 4rem 2rem; }
+    
+    .landing-hero { height: auto; padding: 120px 0 60px 0; }
+    .landing-hero h1 { font-size: 3.5rem; line-height: 1.1; margin-bottom: 1.5rem; }
+    .landing-hero p { font-size: 1.1rem; margin-bottom: 2.5rem; }
+    .landing-hero-actions { flex-direction: column; gap: 1rem; }
+    .landing-hero-actions .landing-btn { width: 100%; }
+    
+    .landing-section { padding: 5rem 0; }
+    .landing-section-header { margin-bottom: 3rem; }
+    .landing-section-header h2 { font-size: 2.5rem; }
+    
+    .landing-bento-grid { grid-template-columns: 1fr; gap: 1rem; }
+    .landing-bento-item.large, .landing-bento-item.medium { grid-column: span 1; grid-row: auto; }
+    .landing-bento-item { padding: 2rem; border-radius: 24px; }
+    .landing-bento-ui-card { width: 90%; right: -20px; bottom: -40px; }
+    
+    .landing-stats-grid { grid-template-columns: 1fr; gap: 2rem; }
+    
+    .landing-cta-card { padding: 3rem 1.5rem; border-radius: 32px; }
     .landing-cta-card h2 { font-size: 2.5rem; }
+    .landing-cta-card p { font-size: 1.1rem; }
+    .landing-btn.big { padding: 1.2rem 2rem; width: 100%; font-size: 1.1rem; }
+    
+    .pricing-grid { grid-template-columns: 1fr; padding: 0; }
+    .price-card { padding: 2rem; }
+    
+    .landing-footer-top { flex-direction: column; gap: 3rem; text-align: center; }
+    .landing-footer-brand { margin-bottom: 0; }
+    .landing-footer-brand p { margin: 1rem auto 0 auto; }
+    .landing-footer-col ul { display: flex; flex-direction: column; gap: 0.5rem; }
+}
+
+@media (max-width: 480px) {
+    .landing-hero h1 { font-size: 2.8rem; }
+    .landing-section-header h2 { font-size: 2.2rem; }
+    .price-amount { font-size: 3rem; }
+    .landing-brand span { font-size: 1.2rem; }
+    .landing-container { padding: 0 1.25rem; }
 }
 
 .landing-mobile-menu {

@@ -36,8 +36,9 @@ const ShotChartsTab = ({ match, squad }) => {
     );
   };
 
+  const gameLog = match?.gameLog || match?.log || [];
   const activePlayers = squad?.home?.filter(p => 
-    match?.log?.some(e => String(e.playerNumber) === String(p.number) && ['GOAL', 'MISS', 'BLOCKED', 'SAVE', '7M_GOAL', '7M_SAVE', '7M_MISS'].includes(e.type))
+    gameLog.some(e => String(e.playerNumber) === String(p.number) && ['GOAL', 'MISS', 'BLOCKED', 'SAVE', '7M_GOAL', '7M_SAVE', '7M_MISS'].includes(e.type))
   ) || [];
 
   return (
@@ -69,7 +70,7 @@ const ShotChartsTab = ({ match, squad }) => {
         </svg>
 
         {activePlayers.map((player, pIdx) => {
-          const playerShots = match.log.filter(e => 
+          const playerShots = gameLog.filter(e => 
             String(e.playerNumber) === String(player.number) && 
             ['GOAL', 'MISS', 'BLOCKED', 'SAVE', '7M_GOAL', '7M_SAVE', '7M_MISS'].includes(e.type)
           );

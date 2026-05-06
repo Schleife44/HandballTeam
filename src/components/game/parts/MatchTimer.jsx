@@ -1,5 +1,5 @@
 import React, { useEffect, useRef } from 'react';
-import { Play, Pause, FastForward, Clock } from 'lucide-react';
+import { Play, Pause, FastForward, SkipForward, Clock } from 'lucide-react';
 import useStore from '../../../store/useStore';
 import Button from '../../ui/Button';
 
@@ -11,6 +11,17 @@ const MatchTimer = () => {
 
   useEffect(() => {
     if (!isPaused && (phase === 'FIRST_HALF' || phase === 'SECOND_HALF')) {
+      // CATCH UP: If we just mounted and the timer is running, 
+      // we need to adjust elapsedMs to account for the time spent unmounted.
+      const startTime = activeMatch.timer.startTime;
+      if (startTime) {
+        const startMs = typeof startTime === 'number' ? startTime : (startTime.toMillis ? startTime.toMillis() : new Date(startTime).getTime());
+        const realElapsedMs = (activeMatch.timer.offsetSeconds || 0) * 1000 + Math.max(0, Date.now() - startMs);
+        if (Math.abs(realElapsedMs - elapsedMs) > 100) {
+          updateMatchTimer({ elapsedMs: realElapsedMs });
+        }
+      }
+
       lastTickRef.current = Date.now();
       
       intervalRef.current = setInterval(() => {
@@ -69,15 +80,16 @@ const MatchTimer = () => {
 
   const handleStartStop = () => {
     if (phase === 'PRE_GAME') {
-      updateMatchTimer({ phase: 'FIRST_HALF', isPaused: false });
+      updateMatchTimer({ phase: 'FIRST_HALF', isPaused: false, elapsedMs: 0 });
     } else {
       const newPaused = !isPaused;
-      updateMatchTimer({ isPaused: newPaused });
+      updateMatchTimer({ isPaused: newPaused, elapsedMs });
     }
   };
 
   const jumpTime = (seconds) => {
     const newTime = Math.max(0, elapsedMs + (seconds * 1000));
+    setElapsedMs(newTime); // Update local state immediately
     updateMatchTimer({ elapsedMs: newTime });
   };
 
@@ -183,9 +195,9 @@ const MatchTimer = () => {
             variant="outline"
             onClick={handleNextPhase}
             className={phase === 'HALF_TIME' ? "flex-1 py-4" : "px-6 py-4"}
-            icon={FastForward}
+            icon={SkipForward}
           >
-            {phase === 'FIRST_HALF' ? 'Halbzeit' : '2. HZ'}
+            {phase === 'FIRST_HALF' ? 'Halbzeit' : (phase === 'HALF_TIME' ? '2. Halbzeit' : 'Spiel beenden')}
           </Button>
         )}
       </div>

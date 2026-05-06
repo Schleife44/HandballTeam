@@ -39,6 +39,10 @@ const ClubDashboard = lazy(() => import('./components/club/ClubDashboard.jsx'))
 const JoinTeam = lazy(() => import('./components/auth/JoinTeam.jsx'))
 const LandingPage = lazy(() => import('./components/marketing/LandingPage.jsx'))
 const PricingPage = lazy(() => import('./components/marketing/PricingPage.jsx'))
+const VideoIntelligence = lazy(() => import('./components/marketing/features/VideoIntelligence.jsx'))
+const SocialEngine = lazy(() => import('./components/marketing/features/SocialEngine.jsx'))
+const TeamManagement = lazy(() => import('./components/marketing/features/TeamManagement.jsx'))
+const LiveAnalysisDetail = lazy(() => import('./components/marketing/features/LiveAnalysisDetail.jsx'))
 const LegalPage = lazy(() => import('./components/marketing/LegalPage.jsx'))
 const AdminDashboard = lazy(() => import('./components/admin/AdminDashboard.jsx'))
 const CookieConsent = lazy(() => import('./components/marketing/CookieConsent.jsx'))
@@ -63,6 +67,10 @@ function App() {
         <Routes>
           <Route path="/" element={<LandingPage />} />
           <Route path="/pricing" element={<PricingPage />} />
+          <Route path="/features/video-intelligence" element={<VideoIntelligence />} />
+          <Route path="/features/social-engine" element={<SocialEngine />} />
+          <Route path="/features/team-management" element={<TeamManagement />} />
+          <Route path="/features/live-analysis" element={<LiveAnalysisDetail />} />
           <Route path="/impressum" element={<LegalPage />} />
           <Route path="/datenschutz" element={<LegalPage />} />
           <Route path="/login" element={<LoginView />} />

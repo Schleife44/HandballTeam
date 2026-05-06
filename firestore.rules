@@ -71,8 +71,8 @@ service cloud.firestore {
       allow read: if isAuthenticated() && (isTeamMember(teamId) || isTeamOwner(teamId));
       
       allow create, update: if isAuthenticated() && (
-        // Everyone can track games and history (game results)
-        ((subcollection == 'games' || subcollection == 'history') && isTeamMember(teamId)) ||
+        // Everyone can track games, history (game results) and manage the roster
+        ((subcollection == 'games' || subcollection == 'history' || subcollection == 'roster') && isTeamMember(teamId)) ||
         
         // Fines: Only Kassenwart or Owner
         (subcollection == 'fines' && (
@@ -99,8 +99,8 @@ service cloud.firestore {
     }
 
     // ─── Legacy Support (Sessions) ───────────────────────────────────────────
-    match /sessions/{docId} {
-      allow read, write: if isAuthenticated();
+    match /sessions/{uid} {
+      allow read, write: if isAuthenticated() && request.auth.uid == uid;
     }
 
     // ─── Invitations ──────────────────────────────────────────────────────────

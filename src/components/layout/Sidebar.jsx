@@ -67,7 +67,11 @@ function SidebarItem({ icon: Icon, label, to, badge, isSidebarOpen }) {
 }
 
 export default function Sidebar({ isSidebarOpen }) {
-  const { setActiveTeam, logout, squad, subscription, activeTeamId } = useStore();
+  const setActiveTeam = useStore(state => state.setActiveTeam);
+  const logout = useStore(state => state.logout);
+  const squad = useStore(state => state.squad);
+  const subscription = useStore(state => state.subscription);
+  const activeTeamId = useStore(state => state.activeTeamId);
   const isClubMode = activeTeamId === 'CLUB_OVERVIEW';
 
   return (

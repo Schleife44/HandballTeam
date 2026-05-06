@@ -121,7 +121,9 @@ export const createMatchSlice = (set) => ({
     const updatedMatch = activeMatch ? { ...activeMatch, timer: { ...activeMatch.timer, ...timerUpdate } } : null;
     
     // SaaS OPTIMIZATION: Only save to cloud on significant state changes
-    const isStateChange = timerUpdate.phase !== undefined || timerUpdate.isPaused !== undefined;
+    const phaseChanged = timerUpdate.phase !== undefined && timerUpdate.phase !== activeMatch?.timer?.phase;
+    const pauseChanged = timerUpdate.isPaused !== undefined && timerUpdate.isPaused !== activeMatch?.timer?.isPaused;
+    const isStateChange = phaseChanged || pauseChanged;
     
     if (activeTeamId && updatedMatch && isStateChange) {
       syncService.saveMatch(activeTeamId, updatedMatch);
@@ -183,16 +185,19 @@ export const createMatchSlice = (set) => ({
     const { activeTeamId, activeMatch } = state;
     if (!activeMatch) return state;
     const timestamp = new Date().toISOString();
+    const date = timestamp.slice(0, 10);
     const gameId = activeMatch.id || `g_${Date.now()}`;
     const archivedGame = { 
       ...activeMatch, 
       id: gameId,
-      timestamp 
+      timestamp,
+      date: activeMatch.date || date
     };
     
     if (activeTeamId) {
       syncService.saveHistoryGame(activeTeamId, archivedGame);
-      syncService.saveMatch(activeTeamId, { ...activeMatch, timer: { ...activeMatch.timer, phase: 'ENDED' } });
+      // Clear the current game so it doesn't reappear in the live dashboard
+      syncService.deleteCurrentMatch(activeTeamId);
     }
 
     // SaaS OPTIMIZATION: Only store 'Light' version in local history state
@@ -266,7 +271,7 @@ export const createMatchSlice = (set) => ({
   setMatchData: (data) => set((state) => {
     const cloudPhase = data.timer?.gamePhase;
     const cloudIsRunning = data.timer?.isRunning ?? false;
-    const cloudOffset = data.timer?.offsetSeconds || 0;
+    const cloudOffset = (data.timer?.elapsedMs || 0) / 1000;
     const cloudStartTime = data.timer?.startTime;
 
     // TIMER INTERPOLATION: Accurate sync without frequent writes
@@ -277,8 +282,9 @@ export const createMatchSlice = (set) => ({
       interpolatedMs += Math.max(0, Date.now() - startMs);
     }
 
-    if ((cloudPhase === 5 || !cloudPhase || cloudPhase === 1) && !state.activeMatch) {
-      return { activeMatch: null };
+    // PERSISTENCE: If cloud has match data but local store is empty (e.g. after reload), initialize it
+    if (!state.activeMatch && !data.score && !data.timer && !data.gameLog?.length) {
+      return state;
     }
 
     let detectedPhase = 'PRE_GAME';
@@ -292,15 +298,20 @@ export const createMatchSlice = (set) => ({
       activeMatch: {
         ...state.activeMatch,
         mode: data.mode || state.activeMatch?.mode || 'SIMPLE',
-        score: { home: data.score?.heim || 0, away: data.score?.gegner || 0 },
+        score: { 
+          home: data.score?.home ?? 0, 
+          away: data.score?.away ?? 0 
+        },
         gameLog: data.gameLog || [],
         lineup: data.lineup || state.activeMatch?.lineup || { home: [], away: [] },
         timer: { 
           elapsedMs: interpolatedMs,
           isPaused: !cloudIsRunning,
-          phase: detectedPhase
+          phase: data.timer?.phase || detectedPhase,
+          startTime: cloudStartTime,
+          offsetSeconds: cloudOffset
         },
-        suspensions: data.activeSuspensions || [],
+        suspensions: data.suspensions || [],
         timeouts: data.timeouts || state.activeMatch?.timeouts || { home: 3, away: 3 },
         isEmptyGoal: data.isEmptyGoal ?? state.activeMatch?.isEmptyGoal ?? false,
         playingTime: data.playingTime || state.activeMatch?.playingTime || {}

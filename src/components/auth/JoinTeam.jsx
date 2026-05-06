@@ -41,10 +41,15 @@ export default function JoinTeam() {
     if (!playerName.trim() || joining) return;
 
     setJoining(true);
+    
+    // Extract token from URL search params
+    const urlParams = new URLSearchParams(window.location.search);
+    const token = urlParams.get('token');
+
     const result = await joinTeam(teamId, {
       name: playerName.trim(),
       number: playerNumber.trim() || '?'
-    });
+    }, token);
 
     if (result.success) {
       setActiveTeam(teamId);
