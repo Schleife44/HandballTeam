@@ -34,7 +34,7 @@ export default function Header({ isSidebarOpen, setIsSidebarOpen }) {
   };
 
   return (
-    <header className="h-16 border-b border-zinc-900 flex items-center justify-between px-4 lg:px-8 sticky top-0 bg-black/80 backdrop-blur-md z-40">
+    <header className="h-16 max-h-16 border-b border-zinc-900 flex items-center justify-between px-4 lg:px-8 sticky top-0 bg-black/80 backdrop-blur-md z-40 overflow-hidden shrink-0">
       <div className="flex items-center gap-2 lg:gap-4">
         <button 
           onClick={() => setIsSidebarOpen(!isSidebarOpen)}

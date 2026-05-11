@@ -29,8 +29,8 @@ const ActionOverlay = ({ player, onClose, onAction }) => {
         { id: 'STEAL', label: 'Steal', color: 'bg-zinc-800 text-zinc-300', span: 'col-span-4' },
         { id: 'GET_2MIN', label: '2 MIN+', color: 'bg-blue-500/10 text-blue-500 border border-blue-500/20', span: 'col-span-3' },
         { id: 'GET_7M', label: '7M+', color: 'bg-blue-500/10 text-blue-500 border border-blue-500/20', span: 'col-span-3' },
+        { id: 'GET_7M_2MIN', label: '7m + 2min', color: 'bg-orange-500/10 text-orange-500 border border-orange-500/20', span: 'col-span-3' },
         { id: '1V1', label: '1V1', color: 'bg-blue-500/10 text-blue-500 border border-blue-500/20', span: 'col-span-3' },
-        { id: 'BLOCK', label: 'Block', color: 'bg-blue-500/10 text-blue-500 border border-blue-500/20', span: 'col-span-3' },
       ]
     },
     {

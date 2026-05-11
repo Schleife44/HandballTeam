@@ -148,6 +148,9 @@ class SyncService {
     
     // Roster must be loaded globally for AuthGuard identity check
     this.subscribeToRoster(teamId, store);
+    
+    // Member list for linking and permissions
+    this.subscribeToMembers(teamId, store);
 
     // Dashboard Data
     this.subscribeToEvents(teamId, store);
@@ -184,11 +187,36 @@ class SyncService {
     }, store);
   }
 
-  subscribeToHistory(teamId, store, limitCount = 20) {
+  subscribeToHistory(teamId, store, limitCount = 20, season = null) {
     if (!teamId || !store) return;
-    const q = query(collection(db, 'teams', teamId, 'history'), orderBy('date', 'desc'), limit(limitCount));
-    return this._subscribe(`history_${teamId}`, q, (snapshot) => {
-      const history = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    
+    let q;
+    const historyCol = collection(db, 'teams', teamId, 'history');
+    
+    if (season) {
+      // Seasonal Loading: Fetch all games for a specific season
+      // SaaS OPTIMIZATION: Remove orderBy here to avoid composite index requirement
+      // We'll sort in the callback instead
+      console.log(`[Sync] 📂 Loading history for season: ${season}`);
+      q = query(historyCol, where('season', '==', season));
+    } else {
+      // Dashboard View: Just the latest games
+      q = query(historyCol, orderBy('date', 'desc'), limit(limitCount));
+    }
+
+    const subKey = season ? `history_${teamId}_${season}` : `history_${teamId}_latest`;
+    return this._subscribe(subKey, q, (snapshot) => {
+      let history = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      
+      // Manual Sort for seasonal query (if server-side sort is missing)
+      if (season) {
+        history.sort((a, b) => {
+          const dateA = a.date ? new Date(a.date).getTime() : 0;
+          const dateB = b.date ? new Date(b.date).getTime() : 0;
+          return dateB - dateA; // Newest first
+        });
+      }
+
       store.setHistory?.(history);
     }, store);
   }
@@ -486,7 +514,7 @@ class SyncService {
    * SaaS OPTIMIZATION: Two-Tier Archive
    * Saves metadata to 'history' and full log to 'history_details'
    */
-   async saveHistoryGame(teamId, gameData) {
+  async saveHistoryGame(teamId, gameData) {
     if (this.isApplyingRemoteChange || !teamId) return;
     if (!this._checkRateLimit('saveHistoryGame')) return;
 
@@ -499,6 +527,31 @@ class SyncService {
       console.error('Failed:', e);
     } finally {
       console.groupEnd();
+    }
+  }
+
+  async saveSeasonData(teamId, season, data) {
+    if (!teamId || !season) return;
+    const seasonId = season.replace('/', '-');
+    const docRef = doc(db, 'teams', teamId, 'season_data', seasonId);
+    try {
+      await setDoc(docRef, this.stripFunctions({ ...data, lastUpdated: new Date().toISOString() }), { merge: true });
+      console.log(`[Sync] Season data for ${season} saved.`);
+    } catch (e) {
+      console.error(`[Sync] Failed to save season data:`, e);
+    }
+  }
+
+  async fetchSeasonData(teamId, season) {
+    if (!teamId || !season) return null;
+    const seasonId = season.replace('/', '-');
+    try {
+      const docRef = doc(db, 'teams', teamId, 'season_data', seasonId);
+      const snap = await getDoc(docRef);
+      return snap.exists() ? snap.data() : null;
+    } catch (e) {
+      console.error(`[Sync] Failed to fetch season data:`, e);
+      return null;
     }
   }
 

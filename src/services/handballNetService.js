@@ -199,6 +199,10 @@ export const mapToInternal = (rawJson, myTeamName = "") => {
       action = isOurAction ? 'Tor' : 'Gegner Tor';
       if (t.includes('seven')) action = isOurAction ? '7m Tor' : 'Gegner 7m Tor';
     } 
+    else if (t.includes('miss') || t.includes('save') || t.includes('parade') || t.includes('vorbei') || t.includes('post') || t.includes('woodwork')) {
+      action = isOurAction ? 'Fehlwurf' : 'Gegner Fehlwurf';
+      if (t.includes('seven')) action = isOurAction ? '7m verworfen' : 'Gegner 7m verworfen';
+    }
     else if (t.includes('penalty')) action = isOurAction ? '2 Minuten' : 'Gegner 2 Minuten';
     else if (t.includes('yellow')) action = isOurAction ? 'Gelbe Karte' : 'Gegner Gelbe Karte';
     else if (t.includes('red') || t.includes('disqualification')) action = isOurAction ? 'Rote Karte' : 'Gegner Rote Karte';
@@ -212,9 +216,18 @@ export const mapToInternal = (rawJson, myTeamName = "") => {
       if (m) num = m[1];
     }
 
+    let type = "";
+    if (action.includes('Tor')) type = action.includes('7m') ? '7M_GOAL' : 'GOAL';
+    else if (action.includes('Fehlwurf') || action.includes('verworfen')) type = action.includes('7m') ? '7M_MISS' : 'MISS';
+    else if (action.includes('Gelbe')) type = 'YELLOW';
+    else if (action.includes('2 Minuten')) type = 'SUSPENSION';
+    else if (action.includes('Rote')) type = 'RED';
+    else if (action.includes('Timeout')) type = 'TIMEOUT';
+
     gameLog.push({
       time: e.time || '00:00',
       action: action,
+      type: type,
       half: currentHalf,
       timestamp: e.timestamp || null,
       playerName: isOurAction ? (roster.find(p => p.number === String(num))?.name || `Spieler #${num}`) : (knownOpponents.find(p => p.number === String(num))?.name || `Gegner #${num}`),
@@ -245,6 +258,12 @@ export const mapToInternal = (rawJson, myTeamName = "") => {
     homeTeamId: homeTeam.id,
     awayTeamId: awayTeam.id,
     timestamp: new Date(summary.startsAt).getTime(),
+    season: (() => {
+      const date = new Date(summary.startsAt);
+      const year = date.getFullYear();
+      const month = date.getMonth();
+      return month >= 6 ? `${String(year).slice(-2)}/${String(year + 1).slice(-2)}` : `${String(year - 1).slice(-2)}/${String(year).slice(-2)}`;
+    })(),
     settings: { 
       teamHome: homeTeam.name, 
       teamAway: awayTeam.name, 
@@ -406,58 +425,53 @@ export const fetchTournamentSchedule = async (tournamentId, dateFrom, dateTo, te
   console.warn(`[Hnet] No schedule data found for period ${dateFrom} - ${dateTo}`);
   return [];
 };
-export const syncToCalendar = async (inputTeamId, teamName = "Wir") => {
+export const fetchTeamSchedule = async (inputTeamId) => {
   let fullId = (inputTeamId || "").trim();
-  
-  // Guard: If the ID looks like a Firebase ID and is NOT a URL, we can't sync unless we extract it from a URL
-  // But since we only have fullId here, we'll try to extract if it IS a URL, 
-  // or fail gracefully if it looks like a Firebase ID (long hash)
-  if (fullId.length > 20 && !fullId.includes('.') && !fullId.includes('handball.net')) {
-    console.error("[Hnet] syncToCalendar called with invalid ID (looks like Firebase ID):", fullId);
-    return []; // Return empty instead of crashing
-  }
-
-  // Robustness: If the input is a full URL, extract the ID
   if (fullId.includes('handball.net/mannschaften/')) {
     const match = fullId.match(/mannschaften\/([^/]+)/);
     if (match && match[1]) fullId = match[1];
   }
-
   const numericId = (fullId.match(/(\d+)$/) || [])[1] || fullId;
-  const teamId = fullId; // For compatibility with existing logic below
-  
-  console.log(`[Hnet] Starting Deep Sync for team: ${fullId} (Numeric: ${numericId})`);
   
   let rawResponse = null;
   let response = null;
 
-  // STAGE 1: Modern Slug-based Endpoint (Full ID)
+  // STAGE 1: Modern Slug-based Endpoint
   const url1 = `https://www.handball.net/a/sportdata/1/widgets/team/${fullId}/team-schedule?dateFrom=2025-07-01&dateTo=2026-06-30`;
-  rawResponse = await fetchWithProxy(url1);
-  response = rawResponse?.data || rawResponse;
-
-  // STAGE 2: Legacy Widget Endpoint (Numeric ID)
-  if (!response?.schedule?.data || rawResponse?.code === 404) {
-    console.log(`[Hnet] Stage 1 failed, trying Stage 2 (Numeric ID)...`);
-    const url2 = `https://www.handball.net/a/sportdata/1/widgets/schedule?teamId=${numericId}&dateFrom=2025-07-01&dateTo=2026-06-30`;
-    rawResponse = await fetchWithProxy(url2);
+  try {
+    rawResponse = await fetchWithProxy(url1);
     response = rawResponse?.data || rawResponse;
-  }
+  } catch (e) { console.warn("[Hnet] Stage 1 failed"); }
 
-  // STAGE 3: Direct Schedule Endpoint (Numeric ID)
-  if (!response?.schedule?.data || rawResponse?.code === 404) {
-    console.log(`[Hnet] Stage 2 failed, trying Stage 3 (Direct API)...`);
-    const url3 = `https://www.handball.net/a/sportdata/1/widgets/schedule?teamId=${numericId}`;
-    rawResponse = await fetchWithProxy(url3);
-    response = rawResponse?.data || rawResponse;
-  }
-  
+  // STAGE 2: Legacy Widget Endpoint
   if (!response?.schedule?.data) {
-    console.error("[Hnet] All Sync Stages Failed. Last Response:", rawResponse);
-    throw new Error(`Konnte keine Spielplandaten für ID "${fullId}" finden. Bitte stelle sicher, dass die ID exakt so im Link deines Teams steht.`);
+    const url2 = `https://www.handball.net/a/sportdata/1/widgets/schedule?teamId=${numericId}&dateFrom=2025-07-01&dateTo=2026-06-30`;
+    try {
+      rawResponse = await fetchWithProxy(url2);
+      response = rawResponse?.data || rawResponse;
+    } catch (e) { console.warn("[Hnet] Stage 2 failed"); }
   }
 
-  const myGames = response.schedule.data;
+  // STAGE 3: Direct API
+  if (!response?.schedule?.data) {
+    const url3 = `https://www.handball.net/a/sportdata/1/widgets/schedule?teamId=${numericId}`;
+    try {
+      rawResponse = await fetchWithProxy(url3);
+      response = rawResponse?.data || rawResponse;
+    } catch (e) { console.warn("[Hnet] Stage 3 failed"); }
+  }
+
+  return response?.schedule?.data || [];
+};
+
+export const syncToCalendar = async (inputTeamId, teamName = "Wir") => {
+  let fullId = (inputTeamId || "").trim();
+  const numericId = (fullId.match(/(\d+)$/) || [])[1] || fullId;
+  
+  const myGames = await fetchTeamSchedule(fullId);
+  if (!myGames || myGames.length === 0) {
+    throw new Error(`Konnte keine Spielplandaten für ID "${fullId}" finden.`);
+  }
   console.log(`[Hnet] Found ${myGames.length} games for your team.`);
   const results = [];
   const now = new Date();

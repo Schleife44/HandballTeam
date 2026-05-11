@@ -7,7 +7,8 @@ import {
   Clock, 
   AlertCircle,
   TrendingUp,
-  Download
+  Download,
+  ShieldAlert
 } from 'lucide-react';
 
 const ProtocolTab = ({ match }) => {
@@ -21,7 +22,10 @@ const ProtocolTab = ({ match }) => {
 
   const getIcon = (type) => {
     switch (type) {
-      case 'GOAL': return <Target className="text-brand" size={16} />;
+      case 'GOAL':
+      case '7M_GOAL': return <Target className="text-brand" size={16} />;
+      case 'SAVE':
+      case '7M_SAVE': return <ShieldAlert className="text-yellow-500" size={16} />;
       case 'TWO_MIN': return <Clock className="text-orange-500" size={16} />;
       case 'YELLOW': return <AlertCircle className="text-yellow-500" size={16} />;
       default: return <TrendingUp className="text-zinc-500" size={16} />;
@@ -31,8 +35,11 @@ const ProtocolTab = ({ match }) => {
   const getActionLabel = (type) => {
     switch (type) {
       case 'GOAL': return 'Tor';
+      case '7M_GOAL': return '7m Tor';
       case 'MISS': return 'Fehlwurf';
+      case '7M_MISS': return '7m Fehlwurf';
       case 'SAVE': return 'Parade (TW)';
+      case '7M_SAVE': return '7m Gehalten';
       case 'TWO_MIN': return '2 Minuten';
       case 'YELLOW': return 'Gelb';
       case 'RED': return 'Rot';

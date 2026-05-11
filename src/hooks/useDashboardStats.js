@@ -19,6 +19,7 @@ export function useDashboardStats() {
     chartData: [],
     topPerformers: [],
     upcomingEvents: [],
+    todaysGame: null,
     leagueTable: null,
     loadingTable: false
   });
@@ -84,6 +85,7 @@ export function useDashboardStats() {
       // Calculate local stats
       const rawHistory = history || [];
       const pastCalendarGames = rawEvents.filter(e => 
+        e.date && 
         (e.type === 'game' || e.type?.toUpperCase() === 'SPIEL') && 
         e.score && 
         (new Date(e.date) < now) &&
@@ -183,6 +185,22 @@ export function useDashboardStats() {
       const recentWinRate = recentGamesCount ? (recentWins / recentGamesCount) * 100 : 0;
       const winRateTrend = Math.round(recentWinRate - overallWinRate);
 
+      const todaysGame = rawEvents.find(e => {
+        if (!e.date) return false;
+        const eventDate = e.date instanceof Date ? e.date.toISOString().slice(0, 10) : String(e.date).slice(0, 10);
+        return eventDate === todayStr && (e.type?.toUpperCase() === 'SPIEL' || e.type === 'game');
+      });
+
+      const todaysGameFormatted = todaysGame ? {
+        id: todaysGame.id || `temp_${Date.now()}`,
+        title: todaysGame.title || 'Neues Spiel',
+        hnetGameId: todaysGame.hnetGameId || (todaysGame.id?.includes('hnet_') ? todaysGame.id.replace('hnet_', '') : null),
+        opponent: (todaysGame.title || "").includes('vs.') ? todaysGame.title.split('vs. ')[1] : 
+                  (todaysGame.title || "").includes(' - ') ? todaysGame.title.split(' - ')[1] : 
+                  (todaysGame.title || 'Gegner'),
+        time: todaysGame.time || '--:--'
+      } : null;
+
       // INITIAL UPDATE with local data
       setStats(prev => ({
         ...prev,
@@ -196,6 +214,7 @@ export function useDashboardStats() {
         chartData,
         topPerformers: top,
         upcomingEvents: upcoming,
+        todaysGame: todaysGameFormatted,
         loadingTable: !!effectiveTeamId // Show loading only if we have a teamId to fetch
       }));
 
@@ -204,14 +223,22 @@ export function useDashboardStats() {
         try {
           const res = await fetchTeamTable(effectiveTeamId);
           if (res && res.table && res.table.rows) {
-            const leagueData = res.table.rows.map(row => ({
-              rank: row.position,
-              team: row.team?.name || '?',
-              games: row.games,
-              diff: row.goalDiff,
-              points: row.points,
-              isMyTeam: String(row.team?.id) === String(effectiveTeamId)
-            }));
+            const leagueData = res.table.rows.map(row => {
+              // Calculate difference if not directly provided
+              let goalDiff = row.goalDiff ?? row.goalDifference ?? row.diff ?? 0;
+              if (goalDiff === 0 && row.goalsPlus !== undefined && row.goalsMinus !== undefined) {
+                goalDiff = row.goalsPlus - row.goalsMinus;
+              }
+
+              return {
+                rank: row.position,
+                team: row.team?.name || '?',
+                games: row.games,
+                diff: goalDiff,
+                points: row.points,
+                isMyTeam: String(row.team?.id) === String(effectiveTeamId)
+              };
+            });
             setStats(prev => ({ ...prev, leagueTable: leagueData, loadingTable: false }));
           } else {
             setStats(prev => ({ ...prev, loadingTable: false }));

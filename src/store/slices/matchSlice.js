@@ -10,9 +10,10 @@ export const createMatchSlice = (set) => ({
 
   setActiveMatch: (match) => set({ activeMatch: match }),
   
-  initMatch: (mode) => set(() => ({
+  initMatch: (mode, isZoneMode = false) => set(() => ({
     activeMatch: {
       mode,
+      isZoneMode,
       score: { home: 0, away: 0 },
       timer: { elapsedMs: 0, isPaused: true, phase: 'PRE_GAME' },
       lineup: { home: [], away: [] },
@@ -39,20 +40,72 @@ export const createMatchSlice = (set) => ({
       if (!pId) return;
 
       if (!playerStats[pId]) {
-        playerStats[pId] = { goals: 0, missed: 0, yellow: 0, suspensions: 0, red: 0 };
+        playerStats[pId] = { goals: 0, missed: 0, yellow: 0, suspensions: 0, red: 0, sevenMeterGoals: 0, sevenMeterTotal: 0 };
         playerNames[pId] = entry.playerName || `Spieler #${pId}`;
       }
 
       const action = (entry.action || "").toLowerCase();
-      if (action.includes('tor')) playerStats[pId].goals++;
-      else if (action.includes('fehlwurf') || action.includes('verworfen')) playerStats[pId].missed++;
-      else if (action.includes('gelbe')) playerStats[pId].yellow++;
-      else if (action.includes('2 min')) playerStats[pId].suspensions++;
-      else if (action.includes('rote')) playerStats[pId].red++;
+      const type = (entry.type || "").toUpperCase();
+
+      const is7m = type.includes('7M') || action.includes('7m');
+      const isGoal = type.includes('GOAL') || action.includes('tor') || action.includes('goal');
+      const isMiss = type.includes('MISS') || type.includes('SAVE') || type.includes('BLOCKED') || 
+                     action.includes('fehlwurf') || action.includes('miss') || action.includes('verworfen') || 
+                     action.includes('gehalten') || action.includes('block');
+
+      if (isGoal) playerStats[pId].goals++;
+      else if (isMiss) playerStats[pId].missed++;
+
+      if (is7m) {
+        playerStats[pId].sevenMeterTotal++;
+        if (isGoal) playerStats[pId].sevenMeterGoals++;
+      }
+
+      if (type === 'YELLOW' || action.includes('gelbe')) playerStats[pId].yellow++;
+      else if (type === 'SUSPENSION' || action.includes('2 min')) playerStats[pId].suspensions++;
+      else if (type === 'RED' || action.includes('rote')) playerStats[pId].red++;
     });
 
     return { playerStats, playerNames };
   },
+
+  tickMatch: (delta, playerIds = []) => set((state) => {
+    const { activeMatch, activeTeamId } = state;
+    if (!activeMatch || activeMatch.timer.isPaused) return state;
+
+    const newElapsedMs = activeMatch.timer.elapsedMs + delta;
+    const oldSec = Math.floor(activeMatch.timer.elapsedMs / 1000);
+    const newSec = Math.floor(newElapsedMs / 1000);
+    const secondFlipped = newSec > oldSec;
+
+    let updatedMatch = {
+      ...activeMatch,
+      timer: { ...activeMatch.timer, elapsedMs: newElapsedMs }
+    };
+
+    if (secondFlipped) {
+      // 1. Suspensions
+      if (activeMatch.suspensions?.length > 0) {
+        updatedMatch.suspensions = activeMatch.suspensions
+          .map(s => {
+            const remaining = Math.max(0, Math.ceil((s.endTimestampMs - newElapsedMs) / 1000));
+            return { ...s, remainingSeconds: remaining };
+          })
+          .filter(s => s.remainingSeconds > 0);
+      }
+
+      // 2. Playing Time
+      if (activeMatch.mode === 'COMPLEX' && playerIds.length > 0) {
+        const pt = { ...(activeMatch.playingTime || {}) };
+        playerIds.forEach(id => {
+          pt[id] = (pt[id] || 0) + 1;
+        });
+        updatedMatch.playingTime = pt;
+      }
+    }
+
+    return { activeMatch: updatedMatch };
+  }),
 
   tickPlayingTime: (playerIds) => set((state) => {
     if (!state.activeMatch || state.activeMatch.mode !== 'COMPLEX') return state;
@@ -102,19 +155,37 @@ export const createMatchSlice = (set) => ({
     } : null
   })),
 
-  addMatchSuspension: (suspension) => set((state) => ({
-    activeMatch: state.activeMatch ? {
-      ...state.activeMatch,
-      suspensions: [...state.activeMatch.suspensions, suspension]
-    } : null
-  })),
+  addMatchSuspension: (suspension) => set((state) => {
+    const { activeTeamId, activeMatch } = state;
+    if (!activeMatch) return state;
 
-  updateMatchSuspensions: (suspensions) => set((state) => ({
-    activeMatch: state.activeMatch ? {
-      ...state.activeMatch,
-      suspensions
-    } : null
-  })),
+    const durationMs = 120 * 1000;
+    const endTimestampMs = activeMatch.timer.elapsedMs + durationMs;
+
+    const updatedMatch = {
+      ...activeMatch,
+      suspensions: [...(activeMatch.suspensions || []), { 
+        ...suspension, 
+        endTimestampMs,
+        remainingSeconds: 120 
+      }]
+    };
+    
+    if (activeTeamId) {
+      syncService.saveMatch(activeTeamId, updatedMatch);
+    }
+    return { activeMatch: updatedMatch };
+  }),
+
+  updateMatchSuspensions: (suspensions) => set((state) => {
+    const { activeMatch } = state;
+    return {
+      activeMatch: activeMatch ? {
+        ...activeMatch,
+        suspensions
+      } : null
+    };
+  }),
 
   updateMatchTimer: (timerUpdate) => set((state) => {
     const { activeTeamId, activeMatch } = state;
@@ -277,9 +348,17 @@ export const createMatchSlice = (set) => ({
     // TIMER INTERPOLATION: Accurate sync without frequent writes
     let interpolatedMs = cloudOffset * 1000;
     if (cloudIsRunning && cloudStartTime) {
-      // startTime is handled as a plain JS number (ms) after hydration in SyncService
       const startMs = typeof cloudStartTime === 'number' ? cloudStartTime : (cloudStartTime?.toMillis ? cloudStartTime.toMillis() : new Date(cloudStartTime).getTime());
       interpolatedMs += Math.max(0, Date.now() - startMs);
+    }
+
+    // RESILIENCY: If we are already running locally, don't let small cloud jitter jump the clock
+    if (state.activeMatch?.timer && !state.activeMatch.timer.isPaused) {
+      const diff = Math.abs(state.activeMatch.timer.elapsedMs - interpolatedMs);
+      if (diff < 2000) {
+        // Keep our local precise timer
+        interpolatedMs = state.activeMatch.timer.elapsedMs;
+      }
     }
 
     // PERSISTENCE: If cloud has match data but local store is empty (e.g. after reload), initialize it
@@ -314,7 +393,8 @@ export const createMatchSlice = (set) => ({
         suspensions: data.suspensions || [],
         timeouts: data.timeouts || state.activeMatch?.timeouts || { home: 3, away: 3 },
         isEmptyGoal: data.isEmptyGoal ?? state.activeMatch?.isEmptyGoal ?? false,
-        playingTime: data.playingTime || state.activeMatch?.playingTime || {}
+        playingTime: data.playingTime || state.activeMatch?.playingTime || {},
+        isZoneMode: data.isZoneMode ?? state.activeMatch?.isZoneMode ?? false
       }
     };
   }),

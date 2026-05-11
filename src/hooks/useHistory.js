@@ -24,17 +24,20 @@ export const useHistory = () => {
   const [gameToDelete, setGameToDelete] = useState(null);
   const [isSyncing, setIsSyncing] = useState(false);
 
-  // --- LAZY LOADING: Real-time Firestore Sync ---
+  // --- LAZY LOADING: Real-time Firestore Sync (Season-Aware) ---
   useEffect(() => {
     if (activeTeamId) {
-      const subKey = `history_${activeTeamId}`;
+      setLoading(true);
+      const subKey = selectedSeason ? `history_${activeTeamId}_${selectedSeason}` : `history_${activeTeamId}_latest`;
       let isMounted = true;
       let sync;
       
       import('../services/SyncService').then(({ default: syncService }) => {
         if (!isMounted) return;
         sync = syncService;
-        syncService.subscribeToHistory(activeTeamId, useStore.getState(), 30);
+        // Fetch specific season for archive
+        syncService.subscribeToHistory(activeTeamId, useStore.getState(), 50, selectedSeason);
+        setLoading(false);
       });
 
       return () => {
@@ -42,7 +45,7 @@ export const useHistory = () => {
         if (sync) sync.unsubscribe(subKey);
       };
     }
-  }, [activeTeamId]);
+  }, [activeTeamId, selectedSeason]);
 
   // Migration logic (scoped to activeTeamId)
   useEffect(() => {
@@ -78,10 +81,19 @@ export const useHistory = () => {
   }, [games]);
 
   const availableSeasons = useMemo(() => {
-    return Array.from(new Set([
-      squad?.settings?.currentSeason || '25/26',
-      ...allArchiveGames.map(g => g.season).filter(Boolean)
-    ])).sort((a, b) => b.localeCompare(a));
+    const seasons = new Set([squad?.settings?.currentSeason || '25/26']);
+    allArchiveGames.forEach(g => {
+      if (g.season) {
+        seasons.add(g.season);
+      } else {
+        const d = new Date(g.date || g.timestamp || g.id);
+        const year = d.getFullYear();
+        const month = d.getMonth();
+        const s = month >= 6 ? `${String(year).slice(-2)}/${String(year + 1).slice(-2)}` : `${String(year - 1).slice(-2)}/${String(year).slice(-2)}`;
+        seasons.add(s);
+      }
+    });
+    return Array.from(seasons).sort((a, b) => b.localeCompare(a));
   }, [allArchiveGames, squad?.settings?.currentSeason]);
 
   const filteredGames = useMemo(() => {
@@ -97,7 +109,17 @@ export const useHistory = () => {
       );
       
       const currentSeasonToken = squad?.settings?.currentSeason || '25/26';
-      const matchesSeason = game.season === selectedSeason || (!game.season && selectedSeason === currentSeasonToken);
+      
+      // FALLBACK: If game has no season, calculate it from timestamp/date
+      let gameSeason = game.season;
+      if (!gameSeason) {
+        const d = new Date(game.date || game.timestamp || game.id);
+        const year = d.getFullYear();
+        const month = d.getMonth();
+        gameSeason = month >= 6 ? `${String(year).slice(-2)}/${String(year + 1).slice(-2)}` : `${String(year - 1).slice(-2)}/${String(year).slice(-2)}`;
+      }
+
+      const matchesSeason = gameSeason === selectedSeason;
       
       return matchesSearch && matchesSeason;
     });
@@ -191,6 +213,8 @@ export const useHistory = () => {
     filteredGames,
     importHandballNet,
     handleJsonUpload,
-    deleteGame: deleteGameFromHistory
+    deleteGame: deleteGameFromHistory,
+    activeTeamId,
+    squad
   };
 };

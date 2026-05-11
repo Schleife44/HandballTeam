@@ -3,7 +3,7 @@ import { Plus, Users, ArrowRight, Loader2, Trophy } from 'lucide-react';
 import useStore from '../../store/useStore';
 
 export default function TeamSelectionOverlay() {
-  const { profile, createTeam, setActiveTeam, logout, user } = useStore();
+  const { profile, createTeam, setActiveTeam, logout, user, allTeams } = useStore();
   const [showCreate, setShowCreate] = useState(false);
   const [newTeamName, setNewTeamName] = useState('');
   const [teamColor, setTeamColor] = useState('#84cc16');
@@ -86,22 +86,24 @@ export default function TeamSelectionOverlay() {
           <div className="space-y-4">
             {teams.length > 0 && (
               <div className="grid grid-cols-1 gap-3">
-                {/* Elite Club Access */}
-                <button
-                  onClick={() => setActiveTeam('CLUB_OVERVIEW')}
-                  className="group bg-purple-600/10 border border-purple-500/20 hover:border-purple-500 p-6 rounded-2xl flex items-center justify-between transition-all hover:bg-purple-600/20"
-                >
-                  <div className="flex items-center gap-4">
-                    <div className="w-12 h-12 rounded-xl bg-purple-500/20 flex items-center justify-center text-purple-400">
-                      <Trophy size={24} />
+                {/* Elite Club Access - Show if user is owner/trainer of any team */}
+                {teams.some(t => t.role === 'trainer') && (
+                  <button
+                    onClick={() => setActiveTeam('CLUB_OVERVIEW')}
+                    className="group bg-purple-600/10 border border-purple-500/20 hover:border-purple-500 p-6 rounded-2xl flex items-center justify-between transition-all hover:bg-purple-600/20"
+                  >
+                    <div className="flex items-center gap-4">
+                      <div className="w-12 h-12 rounded-xl bg-purple-500/20 flex items-center justify-center text-purple-400">
+                        <Trophy size={24} />
+                      </div>
+                      <div className="text-left">
+                        <h3 className="text-lg font-black text-white italic uppercase group-hover:text-purple-400 transition-colors">Verein Verwalten</h3>
+                        <p className="text-purple-500/60 text-[10px] uppercase tracking-widest font-black">Elite Club Management</p>
+                      </div>
                     </div>
-                    <div className="text-left">
-                      <h3 className="text-lg font-black text-white italic uppercase group-hover:text-purple-400 transition-colors">Verein Verwalten</h3>
-                      <p className="text-purple-500/60 text-[10px] uppercase tracking-widest font-black">Elite Club Management</p>
-                    </div>
-                  </div>
-                  <ArrowRight className="text-purple-500/30 group-hover:text-purple-500 group-hover:translate-x-1 transition-all" />
-                </button>
+                    <ArrowRight className="text-purple-500/30 group-hover:text-purple-500 group-hover:translate-x-1 transition-all" />
+                  </button>
+                )}
 
                 {teams.map((team) => (
                   <button

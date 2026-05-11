@@ -1,9 +1,9 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Search, ArrowLeftRight, Sword, Shield } from 'lucide-react';
+import { Search, ArrowLeftRight, Sword, Shield, AlertCircle } from 'lucide-react';
 import useStore from '../../../store/useStore';
 
-const PlayerActionGrid = ({ onPlayerSelect, lineup, activeSwap, mode }) => {
+const PlayerActionGrid = ({ onPlayerSelect, lineup, activeSwap, mode, suspensions }) => {
   const { squad } = useStore();
   const [searchQuery, setSearchQuery] = useState('');
 
@@ -25,6 +25,13 @@ const PlayerActionGrid = ({ onPlayerSelect, lineup, activeSwap, mode }) => {
     const renderPlayerCard = (player, isField) => {
       const isSelectedForSwap = activeSwap && activeSwap.id === player.id;
       const isSimple = mode === 'SIMPLE';
+      const suspension = suspensions?.find(s => s.playerId === player.id);
+
+      const formatSuspensionTime = (sec) => {
+        const m = Math.floor(sec / 60);
+        const s = sec % 60;
+        return `${m}:${s.toString().padStart(2, '0')}`;
+      };
       
       return (
         <motion.button
@@ -33,27 +40,39 @@ const PlayerActionGrid = ({ onPlayerSelect, lineup, activeSwap, mode }) => {
           initial={{ opacity: 0, scale: 0.9 }}
           animate={{ opacity: 1, scale: 1 }}
           whileTap={{ scale: 0.95 }}
-          onClick={() => onPlayerSelect({ ...player, team, teamColor })}
-          className={`flex flex-col items-center gap-1.5 p-3 rounded-2xl border transition-all group relative overflow-hidden
-            ${isField || isSimple ? 'bg-zinc-900/40 border-zinc-800' : 'bg-black/20 border-zinc-900/50 scale-95 opacity-80'}
-            ${isSelectedForSwap ? 'border-brand ring-2 ring-brand/20 bg-brand/5' : 'hover:border-zinc-700'}`}
+          onClick={(e) => {
+            e.stopPropagation();
+            onPlayerSelect({ ...player, team, teamColor });
+          }}
+          className={`flex flex-col items-center justify-center p-1.5 rounded-2xl border transition-all group relative overflow-hidden pointer-events-auto
+            ${isField || isSimple ? 'bg-zinc-900/40 border-zinc-800 w-16 h-16 lg:w-auto lg:h-auto lg:p-4' : 'bg-black/20 border-zinc-900/50 scale-95 opacity-80 w-14 h-14 lg:w-auto lg:h-auto lg:p-4'}
+            ${isSelectedForSwap ? 'border-brand ring-2 ring-brand/20 bg-brand/5' : 'hover:border-zinc-700'}
+            ${suspension ? 'border-orange-500 bg-orange-500/10 shadow-[0_0_15px_rgba(249,115,22,0.4)]' : ''}`}
         >
+          {suspension && (
+            <div className="absolute top-1 right-1 lg:top-2 lg:right-2 flex flex-col items-end">
+              <div className="w-1.5 h-1.5 lg:w-2 lg:h-2 rounded-full bg-orange-500 animate-pulse shadow-[0_0_8px_rgba(249,115,22,0.6)]" />
+              <span className="text-[6px] lg:text-[8px] font-black text-orange-500 mt-0.5">{formatSuspensionTime(suspension.remainingSeconds)}</span>
+            </div>
+          )}
           <div 
-            className="absolute top-0 right-0 w-8 h-8 -mr-4 -mt-4 rounded-full blur-xl opacity-10 group-hover:opacity-30 transition-opacity"
-            style={{ backgroundColor: teamColor }}
+            className="absolute inset-0 opacity-10 group-hover:opacity-20 transition-opacity"
+            style={{ 
+              background: `radial-gradient(circle at top right, ${teamColor}, transparent)` 
+            }}
           />
 
           <div 
-            className={`rounded-xl flex items-center justify-center font-black italic shadow-inner transition-all
-              ${isField || isSimple ? 'w-10 h-10 text-md' : 'w-8 h-8 text-xs'}`}
-            style={{ backgroundColor: `${teamColor}15`, color: teamColor, border: `1px solid ${teamColor}30` }}
+            className={`flex items-center justify-center font-black italic tracking-tighter transition-all
+              ${isField || isSimple ? 'w-full text-lg lg:text-md' : 'w-full text-base lg:text-xs opacity-60'}`}
+            style={{ color: teamColor }}
           >
             {player.number}
           </div>
           
-          <div className="text-center w-full">
-            <p className={`font-black text-zinc-100 uppercase truncate px-1 ${isField || isSimple ? 'text-[9px]' : 'text-[7px]'}`}>
-              {player.name || 'Spieler'}
+          <div className="text-center w-full truncate mt-auto">
+            <p className={`font-black text-zinc-100 uppercase tracking-tighter truncate ${isField || isSimple ? 'text-[7px] lg:text-[9px]' : 'text-[6px] opacity-40'}`}>
+              {(player.name || 'P').split(' ')[0]}
             </p>
           </div>
 
@@ -69,17 +88,15 @@ const PlayerActionGrid = ({ onPlayerSelect, lineup, activeSwap, mode }) => {
     return (
       <div className="flex-1 space-y-6">
         {/* Team Header */}
-        <div className="flex items-center gap-3 px-4 py-2 bg-zinc-900/60 border border-zinc-800 rounded-2xl shadow-lg">
-          <div className="p-2 rounded-lg" style={{ backgroundColor: `${teamColor}15`, color: teamColor }}>
-            {team === 'home' ? <Sword size={16} /> : <Shield size={16} />}
-          </div>
-          <h4 className="text-[10px] font-black uppercase italic tracking-tighter text-zinc-100 truncate">
+        <div className="flex items-center gap-2 lg:gap-3 px-2 lg:px-4 py-1 lg:py-2 bg-zinc-900/30 border border-zinc-800/50 rounded-lg lg:rounded-2xl shadow-sm">
+          <div className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: teamColor, boxShadow: `0 0 10px ${teamColor}` }} />
+          <h4 className="text-[7px] lg:text-[10px] font-black uppercase italic tracking-widest text-zinc-400 truncate">
             {teamName}
           </h4>
         </div>
 
         {mode === 'SIMPLE' ? (
-          <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
+          <div className="grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-3 xl:grid-cols-4 gap-1.5">
             <AnimatePresence mode="popLayout">
               {allTeamPlayers.map(p => renderPlayerCard(p, true))}
             </AnimatePresence>
@@ -87,12 +104,12 @@ const PlayerActionGrid = ({ onPlayerSelect, lineup, activeSwap, mode }) => {
         ) : (
           <div className="space-y-6">
             {/* Field Players */}
-            <div className="space-y-3">
-              <div className="flex items-center gap-2 px-2">
-                <div className="w-1.5 h-1.5 rounded-full bg-brand animate-pulse" />
-                <span className="text-[8px] font-black uppercase tracking-widest text-zinc-500">Spielfeld</span>
+            <div className="space-y-1">
+              <div className="flex items-center gap-1 px-0.5 lg:px-2">
+                <div className="w-1 h-1 rounded-full bg-brand animate-pulse" />
+                <span className="text-[6px] lg:text-[8px] font-black uppercase tracking-widest text-zinc-500">Feld</span>
               </div>
-              <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
+              <div className="grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-3 xl:grid-cols-4 gap-1.5">
                 <AnimatePresence mode="popLayout">
                   {fieldPlayers.map(p => renderPlayerCard(p, true))}
                 </AnimatePresence>
@@ -105,12 +122,12 @@ const PlayerActionGrid = ({ onPlayerSelect, lineup, activeSwap, mode }) => {
             </div>
 
             {/* Bench Players */}
-            <div className="space-y-3">
-              <div className="flex items-center gap-2 px-2">
-                <div className="w-1.5 h-1.5 rounded-full bg-zinc-700" />
-                <span className="text-[8px] font-black uppercase tracking-widest text-zinc-600">Bank</span>
+            <div className="space-y-1">
+              <div className="flex items-center gap-1 px-0.5 lg:px-2">
+                <div className="w-1 h-1 rounded-full bg-zinc-700" />
+                <span className="text-[6px] lg:text-[8px] font-black uppercase tracking-widest text-zinc-600">Bank</span>
               </div>
-              <div className="grid grid-cols-3 sm:grid-cols-4 gap-2 opacity-60">
+              <div className="grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-3 xl:grid-cols-4 gap-1.5 opacity-60">
                 <AnimatePresence mode="popLayout">
                   {benchPlayers.map(p => renderPlayerCard(p, false))}
                 </AnimatePresence>
@@ -123,9 +140,21 @@ const PlayerActionGrid = ({ onPlayerSelect, lineup, activeSwap, mode }) => {
   };
 
   return (
-    <div className="space-y-8">
-      {/* Two Columns for Teams */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
+    <div className="space-y-4 lg:space-y-8">
+      {/* Search - Hidden on Mobile to save space */}
+      <div className="hidden lg:flex items-center gap-4 bg-black/40 border border-zinc-800 rounded-3xl px-6 py-4 focus-within:border-brand transition-all">
+        <Search size={20} className="text-zinc-500" />
+        <input 
+          type="text" 
+          placeholder="Spieler suchen..." 
+          className="bg-transparent border-none outline-none text-zinc-100 text-sm font-bold w-full"
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+        />
+      </div>
+
+      {/* Two Columns for Teams - 2 cols on mobile, 2 cols on desktop with more gap */}
+      <div className="grid grid-cols-2 lg:grid-cols-2 gap-2 lg:gap-12 relative">
         {renderTeamSection('home')}
         
         {/* Divider for Visual Clarity on Desktop */}

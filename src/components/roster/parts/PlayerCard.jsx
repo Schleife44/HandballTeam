@@ -83,8 +83,7 @@ const PlayerCard = ({
         ) : (
           <div className="flex items-center gap-5">
             <div 
-              className="w-14 h-14 rounded-2xl flex items-center justify-center text-xl font-black italic"
-              style={{ backgroundColor: `${teamColor}15`, color: teamColor, border: `1px solid ${teamColor}30` }}
+              className="w-14 h-14 rounded-2xl flex items-center justify-center text-xl font-black italic bg-brand/10 text-brand border border-brand/20 shadow-[0_0_15px_rgba(132,204,22,0.1)]"
             >
               {player.number}
             </div>
@@ -96,14 +95,16 @@ const PlayerCard = ({
               </div>
             </div>
 
-            {allMembers.some(m => m.playerName === player.name || m.playerId === player.id) && (
-              <div 
-                className="absolute top-3 right-5 text-brand/50 group-hover:text-brand transition-colors"
-                title="Spieler verlinkt"
-              >
-                <CheckCheck size={14} strokeWidth={3} />
-              </div>
-            )}
+            <div 
+              className="absolute top-4 right-4 flex items-center gap-1.5"
+              title={allMembers.some(m => m.playerName === player.name || m.playerId === player.id) ? "E-Mail verbunden" : "Nicht verbunden"}
+            >
+              <div className={`w-2 h-2 rounded-full shadow-lg ${
+                allMembers.some(m => m.playerName === player.name || m.playerId === player.id) 
+                  ? 'bg-brand shadow-brand/40 animate-pulse' 
+                  : 'bg-red-500 shadow-red-500/40'
+              }`} />
+            </div>
             
             <div className="flex gap-1 opacity-0 group-hover:opacity-100 max-w-0 group-hover:max-w-[200px] overflow-hidden transition-all duration-500 ml-auto whitespace-nowrap">
               <Button size="icon" variant="ghost" icon={TrendingUp} onClick={onOpenStats} className="text-zinc-500 hover:text-emerald-400" />

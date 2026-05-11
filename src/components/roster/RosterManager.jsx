@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Search, Users, UserPlus } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { AnimatePresence } from 'framer-motion';
@@ -23,6 +23,21 @@ const RosterManager = () => {
   const { squad, addPlayer, updatePlayer, removePlayer, toggleStatus } = useRosterData();
   const { activeMember } = useStore();
   const navigate = useNavigate();
+  
+  // Real-time Members Sync for Connection Status
+  useEffect(() => {
+    const activeTeamId = useStore.getState().activeTeamId;
+    if (activeTeamId) {
+      let sync;
+      import('../../services/SyncService').then(({ default: syncService }) => {
+        sync = syncService;
+        syncService.subscribeToMembers(activeTeamId, useStore.getState());
+      });
+      return () => {
+        if (sync) sync.unsubscribe(`members_${activeTeamId}`);
+      };
+    }
+  }, []);
   
   const [activeTab, setActiveTab] = useState('home');
   const [editingId, setEditingId] = useState(null);

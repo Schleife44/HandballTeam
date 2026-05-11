@@ -1,7 +1,7 @@
 import React from 'react';
 
 const SettingsSection = ({ title, icon: Icon, iconColor = "brand", children, className = "" }) => (
-  <section className={`bg-zinc-900/40 border border-zinc-800 rounded-[2.5rem] p-8 backdrop-blur-md space-y-8 ${className}`}>
+  <section className={`bg-zinc-900/40 border border-zinc-800 rounded-[2.5rem] p-5 md:p-8 backdrop-blur-md space-y-8 ${className}`}>
     <div className="flex items-center gap-3 pb-4 border-b border-zinc-800">
       <div className={`p-2 rounded-xl ${
         iconColor === 'brand' ? 'bg-brand/10 text-brand' : 

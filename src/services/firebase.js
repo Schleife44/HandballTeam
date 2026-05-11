@@ -4,7 +4,13 @@ import {
   persistentLocalCache, 
   persistentMultipleTabManager 
 } from 'firebase/firestore';
-import { getAuth } from 'firebase/auth';
+import { 
+  initializeAuth, 
+  indexedDBLocalPersistence, 
+  browserLocalPersistence, 
+  getAuth, 
+  browserPopupRedirectResolver 
+} from 'firebase/auth';
 
 const firebaseConfig = {
     apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
@@ -18,6 +24,9 @@ const firebaseConfig = {
 
 const app = initializeApp(firebaseConfig);
 
+// Detect if running in Electron using our secure bridge flag
+const isElectron = window.electronAPI?.isElectron === true;
+
 // Enable persistence for offline support and massive read reduction
 export const db = initializeFirestore(app, {
   localCache: persistentLocalCache({
@@ -27,6 +36,12 @@ export const db = initializeFirestore(app, {
   })
 });
 
-export const auth = getAuth(app);
+// For Electron, we use initializeAuth with a combination of persistence layers
+export const auth = isElectron 
+  ? initializeAuth(app, {
+      persistence: [indexedDBLocalPersistence, browserLocalPersistence],
+      popupRedirectResolver: browserPopupRedirectResolver
+    })
+  : getAuth(app);
 
 export default app;

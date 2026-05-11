@@ -6,70 +6,6 @@ import Button from '../../ui/Button';
 const MatchTimer = () => {
   const { activeMatch, updateMatchTimer, updateMatchSuspensions, useTimeout } = useStore();
   const { elapsedMs, isPaused, phase } = activeMatch.timer;
-  const intervalRef = useRef(null);
-  const lastTickRef = useRef(null);
-
-  useEffect(() => {
-    if (!isPaused && (phase === 'FIRST_HALF' || phase === 'SECOND_HALF')) {
-      // CATCH UP: If we just mounted and the timer is running, 
-      // we need to adjust elapsedMs to account for the time spent unmounted.
-      const startTime = activeMatch.timer.startTime;
-      if (startTime) {
-        const startMs = typeof startTime === 'number' ? startTime : (startTime.toMillis ? startTime.toMillis() : new Date(startTime).getTime());
-        const realElapsedMs = (activeMatch.timer.offsetSeconds || 0) * 1000 + Math.max(0, Date.now() - startMs);
-        if (Math.abs(realElapsedMs - elapsedMs) > 100) {
-          updateMatchTimer({ elapsedMs: realElapsedMs });
-        }
-      }
-
-      lastTickRef.current = Date.now();
-      
-      intervalRef.current = setInterval(() => {
-        const now = Date.now();
-        const delta = now - lastTickRef.current;
-        lastTickRef.current = now;
-
-        const currentMatch = useStore.getState().activeMatch;
-        if (!currentMatch || currentMatch.timer.isPaused) return;
-
-        const newElapsedMs = currentMatch.timer.elapsedMs + delta;
-        const oldSeconds = Math.floor(currentMatch.timer.elapsedMs / 1000);
-        const newSeconds = Math.floor(newElapsedMs / 1000);
-
-        // 1. Update Milliseconds in store
-        updateMatchTimer({ elapsedMs: newElapsedMs });
-
-        // 2. Only tick playing time and suspensions once per second change
-        if (newSeconds > oldSeconds) {
-          // Tick playing time (only COMPLEX mode)
-          if (currentMatch.mode === 'COMPLEX') {
-            const onField = [
-              ...(currentMatch.lineup?.home || []),
-              ...(currentMatch.lineup?.away || [])
-            ];
-            if (onField.length > 0) {
-              useStore.getState().tickPlayingTime(onField);
-            }
-          }
-
-          // Tick suspensions
-          if (currentMatch.suspensions?.length > 0) {
-            const updated = currentMatch.suspensions
-              .map(s => ({ ...s, remainingSeconds: s.remainingSeconds - 1 }))
-              .filter(s => s.remainingSeconds > 0);
-            
-            if (updated.length !== currentMatch.suspensions.length || 
-                updated.some((s, i) => s.remainingSeconds !== currentMatch.suspensions[i].remainingSeconds)) {
-              updateMatchSuspensions(updated);
-            }
-          }
-        }
-      }, 50); // High frequency for precision
-    } else {
-      clearInterval(intervalRef.current);
-    }
-    return () => clearInterval(intervalRef.current);
-  }, [isPaused, phase, updateMatchTimer, updateMatchSuspensions]);
 
   const formatTime = (totalMs) => {
     const totalSeconds = Math.floor(totalMs / 1000);
@@ -201,6 +137,21 @@ const MatchTimer = () => {
           </Button>
         )}
       </div>
+      {activeMatch.suspensions?.length > 0 && (
+        <div className="w-full pt-6 border-t border-zinc-800/50 flex flex-wrap justify-center gap-2">
+          {activeMatch.suspensions.map(s => (
+            <div key={`${s.team}-${s.playerId}`} className="flex items-center gap-3 px-4 py-2 bg-orange-500/10 border-2 border-orange-500/30 rounded-2xl shadow-[0_0_15px_rgba(249,115,22,0.1)]">
+              <div className="w-2 h-2 rounded-full bg-orange-500 animate-pulse shadow-[0_0_8px_rgba(249,115,22,0.6)]" />
+              <div className="flex flex-col -space-y-1">
+                <span className="text-[8px] font-black text-orange-500/70 uppercase tracking-tighter">{s.team === 'home' ? 'Heim' : 'Gast'}</span>
+                <span className="text-[11px] font-black text-orange-500 uppercase">#{s.playerNumber}</span>
+              </div>
+              <div className="w-px h-6 bg-orange-500/20 mx-1" />
+              <span className="text-sm font-black text-zinc-100 tabular-nums tracking-tight">{formatTime(s.remainingSeconds * 1000)}</span>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 };

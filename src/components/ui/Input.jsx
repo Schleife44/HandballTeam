@@ -10,6 +10,7 @@ const Input = ({
   className,
   wrapperClassName,
   icon: Icon,
+  noPadding,
   ...props 
 }) => {
   return (

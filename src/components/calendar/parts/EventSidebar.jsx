@@ -42,6 +42,8 @@ const EventSidebar = ({
   const [pendingStatus, setPendingStatus] = useState(null);
   const [reason, setReason] = useState('');
   const [trainerAction, setTrainerAction] = useState(null); // { eventId, playerName, currentStatus }
+  const [showGuestModal, setShowGuestModal] = useState(null); // eventId
+  const [guestName, setGuestName] = useState('');
   
   const { activeMember, squad } = useStore();
 
@@ -140,10 +142,22 @@ const EventSidebar = ({
             const isPending = pendingEventId === event.id;
             const { isPast, deadlineDate } = getDeadlineInfo(event);
             
-            const rosterNames = new Set((squad?.home || []).map(p => p.name).filter(Boolean));
-            const responseList = Object.entries(event.responses || {})
-              .filter(([name]) => rosterNames.has(name))
-              .map(([name, data]) => ({ name, ...data }));
+            const roster = (squad?.home || []).filter(p => !p.isInactive);
+            const responses = event.responses || {};
+            const rosterNames = new Set(roster.map(p => p.name?.trim()).filter(Boolean));
+            
+            // Build comprehensive list: Roster + Guests
+            const rosterEntries = roster.map(p => {
+              const name = p.name?.trim();
+              const resp = responses[name] || { status: 'maybe' };
+              return { name, ...resp, isGuest: false };
+            });
+
+            const guestEntries = Object.entries(responses)
+              .filter(([name]) => !rosterNames.has(name))
+              .map(([name, data]) => ({ name, ...data, isGuest: true }));
+
+            const responseList = [...rosterEntries, ...guestEntries];
               
             const goingCount = responseList.filter(r => r.status === 'going').length;
             const maybeCount = responseList.filter(r => r.status === 'maybe').length;
@@ -241,7 +255,12 @@ const EventSidebar = ({
                             {res.status === 'going' ? <CheckCircle2 size={12} className="text-brand" /> : res.status === 'declined' ? <XCircle size={12} className="text-red-500" /> : <QuestionIcon size={12} className="text-zinc-600" />}
                           </div>
                           <div>
-                            <p className="text-[10px] font-bold text-zinc-300">{res.name}</p>
+                            <div className="flex items-center gap-2">
+                              <p className="text-[10px] font-bold text-zinc-300">{res.name}</p>
+                              {res.isGuest && (
+                                <span className="text-[7px] font-black bg-blue-500/10 text-blue-500 px-1 py-0.5 rounded uppercase tracking-widest border border-blue-500/20">Gast</span>
+                              )}
+                            </div>
                             {res.status === 'declined' && res.reason && (
                               <p className="text-[8px] font-medium text-zinc-500 italic mt-0.5">{res.reason}</p>
                             )}
@@ -259,6 +278,16 @@ const EventSidebar = ({
                         )}
                       </div>
                     ))}
+                    
+                    {isTrainer && (
+                      <button 
+                        onClick={() => setShowGuestModal(event.id)}
+                        className="w-full py-2.5 flex items-center justify-center gap-2 rounded-xl border border-zinc-800 border-dashed text-zinc-600 hover:text-brand hover:border-brand/30 hover:bg-brand/5 transition-all group"
+                      >
+                        <Plus size={14} className="group-hover:scale-110 transition-transform" />
+                        <span className="text-[9px] font-black uppercase tracking-widest">Gastspieler hinzufügen</span>
+                      </button>
+                    )}
                   </div>
                 )}
               </div>
@@ -341,6 +370,46 @@ const EventSidebar = ({
           </Modal>
         )}
       </AnimatePresence>
+
+      {/* Add Guest Modal */}
+      <Modal
+        isOpen={!!showGuestModal}
+        onClose={() => { setShowGuestModal(null); setGuestName(''); }}
+        title="Gastspieler hinzufügen"
+        size="sm"
+        footer={
+          <div className="flex gap-4 w-full">
+            <Button variant="ghost" className="flex-1" onClick={() => { setShowGuestModal(null); setGuestName(''); }}>Abbrechen</Button>
+            <Button 
+              variant="brand" 
+              className="flex-1" 
+              disabled={!guestName.trim()} 
+              onClick={() => {
+                handleUpdateStatus(showGuestModal, 'going', 'Gastspieler', guestName.trim());
+                setShowGuestModal(null);
+                setGuestName('');
+              }}
+            >
+              Hinzufügen
+            </Button>
+          </div>
+        }
+      >
+        <div className="space-y-4 py-4">
+          <p className="text-[10px] font-bold text-zinc-500 uppercase leading-relaxed tracking-wider">
+            Gib den Namen des Gastspielers ein. Er wird automatisch auf "Dabei" gesetzt.
+          </p>
+          <input 
+            autoFocus 
+            type="text" 
+            value={guestName} 
+            onChange={(e) => setGuestName(e.target.value)} 
+            onKeyDown={(e) => e.key === 'Enter' && guestName.trim() && {}} // Trigger handled in button
+            placeholder="z.B. Max Mustermann..." 
+            className="w-full bg-black/40 border border-zinc-800 p-4 rounded-2xl text-xs text-white outline-none focus:border-brand transition-all" 
+          />
+        </div>
+      </Modal>
     </aside>
   );
 };

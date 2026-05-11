@@ -46,9 +46,12 @@ const LiveAnalysisDetail = lazy(() => import('./components/marketing/features/Li
 const LegalPage = lazy(() => import('./components/marketing/LegalPage.jsx'))
 const AdminDashboard = lazy(() => import('./components/admin/AdminDashboard.jsx'))
 const CookieConsent = lazy(() => import('./components/marketing/CookieConsent.jsx'))
-const LoginView = lazy(() => import('./components/auth/LoginView.jsx'))
+import LoginView from './components/auth/LoginView.jsx'
+import DesktopUpdateBanner from './components/ui/DesktopUpdateBanner.jsx'
 
 function App() {
+  const isElectron = window.electronAPI?.isElectron === true;
+
   // Pre-fetch high priority routes in background
   React.useEffect(() => {
     const prefetch = () => {
@@ -64,8 +67,9 @@ function App() {
   return (
       <Suspense fallback={<PageLoader />}>
         <ScrollToTop />
+        <DesktopUpdateBanner />
         <Routes>
-          <Route path="/" element={<LandingPage />} />
+          <Route path="/" element={isElectron ? <Navigate to="/login" replace /> : <LandingPage />} />
           <Route path="/pricing" element={<PricingPage />} />
           <Route path="/features/video-intelligence" element={<VideoIntelligence />} />
           <Route path="/features/social-engine" element={<SocialEngine />} />

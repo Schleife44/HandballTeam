@@ -5,6 +5,7 @@ import { VitePWA } from 'vite-plugin-pwa'
 
 // https://vite.dev/config/
 export default defineConfig({
+  base: './',
   plugins: [
     react(),
     tailwindcss(),
@@ -12,19 +13,33 @@ export default defineConfig({
       registerType: 'autoUpdate',
       includeAssets: ['favicon.svg'],
       manifest: {
-        name: 'Sechsmetertool',
+        name: 'Sechsmeter | Handball Analyse',
         short_name: 'Sechsmeter',
-        description: 'Professionelle Handball Taktik- und Videoanalyse',
-        theme_color: '#000000',
+        description: 'Professionelle Handball Taktik- und Videoanalyse für Trainer',
+        theme_color: '#84cc16',
         background_color: '#000000',
         display: 'standalone',
         orientation: 'portrait',
+        scope: '/',
+        start_url: '/',
         icons: [
           {
             src: 'favicon.svg',
-            sizes: '192x192 512x512',
+            sizes: '192x192',
             type: 'image/svg+xml',
-            purpose: 'any maskable'
+            purpose: 'any'
+          },
+          {
+            src: 'favicon.svg',
+            sizes: '512x512',
+            type: 'image/svg+xml',
+            purpose: 'any'
+          },
+          {
+            src: 'favicon.svg',
+            sizes: '192x192',
+            type: 'image/svg+xml',
+            purpose: 'maskable'
           }
         ]
       },

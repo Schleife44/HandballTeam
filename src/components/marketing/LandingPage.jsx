@@ -12,7 +12,8 @@ import {
   ChevronRight,
   Menu,
   X,
-  Users
+  Users,
+  Download
 } from 'lucide-react';
 import './LandingPage.css';
 
@@ -181,8 +182,12 @@ const LandingPage = () => {
               <button onClick={() => navigate('/login')} className="landing-btn landing-btn-primary magnetic">
                 Team erstellen
               </button>
-              <a href="#features" className="landing-btn landing-btn-outline magnetic">
-                Features entdecken
+              <a 
+                href="https://github.com/Schleife44/Sechsmeterexe/releases/download/v1.1.0/Sechsmeter-Setup-1.1.0.exe" 
+                className="landing-btn landing-btn-outline magnetic flex items-center gap-2"
+              >
+                <Download size={18} />
+                Windows App
               </a>
             </div>
           </motion.div>

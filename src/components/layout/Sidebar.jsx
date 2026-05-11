@@ -72,6 +72,8 @@ export default function Sidebar({ isSidebarOpen }) {
   const squad = useStore(state => state.squad);
   const subscription = useStore(state => state.subscription);
   const activeTeamId = useStore(state => state.activeTeamId);
+  const allTeams = useStore(state => state.allTeams);
+  const user = useStore(state => state.user);
   const isClubMode = activeTeamId === 'CLUB_OVERVIEW';
 
   return (
@@ -234,12 +236,14 @@ export default function Sidebar({ isSidebarOpen }) {
               />
              </>
            )}
-           <SidebarItem 
-            icon={Settings} 
-            label={isClubMode ? "Mitglieder & Rechte" : "Einstellungen"} 
-            to={isClubMode ? "/clubsettings" : "/settings"}
-            isSidebarOpen={isSidebarOpen}
-          />
+           {(!isClubMode || (allTeams.some(t => t.ownerUid === useStore.getState().user?.uid))) && (
+             <SidebarItem 
+               icon={Settings} 
+               label={isClubMode ? "Mitglieder & Rechte" : "Einstellungen"} 
+               to={isClubMode ? "/clubsettings" : "/settings"}
+               isSidebarOpen={isSidebarOpen}
+             />
+           )}
         </div>
       </nav>
 

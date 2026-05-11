@@ -8,35 +8,52 @@ import useStore from '../../store/useStore';
 import Card from '../ui/Card';
 import Input from '../ui/Input';
 import { fuzzyMatch, normalizeSearchString } from '../../utils/searchUtils';
+import SeasonSelector from './components/SeasonSelector';
+
+// Hooks
+import { useHistory } from '../../hooks/useHistory';
 
 const SeasonStatsTab = () => {
-  const { history: games } = useStore();
+  const {
+    loading,
+    selectedSeason,
+    setSelectedSeason,
+    availableSeasons,
+    filteredGames
+  } = useHistory();
+
   const [searchTerm, setSearchTerm] = useState('');
   const [sortConfig, setSortConfig] = useState({ key: 'tore', direction: 'desc' });
-
+  
   const aggregatedStats = useMemo(() => {
     const stats = {}; // Key: playerName
     
-    (games || []).forEach(game => {
-      // SaaS OPTIMIZATION: Use pre-calculated summary if available
+    (filteredGames || []).forEach(game => {
+      // SaaS OPTIMIZATION: Use pre-calculated summary if available (and contains 7m data)
       if (game.statsSummary && game.statsSummary.playerStats) {
         const { playerStats, playerNames } = game.statsSummary;
-        Object.entries(playerStats).forEach(([pId, s]) => {
-          const pName = playerNames[pId] || `Spieler #${pId}`;
-          const key = normalizeSearchString(pName);
+        const hasSevenMeterData = Object.values(playerStats).some(s => s.sevenMeterTotal !== undefined);
+        
+        if (hasSevenMeterData) {
+          Object.entries(playerStats).forEach(([pId, s]) => {
+            const pName = playerNames[pId] || `Spieler #${pId}`;
+            const key = normalizeSearchString(pName);
 
-          if (!stats[key]) {
-            stats[key] = { id: pId, name: pName, tore: 0, fehlwurf: 0, siebenMeterTore: 0, siebenMeterVersuche: 0, gelb: 0, zweiMinuten: 0, rot: 0, games: new Set() };
-          }
-          
-          stats[key].games.add(game.id);
-          stats[key].tore += s.goals || 0;
-          stats[key].fehlwurf += s.missed || 0;
-          stats[key].gelb += s.yellow || 0;
-          stats[key].zweiMinuten += s.suspensions || 0;
-          stats[key].rot += s.red || 0;
-        });
-        return;
+            if (!stats[key]) {
+              stats[key] = { id: pId, name: pName, tore: 0, fehlwurf: 0, siebenMeterTore: 0, siebenMeterVersuche: 0, gelb: 0, zweiMinuten: 0, rot: 0, games: new Set() };
+            }
+            
+            stats[key].games.add(game.id);
+            stats[key].tore += s.goals || 0;
+            stats[key].fehlwurf += s.missed || 0;
+            stats[key].siebenMeterTore += s.sevenMeterGoals || 0;
+            stats[key].siebenMeterVersuche += s.sevenMeterTotal || 0;
+            stats[key].gelb += s.yellow || 0;
+            stats[key].zweiMinuten += s.suspensions || 0;
+            stats[key].rot += s.red || 0;
+          });
+          return;
+        }
       }
 
       // Legacy Fallback: Process raw log
@@ -58,17 +75,25 @@ const SeasonStatsTab = () => {
         stats[key].games.add(game.id);
         
         const action = (entry.action || "").toLowerCase();
-        if (action === 'tor' || action === 'goal') stats[key].tore++;
-        if (action === 'fehlwurf' || action === 'miss') stats[key].fehlwurf++;
-        if (action === '7mtor') {
-          stats[key].tore++;
-          stats[key].siebenMeterTore++;
+        const type = (entry.type || "").toUpperCase();
+        
+        const is7m = type.includes('7M') || action.includes('7m');
+        const isGoal = type.includes('GOAL') || action.includes('tor') || action.includes('goal');
+        const isMiss = type.includes('MISS') || type.includes('SAVE') || type.includes('BLOCKED') || 
+                       action.includes('fehlwurf') || action.includes('miss') || action.includes('verworfen') || 
+                       action.includes('gehalten') || action.includes('block');
+
+        if (isGoal) stats[key].tore++;
+        else if (isMiss) stats[key].fehlwurf++;
+
+        if (is7m) {
           stats[key].siebenMeterVersuche++;
+          if (isGoal) stats[key].siebenMeterTore++;
         }
-        if (action === '7mverworfen') stats[key].siebenMeterVersuche++;
-        if (action === 'gelbe karte' || action === 'yellow') stats[key].gelb++;
-        if (action === '2 minuten' || action === 'penalty') stats[key].zweiMinuten++;
-        if (action === 'rote karte' || action === 'red') stats[key].rot++;
+        
+        if (type === 'YELLOW' || action === 'gelbe karte' || action === 'yellow') stats[key].gelb++;
+        if (type === 'SUSPENSION' || action === '2 minuten' || action === 'penalty') stats[key].zweiMinuten++;
+        if (type === 'RED' || action === 'rote karte' || action === 'red') stats[key].rot++;
       });
     });
 
@@ -78,7 +103,7 @@ const SeasonStatsTab = () => {
       totalAttempts: p.tore + p.fehlwurf,
       efficiency: (p.tore + p.fehlwurf) > 0 ? Math.round((p.tore / (p.tore + p.fehlwurf)) * 100) : 0
     }));
-  }, [games]);
+  }, [filteredGames]);
 
   const sortedStats = useMemo(() => {
     const sorted = [...aggregatedStats].filter(p => fuzzyMatch(p.name, searchTerm));
@@ -95,10 +120,18 @@ const SeasonStatsTab = () => {
   const totals = useMemo(() => {
     return {
       tore: aggregatedStats.reduce((sum, p) => sum + p.tore, 0),
-      games: games.length,
+      games: filteredGames.length,
       players: aggregatedStats.length
     };
-  }, [aggregatedStats, games]);
+  }, [aggregatedStats, filteredGames]);
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="w-8 h-8 border-4 border-zinc-800 border-t-brand rounded-full animate-spin"></div>
+      </div>
+    );
+  }
 
   const requestSort = (key) => {
     let direction = 'desc';
@@ -110,6 +143,24 @@ const SeasonStatsTab = () => {
 
   return (
     <div className="flex flex-col gap-6 animate-in fade-in duration-500">
+      {/* Header with Season Selector */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 bg-brand/10 border border-brand/20 rounded-xl flex items-center justify-center text-brand">
+            <Trophy size={20} />
+          </div>
+          <div>
+            <h2 className="text-lg font-black text-white italic tracking-tight uppercase">Saison Statistiken</h2>
+            <p className="text-[10px] text-zinc-500 font-bold uppercase tracking-widest">Alle Spieler im Überblick</p>
+          </div>
+        </div>
+        <SeasonSelector 
+          seasons={availableSeasons} 
+          selectedSeason={selectedSeason} 
+          onSelect={setSelectedSeason} 
+        />
+      </div>
+
       {/* Header Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <StatCard label="Saison Tore" value={totals.tore} icon={Trophy} color="text-brand" />
@@ -132,7 +183,7 @@ const SeasonStatsTab = () => {
           </div>
           <div className="flex items-center gap-2">
             <Filter size={16} className="text-zinc-600" />
-            <span className="text-xs font-bold text-zinc-500 uppercase">Saison 25/26</span>
+            <span className="text-xs font-bold text-zinc-500 uppercase">Filter Aktiv</span>
           </div>
         </div>
 

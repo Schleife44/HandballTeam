@@ -8,7 +8,8 @@ import {
   Trophy,
   List,
   Play,
-  Settings
+  Settings,
+  ChevronRight
 } from 'lucide-react';
 
 // Store
@@ -50,6 +51,14 @@ export default function Dashboard() {
     }
   };
 
+  React.useEffect(() => {
+    const handleTrackGame = (e) => {
+      navigate('/game', { state: { ...e.detail } });
+    };
+    window.addEventListener('track_game', handleTrackGame);
+    return () => window.removeEventListener('track_game', handleTrackGame);
+  }, [navigate]);
+
   return (
     <div className="max-w-[1500px] mx-auto pb-32 px-4 lg:px-8 pt-4 space-y-8 lg:space-y-12 animate-in fade-in duration-1000">
       
@@ -85,8 +94,17 @@ export default function Dashboard() {
           </section>
 
           <div 
-            onClick={() => navigate('/game')}
-            className="hub-card p-8 lg:p-10 bg-gradient-to-br from-brand/20 to-black border border-brand/20 rounded-[2.5rem] lg:rounded-[3rem] relative overflow-hidden group cursor-pointer transition-all hover:border-brand/40 shadow-2xl"
+            onClick={() => {
+              if (stats.todaysGame) {
+                navigate('/game', { state: { ...stats.todaysGame } });
+              } else {
+                navigate('/game');
+              }
+            }}
+            className={`hub-card p-8 lg:p-10 border rounded-[2.5rem] lg:rounded-[3rem] relative overflow-hidden group cursor-pointer transition-all shadow-2xl
+              ${stats.todaysGame 
+                ? 'bg-gradient-to-br from-brand/40 to-black border-brand/40 hover:border-brand/60' 
+                : 'bg-gradient-to-br from-brand/20 to-black border-brand/20 hover:border-brand/40'}`}
           >
             <motion.div 
               initial={{ x: 60, y: 60, scale: 0.8, opacity: 0, rotate: 20 }}
@@ -98,11 +116,28 @@ export default function Dashboard() {
             </motion.div>
             <div className="relative z-10 space-y-4">
               <div className="flex items-center gap-2">
-                <span className="w-2.5 h-2.5 rounded-full bg-brand animate-pulse shadow-[0_0_10px_rgba(132,204,22,0.5)]" />
-                <span className="text-[10px] font-black uppercase text-brand tracking-[0.3em]">System Ready</span>
+                <span className={`w-2.5 h-2.5 rounded-full bg-brand animate-pulse ${stats.todaysGame ? 'shadow-[0_0_15px_rgba(132,204,22,0.8)]' : 'shadow-[0_0_10px_rgba(132,204,22,0.5)]'}`} />
+                <span className="text-[10px] font-black uppercase text-brand tracking-[0.3em]">
+                  {stats.todaysGame ? 'Match Day Active' : 'System Ready'}
+                </span>
               </div>
-              <h3 className="text-3xl lg:text-4xl font-black text-white uppercase italic leading-none tracking-tighter">Live <br /><span className="text-brand">Analyse</span></h3>
-              <p className="text-[10px] font-bold text-zinc-500 uppercase leading-relaxed max-w-[200px] opacity-80 group-hover:opacity-100 transition-opacity">Datenaufzeichnung in Echtzeit starten.</p>
+              <h3 className="text-3xl lg:text-4xl font-black text-white uppercase italic leading-none tracking-tighter">
+                {stats.todaysGame ? 'Spiel' : 'Live'} <br />
+                <span className="text-brand">{stats.todaysGame ? 'starten' : 'Analyse'}</span>
+              </h3>
+              <p className="text-[10px] font-bold text-zinc-500 uppercase leading-relaxed max-w-[200px] opacity-80 group-hover:opacity-100 transition-opacity">
+                {stats.todaysGame 
+                  ? `Heute vs. ${stats.todaysGame.opponent} (${stats.todaysGame.time} Uhr)` 
+                  : 'Datenaufzeichnung in Echtzeit starten.'}
+              </p>
+              
+              {stats.todaysGame && (
+                <div className="pt-2">
+                  <div className="inline-flex items-center gap-2 px-6 py-2.5 bg-brand text-black rounded-full text-[10px] font-black uppercase tracking-widest group-hover:scale-105 transition-all shadow-lg shadow-brand/20">
+                    Tracken <ChevronRight size={14} />
+                  </div>
+                </div>
+              )}
             </div>
           </div>
 
@@ -141,15 +176,15 @@ export default function Dashboard() {
           </DashboardCard>
 
           <DashboardCard title="Ligatabelle — Live Standings" icon={List}>
-            <div className="overflow-x-auto -mx-6 lg:mx-0">
-              <table className="w-full text-left min-w-[500px] lg:min-w-0">
+            <div className="lg:mx-0">
+              <table className="w-full text-left">
                 <thead>
                   <tr className="text-[9px] font-black text-zinc-700 uppercase tracking-[0.3em] border-b border-zinc-800/40">
-                    <th className="pb-4 px-6">Rank</th>
-                    <th className="pb-4 px-6">Team</th>
-                    <th className="pb-4 px-6 text-center">Played</th>
-                    <th className="pb-4 px-6 text-center">Diff</th>
-                    <th className="pb-4 px-6 text-right">Points</th>
+                    <th className="pb-4 px-2 md:px-6">Rank</th>
+                    <th className="pb-4 px-2 md:px-6">Team</th>
+                    <th className="pb-4 px-2 md:px-6 text-center hidden sm:table-cell">Played</th>
+                    <th className="pb-4 px-2 md:px-6 text-center hidden sm:table-cell">Diff</th>
+                    <th className="pb-4 px-2 md:px-6 text-right">Points</th>
                   </tr>
                 </thead>
                 <tbody className="text-xs font-bold">
@@ -157,11 +192,11 @@ export default function Dashboard() {
                     <tr><td colSpan="5" className="py-20 text-center"><div className="w-8 h-8 border-4 border-brand/30 border-t-brand rounded-full animate-spin mx-auto" /></td></tr>
                   ) : Array.isArray(stats.leagueTable) ? stats.leagueTable.map((t, i) => (
                     <tr key={i} className={`border-b border-zinc-800/10 transition-colors ${t.isMyTeam ? 'bg-brand/5 text-brand' : 'text-zinc-500 hover:bg-zinc-900/30'}`}>
-                      <td className="py-5 px-6 opacity-40 font-black italic">{t.rank}</td>
-                      <td className="py-5 px-6 font-black uppercase italic tracking-tight text-sm">{t.team}</td>
-                      <td className="py-5 px-6 text-center tabular-nums">{t.games}</td>
-                      <td className="py-5 px-6 text-center tabular-nums">{t.diff}</td>
-                      <td className="py-5 px-6 text-right font-black tabular-nums text-sm italic">{t.points}</td>
+                      <td className="py-5 px-2 md:px-6 font-black italic text-zinc-500">{t.rank || i + 1}</td>
+                      <td className="py-5 px-2 md:px-6 font-black uppercase italic tracking-tight text-sm truncate max-w-[140px] md:max-w-none">{t.team}</td>
+                      <td className="py-5 px-2 md:px-6 text-center tabular-nums hidden sm:table-cell">{t.games}</td>
+                      <td className="py-5 px-2 md:px-6 text-center tabular-nums hidden sm:table-cell">{t.diff}</td>
+                      <td className="py-5 px-2 md:px-6 text-right font-black tabular-nums text-sm italic">{t.points}</td>
                     </tr>
                   )) : (
                     <tr>

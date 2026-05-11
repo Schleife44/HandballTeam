@@ -9,6 +9,12 @@ export const initialSocialState = {
     overlayOpacity: 0.55,
     ownTeamColor: '#ffffff',
     opponentColor: '#ef4444',
+    elements: [],
+    filters: {
+      blur: 0,
+      brightness: 1,
+      grayscale: 0
+    },
     positions: {
       ergebnisLabel: { x: 230, y: 920, fontSize: 110, bold: true, scale: 1, rotation: 0 },
       seasonLabel: { x: 230, y: 550, fontSize: 24, bold: false, scale: 1, rotation: 0 },

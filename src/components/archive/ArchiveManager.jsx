@@ -1,9 +1,10 @@
 import React from 'react';
 import { Routes, Route, useNavigate, useLocation, Navigate } from 'react-router-dom';
-import { History, Video, BarChart2, FolderOpen } from 'lucide-react';
+import { History, Video, BarChart2, FolderOpen, Shield, Trophy } from 'lucide-react';
 import HistoryTab from './HistoryTab';
 import VideoAnalysisTab from './VideoAnalysisTab';
 import SeasonStatsTab from './SeasonStatsTab';
+import LeagueTableTab from './LeagueTableTab';
 import GameStatsTab from './GameStatsTab';
 import useStore from '../../store/useStore';
 import SubscriptionGuard from '../auth/SubscriptionGuard';
@@ -21,7 +22,8 @@ const ArchiveManager = () => {
 
   const tabs = [
     { id: 'history', label: 'Spiele-Archiv', icon: History, path: '/history/list' },
-    { id: 'stats', label: 'Saison-Statistiken', icon: BarChart2, path: '/history/stats' },
+    { id: 'stats', label: 'Saison-Statistiken', icon: Trophy, path: '/history/stats' },
+    { id: 'table', label: 'Liga-Tabelle', icon: Shield, path: '/history/table' },
   ];
 
   const activeTabId = tabs.find(t => location.pathname.startsWith(t.path))?.id || 'history';
@@ -65,19 +67,19 @@ const ArchiveManager = () => {
   };
 
   return (
-    <div className="flex flex-col gap-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+    <div className="flex flex-col gap-6">
       <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
-        <div className="flex items-center gap-3">
-          <div className="p-2.5 bg-blue-500/10 border border-blue-500/20 rounded-2xl">
+        <div className="flex items-center gap-3 flex-shrink-0">
+          <div className="p-2.5 bg-blue-500/10 border border-blue-500/20 rounded-2xl flex-shrink-0">
             <FolderOpen size={20} className="text-blue-400" />
           </div>
-          <div>
+          <div className="flex-shrink-0">
             <h2 className="text-xl font-black tracking-tighter uppercase italic text-zinc-100">Archiv</h2>
             <p className="text-[10px] font-black text-zinc-600 uppercase tracking-widest mt-0.5">Vergangene Spiele & Analysen</p>
           </div>
         </div>
 
-        <div className="flex p-1 bg-zinc-900/50 border border-zinc-800 rounded-xl overflow-x-auto no-scrollbar whitespace-nowrap">
+        <div className="flex p-1 bg-zinc-900/50 border border-zinc-800 rounded-xl overflow-x-auto no-scrollbar whitespace-nowrap ml-auto">
           {tabs.map((tab) => (
             <button
               key={tab.id}
@@ -122,6 +124,11 @@ const ArchiveManager = () => {
           <Route path="stats" element={
             <SubscriptionGuard title="Saison-Statistiken" description="Behalte den Überblick über die gesamte Saison. Detaillierte Spieler-Analysen und Trends sind im Pro-Paket enthalten.">
               <SeasonStatsTab />
+            </SubscriptionGuard>
+          } />
+          <Route path="table" element={
+            <SubscriptionGuard title="Liga-Tabelle" description="Archiviere deine Tabellenstände. Der Endstand jeder Saison bleibt hier dauerhaft für dich gesichert.">
+              <LeagueTableTab />
             </SubscriptionGuard>
           } />
         </Routes>

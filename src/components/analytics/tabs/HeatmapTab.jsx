@@ -7,13 +7,61 @@ import {
   ChevronDown,
   Filter
 } from 'lucide-react';
+import { FIELD_ZONES, GOAL_ZONES } from '../../../data/analyticsConstants';
 
 const HeatmapTab = ({ match, squad }) => {
+  const isZoneMode = match?.isZoneMode || false;
   const [viewMode, setViewMode] = useState('tor'); // Target for content
   const [activeLayoutMode, setActiveLayoutMode] = useState('tor'); // Actual layout for card
   const [teamFilter, setTeamFilter] = useState('home');
   const [selectedPlayer, setSelectedPlayer] = useState('all');
   const [filters, setFilters] = useState({ field: true, sevenM: true, missed: true });
+
+  // Zone Heat Analysis
+  const zoneStats = useMemo(() => {
+    if (!isZoneMode) return null;
+    const log = match?.log || match?.gameLog || [];
+    
+    const stats = { field: {}, goal: {} };
+    log.forEach(e => {
+      // Apply same filters as filteredPoints
+      const actionLower = e.action?.toLowerCase() || "";
+      const isShot = ['GOAL', 'MISS', 'BLOCKED', 'SAVE', '7M_GOAL', '7M_SAVE', '7M_MISS'].includes(e.type);
+      if (!isShot) return;
+      
+      const isOpponentAction = e.isOpponent === true || actionLower.includes('gegner');
+      if ((teamFilter === 'home') !== !isOpponentAction) return;
+      if (selectedPlayer !== 'all' && String(e.playerNumber) !== String(selectedPlayer)) return;
+      
+      const is7m = e.type.startsWith('7M') || actionLower.includes('7m');
+      if (is7m && !filters.sevenM) return;
+      if (!is7m && !filters.field) return;
+      
+      const isGoal = e.type === 'GOAL' || e.type === '7M_GOAL';
+      if (!isGoal && !filters.missed) return;
+
+      // Prioritize explicit zone data, fallback to calculated if tracked in precision mode
+      const fZone = e.details?.fieldZone || (typeof e.details?.fieldPos === 'string' ? e.details?.fieldPos : null) || (typeof e.fieldPos === 'string' ? e.fieldPos : null);
+      const gZone = e.details?.goalZone || (typeof e.details?.goalPos === 'string' ? e.details?.goalPos : (typeof e.details?.goalPos === 'number' ? e.details?.goalPos : null)) || (typeof e.goalPos === 'string' ? e.goalPos : (typeof e.goalPos === 'number' ? e.goalPos : null));
+
+      if (fZone && typeof fZone === 'string') {
+        if (!stats.field[fZone]) stats.field[fZone] = { goals: 0, total: 0 };
+        stats.field[fZone].total++;
+        if (isGoal) stats.field[fZone].goals++;
+      }
+      if (gZone && (typeof gZone === 'string' || typeof gZone === 'number')) {
+        if (!stats.goal[gZone]) stats.goal[gZone] = { goals: 0, total: 0 };
+        stats.goal[gZone].total++;
+        if (isGoal) stats.goal[gZone].goals++;
+      }
+    });
+
+    // Find max for normalization
+    const maxField = Math.max(0, ...Object.values(stats.field).map(s => s.total));
+    const maxGoal = Math.max(0, ...Object.values(stats.goal).map(s => s.total));
+
+    return { ...stats, maxField, maxGoal };
+  }, [match, teamFilter, selectedPlayer, filters, isZoneMode]);
 
   const getCoordFromZone = (zone, type = 'goal') => {
     if (typeof zone === 'object' && zone !== null) return zone;
@@ -67,9 +115,21 @@ const HeatmapTab = ({ match, squad }) => {
     });
   }, [match, teamFilter, selectedPlayer, filters]);
 
-  const renderShotMarker = (x, y, isGoal, id, isSmall = false) => {
-    const color = isGoal ? '#84cc16' : '#ef4444';
-    const gradId = isGoal ? 'g-lime-h' : 'g-red-h';
+  const renderShotMarker = (x, y, type, id, isSmall = false) => {
+    let color = '#ef4444'; // Default MISS
+    let gradId = 'g-red-h';
+
+    if (type === 'GOAL' || type === '7M_GOAL') {
+      color = '#84cc16';
+      gradId = 'g-lime-h';
+    } else if (type === 'SAVE' || type === '7M_SAVE') {
+      color = '#facc15';
+      gradId = 'g-yellow-h';
+    } else if (type === 'BLOCKED') {
+      color = '#71717a';
+      gradId = 'g-zinc-h';
+    }
+
     const radius = isSmall ? 2.5 : 4;
     const glowRadius = isSmall ? 10 : 18;
     return (
@@ -145,6 +205,14 @@ const HeatmapTab = ({ match, squad }) => {
               <stop offset="0%" stopColor="#ef4444" stopOpacity="0.4" />
               <stop offset="100%" stopColor="#ef4444" stopOpacity="0" />
             </radialGradient>
+            <radialGradient id="g-yellow-h" x="50%" y="50%" r="50%">
+              <stop offset="0%" stopColor="#facc15" stopOpacity="0.4" />
+              <stop offset="100%" stopColor="#facc15" stopOpacity="0" />
+            </radialGradient>
+            <radialGradient id="g-zinc-h" x="50%" y="50%" r="50%">
+              <stop offset="0%" stopColor="#71717a" stopOpacity="0.4" />
+              <stop offset="100%" stopColor="#71717a" stopOpacity="0" />
+            </radialGradient>
           </defs>
         </svg>
 
@@ -178,17 +246,31 @@ const HeatmapTab = ({ match, squad }) => {
                     <svg viewBox="0 0 350 230" className="w-full h-full overflow-visible">
                       <g transform="translate(50, 40)">
                         <g opacity="0.15">
-                          {[...Array(9)].map((_, i) => (
-                            <rect key={`grid-tor-${i}`} x={((i % 3) * 250) / 3} y={(Math.floor(i / 3) * 180) / 3} width={250 / 3} height={180 / 3} fill="none" stroke="white" strokeWidth="1" />
+                          {GOAL_ZONES.map((zone, i) => (
+                            <rect key={`grid-tor-${i}`} x={(zone.x * 250) / 100} y={(zone.y * 180) / 100} width={250 / 3} height={180 / 3} fill="none" stroke="white" strokeWidth="1" />
                           ))}
                         </g>
+                        {isZoneMode && zoneStats && GOAL_ZONES.map(zone => {
+                          const stats = zoneStats.goal[zone.id] || { goals: 0, total: 0 };
+                          if (stats.total === 0) return null;
+                          const intensity = zoneStats.maxGoal > 0 ? (stats.total / zoneStats.maxGoal) : 0;
+                          return (
+                            <g key={`heat-goal-${zone.id}`}>
+                              <rect x={(zone.x * 250) / 100} y={(zone.y * 180) / 100} width={250 / 3} height={180 / 3} fill="#84cc16" opacity={0.1 + intensity * 0.7} />
+                              <text x={(zone.tx * 250) / 100} y={(zone.ty * 180) / 100} textAnchor="middle" dominantBaseline="middle" fill="white" className="text-[12px] font-black italic select-none pointer-events-none drop-shadow-md">
+                                {stats.goals}/{stats.total}
+                              </text>
+                            </g>
+                          );
+                        })}
                         <rect x="0" y="0" width="250" height="180" rx="2" fill="none" stroke="#3f3f46" strokeWidth="2" />
                       </g>
-                      {filteredPoints.map((p, idx) => {
+                      {!isZoneMode && filteredPoints.map((p, idx) => {
                         const rawGoalPos = p.details?.goalPos || p.goalPos;
                         const pos = getCoordFromZone(rawGoalPos, 'goal');
                         if (!pos || pos.x === undefined) return null;
-                        return renderShotMarker(50 + (pos.x / 100) * 250, 40 + (pos.y / 100) * 180, p.type === 'GOAL' || p.type === '7M_GOAL', `sh-goal-${p.id || idx}`);
+                        if (p.type === 'BLOCKED') return null;
+                        return renderShotMarker(50 + (pos.x / 100) * 250, 40 + (pos.y / 100) * 180, p.type, `sh-goal-${p.id || idx}`);
                       })}
                     </svg>
                   )}
@@ -205,11 +287,26 @@ const HeatmapTab = ({ match, squad }) => {
                         <path d="M 10 60 A 90 90 0 0 0 85 100 L 115 100 A 90 90 0 0 0 190 60" fill="none" stroke="#84cc16" strokeWidth="1.5" strokeDasharray="8 6" opacity="0.25" />
                         <line x1="94" y1="80" x2="106" y2="80" stroke="#84cc16" strokeWidth="1.5" opacity="0.3" />
                       </g>
-                      {filteredPoints.map((p, idx) => {
+                      
+                      {isZoneMode && zoneStats && FIELD_ZONES.map(zone => {
+                        const stats = zoneStats.field[zone.id] || { goals: 0, total: 0 };
+                        if (stats.total === 0) return null;
+                        const intensity = zoneStats.maxField > 0 ? (stats.total / zoneStats.maxField) : 0;
+                        return (
+                          <g key={`heat-field-${zone.id}`}>
+                            <path d={zone.d} fill="#84cc16" opacity={0.1 + intensity * 0.7} />
+                            <text x={zone.tx} y={zone.ty} textAnchor="middle" dominantBaseline="middle" fill="white" className="text-[10px] font-black italic select-none pointer-events-none drop-shadow-md">
+                              {stats.goals}/{stats.total}
+                            </text>
+                          </g>
+                        );
+                      })}
+
+                      {!isZoneMode && filteredPoints.map((p, idx) => {
                         const rawFieldPos = p.details?.fieldPos || p.fieldPos;
                         const pos = getCoordFromZone(rawFieldPos, 'field');
                         if (!pos || pos.x === undefined) return null;
-                        return renderShotMarker((pos.x / 100) * 200, (pos.y / 100) * 245, p.type === 'GOAL' || p.type === '7M_GOAL', `sh-field-${p.id || idx}`);
+                        return renderShotMarker((pos.x / 100) * 200, (pos.y / 100) * 245, p.type, `sh-field-${p.id || idx}`);
                       })}
                     </svg>
                   )}
@@ -219,10 +316,23 @@ const HeatmapTab = ({ match, squad }) => {
                       <g transform="translate(68, 18) scale(0.25)">
                         <rect x="0" y="0" width="250" height="180" rx="2" fill="black" fillOpacity="0.2" stroke="#3f3f46" strokeWidth="3" />
                         <g opacity="0.2">
-                          {[...Array(9)].map((_, i) => (
-                            <rect key={`grid-kombi-${i}`} x={((i % 3) * 250) / 3} y={(Math.floor(i / 3) * 180) / 3} width={250 / 3} height={180 / 3} fill="none" stroke="white" strokeWidth="2" />
+                          {GOAL_ZONES.map((zone, i) => (
+                            <rect key={`grid-kombi-${i}`} x={(zone.x * 250) / 100} y={(zone.y * 180) / 100} width={250 / 3} height={180 / 3} fill="none" stroke="white" strokeWidth="2" />
                           ))}
                         </g>
+                        {isZoneMode && zoneStats && GOAL_ZONES.map(zone => {
+                          const stats = zoneStats.goal[zone.id] || { goals: 0, total: 0 };
+                          if (stats.total === 0) return null;
+                          const intensity = zoneStats.maxGoal > 0 ? (stats.total / zoneStats.maxGoal) : 0;
+                          return (
+                            <g key={`heat-kombi-goal-${zone.id}`}>
+                              <rect x={(zone.x * 250) / 100} y={(zone.y * 180) / 100} width={250 / 3} height={180 / 3} fill="#84cc16" opacity={0.1 + intensity * 0.7} />
+                              <text x={(zone.tx * 250) / 100} y={(zone.ty * 180) / 100} textAnchor="middle" dominantBaseline="middle" fill="white" className="text-[12px] font-black italic select-none pointer-events-none drop-shadow-md">
+                                {stats.goals}/{stats.total}
+                              </text>
+                            </g>
+                          );
+                        })}
                       </g>
                       <g transform="translate(35, 56.5) scale(0.65)">
                         <path d="M 10 10 L 190 10 L 190 240 L 10 240 Z" fill="none" stroke="#3f3f46" strokeWidth="1.5" />
@@ -230,8 +340,22 @@ const HeatmapTab = ({ match, squad }) => {
                         <path d="M 25 10 A 60 60 0 0 0 85 70 L 115 70 A 60 60 0 0 0 175 10" fill="none" stroke="#84cc16" strokeWidth="2.5" strokeLinecap="round" opacity="0.3" />
                         <path d="M 10 60 A 90 90 0 0 0 85 100 L 115 100 A 90 90 0 0 0 190 60" fill="none" stroke="#84cc16" strokeWidth="1.5" strokeDasharray="8 6" opacity="0.15" />
                         <line x1="94" y1="80" x2="106" y2="80" stroke="#84cc16" strokeWidth="1.5" opacity="0.2" />
+                        
+                        {isZoneMode && zoneStats && FIELD_ZONES.map(zone => {
+                          const stats = zoneStats.field[zone.id] || { goals: 0, total: 0 };
+                          if (stats.total === 0) return null;
+                          const intensity = zoneStats.maxField > 0 ? (stats.total / zoneStats.maxField) : 0;
+                          return (
+                            <g key={`heat-kombi-field-${zone.id}`}>
+                              <path d={zone.d} fill="#84cc16" opacity={0.1 + intensity * 0.7} />
+                              <text x={zone.tx} y={zone.ty} textAnchor="middle" dominantBaseline="middle" fill="white" className="text-[10px] font-black italic select-none pointer-events-none drop-shadow-md">
+                                {stats.goals}/{stats.total}
+                              </text>
+                            </g>
+                          );
+                        })}
                       </g>
-                      {filteredPoints.map((p, idx) => {
+                      {!isZoneMode && filteredPoints.map((p, idx) => {
                         const rawFPos = p.details?.fieldPos || p.fieldPos;
                         const rawGPos = p.details?.goalPos || p.goalPos;
                         
@@ -244,12 +368,21 @@ const HeatmapTab = ({ match, squad }) => {
                         const fy = 56.5 + (fPos.y / 100) * 245 * 0.65;
                         const gx = 68 + (gPos.x / 100) * 250 * 0.25;
                         const gy = 18 + (gPos.y / 100) * 180 * 0.25;
-                        const isGoal = p.type === 'GOAL' || p.type === '7M_GOAL';
+                        const isGoal = p.type?.includes('GOAL');
+                        const isSave = p.type?.includes('SAVE');
+                        const isBlocked = p.type === 'BLOCKED';
+
                         return (
                           <g key={`path-kombi-${p.id || idx}`}>
-                            <line x1={fx} y1={fy} x2={gx} y2={gy} stroke={isGoal ? '#84cc16' : '#ef4444'} strokeOpacity="0.35" strokeWidth="1" strokeDasharray="2,2" />
-                            {renderShotMarker(fx, fy, isGoal, `f-kombi-${idx}`, true)}
-                            {renderShotMarker(gx, gy, isGoal, `g-kombi-${idx}`, true)}
+                            {!isBlocked && (
+                              <line 
+                                x1={fx} y1={fy} x2={gx} y2={gy} 
+                                stroke={isGoal ? '#84cc16' : (isSave ? '#facc15' : '#ef4444')} 
+                                strokeOpacity="0.35" strokeWidth="1" strokeDasharray="2,2" 
+                              />
+                            )}
+                            {renderShotMarker(fx, fy, p.type, `f-kombi-${idx}`, true)}
+                            {!isBlocked && renderShotMarker(gx, gy, p.type, `g-kombi-${idx}`, true)}
                           </g>
                         );
                       })}
@@ -267,7 +400,9 @@ const HeatmapTab = ({ match, squad }) => {
             <div className="absolute w-2.5 h-2.5 bg-brand rounded-full animate-ping opacity-30" />
             <div className="w-1.5 h-1.5 bg-brand rounded-full shadow-[0_0_10px_#84cc16]" />
           </div>
-          <span className="text-[9px] font-black text-zinc-400 uppercase tracking-widest italic">{filteredPoints.length} Live Tactical Points</span>
+          <span className="text-[9px] font-black text-zinc-400 uppercase tracking-widest italic">
+            {filteredPoints.length} {isZoneMode ? 'Tactical Zone Points' : 'Live Tactical Points'}
+          </span>
         </div>
       </motion.div>
     </div>

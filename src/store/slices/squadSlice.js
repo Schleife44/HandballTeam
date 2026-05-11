@@ -26,12 +26,18 @@ export const initialSquadState = {
     series: [],
     isHydrated: false,
     isRosterHydrated: false,
-    contextId: ''
+    contextId: '',
+    leagueTable: null,
+    archivedTableStatus: false
   }
 };
 
 export const createSquadSlice = (set) => ({
   ...initialSquadState,
+
+  setLeagueTable: (table, isArchived = false) => set((state) => ({
+    squad: { ...state.squad, leagueTable: table, archivedTableStatus: isArchived }
+  })),
 
   setHydrated: (val) => set((state) => ({
     squad: { ...state.squad, isHydrated: val }

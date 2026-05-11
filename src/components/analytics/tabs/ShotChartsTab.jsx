@@ -1,8 +1,10 @@
 import React from 'react';
 import { motion } from 'framer-motion';
 import { TrendingUp } from 'lucide-react';
+import { FIELD_ZONES, GOAL_ZONES } from '../../../data/analyticsConstants';
 
 const ShotChartsTab = ({ match, squad }) => {
+  const isZoneMode = match?.isZoneMode || false;
   const getCoordFromZone = (zone, type = 'goal') => {
     if (typeof zone === 'object' && zone !== null) return zone;
     if (type === 'goal') {
@@ -24,9 +26,21 @@ const ShotChartsTab = ({ match, squad }) => {
   };
 
   // Common Marker Rendering
-  const renderShotMarker = (x, y, isGoal, id) => {
-    const color = isGoal ? '#84cc16' : '#ef4444';
-    const gradId = isGoal ? 'g-lime-sc' : 'g-red-sc';
+  const renderShotMarker = (x, y, type, id) => {
+    let color = '#ef4444'; // Default MISS
+    let gradId = 'g-red-sc';
+
+    if (type === 'GOAL' || type === '7M_GOAL') {
+      color = '#84cc16';
+      gradId = 'g-lime-sc';
+    } else if (type === 'SAVE' || type === '7M_SAVE') {
+      color = '#facc15';
+      gradId = 'g-yellow-sc';
+    } else if (type === 'BLOCKED') {
+      color = '#71717a';
+      gradId = 'g-zinc-sc';
+    }
+
     return (
       <g key={id}>
         <circle cx={x} cy={y} r="8" fill={`url(#${gradId})`} opacity="0.4" />
@@ -65,6 +79,14 @@ const ShotChartsTab = ({ match, squad }) => {
             <radialGradient id="g-red-sc" x="50%" y="50%" r="50%">
               <stop offset="0%" stopColor="#ef4444" stopOpacity="0.4" />
               <stop offset="100%" stopColor="#ef4444" stopOpacity="0" />
+            </radialGradient>
+            <radialGradient id="g-yellow-sc" x="50%" y="50%" r="50%">
+              <stop offset="0%" stopColor="#facc15" stopOpacity="0.4" />
+              <stop offset="100%" stopColor="#facc15" stopOpacity="0" />
+            </radialGradient>
+            <radialGradient id="g-zinc-sc" x="50%" y="50%" r="50%">
+              <stop offset="0%" stopColor="#71717a" stopOpacity="0.4" />
+              <stop offset="100%" stopColor="#71717a" stopOpacity="0" />
             </radialGradient>
           </defs>
         </svg>
@@ -118,10 +140,25 @@ const ShotChartsTab = ({ match, squad }) => {
                           <g transform="translate(68, 18) scale(0.25)">
                             <rect x="0" y="0" width="250" height="180" rx="2" fill="none" stroke="#3f3f46" strokeWidth={12} opacity="0.3" />
                             <g opacity="0.1">
-                              {[...Array(9)].map((_, i) => (
-                                <rect key={`p-grid-f-${i}`} x={((i % 3) * 250) / 3} y={(Math.floor(i / 3) * 180) / 3} width={250 / 3} height={180 / 3} fill="none" stroke="white" strokeWidth={8} />
+                              {GOAL_ZONES.map((zone, i) => (
+                                <rect key={`p-grid-f-${i}`} x={(zone.x * 250) / 100} y={(zone.y * 180) / 100} width={250 / 3} height={180 / 3} fill="none" stroke="white" strokeWidth={8} />
                               ))}
                             </g>
+                            {isZoneMode && GOAL_ZONES.map(zone => {
+                              const zoneShots = fieldShots.filter(s => (s.details?.goalZone || s.details?.goalPos || s.goalPos) === zone.id);
+                              if (zoneShots.length === 0) return null;
+                              const zoneGoals = zoneShots.filter(s => s.type?.includes('GOAL')).length;
+                              const isGoal = zoneGoals > 0;
+                              const isSave = !isGoal && zoneShots.some(s => s.type?.includes('SAVE'));
+                              return (
+                                <g key={`p-heat-f-g-${zone.id}`}>
+                                  <rect x={(zone.x * 250) / 100} y={(zone.y * 180) / 100} width={250 / 3} height={180 / 3} fill={isGoal ? '#84cc16' : (isSave ? '#facc15' : '#ef4444')} opacity="0.4" />
+                                  <text x={(zone.tx * 250) / 100} y={(zone.ty * 180) / 100} textAnchor="middle" dominantBaseline="middle" fill="white" className="text-[12px] font-black italic select-none pointer-events-none drop-shadow-sm">
+                                    {zoneGoals}/{zoneShots.length}
+                                  </text>
+                                </g>
+                              );
+                            })}
                           </g>
                           {/* FIELD GEOMETRY */}
                           <g transform="translate(35, 56.5) scale(0.65)">
@@ -130,8 +167,25 @@ const ShotChartsTab = ({ match, squad }) => {
                             <path d="M 10 60 A 90 90 0 0 0 85 100 L 115 100 A 90 90 0 0 0 190 60" fill="none" stroke="#84cc16" strokeWidth="1.5" strokeDasharray="4 3" opacity="0.15" />
                             <line x1="94" y1="80" x2="106" y2="80" stroke="#84cc16" strokeWidth="1.5" opacity="0.2" />
                             <path d="M 60 240 A 40 40 0 0 1 140 240" fill="none" stroke="#3f3f46" strokeWidth="1" opacity="0.2" />
+                            
+                            {isZoneMode && FIELD_ZONES.map(zone => {
+                              const zoneShots = fieldShots.filter(s => (s.details?.fieldZone || s.details?.fieldPos || s.fieldPos) === zone.id);
+                              if (zoneShots.length === 0) return null;
+                              const zoneGoals = zoneShots.filter(s => s.type?.includes('GOAL')).length;
+                              const isGoal = zoneGoals > 0;
+                              const isSave = !isGoal && zoneShots.some(s => s.type?.includes('SAVE'));
+                              const isBlocked = !isGoal && !isSave && zoneShots.some(s => s.type === 'BLOCKED');
+                              return (
+                                <g key={`p-heat-f-f-${zone.id}`}>
+                                  <path d={zone.d} fill={isGoal ? '#84cc16' : (isSave ? '#facc15' : (isBlocked ? '#71717a' : '#ef4444'))} opacity="0.3" />
+                                  <text x={zone.tx} y={zone.ty} textAnchor="middle" dominantBaseline="middle" fill="white" className="text-[10px] font-black italic select-none pointer-events-none drop-shadow-sm">
+                                    {zoneGoals}/{zoneShots.length}
+                                  </text>
+                                </g>
+                              );
+                            })}
                           </g>
-                          {fieldShots.map((s, sIdx) => {
+                          {!isZoneMode && fieldShots.map((s, sIdx) => {
                             const rawFPos = s.details?.fieldPos || s.fieldPos;
                             const rawGPos = s.details?.goalPos || s.goalPos;
                             const fPos = getCoordFromZone(rawFPos, 'field');
@@ -141,12 +195,20 @@ const ShotChartsTab = ({ match, squad }) => {
                             const fy = 56.5 + (fPos.y / 100) * 245 * 0.65;
                             const gx = 68 + (gPos.x / 100) * 250 * 0.25;
                             const gy = 18 + (gPos.y / 100) * 180 * 0.25;
-                            const isGoal = s.type === 'GOAL';
+                            const isGoal = s.type?.includes('GOAL');
+                            const isSave = s.type?.includes('SAVE');
+                            const isBlocked = s.type === 'BLOCKED';
                             return (
                               <g key={`sh-f-${s.id || sIdx}`}>
-                                <line x1={fx} y1={fy} x2={gx} y2={gy} stroke={isGoal ? '#84cc16' : '#ef4444'} strokeOpacity="0.35" strokeWidth="0.8" strokeDasharray="2,2" />
-                                {renderShotMarker(fx, fy, isGoal, `ff-${sIdx}`)}
-                                {renderShotMarker(gx, gy, isGoal, `gg-${sIdx}`)}
+                                {!isBlocked && (
+                                  <line 
+                                    x1={fx} y1={fy} x2={gx} y2={gy} 
+                                    stroke={isGoal ? '#84cc16' : (isSave ? '#facc15' : '#ef4444')} 
+                                    strokeOpacity="0.35" strokeWidth="0.8" strokeDasharray="2,2" 
+                                  />
+                                )}
+                                {renderShotMarker(fx, fy, s.type, `ff-${sIdx}`)}
+                                {!isBlocked && renderShotMarker(gx, gy, s.type, `gg-${sIdx}`)}
                               </g>
                             );
                           })}
@@ -171,18 +233,32 @@ const ShotChartsTab = ({ match, squad }) => {
                         <svg viewBox="0 0 250 180" className="w-full h-full opacity-90">
                           <rect x="0" y="0" width="250" height="180" rx="2" fill="none" stroke="#3f3f46" strokeWidth={4} opacity="0.3" />
                           <g opacity="0.15">
-                            {[...Array(9)].map((_, i) => (
-                              <rect key={`p-grid-7-${i}`} x={((i % 3) * 250) / 3} y={(Math.floor(i / 3) * 180) / 3} width={250 / 3} height={180 / 3} fill="none" stroke="white" strokeWidth={2} />
+                            {GOAL_ZONES.map((zone, i) => (
+                              <rect key={`p-grid-7-${i}`} x={(zone.x * 250) / 100} y={(zone.y * 180) / 100} width={250 / 3} height={180 / 3} fill="none" stroke="white" strokeWidth={2} />
                             ))}
                           </g>
-                          {sevenMShots.map((s, sIdx) => {
+                          {isZoneMode && GOAL_ZONES.map(zone => {
+                            const zoneShots = sevenMShots.filter(s => (s.details?.goalZone || s.details?.goalPos || s.goalPos) === zone.id);
+                            if (zoneShots.length === 0) return null;
+                            const zoneGoals = zoneShots.filter(s => s.type?.includes('GOAL')).length;
+                            const isGoal = zoneGoals > 0;
+                            const isSave = !isGoal && zoneShots.some(s => s.type?.includes('SAVE'));
+                            return (
+                               <g key={`p-heat-7-g-${zone.id}`}>
+                                 <rect x={(zone.x * 250) / 100} y={(zone.y * 180) / 100} width={250 / 3} height={180 / 3} fill={isGoal ? '#84cc16' : (isSave ? '#facc15' : '#ef4444')} opacity="0.4" />
+                                 <text x={(zone.tx * 250) / 100} y={(zone.ty * 180) / 100} textAnchor="middle" dominantBaseline="middle" fill="white" className="text-[12px] font-black italic select-none pointer-events-none drop-shadow-sm">
+                                   {zoneGoals}/{zoneShots.length}
+                                 </text>
+                               </g>
+                            );
+                          })}
+                          {!isZoneMode && sevenMShots.map((s, sIdx) => {
                             const rawGPos = s.details?.goalPos || s.goalPos;
                             const gPos = getCoordFromZone(rawGPos, 'goal');
                             if (!gPos || gPos.x === undefined) return null;
                             const gx = (gPos.x / 100) * 250;
                             const gy = (gPos.y / 100) * 180;
-                            const isGoal = s.type === '7M_GOAL';
-                            return renderShotMarker(gx, gy, isGoal, `g7-${sIdx}`);
+                            return renderShotMarker(gx, gy, s.type, `g7-${sIdx}`);
                           })}
                         </svg>
                       </div>

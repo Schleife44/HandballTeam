@@ -59,7 +59,7 @@ const SyncSection = ({
           />
         </div>
 
-        <div className="flex items-center justify-between gap-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div className="flex items-center gap-3">
             <RotateCcw size={16} className="text-zinc-600" />
             <span className="text-xs font-bold text-zinc-300">Absagen möglich bis</span>
@@ -72,11 +72,11 @@ const SyncSection = ({
               disabled={!isTrainer}
               className="w-16 bg-black/60 border border-zinc-800 rounded-xl py-2 px-3 text-center text-xs font-black text-brand"
             />
-            <span className="text-[10px] font-bold text-zinc-600 uppercase tracking-widest whitespace-nowrap">Std. vorher (0 = immer)</span>
+            <span className="text-[10px] font-bold text-zinc-600 uppercase tracking-widest">Std. vorher (0 = immer)</span>
           </div>
         </div>
 
-        <div className="flex items-center justify-between gap-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div className="flex items-center gap-3">
             <Zap size={16} className="text-zinc-600" />
             <span className="text-xs font-bold text-zinc-300">Treffpunkt-Vorlauf</span>
@@ -89,7 +89,7 @@ const SyncSection = ({
               disabled={!isTrainer}
               className="w-16 bg-black/60 border border-zinc-800 rounded-xl py-2 px-3 text-center text-xs font-black text-brand"
             />
-            <span className="text-[10px] font-bold text-zinc-600 uppercase tracking-widest whitespace-nowrap">Min. vorher</span>
+            <span className="text-[10px] font-bold text-zinc-600 uppercase tracking-widest">Min. vorher</span>
           </div>
         </div>
       </div>

@@ -26,9 +26,9 @@ const PerformanceChart = ({ data }) => {
   }
 
   return (
-    <div className="w-full h-[220px]">
+    <div className="w-full h-[280px] md:h-[220px]">
       <ResponsiveContainer width="100%" height="100%">
-        <AreaChart data={data} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+        <AreaChart data={data} margin={{ top: 10, right: 10, left: -10, bottom: 20 }}>
         <defs>
           <linearGradient id="colorGoals" x1="0" y1="0" x2="0" y2="1">
             <stop offset="5%" stopColor="#84cc16" stopOpacity={0.2}/>
@@ -36,10 +36,21 @@ const PerformanceChart = ({ data }) => {
           </linearGradient>
         </defs>
         <CartesianGrid strokeDasharray="3 3" stroke="#18181b" vertical={false} />
-        <XAxis dataKey="name" stroke="#3f3f46" fontSize={10} fontWeight="bold" axisLine={false} tickLine={false} dy={5} />
+        <XAxis 
+          dataKey="name" 
+          stroke="#3f3f46" 
+          fontSize={10} 
+          fontWeight="bold" 
+          axisLine={false} 
+          tickLine={false} 
+          dy={10}
+          interval="preserveStartEnd"
+          minTickGap={20}
+          tick={{ textAnchor: 'middle' }}
+        />
         <YAxis stroke="#3f3f46" fontSize={10} fontWeight="bold" axisLine={false} tickLine={false} />
         <Tooltip 
-          contentStyle={{ backgroundColor: '#09090b', border: '1px solid #27272a', borderRadius: '1.5rem', fontSize: '10px', fontWeight: 'bold', padding: '12px' }}
+          contentStyle={{ backgroundColor: '#09090b', border: '1px solid #27272a', borderRadius: '1.5rem', fontSize: '10px', fontWeight: 'bold', padding: '12px', color: '#fff' }}
           itemStyle={{ color: '#84cc16' }}
         />
         <Area type="monotone" dataKey="goals" stroke="#84cc16" strokeWidth={5} fillOpacity={1} fill="url(#colorGoals)" />

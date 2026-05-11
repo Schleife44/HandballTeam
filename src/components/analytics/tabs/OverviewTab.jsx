@@ -28,16 +28,16 @@ const OverviewTab = ({ match, squad }) => {
     const gameLog = match?.gameLog || match?.log || [];
     if (gameLog.length === 0) return null;
     
-    const homeShots = gameLog.filter(e => e.team === 'home' && ['GOAL', 'MISS', 'BLOCKED', 'SAVE'].includes(e.type));
-    const homeGoals = homeShots.filter(e => e.type === 'GOAL');
-    const awayShots = gameLog.filter(e => e.team === 'away' && ['GOAL', 'MISS', 'BLOCKED', 'SAVE'].includes(e.type));
-    const awayGoals = awayShots.filter(e => e.type === 'GOAL');
+    const homeShots = gameLog.filter(e => e.team === 'home' && ['GOAL', 'MISS', 'BLOCKED', 'SAVE', '7M_GOAL', '7M_SAVE', '7M_MISS'].includes(e.type));
+    const homeGoals = homeShots.filter(e => e.type === 'GOAL' || e.type === '7M_GOAL');
+    const awayShots = gameLog.filter(e => e.team === 'away' && ['GOAL', 'MISS', 'BLOCKED', 'SAVE', '7M_GOAL', '7M_SAVE', '7M_MISS'].includes(e.type));
+    const awayGoals = awayShots.filter(e => e.type === 'GOAL' || e.type === '7M_GOAL');
 
     const efficiency = homeShots.length > 0 ? Math.round((homeGoals.length / homeShots.length) * 100) : 0;
     
     // Top Scorers
     const playerGoals = {};
-    gameLog.filter(e => e.type === 'GOAL' && e.team === 'home').forEach(e => {
+    gameLog.filter(e => (e.type === 'GOAL' || e.type === '7M_GOAL') && e.team === 'home').forEach(e => {
       playerGoals[e.playerNumber] = (playerGoals[e.playerNumber] || 0) + 1;
     });
     

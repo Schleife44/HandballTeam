@@ -5,7 +5,7 @@ import TeamSelectionOverlay from './TeamSelectionOverlay';
 import NamePromptOverlay from './NamePromptOverlay';
 import { Loader2 } from 'lucide-react';
 
-const LoginView = React.lazy(() => import('./LoginView'));
+import LoginView from './LoginView';
 
 export default function AuthGuard({ children }) {
   const isAuthenticated = useStore(state => state.isAuthenticated);
@@ -16,6 +16,8 @@ export default function AuthGuard({ children }) {
   const isMemberLoading = useStore(state => state.isMemberLoading);
   const navigate = useNavigate();
   const location = useLocation();
+
+  const isClubMode = activeTeamId === 'CLUB_OVERVIEW';
   
   // Hydration Timeout: If data takes too long, redirect to team selection
   const [hydrationTimedOut, setHydrationTimedOut] = React.useState(false);
@@ -34,7 +36,6 @@ export default function AuthGuard({ children }) {
   React.useEffect(() => {
     if (!isAuthenticated || isAuthLoading) return;
     
-    const isClubMode = activeTeamId === 'CLUB_OVERVIEW';
     const isClubPath = location.pathname.startsWith('/club');
     const isNeutralPath = location.pathname === '/login' || location.pathname === '/';
 
@@ -46,6 +47,13 @@ export default function AuthGuard({ children }) {
       navigate('/dashboard', { replace: true });
     }
   }, [activeTeamId, isAuthenticated, isAuthLoading, location.pathname, navigate]);
+  
+  // LOGGING - Moved up to comply with Rules of Hooks
+  React.useEffect(() => {
+    if (isAuthenticated && activeTeamId) {
+      console.log('[AuthGuard] Access granted, showing App (Mode: ' + (isClubMode ? 'CLUB' : 'TEAM') + ')');
+    }
+  }, [isClubMode, activeTeamId, isAuthenticated]);
 
   if (isAuthLoading) {
     return (
@@ -66,7 +74,6 @@ export default function AuthGuard({ children }) {
     return <TeamSelectionOverlay />;
   }
 
-  const isClubMode = activeTeamId === 'CLUB_OVERVIEW';
   const isClubPath = location.pathname.startsWith('/club');
   const isNeutralPath = location.pathname === '/login' || location.pathname === '/';
 
@@ -129,6 +136,5 @@ export default function AuthGuard({ children }) {
     }
   }
 
-  console.log('[AuthGuard] Access granted, showing App (Mode: ' + (isClubMode ? 'CLUB' : 'TEAM') + ')');
   return <>{children}</>;
 }
