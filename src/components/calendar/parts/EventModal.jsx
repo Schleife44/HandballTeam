@@ -149,14 +149,39 @@ const EventModal = ({ isOpen, onClose, eventData, setEventData, handleSaveEvent,
           <div className="flex items-center justify-between p-2.5 bg-zinc-900/30 border border-zinc-800 rounded-xl">
             <div className="flex items-center gap-2">
               <Clock3 size={12} className="text-zinc-600" />
-              <span className="text-[8px] font-black uppercase text-zinc-600 tracking-widest">Abmeldefrist (Std.):</span>
+              <span className="text-[8px] font-black uppercase text-zinc-600 tracking-widest">Abmeldefrist:</span>
             </div>
-            <input 
-              type="number" 
-              value={eventData.deadline} 
-              onChange={(e) => setEventData({...eventData, deadline: e.target.value})} 
-              className="w-12 bg-black/20 border border-zinc-800 p-1 rounded-lg text-center text-zinc-100 text-[10px] font-bold" 
-            />
+            <div className="flex items-center gap-2">
+              <div className="flex items-center gap-1.5">
+                <input 
+                  type="number" 
+                  min="0"
+                  value={Math.floor((eventData.deadline ?? 24) / 24)}
+                  onChange={(e) => {
+                    const d = parseInt(e.target.value) || 0;
+                    const h = (eventData.deadline ?? 24) % 24;
+                    setEventData({...eventData, deadline: d * 24 + h});
+                  }}
+                  className="w-10 bg-black/20 border border-zinc-800 p-1 rounded-lg text-center text-zinc-100 text-[10px] font-bold" 
+                />
+                <span className="text-[7px] font-black uppercase text-zinc-700">Tage</span>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <input 
+                  type="number" 
+                  min="0"
+                  max="23"
+                  value={(eventData.deadline ?? 24) % 24}
+                  onChange={(e) => {
+                    const h = parseInt(e.target.value) || 0;
+                    const d = Math.floor((eventData.deadline ?? 24) / 24);
+                    setEventData({...eventData, deadline: d * 24 + h});
+                  }}
+                  className="w-10 bg-black/20 border border-zinc-800 p-1 rounded-lg text-center text-zinc-100 text-[10px] font-bold" 
+                />
+                <span className="text-[7px] font-black uppercase text-zinc-700">Std.</span>
+              </div>
+            </div>
           </div>
         </div>
       </div>

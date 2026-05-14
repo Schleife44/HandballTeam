@@ -19,9 +19,10 @@ export const usePlayerStats = (playerName, selectedSeason = 'all') => {
     let totalGames = 0;
 
     // Filter by season if needed
-    const filteredHistory = selectedSeason === 'all' 
+    const filteredHistory = (selectedSeason === 'all' 
       ? history 
-      : history.filter(g => g.season === selectedSeason || (!g.season && selectedSeason === (squad?.settings?.currentSeason || '25/26')));
+      : history.filter(g => g.season === selectedSeason || (!g.season && selectedSeason === (squad?.settings?.currentSeason || '25/26'))))
+      .filter(g => !g.isNeutral);
 
     // Sort games by date
     const sortedGames = [...filteredHistory].sort((a, b) => new Date(a.date || a.timestamp) - new Date(b.date || b.timestamp));
@@ -66,13 +67,34 @@ export const usePlayerStats = (playerName, selectedSeason = 'all') => {
       }
     });
 
+    // Calculate training participation
+    const trainingsInSeason = (squad?.calendarEvents || []).filter(e => {
+      if (!e.date || (e.type?.toUpperCase() !== 'TRAINING' && e.type !== 'training')) return false;
+      if (e.isCancelled) return false;
+      
+      const d = new Date(e.date);
+      const year = d.getFullYear();
+      const month = d.getMonth();
+      const season = month >= 6 ? `${String(year).slice(-2)}/${String(year+1).slice(-2)}` : `${String(year-1).slice(-2)}/${String(year).slice(-2)}`;
+      
+      return selectedSeason === 'all' || season === selectedSeason;
+    });
+
+    const trainingAttended = trainingsInSeason.filter(e => 
+      e.responses?.[playerName]?.status === 'going'
+    ).length;
+
+    const totalTrainings = trainingsInSeason.length;
+
     return {
       summary: {
         totalGames,
         totalGoals,
         totalShots,
         avgGoals: totalGames > 0 ? (totalGoals / totalGames).toFixed(1) : 0,
-        avgEfficiency: totalShots > 0 ? Math.round((totalGoals / totalShots) * 100) : 0
+        avgEfficiency: totalShots > 0 ? Math.round((totalGoals / totalShots) * 100) : 0,
+        trainingAttended,
+        trainingTotal: totalTrainings
       },
       timeline: playerGames.slice(-10),
       availableSeasons

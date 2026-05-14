@@ -34,6 +34,13 @@ const ResultImageEditor = ({ gameData, onClose }) => {
 
   const [activeTab, setActiveTab] = useState('design');
   const [dragState, setDragState] = useState({ isDragging: false, action: null, startX: 0, startY: 0, originalSettings: null });
+  const [isSaved, setIsSaved] = useState(false);
+
+  const handleSaveDesign = () => {
+    // Falls hier noch eine Cloud-Sync nötig wäre, passiert das bereits automatisch über useResultImage / updateSettings
+    setIsSaved(true);
+    setTimeout(() => setIsSaved(false), 2000);
+  };
 
   useEffect(() => {
     setIsEditMode(true);
@@ -322,6 +329,32 @@ const ResultImageEditor = ({ gameData, onClose }) => {
                 <label className="text-[10px] font-black text-zinc-500 uppercase tracking-widest px-2 flex items-center gap-2">
                   <Type size={14} className="text-brand" /> Instagram Text
                 </label>
+                
+                <div className="space-y-3 bg-black/20 p-4 rounded-2xl border border-white/5">
+                  <div>
+                    <label className="text-[9px] font-bold text-zinc-400 uppercase">Zusätzliche Hashtags</label>
+                    <Input 
+                      placeholder="#deinverein #heimsieg..." 
+                      value={settings.hashtags || ''} 
+                      onChange={(e) => updateSettings({ hashtags: e.target.value })} 
+                      className="mt-1 h-9 text-[10px]"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-[9px] font-bold text-zinc-400 uppercase">Torschützen anzeigen</label>
+                    <Select 
+                      value={settings.scorerFormat || 'last_name'} 
+                      onChange={(e) => updateSettings({ scorerFormat: e.target.value })} 
+                      options={[
+                        { value: 'none', label: 'Nicht anzeigen' },
+                        { value: 'last_name', label: 'Nur Nachname' },
+                        { value: 'full_name', label: 'Vor- & Nachname' }
+                      ]} 
+                      className="mt-1 h-9 text-[10px]"
+                    />
+                  </div>
+                </div>
+
                 <div className="relative group">
                   <textarea 
                     readOnly
@@ -354,7 +387,13 @@ const ResultImageEditor = ({ gameData, onClose }) => {
 
         <div className="p-8 border-t border-white/5 bg-black/40 flex gap-4">
           <Button variant="ghost" className="flex-1 py-4 text-[10px]" onClick={onClose}>Abbrechen</Button>
-          <Button variant="brand" className="flex-1 py-4 text-[10px] shadow-xl shadow-brand/20">Design Speichern</Button>
+          <Button 
+            variant={isSaved ? "outline" : "brand"} 
+            className={`flex-1 py-4 text-[10px] shadow-xl ${isSaved ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/50' : 'shadow-brand/20'}`} 
+            onClick={handleSaveDesign}
+          >
+            {isSaved ? <><Check size={16} className="mr-2"/> Gespeichert!</> : 'Design Speichern'}
+          </Button>
         </div>
       </div>
     </div>

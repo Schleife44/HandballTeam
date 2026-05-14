@@ -1,7 +1,7 @@
 {
   "name": "sechsmeter-v2",
   "private": true,
-  "version": "1.1.0",
+  "version": "1.1.2",
   "type": "module",
   "main": "electron/main.cjs",
   "repository": {
@@ -16,7 +16,10 @@
     "electron:dev": "concurrently \"npm run dev\" \"wait-on http://localhost:5173 && cross-env NODE_ENV=development electron .\"",
     "electron:build": "vite build && electron-builder",
     "deploy:desktop": "vite build && electron-builder --publish always",
-    "dist": "npm run electron:build"
+    "dist": "npm run electron:build",
+    "mobile:sync": "vite build && npx cap copy && npx cap sync",
+    "mobile:open:ios": "npx cap open ios",
+    "mobile:open:android": "npx cap open android"
   },
   "build": {
     "appId": "de.sechsmeter.app",
@@ -41,6 +44,10 @@
     }
   },
   "dependencies": {
+    "@capacitor/android": "^8.3.3",
+    "@capacitor/cli": "^8.3.3",
+    "@capacitor/core": "^8.3.3",
+    "@capacitor/ios": "^8.3.3",
     "@stripe/stripe-js": "^9.3.1",
     "@tailwindcss/vite": "^4.2.4",
     "clsx": "^2.1.1",

@@ -30,7 +30,11 @@ const GameCard = ({ game, onSelect, onDelete }) => {
             <Calendar size={12} />
             {formattedDate}
             <div className="h-3 w-[1px] bg-zinc-800 mx-1" />
-            {(game.isSynced && game.syncReport) ? (
+            {game.isNeutral ? (
+              <Badge variant="outline" className="text-[8px] py-0.5 text-zinc-400 border-zinc-700 bg-zinc-800/30">
+                Neutrales Scouting
+              </Badge>
+            ) : (game.isSynced && game.syncReport) ? (
               <Badge variant="brand" className="text-[8px] py-0.5">
                 <CheckCircle2 size={10} className="mr-1" /> Abgeglichen
               </Badge>

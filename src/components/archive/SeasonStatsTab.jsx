@@ -1,4 +1,5 @@
 import React, { useState, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Users, Trophy, TrendingUp, Search, ArrowUpDown, Filter } from 'lucide-react';
 
 // Store
@@ -14,6 +15,8 @@ import SeasonSelector from './components/SeasonSelector';
 import { useHistory } from '../../hooks/useHistory';
 
 const SeasonStatsTab = () => {
+  const navigate = useNavigate();
+  const { squad } = useStore();
   const {
     loading,
     selectedSeason,
@@ -28,8 +31,55 @@ const SeasonStatsTab = () => {
   const aggregatedStats = useMemo(() => {
     const stats = {}; // Key: playerName
     
-    (filteredGames || []).forEach(game => {
-      // SaaS OPTIMIZATION: Use pre-calculated summary if available (and contains 7m data)
+    // Initialize with all roster players
+    (squad?.home || []).forEach(p => {
+      const key = normalizeSearchString(p.name);
+      stats[key] = { 
+        id: p.number || '?', 
+        name: p.name, 
+        tore: 0, 
+        fehlwurf: 0, 
+        siebenMeterTore: 0, 
+        siebenMeterVersuche: 0, 
+        gelb: 0, 
+        zweiMinuten: 0, 
+        rot: 0, 
+        games: new Set(),
+        trainingAttended: 0,
+        totalTrainingInSeason: 0
+      };
+    });
+
+    // 1. Calculate Training Participation
+    const trainingsInSeason = (squad?.calendarEvents || []).filter(e => {
+      if (!e.date || (e.type?.toUpperCase() !== 'TRAINING' && e.type !== 'training')) return false;
+      
+      // Season detection logic
+      const d = new Date(e.date);
+      const year = d.getFullYear();
+      const month = d.getMonth();
+      const season = month >= 6 ? `${String(year).slice(-2)}/${String(year+1).slice(-2)}` : `${String(year-1).slice(-2)}/${String(year).slice(-2)}`;
+      
+      return season === selectedSeason;
+    });
+
+    const totalTrainings = trainingsInSeason.length;
+
+    trainingsInSeason.forEach(event => {
+      Object.entries(event.responses || {}).forEach(([name, res]) => {
+        const key = normalizeSearchString(name);
+        if (stats[key]) {
+          stats[key].totalTrainingInSeason = totalTrainings;
+          if (res.status === 'going') {
+            stats[key].trainingAttended++;
+          }
+        }
+      });
+    });
+
+    // 2. Calculate Game Stats
+    (filteredGames || []).filter(g => !g.isNeutral).forEach(game => {
+      // SaaS OPTIMIZATION: Use pre-calculated summary
       if (game.statsSummary && game.statsSummary.playerStats) {
         const { playerStats, playerNames } = game.statsSummary;
         const hasSevenMeterData = Object.values(playerStats).some(s => s.sevenMeterTotal !== undefined);
@@ -40,7 +90,7 @@ const SeasonStatsTab = () => {
             const key = normalizeSearchString(pName);
 
             if (!stats[key]) {
-              stats[key] = { id: pId, name: pName, tore: 0, fehlwurf: 0, siebenMeterTore: 0, siebenMeterVersuche: 0, gelb: 0, zweiMinuten: 0, rot: 0, games: new Set() };
+              stats[key] = { id: pId, name: pName, tore: 0, fehlwurf: 0, siebenMeterTore: 0, siebenMeterVersuche: 0, gelb: 0, zweiMinuten: 0, rot: 0, games: new Set(), trainingAttended: 0, totalTrainingInSeason: totalTrainings };
             }
             
             stats[key].games.add(game.id);
@@ -56,7 +106,7 @@ const SeasonStatsTab = () => {
         }
       }
 
-      // Legacy Fallback: Process raw log
+      // Legacy Fallback
       const log = game?.gameLog || game?.log;
       if (!game || !log) return;
       
@@ -69,7 +119,7 @@ const SeasonStatsTab = () => {
         const key = normalizeSearchString(pName);
 
         if (!stats[key]) {
-          stats[key] = { id: pId, name: pName, tore: 0, fehlwurf: 0, siebenMeterTore: 0, siebenMeterVersuche: 0, gelb: 0, zweiMinuten: 0, rot: 0, games: new Set() };
+          stats[key] = { id: pId, name: pName, tore: 0, fehlwurf: 0, siebenMeterTore: 0, siebenMeterVersuche: 0, gelb: 0, zweiMinuten: 0, rot: 0, games: new Set(), trainingAttended: 0, totalTrainingInSeason: totalTrainings };
         }
 
         stats[key].games.add(game.id);
@@ -101,9 +151,10 @@ const SeasonStatsTab = () => {
       ...p,
       totalGames: p.games.size,
       totalAttempts: p.tore + p.fehlwurf,
-      efficiency: (p.tore + p.fehlwurf) > 0 ? Math.round((p.tore / (p.tore + p.fehlwurf)) * 100) : 0
+      efficiency: (p.tore + p.fehlwurf) > 0 ? Math.round((p.tore / (p.tore + p.fehlwurf)) * 100) : 0,
+      trainingTotal: totalTrainings
     }));
-  }, [filteredGames]);
+  }, [filteredGames, squad, selectedSeason]);
 
   const sortedStats = useMemo(() => {
     const sorted = [...aggregatedStats].filter(p => fuzzyMatch(p.name, searchTerm));
@@ -192,6 +243,7 @@ const SeasonStatsTab = () => {
             <thead>
               <tr className="bg-zinc-950/50">
                 <th onClick={() => requestSort('name')} className="px-6 py-4 text-[10px] font-black text-zinc-500 uppercase tracking-widest cursor-pointer hover:text-zinc-300 transition-colors">Spieler <ArrowUpDown size={10} className="inline ml-1" /></th>
+                <th onClick={() => requestSort('trainingAttended')} className="px-6 py-4 text-[10px] font-black text-zinc-500 uppercase tracking-widest cursor-pointer hover:text-zinc-300 transition-colors text-center text-blue-400">Training</th>
                 <th onClick={() => requestSort('totalGames')} className="px-6 py-4 text-[10px] font-black text-zinc-500 uppercase tracking-widest cursor-pointer hover:text-zinc-300 transition-colors text-center">Einsätze</th>
                 <th onClick={() => requestSort('tore')} className="px-6 py-4 text-[10px] font-black text-zinc-500 uppercase tracking-widest cursor-pointer hover:text-zinc-300 transition-colors text-center text-brand">Tore</th>
                 <th onClick={() => requestSort('siebenMeterTore')} className="px-6 py-4 text-[10px] font-black text-zinc-500 uppercase tracking-widest cursor-pointer hover:text-zinc-300 transition-colors text-center text-orange-400">7m</th>
@@ -208,8 +260,16 @@ const SeasonStatsTab = () => {
                       <div className="w-8 h-8 rounded-full bg-zinc-800 flex items-center justify-center text-[10px] font-bold text-zinc-400 group-hover:bg-brand group-hover:text-black transition-all">
                         {p.id}
                       </div>
-                      <span className="text-sm font-bold text-zinc-100">{p.name}</span>
+                      <span 
+                        className="text-sm font-bold text-zinc-100 cursor-pointer hover:text-brand transition-colors"
+                        onClick={() => navigate(`/roster/${p.name}`)}
+                      >
+                        {p.name}
+                      </span>
                     </div>
+                  </td>
+                  <td className="px-6 py-4 text-center">
+                    <span className="text-sm font-black text-blue-400">{p.trainingAttended}/{p.totalTrainingInSeason}</span>
                   </td>
                   <td className="px-6 py-4 text-center text-sm font-mono text-zinc-400">{p.totalGames}</td>
                   <td className="px-6 py-4 text-center text-sm font-black text-brand">{p.tore}</td>

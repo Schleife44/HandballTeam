@@ -1,4 +1,4 @@
-import { auth, db } from '../../services/firebase';
+import { auth, db, storage } from '../../services/firebase';
 import { 
   onAuthStateChanged, 
   signInWithEmailAndPassword, 
@@ -6,8 +6,11 @@ import {
   signOut,
   GoogleAuthProvider,
   signInWithPopup,
-  signInWithRedirect
+  signInWithRedirect,
+  updateProfile,
+  sendPasswordResetEmail
 } from 'firebase/auth';
+import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { doc, getDoc, getDocs, setDoc, updateDoc, deleteDoc, collection, serverTimestamp, arrayUnion, query, where } from 'firebase/firestore';
 import syncService from '../../services/SyncService';
 
@@ -117,11 +120,36 @@ export const createAuthSlice = (set, get) => ({
     set({ isMemberLoading: true });
     try {
       const memberRef = doc(db, 'teams', activeTeamId, 'members', user.uid);
-      const snap = await getDoc(memberRef);
+      let snap = await getDoc(memberRef);
+      
+      // 1. Direct match by UID
       if (snap.exists()) {
         const data = snap.data();
         set({ activeMember: data, isMemberLoading: false });
         return data;
+      }
+
+      // 2. Fallback: Search by Email if UID didn't match (Case-Insensitive)
+      if (user.email) {
+        const normalizedUserEmail = user.email.toLowerCase();
+        console.log(`[Auth] No UID match for ${user.uid}, searching by email: ${normalizedUserEmail}`);
+        
+        const membersRef = collection(db, 'teams', activeTeamId, 'members');
+        const emailSnap = await getDocs(membersRef); // Fetch all to be case-insensitive
+        
+        const matchingMemberDoc = emailSnap.docs.find(doc => 
+          doc.data().email?.toLowerCase() === normalizedUserEmail
+        );
+        
+        if (matchingMemberDoc) {
+          const data = { ...matchingMemberDoc.data(), uid: user.uid };
+          
+          // Link this UID to the existing record
+          await setDoc(doc(db, 'teams', activeTeamId, 'members', user.uid), data);
+          
+          set({ activeMember: data, isMemberLoading: false });
+          return data;
+        }
       }
     } catch (e) {
       console.error('[Auth] Failed to fetch active member:', e);
@@ -215,12 +243,88 @@ export const createAuthSlice = (set, get) => ({
   loginWithGoogle: async () => {
     try {
       const provider = new GoogleAuthProvider();
-      // Using popup again as COOP policy is now handled in vite.config.js
+      // Reverted to popup as requested. COOP is now handled via firebase.json headers.
       await signInWithPopup(auth, provider);
       return { success: true };
     } catch (error) {
       console.error('[Auth] Google Login Error:', error);
       return { success: false, error: error.message };
+    }
+  },
+
+  updateUserProfile: async (data) => {
+    const { user } = get();
+    if (!user) return { success: false };
+
+    try {
+      // 1. Update Firebase Auth Profile
+      await updateProfile(auth.currentUser, {
+        displayName: data.displayName,
+        photoURL: data.photoURL
+      });
+
+      // 2. Update Firestore User Doc
+      const userRef = doc(db, 'users', user.uid);
+      await updateDoc(userRef, {
+        displayName: data.displayName,
+        photoURL: data.photoURL,
+        updatedAt: serverTimestamp()
+      });
+
+      // 3. Update local state
+      set({ 
+        user: { ...auth.currentUser },
+        profile: { ...get().profile, ...data }
+      });
+
+      return { success: true };
+    } catch (e) {
+      console.error('[Auth] Profile update failed:', e);
+      return { success: false, error: e.message };
+    }
+  },
+
+  uploadProfilePicture: async (file) => {
+    const { user, updateUserProfile } = get();
+    if (!user || !file) return { success: false, error: 'User or file missing' };
+
+    try {
+      console.log('[Auth] Starting upload for user:', user.uid);
+      if (!storage) throw new Error('Firebase Storage not initialized');
+
+      const fileRef = ref(storage, `avatars/${user.uid}`);
+      console.log('[Auth] Uploading to:', fileRef.fullPath);
+      
+      // Add a 10-second timeout to the upload
+      const uploadPromise = uploadBytes(fileRef, file);
+      const timeoutPromise = new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('Upload-Timeout: Bitte prüfe deine Internetverbindung und ob Firebase Storage in der Console aktiviert ist.')), 10000)
+      );
+
+      await Promise.race([uploadPromise, timeoutPromise]);
+      console.log('[Auth] Upload successful, getting URL...');
+      
+      const photoURL = await getDownloadURL(fileRef);
+      console.log('[Auth] Download URL obtained:', photoURL);
+      
+      const res = await updateUserProfile({ photoURL });
+      return res;
+    } catch (e) {
+      console.error('[Auth] Photo upload failed details:', e);
+      if (e.code === 'storage/unauthorized') {
+        return { success: false, error: 'Berechtigung verweigert. Bitte prüfe deine Firebase Storage Regeln.' };
+      }
+      return { success: false, error: e.message || 'Unbekannter Fehler beim Upload' };
+    }
+  },
+
+  resetPassword: async (email) => {
+    try {
+      await sendPasswordResetEmail(auth, email || get().user?.email);
+      return { success: true };
+    } catch (e) {
+      console.error('[Auth] Password reset failed:', e);
+      return { success: false, error: e.message };
     }
   },
 

@@ -77,10 +77,12 @@ export default function Sidebar({ isSidebarOpen }) {
   const isClubMode = activeTeamId === 'CLUB_OVERVIEW';
 
   return (
-    <aside className={`
-      ${isSidebarOpen ? 'w-52' : 'w-20'} 
-      bg-zinc-950 border-r border-zinc-900 transition-all duration-300 hidden lg:flex flex-col p-3 z-50
-    `}>
+    <aside 
+      className={`
+        ${isSidebarOpen ? 'w-52' : 'w-20'} 
+        transition-all duration-300 hidden lg:flex flex-col p-3 z-50 border-r border-white/5 bg-zinc-950/50 backdrop-blur-xl
+      `}
+    >
       <div className={`flex items-center ${isSidebarOpen ? 'gap-2.5 px-2' : 'justify-center'} mb-8 group cursor-pointer`}>
         <div className="w-8 h-8 bg-brand rounded-lg flex items-center justify-center flex-shrink-0 shadow-[0_0_15px_rgba(132,204,22,0.3)] group-hover:rotate-[10deg] group-hover:scale-110 transition-all duration-500">
           <span className="text-black font-black text-lg">6m</span>

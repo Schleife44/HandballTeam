@@ -29,6 +29,9 @@ const PlayerCard = ({
   const isTrainer = activeMember?.role === 'trainer' || isOwner;
   const isMe = activeMember?.playerName === player.name || activeMember?.playerId === player.id;
   const canEdit = isTrainer || isMe;
+  
+  const linkedMember = allMembers.find(m => m.playerName === player.name || m.playerId === player.id);
+  const photoURL = linkedMember?.photoURL;
 
   return (
     <motion.div
@@ -83,9 +86,13 @@ const PlayerCard = ({
         ) : (
           <div className="flex items-center gap-5">
             <div 
-              className="w-14 h-14 rounded-2xl flex items-center justify-center text-xl font-black italic bg-brand/10 text-brand border border-brand/20 shadow-[0_0_15px_rgba(132,204,22,0.1)]"
+              className="w-14 h-14 rounded-2xl flex items-center justify-center text-xl font-black italic bg-brand/10 text-brand border border-brand/20 shadow-[0_0_15px_rgba(132,204,22,0.1)] overflow-hidden"
             >
-              {player.number}
+              {photoURL ? (
+                <img src={photoURL} alt={player.name} className="w-full h-full object-cover" />
+              ) : (
+                player.number
+              )}
             </div>
             <div className="flex-1 min-w-0">
               <h4 className="text-sm font-black text-zinc-100 uppercase italic tracking-tight truncate">{player.name}</h4>

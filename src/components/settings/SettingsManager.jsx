@@ -1,8 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { 
-  Save, Shield, Sword, Target, Users,
-  RefreshCw, Calendar, RotateCcw, Info, Check, XCircle, AlertTriangle
-} from 'lucide-react';
+import React, { useState } from 'react';
+import { Save, Shield, Sword, Target, RotateCcw, Info, Check, XCircle, AlertTriangle } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 // Store
@@ -10,38 +7,38 @@ import useStore from '../../store/useStore';
 
 // UI Components
 import Button from '../ui/Button';
+import Modal from '../ui/Modal';
 import SettingsSection from './parts/SettingsSection';
 import AnalysisModeSection from './parts/AnalysisModeSection';
-import { TeamConfig, PlayerProfile } from './parts/IdentitySection';
+import { TeamConfig } from './parts/IdentitySection';
 import SyncSection from './parts/SyncSection';
 import HiddenEventsList from './parts/HiddenEventsList';
 import DataManagementSection from './parts/DataManagementSection';
 import MemberManager from './parts/MemberManager';
 import ClubMemberManager from './parts/ClubMemberManager';
-import Modal from '../ui/Modal';
+import InviteLinkSection from './parts/InviteLinkSection';
+
+// Utils
+import { calculateMeetingTime, processEventResponses } from '../../utils/settingsUtils';
 
 const SettingsManager = () => {
-  // --- STORE ---
   const { 
     squad, updateSettings, setCalendarEvents, resetAll, 
     activeTeamId, restoreEvent, activeMember, deleteTeam, 
     leaveTeam, allTeams, user, allMembers 
   } = useStore();
-  const { settings = {}, home = [], away = [], hiddenEventIds = [] } = squad || {};
+
+  const { settings = {}, home = [], away = [], hiddenEventIds = [], calendarEvents = [] } = squad || {};
 
   const isClubMode = activeTeamId === 'CLUB_OVERVIEW';
-  const myTeams = allTeams || [];
-  const isClubOwner = myTeams.some(t => t.ownerUid === user?.uid);
-
-  const myUid = activeMember?.uid || '';
-  const ownerUid = squad?.ownerUid || '';
-  const isOwner = myUid === ownerUid;
+  const isClubOwner = (allTeams || []).some(t => t.ownerUid === user?.uid);
+  const isOwner = activeMember?.uid === squad?.ownerUid;
   const isTrainer = activeMember?.role === 'trainer' || isOwner;
 
   const [hasChanges, setHasChanges] = useState(false);
   const [notification, setNotification] = useState(null);
   const [showResetConfirm, setShowResetConfirm] = useState(false);
-  const [confirmModal, setConfirmModal] = useState(null); // 'delete' | 'leave'
+  const [confirmModal, setConfirmModal] = useState(null); 
   const [isSyncing, setIsSyncing] = useState(false);
 
   const notify = (msg, type = 'success') => {
@@ -49,111 +46,39 @@ const SettingsManager = () => {
     setTimeout(() => setNotification(null), 3000);
   };
 
-  if (isClubMode && !isClubOwner) {
-    return (
-      <div className="flex flex-col items-center justify-center py-20 text-center space-y-6 animate-in fade-in zoom-in duration-500">
-        <div className="w-20 h-20 bg-red-500/10 rounded-full flex items-center justify-center text-red-500">
-          <Shield size={40} />
-        </div>
-        <div className="space-y-2">
-          <h2 className="text-2xl font-black text-white uppercase italic">Zugriff verweigert</h2>
-          <p className="text-zinc-500 text-xs font-bold uppercase tracking-widest max-w-sm">
-            Du hast keine Berechtigung, die Mitglieder dieses Vereins zu verwalten. Diese Funktion ist Club-Administratoren vorbehalten.
-          </p>
-        </div>
-      </div>
+  const getActiveRoster = () => (home || []).filter(p => {
+    const pName = p.name?.trim().toLowerCase();
+    return !p.isInactive && (allMembers || []).some(m => 
+      (m.playerName?.trim().toLowerCase() === pName) || (m.playerId === p.id)
     );
-  }
+  });
 
   const handleUpdate = (key, value) => {
     updateSettings({ [key]: value });
     setHasChanges(true);
   };
 
-  const handleSave = () => {
-    setHasChanges(false);
-    notify('Einstellungen erfolgreich gespeichert');
-  };
-
   const handleApplyToAll = () => {
-    const getMeetingTime = (timeStr, offset) => {
-      if (!timeStr || !offset) return '';
-      try {
-        const [h, m] = timeStr.replace(' Uhr', '').split(':').map(Number);
-        const d = new Date();
-        d.setHours(h, m, 0, 0);
-        d.setMinutes(d.getMinutes() - offset);
-        return d.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' });
-      } catch { return ''; }
-    };
-
-    const currentHome = (squad?.home || []).filter(p => {
-      const pName = p.name?.trim().toLowerCase();
-      return !p.isInactive && (allMembers || []).some(m => 
-        (m.playerName?.trim().toLowerCase() === pName) || (m.playerId === p.id)
-      );
-    });
-
-    const updatedEvents = (squad.calendarEvents || []).map(event => {
-      let responses = { ...(event.responses || {}) };
-
-      if (settings.autoDabei) {
-        // 1. Remove auto-generated responses for players who are no longer in currentHome (unlinked/inactive)
-        const currentHomeNames = new Set(currentHome.map(p => p.name?.trim()).filter(Boolean));
-        Object.keys(responses).forEach(name => {
-          if (responses[name]?.isAutoGenerated && !currentHomeNames.has(name)) {
-            delete responses[name];
-          }
-        });
-
-        // 2. Add missing auto-generated responses for linked players
-        currentHome.forEach(p => {
-          const name = p.name?.trim();
-          if (name && !responses[name]) {
-            responses[name] = { 
-              status: 'going', 
-              reason: '', 
-              timestamp: new Date().toISOString(), 
-              isAutoGenerated: true 
-            };
-          }
-        });
-      }
-
-      return {
-        ...event,
-        isMandatory: settings.absageGrundPflicht,
-        isAutoGoing: settings.autoDabei,
-        deadline: settings.absageDeadline,
-        meetingTime: getMeetingTime(event.time, settings.defaultMeetingOffset),
-        responses
-      };
-    });
+    const activeRoster = getActiveRoster();
+    const updatedEvents = (calendarEvents || []).map(event => ({
+      ...event,
+      isMandatory: settings.absageGrundPflicht,
+      isAutoGoing: settings.autoDabei,
+      deadline: settings.absageDeadline,
+      meetingTime: calculateMeetingTime(event.time, settings.defaultMeetingOffset),
+      responses: processEventResponses(event, event.responses, settings, activeRoster)
+    }));
     
     setCalendarEvents(updatedEvents);
     notify('Einstellungen auf alle Spiele angewendet!');
   };
 
   const handleSync = async () => {
-    if (!settings.teamId) return notify('Bitte zuerst Handball.net Link einfügen', 'error');
+    if (!settings.teamId && !settings.hnetUrl) return notify('Bitte zuerst Handball.net Link einfügen', 'error');
     setIsSyncing(true);
     
     try {
-      const getMeetingTime = (timeStr, offset) => {
-        if (!timeStr || !offset) return '';
-        try {
-          const [h, m] = timeStr.replace(' Uhr', '').split(':').map(Number);
-          const d = new Date();
-          d.setHours(h, m, 0, 0);
-          d.setMinutes(d.getMinutes() - offset);
-          return d.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' });
-        } catch { return ''; }
-      };
-
       const { syncToCalendar } = await import('../../services/handballNetService');
-      
-      // Fallback: If teamId is missing or seems to be the wrong ID (e.g. Firebase ID), 
-      // try to extract it from the URL before syncing.
       let effectiveTeamId = settings.teamId;
       if ((!effectiveTeamId || effectiveTeamId.length > 15) && settings.hnetUrl) {
         const match = settings.hnetUrl.match(/mannschaften\/([^/]+)/);
@@ -161,327 +86,83 @@ const SettingsManager = () => {
       }
 
       const hnetEvents = await syncToCalendar(effectiveTeamId, settings.homeName);
-      
-      const existingEvents = squad.calendarEvents || [];
+      const activeRoster = getActiveRoster();
 
       const newCalendarEvents = hnetEvents.map(hEvent => {
-        const existing = existingEvents.find(e => e.hnetGameId === hEvent.hnetGameId);
-        let responses = (existing?.responses && !Array.isArray(existing.responses)) ? { ...existing.responses } : {};
-        
-        // Auto-attendance logic: Fill in missing responses for all ACTIVE & LINKED roster players
-        if (settings.autoDabei && !hEvent.status?.includes('archived')) {
-          const currentHome = (squad?.home || []).filter(p => {
-            const pName = p.name?.trim().toLowerCase();
-            return !p.isInactive && (allMembers || []).some(m => 
-              (m.playerName?.trim().toLowerCase() === pName) || (m.playerId === p.id)
-            );
-          });
-
-          // Remove old auto-generated responses for unlinked/inactive players
-          const currentHomeNames = new Set(currentHome.map(p => p.name?.trim()).filter(Boolean));
-          Object.keys(responses).forEach(name => {
-            if (responses[name]?.isAutoGenerated && !currentHomeNames.has(name)) {
-              delete responses[name];
-            }
-          });
-
-          // Add missing ones
-          currentHome.forEach(p => {
-            const playerName = p.name?.trim();
-            if (playerName && playerName !== "" && (!responses || !responses[playerName])) {
-              responses[playerName] = { 
-                status: 'going', 
-                reason: '', 
-                timestamp: new Date().toISOString(),
-                isAutoGenerated: true 
-              };
-            }
-          });
-        }
-
+        const existing = calendarEvents.find(e => e.hnetGameId === hEvent.hnetGameId);
         return { 
           ...hEvent, 
-          responses,
-          meetingTime: existing?.meetingTime || getMeetingTime(hEvent.time, settings.defaultMeetingOffset),
-          isMandatory: existing?.isMandatory !== undefined ? existing.isMandatory : settings.absageGrundPflicht,
-          isAutoGoing: existing?.isAutoGoing !== undefined ? existing.isAutoGoing : settings.autoDabei,
-          deadline: existing?.deadline !== undefined ? existing.deadline : settings.absageDeadline
+          responses: processEventResponses(hEvent, existing?.responses, settings, activeRoster),
+          meetingTime: existing?.meetingTime || calculateMeetingTime(hEvent.time, settings.defaultMeetingOffset),
+          isMandatory: existing?.isMandatory ?? settings.absageGrundPflicht,
+          isAutoGoing: existing?.isAutoGoing ?? settings.autoDabei,
+          deadline: existing?.deadline ?? settings.absageDeadline
         };
       });
 
-      const nonHnetEvents = existingEvents.filter(e => !e.hnetGameId);
+      const nonHnetEvents = calendarEvents.filter(e => !e.hnetGameId);
       setCalendarEvents([...nonHnetEvents, ...newCalendarEvents]);
-      
-      setHasChanges(false);
-      notify('Spielplan erfolgreich synchronisiert!');
+      notify('Spielplan synchronisiert!');
     } catch (e) {
       notify('Fehler: ' + e.message, 'error');
-    } finally {
-      setIsSyncing(false);
-    }
+    } finally { setIsSyncing(false); }
   };
 
-  const handleReset = async () => {
-    await resetAll();
-    window.location.reload();
-  };
-
-  const colors = ['#84cc16', '#dc3545', '#2563eb', '#f59e0b', '#7c3aed', '#ec4899', '#3f3f46', '#ffffff'];
-
-  if (isClubMode) {
+  if (isClubMode && !isClubOwner) {
     return (
-      <div className="max-w-[1000px] mx-auto space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500 pb-20">
-        <div>
-          <h2 className="text-3xl font-black tracking-tighter uppercase italic text-zinc-100">Mitglieder & Rechte</h2>
-          <p className="text-xs font-bold text-zinc-500 uppercase tracking-widest mt-1">Verwalte alle Nutzer deiner Organisation</p>
-        </div>
-        
-        <SettingsSection title="Globale Mitglieder-Verwaltung" icon={Shield} iconColor="purple" className="relative z-[30] !overflow-visible">
-          <ClubMemberManager />
-        </SettingsSection>
-
-        {/* Notifications */}
-        <AnimatePresence>
-          {notification && (
-            <motion.div 
-              initial={{ y: 50, opacity: 0 }}
-              animate={{ y: 0, opacity: 1 }}
-              exit={{ y: 50, opacity: 0 }}
-              className={`fixed bottom-8 left-1/2 -translate-x-1/2 px-6 py-4 rounded-2xl shadow-2xl z-[100] border backdrop-blur-xl flex items-center gap-3
-                ${notification.type === 'error' ? 'bg-red-500/90 border-red-500 text-white' : 'bg-zinc-900/90 border-brand/50 text-brand'}`}
-            >
-              {notification.type === 'error' ? <XCircle size={18} /> : <Check size={18} />}
-              <span className="text-[10px] font-black uppercase tracking-widest">{notification.msg}</span>
-            </motion.div>
-          )}
-        </AnimatePresence>
+      <div className="flex flex-col items-center justify-center py-20 text-center space-y-6">
+        <div className="w-20 h-20 bg-red-500/10 rounded-full flex items-center justify-center text-red-500"><Shield size={40} /></div>
+        <h2 className="text-2xl font-black text-white uppercase italic">Zugriff verweigert</h2>
       </div>
     );
   }
 
-  return (
-    <div className="max-w-[1000px] mx-auto space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500 pb-20 overflow-x-hidden px-1">
+  const colors = ['#84cc16', '#dc3545', '#2563eb', '#f59e0b', '#7c3aed', '#ec4899', '#3f3f46', '#ffffff'];
 
-      
-      {/* Header */}
+  return (
+    <div className="max-w-[1000px] mx-auto space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500 pb-20 px-1">
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-3xl font-black tracking-tighter uppercase italic text-zinc-100">System-Einstellungen</h2>
           <p className="text-xs font-bold text-zinc-500 uppercase tracking-widest mt-1">Konfiguriere dein Sechsmeter Erlebnis</p>
         </div>
-        
-        {hasChanges && isTrainer && (
-          <Button 
-            variant="primary" 
-            size="lg" 
-            icon={Save} 
-            onClick={handleSave}
-            className="animate-in fade-in zoom-in-95"
-          >
-            Änderungen Speichern
-          </Button>
-        )}
+        {hasChanges && isTrainer && <Button variant="primary" size="lg" onClick={() => { setHasChanges(false); notify('Gespeichert'); }}>Speichern</Button>}
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-        
-        {/* Analysis Mode */}
-        <SettingsSection title="Analyse-Modus (Wurferfassung)" icon={Target} iconColor="blue" className="md:col-span-2">
-          <AnalysisModeSection 
-            isZoneMode={settings.isZoneMode} 
-            onUpdate={handleUpdate} 
-          />
+        <SettingsSection title="Analyse-Modus" icon={Target} iconColor="blue" className="md:col-span-2">
+          <AnalysisModeSection isZoneMode={settings.isZoneMode} onUpdate={handleUpdate} />
         </SettingsSection>
 
-        {/* Identity Section */}
-        <SettingsSection title="Heim-Team (Identity)" icon={Sword} iconColor="brand">
-          <TeamConfig 
-            label="Dein Teamname"
-            name={settings.homeName}
-            season={settings.currentSeason}
-            color={settings.homeColor}
-            colors={colors}
-            onUpdateName={(val) => handleUpdate('homeName', val)}
-            onUpdateSeason={(val) => handleUpdate('currentSeason', val)}
-            onUpdateColor={(val) => handleUpdate('homeColor', val)}
-            isTrainer={isTrainer}
-          />
+        <SettingsSection title="Heim-Team" icon={Sword} iconColor="brand">
+          <TeamConfig label="Name" name={settings.homeName} color={settings.homeColor} colors={colors} onUpdateName={(v) => handleUpdate('homeName', v)} onUpdateColor={(v) => handleUpdate('homeColor', v)} isTrainer={isTrainer} />
         </SettingsSection>
 
-        <SettingsSection title="Gast-Team (Gegner)" icon={Shield} iconColor="zinc">
-          <TeamConfig 
-            label="Gegner Name"
-            name={settings.awayName}
-            color={settings.awayColor}
-            colors={colors}
-            onUpdateName={(val) => handleUpdate('awayName', val)}
-            onUpdateColor={(val) => handleUpdate('awayColor', val)}
-            isTrainer={isTrainer}
-          />
+        <SettingsSection title="Gast-Team" icon={Shield} iconColor="zinc">
+          <TeamConfig label="Name" name={settings.awayName} color={settings.awayColor} colors={colors} onUpdateName={(v) => handleUpdate('awayName', v)} onUpdateColor={(v) => handleUpdate('awayColor', v)} isTrainer={isTrainer} />
         </SettingsSection>
 
-        {/* Invite Section */}
-        <SettingsSection title="Mitspieler einladen" icon={Users} iconColor="brand" className="md:col-span-2 bg-gradient-to-br from-brand/10 to-transparent">
-          <div className="flex flex-col md:flex-row gap-6 items-center">
-            <div className="flex-1 space-y-2">
-              <h4 className="text-sm font-black text-white uppercase italic">Sicherer Team-Beitrittslink</h4>
-              <p className="text-[10px] font-bold text-zinc-500 uppercase leading-relaxed">
-                Generiere einen Link mit Sicherheitstoken. Dieser Link ist aus Sicherheitsgründen 48 Stunden gültig. 
-                Veraltete Links verlieren automatisch ihre Gültigkeit.
-              </p>
-              {settings.inviteToken && (
-                <div className="flex items-center gap-2 mt-2">
-                  <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
-                    <span className="text-[9px] font-black text-zinc-400 uppercase tracking-widest break-all">
-                    Aktiver Token: {settings.inviteToken} <br className="sm:hidden" /> (Gültig bis: {new Date(settings.inviteTokenExpiresAt).toLocaleString('de-DE')})
-                  </span>
-                </div>
-              )}
-            </div>
-            <div className="w-full xl:w-auto flex flex-col sm:flex-row gap-2">
-              <div className="relative flex-1 md:w-80">
-                <input 
-                  readOnly
-                  value={settings.inviteToken ? `${window.location.origin}/join/${activeTeamId || ''}?token=${settings.inviteToken}` : 'Kein aktiver Link'}
-                  className="w-full bg-black/60 border border-zinc-800 rounded-2xl px-6 py-4 text-xs font-bold text-zinc-400 outline-none focus:border-brand transition-all"
-                />
-              </div>
-              <div className="flex gap-2">
-                {settings.inviteToken && (
-                  <Button 
-                    variant="primary" 
-                    size="lg"
-                    onClick={() => {
-                      navigator.clipboard.writeText(`${window.location.origin}/join/${activeTeamId || ''}?token=${settings.inviteToken}`);
-                      notify('Sicherheits-Link kopiert!');
-                    }}
-                  >
-                    Kopieren
-                  </Button>
-                )}
-                <Button 
-                  variant="outline" 
-                  size="lg"
-                  icon={RefreshCw}
-                  onClick={async () => {
-                    const { generateInviteToken } = useStore.getState();
-                    await generateInviteToken();
-                    notify('Neuer Sicherheits-Link generiert!');
-                  }}
-                >
-                  {settings.inviteToken ? 'Erneuern' : 'Generieren'}
-                </Button>
-              </div>
-            </div>
-          </div>
+        <InviteLinkSection activeTeamId={activeTeamId} settings={settings} notify={notify} />
+
+        <SettingsSection title="Mitglieder" icon={Shield} iconColor="blue" className="md:col-span-2 relative z-[30]"><MemberManager /></SettingsSection>
+
+        <SettingsSection title="Handball.net & Kalender" icon={Shield} iconColor="brand" className="md:col-span-2 relative z-10">
+          <SyncSection hnetUrl={settings.hnetUrl} settings={settings} onUpdate={handleUpdate} onSync={handleSync} onApplyToAll={handleApplyToAll} isSyncing={isSyncing} isTrainer={isTrainer} />
+          <HiddenEventsList hiddenIds={hiddenEventIds} onRestore={restoreEvent} />
         </SettingsSection>
 
-        {/* Member Management */}
-        <SettingsSection title="Mitglieder-Verwaltung" icon={Shield} iconColor="blue" className="md:col-span-2 relative z-[30] !overflow-visible">
-          <MemberManager />
-        </SettingsSection>
-
-        {/* Sync & Calendar */}
-        <SettingsSection title="Handball.net & Kalender" icon={Calendar} iconColor="brand" className="md:col-span-2 relative z-10">
-          <SyncSection 
-            hnetUrl={settings.hnetUrl}
-            onUrlChange={(val) => {
-              handleUpdate('hnetUrl', val);
-              const match = val.match(/mannschaften\/([^/]+)/);
-              if (match && match[1]) handleUpdate('teamId', match[1]);
-            }}
-            settings={settings}
-            onUpdate={handleUpdate}
-            onSync={handleSync}
-            onApplyToAll={handleApplyToAll}
-            isSyncing={isSyncing}
-            isTrainer={isTrainer}
-          />
-          <HiddenEventsList 
-            hiddenIds={hiddenEventIds} 
-            onRestore={restoreEvent} 
-          />
-        </SettingsSection>
-
-        {/* Data Management */}
         {isTrainer && (
           <SettingsSection title="Gefahrenzone" icon={RotateCcw} iconColor="red" className="md:col-span-2">
-            <DataManagementSection 
-              showResetConfirm={showResetConfirm}
-              onReset={handleReset}
-              onConfirmToggle={() => {
-                if(!showResetConfirm) {
-                  setShowResetConfirm(true);
-                  setTimeout(() => setShowResetConfirm(false), 5000);
-                } else {
-                  handleReset();
-                }
-              }}
-              isOwner={isOwner}
-              onDeleteTeam={() => setConfirmModal('delete')}
-              onLeaveTeam={() => setConfirmModal('leave')}
-            />
+            <DataManagementSection showResetConfirm={showResetConfirm} onReset={resetAll} onConfirmToggle={() => { setShowResetConfirm(true); setTimeout(() => setShowResetConfirm(false), 5000); }} isOwner={isOwner} onDeleteTeam={() => setConfirmModal('delete')} onLeaveTeam={() => setConfirmModal('leave')} />
           </SettingsSection>
         )}
-
-        {/* Custom Confirmation Modals */}
-        <Modal
-          isOpen={!!confirmModal}
-          onClose={() => setConfirmModal(null)}
-          title={confirmModal === 'delete' ? 'Team permanent löschen' : 'Team verlassen'}
-          footer={
-            <div className="flex gap-4 w-full">
-              <Button variant="ghost" className="flex-1" onClick={() => setConfirmModal(null)}>Abbrechen</Button>
-              <Button 
-                variant="danger" 
-                className="flex-1" 
-                onClick={async () => {
-                  if (confirmModal === 'delete') await deleteTeam();
-                  else await leaveTeam();
-                  window.location.reload();
-                }}
-              >
-                {confirmModal === 'delete' ? 'Team löschen' : 'Team verlassen'}
-              </Button>
-            </div>
-          }
-        >
-          <div className="py-6 text-center space-y-4">
-            <div className="w-16 h-16 bg-red-500/10 rounded-full flex items-center justify-center mx-auto text-red-500">
-              <AlertTriangle size={32} />
-            </div>
-            <p className="text-zinc-400 text-sm leading-relaxed">
-              {confirmModal === 'delete' 
-                ? 'Möchtest du das gesamte Team wirklich permanent löschen? Alle Daten gehen unwiderruflich verloren.' 
-                : 'Möchtest du das Team wirklich verlassen? Du hast danach keinen Zugriff mehr auf den Kader und die Kasse.'}
-            </p>
-          </div>
-        </Modal>
       </div>
 
-      {/* Footer Info */}
-      <div className="p-6 bg-brand/5 border border-brand/20 rounded-3xl flex items-center gap-4 text-brand">
-        <Info size={20} />
-        <p className="text-[10px] font-bold uppercase tracking-[0.1em] leading-relaxed opacity-80">
-          Diese Einstellungen beeinflussen das Erscheinungsbild deines <span className="font-black">Taktikboards</span> und der <span className="font-black">Kader-Verwaltung</span>.
-        </p>
-      </div>
+      <Modal isOpen={!!confirmModal} onClose={() => setConfirmModal(null)} title={confirmModal === 'delete' ? 'Löschen' : 'Verlassen'} footer={<div className="flex gap-4 w-full"><Button variant="ghost" className="flex-1" onClick={() => setConfirmModal(null)}>Abbrechen</Button><Button variant="danger" className="flex-1" onClick={async () => { if (confirmModal === 'delete') await deleteTeam(); else await leaveTeam(); window.location.reload(); }}>Bestätigen</Button></div>}>
+        <div className="py-6 text-center space-y-4"><AlertTriangle size={32} className="mx-auto text-red-500" /><p className="text-zinc-400 text-sm">{confirmModal === 'delete' ? 'Wirklich löschen?' : 'Wirklich verlassen?'}</p></div>
+      </Modal>
 
-      {/* Notifications */}
-      <AnimatePresence>
-        {notification && (
-          <motion.div 
-            initial={{ y: 50, opacity: 0 }}
-            animate={{ y: 0, opacity: 1 }}
-            exit={{ y: 50, opacity: 0 }}
-            className={`fixed bottom-8 left-1/2 -translate-x-1/2 px-6 py-4 rounded-2xl shadow-2xl z-[100] border backdrop-blur-xl flex items-center gap-3
-              ${notification.type === 'error' ? 'bg-red-500/90 border-red-500 text-white' : 'bg-zinc-900/90 border-brand/50 text-brand'}`}
-          >
-            {notification.type === 'error' ? <XCircle size={18} /> : <Check size={18} />}
-            <span className="text-[10px] font-black uppercase tracking-widest">{notification.msg}</span>
-          </motion.div>
-        )}
-      </AnimatePresence>
+      <AnimatePresence>{notification && <motion.div initial={{ y: 50, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: 50, opacity: 0 }} className={`fixed bottom-8 left-1/2 -translate-x-1/2 px-6 py-4 rounded-2xl shadow-2xl z-[100] border backdrop-blur-xl flex items-center gap-3 ${notification.type === 'error' ? 'bg-red-500 border-red-500 text-white' : 'bg-zinc-900 border-brand text-brand'}`}>{notification.type === 'error' ? <XCircle size={18} /> : <Check size={18} />}<span className="text-[10px] font-black uppercase tracking-widest">{notification.msg}</span></motion.div>}</AnimatePresence>
     </div>
   );
 };

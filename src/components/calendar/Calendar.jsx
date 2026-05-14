@@ -139,7 +139,7 @@ const Calendar = () => {
 
   return (
     <>
-      <div className="hub-card overflow-hidden flex flex-col lg:flex-row min-h-[85vh] border-zinc-900 bg-zinc-950/20 animate-in fade-in duration-500">
+      <div className="hub-card overflow-hidden flex flex-col lg:flex-row h-[calc(100vh-6rem)] lg:h-[calc(100vh-8rem)] min-h-[600px] border-zinc-900 bg-zinc-950/20 animate-in fade-in duration-500">
         <div className="flex-1 flex flex-col border-r border-zinc-900 overflow-hidden">
            
            <CalendarHeader 
@@ -164,7 +164,7 @@ const Calendar = () => {
                 animate={{ opacity: 1, x: 0 }}
                 exit={{ opacity: 0, x: -10 }}
                 transition={{ duration: 0.15, ease: "easeOut" }}
-                className="w-full"
+                className="w-full h-full flex flex-col"
               >
                 <CalendarGrid 
                   currentMonth={currentMonth}

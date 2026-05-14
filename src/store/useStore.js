@@ -1,8 +1,11 @@
 import { create } from 'zustand';
 
 // Slices
-import { createSquadSlice, initialSquadState } from './slices/squadSlice';
-import { createMatchSlice, initialMatchState } from './slices/matchSlice';
+import { createRosterSlice, initialRosterState } from './slices/rosterSlice';
+import { createCalendarSlice, initialCalendarState } from './slices/calendarSlice';
+import { createSettingsSlice, initialSettingsState } from './slices/settingsSlice';
+import { createActiveMatchSlice, initialActiveMatchState } from './slices/activeMatchSlice';
+import { createHistorySlice, initialHistoryState } from './slices/historySlice';
 import { createFineSlice, initialFineState } from './slices/fineSlice';
 import { createSocialSlice, initialSocialState } from './slices/socialSlice';
 import { createTacticsSlice, initialTacticsState } from './slices/tacticsSlice';
@@ -19,8 +22,11 @@ import syncService from '../services/SyncService';
  * Persistence disabled for maximum security in SaaS environment.
  */
 const useStore = create((set, get, ...args) => ({
-  ...createSquadSlice(set, get, ...args),
-  ...createMatchSlice(set, get, ...args),
+  ...createRosterSlice(set, get, ...args),
+  ...createCalendarSlice(set, get, ...args),
+  ...createSettingsSlice(set, get, ...args),
+  ...createActiveMatchSlice(set, get, ...args),
+  ...createHistorySlice(set, get, ...args),
   ...createFineSlice(set, get, ...args),
   ...createSocialSlice(set, get, ...args),
   ...createTacticsSlice(set, get, ...args),
@@ -62,8 +68,11 @@ const useStore = create((set, get, ...args) => ({
     console.log('[Store] Resetting local slices...');
     // Reset all slices to initial state
     set({
-      ...initialSquadState,
-      ...initialMatchState,
+      ...initialRosterState,
+      ...initialCalendarState,
+      ...initialSettingsState,
+      ...initialActiveMatchState,
+      ...initialHistoryState,
       ...initialFineState,
       ...initialSocialState,
       ...initialTacticsState,

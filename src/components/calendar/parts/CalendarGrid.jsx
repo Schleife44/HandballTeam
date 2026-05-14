@@ -14,7 +14,7 @@ import {
   getDay
 } from 'date-fns';
 import { de } from 'date-fns/locale';
-import { Trophy, Dumbbell, Calendar as CalendarIcon } from 'lucide-react';
+import { Trophy, Dumbbell, Calendar as CalendarIcon, Ban } from 'lucide-react';
 
 const CalendarGrid = ({ currentMonth, selectedDate, setSelectedDate, events, absences }) => {
   const monthStart = startOfMonth(currentMonth);
@@ -48,7 +48,7 @@ const CalendarGrid = ({ currentMonth, selectedDate, setSelectedDate, events, abs
       days.push(
         <div 
           key={day.toString()} 
-          className={`min-h-[80px] lg:min-h-[130px] p-2 lg:p-4 border-r border-b border-zinc-900 transition-all relative group 
+          className={`h-full min-h-[80px] lg:min-h-0 p-2 lg:p-4 border-r border-b border-zinc-900 transition-all relative group 
             ${isSel ? 'bg-brand/5 ring-1 ring-inset ring-brand/20 z-10' : 'bg-transparent'} 
             hover:bg-zinc-900/30 cursor-pointer`}
           onClick={() => setSelectedDate(cloneDay)}
@@ -63,10 +63,12 @@ const CalendarGrid = ({ currentMonth, selectedDate, setSelectedDate, events, abs
             <div className="flex flex-wrap gap-1 lg:space-y-1.5 lg:flex-col">
               {dayEvents.map((event, idx) => (
                 <div key={idx} className={`w-full lg:px-2.5 lg:py-1.5 p-1 rounded-lg lg:rounded-xl border text-[8px] font-black uppercase tracking-tight flex items-center gap-1.5 overflow-hidden
-                  ${event.type?.toUpperCase() === 'SPIEL' ? 'bg-red-500/10 border-red-500/10 text-red-400' : 
+                  ${event.isCancelled ? 'bg-zinc-800 border-zinc-700 text-zinc-500 line-through opacity-50' :
+                    event.type?.toUpperCase() === 'SPIEL' ? 'bg-red-500/10 border-red-500/10 text-red-400' : 
                     event.type?.toUpperCase() === 'TRAINING' ? 'bg-blue-500/10 border-blue-500/10 text-blue-400' : 
                     'bg-amber-500/10 border-amber-500/10 text-amber-400'}`}>
-                  {event.type === 'Spiel' ? <Trophy size={10} className="shrink-0" /> : 
+                  {event.isCancelled ? <Ban size={10} className="shrink-0" /> :
+                   event.type === 'Spiel' ? <Trophy size={10} className="shrink-0" /> : 
                    event.type === 'Training' ? <Dumbbell size={10} className="shrink-0" /> : 
                    <CalendarIcon size={10} className="shrink-0" />}
                   <span className="truncate hidden lg:block flex-1">{event.title}</span>
@@ -78,11 +80,11 @@ const CalendarGrid = ({ currentMonth, selectedDate, setSelectedDate, events, abs
       );
       day = addDays(day, 1);
     }
-    rows.push(<div className="grid grid-cols-7" key={day.toString()}>{days}</div>);
+    rows.push(<div className="grid grid-cols-7 flex-1 min-h-0" key={day.toString()}>{days}</div>);
     days = [];
   }
 
-  return <div className="flex-1 border-t border-zinc-900">{rows}</div>;
+  return <div className="flex flex-col h-full flex-1 border-t border-zinc-900">{rows}</div>;
 };
 
 export default CalendarGrid;

@@ -1,5 +1,6 @@
 import React from 'react';
 import { MessageSquare, Check, RotateCcw, RefreshCw, Zap } from 'lucide-react';
+import Button from '../../ui/Button';
 
 const SyncSection = ({ 
   hnetUrl, 
@@ -64,15 +65,39 @@ const SyncSection = ({
             <RotateCcw size={16} className="text-zinc-600" />
             <span className="text-xs font-bold text-zinc-300">Absagen möglich bis</span>
           </div>
-          <div className="flex items-center gap-3">
-            <input 
-              type="number" 
-              value={settings.absageDeadline ?? 24}
-              onChange={(e) => onUpdate('absageDeadline', parseInt(e.target.value) || 0)}
-              disabled={!isTrainer}
-              className="w-16 bg-black/60 border border-zinc-800 rounded-xl py-2 px-3 text-center text-xs font-black text-brand"
-            />
-            <span className="text-[10px] font-bold text-zinc-600 uppercase tracking-widest">Std. vorher (0 = immer)</span>
+          <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1.5">
+              <input 
+                type="number" 
+                min="0"
+                value={Math.floor((settings.absageDeadline ?? 24) / 24)}
+                onChange={(e) => {
+                  const d = parseInt(e.target.value) || 0;
+                  const h = (settings.absageDeadline ?? 24) % 24;
+                  onUpdate('absageDeadline', d * 24 + h);
+                }}
+                disabled={!isTrainer}
+                className="w-12 bg-black/60 border border-zinc-800 rounded-xl py-2 px-1 text-center text-xs font-black text-brand"
+              />
+              <span className="text-[8px] font-black uppercase text-zinc-700">Tage</span>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <input 
+                type="number" 
+                min="0" 
+                max="23"
+                value={(settings.absageDeadline ?? 24) % 24}
+                onChange={(e) => {
+                  const h = parseInt(e.target.value) || 0;
+                  const d = Math.floor((settings.absageDeadline ?? 24) / 24);
+                  onUpdate('absageDeadline', d * 24 + h);
+                }}
+                disabled={!isTrainer}
+                className="w-12 bg-black/60 border border-zinc-800 rounded-xl py-2 px-1 text-center text-xs font-black text-brand"
+              />
+              <span className="text-[8px] font-black uppercase text-zinc-700">Std.</span>
+            </div>
+            <span className="text-[8px] font-bold text-zinc-600 uppercase ml-1">vorher</span>
           </div>
         </div>
 
@@ -98,21 +123,26 @@ const SyncSection = ({
     <div className="flex flex-col gap-4 justify-end">
       {isTrainer && (
         <>
-          <button 
+          <Button 
+            variant="primary"
+            size="xl"
             onClick={onSync}
             disabled={isSyncing}
-            className="w-full py-5 bg-brand text-black rounded-[2rem] text-sm font-black uppercase tracking-widest flex items-center justify-center gap-3 hover:scale-[1.02] active:scale-95 transition-all shadow-xl shadow-brand/20 disabled:opacity-50"
+            isLoading={isSyncing}
+            icon={RefreshCw}
+            className="w-full"
           >
-            <RefreshCw size={20} className={isSyncing ? 'animate-spin' : ''} />
-            <span>{isSyncing ? 'Synchronisiere...' : 'Spielplan synchronisieren'}</span>
-          </button>
+            Spielplan synchronisieren
+          </Button>
 
-          <button 
+          <Button 
+            variant="outline"
+            size="sm"
             onClick={onApplyToAll}
-            className="w-full py-5 bg-zinc-900 border border-zinc-800 text-zinc-400 rounded-[2rem] text-[10px] font-black uppercase tracking-[0.2em] hover:text-zinc-100 transition-all active:scale-95"
+            className="w-full py-5 text-[10px] tracking-[0.2em]"
           >
             Diese Einstellungen auf alle Spiele anwenden
-          </button>
+          </Button>
         </>
       )}
     </div>

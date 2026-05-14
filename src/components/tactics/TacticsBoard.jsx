@@ -33,7 +33,15 @@ const MemoizedPlayer = memo(DraggablePlayer);
 const MemoizedPath = memo(TacticsPath);
 
 const TacticsBoard = () => {
-  const { tacticsPlays: savedPlays, addTacticsPlay, removeTacticsPlay, setTacticsPlays, activeMember, squad } = useStore();
+  const { 
+    tacticsPlays: savedPlays, 
+    addTacticsPlay, 
+    removeTacticsPlay, 
+    setTacticsPlays, 
+    activeMember, 
+    squad,
+    activeTeamId 
+  } = useStore();
   
   // Permissions
   const myUid = activeMember?.uid || '';
@@ -49,6 +57,7 @@ const TacticsBoard = () => {
   const [showSaveModal, setShowSaveModal] = useState(false);
   const [saveName, setSaveName] = useState('');
   const [contextMenu, setContextMenu] = useState({ visible: false, x: 0, y: 0, playerId: null });
+  const [confirmDelete, setConfirmDelete] = useState({ id: null, name: '' });
 
   const players = frames[currentFrame] || INITIAL_PLAYERS;
   const previousPlayers = currentFrame > 0 ? frames[currentFrame - 1] : null;
@@ -60,12 +69,15 @@ const TacticsBoard = () => {
       try {
         const parsed = JSON.parse(legacy);
         if (parsed.length > 0 && savedPlays.length === 0) {
-          setTacticsPlays(parsed);
+          console.log('[Tactics] Migrating legacy plays to cloud...');
+          parsed.forEach(play => addTacticsPlay(play));
+          localStorage.removeItem('handball_tactics_v2_plays');
+        } else {
           localStorage.removeItem('handball_tactics_v2_plays');
         }
       } catch (e) { console.error("Tactics migration failed", e); }
     }
-  }, [savedPlays, setTacticsPlays]);
+  }, [savedPlays, addTacticsPlay]);
 
   useEffect(() => {
     let interval;
@@ -145,7 +157,14 @@ const TacticsBoard = () => {
 
   const handleSave = () => {
     if (!saveName) return;
-    const newPlay = { id: Date.now(), name: saveName, frames, date: new Date().toLocaleDateString() };
+    const playId = `play_${Date.now()}`;
+    const newPlay = { 
+      id: playId, 
+      name: saveName, 
+      frames, 
+      date: new Date().toLocaleDateString(),
+      createdBy: myUid
+    };
     addTacticsPlay(newPlay);
     setShowSaveModal(false);
     setSaveName('');
@@ -157,9 +176,16 @@ const TacticsBoard = () => {
     setShowLoadModal(false);
   };
 
-  const deletePlay = (id) => {
+  const deletePlay = (id, name) => {
     if (!canDeletePlays) return;
-    removeTacticsPlay(id);
+    setConfirmDelete({ id, name });
+  };
+
+  const executeDelete = () => {
+    if (confirmDelete.id) {
+      removeTacticsPlay(confirmDelete.id);
+      setConfirmDelete({ id: null, name: '' });
+    }
   };
 
   const resetBoard = useCallback(() => {
@@ -266,11 +292,28 @@ const TacticsBoard = () => {
                     <p className="text-[10px] text-zinc-500 mt-1 font-bold uppercase tracking-widest">{play.frames.length} Phasen • {play.date}</p>
                   </div>
                   {canDeletePlays && (
-                    <button onClick={(e) => { e.stopPropagation(); deletePlay(play.id); }} className="p-2 text-zinc-600 hover:text-red-500 transition-colors opacity-0 group-hover:opacity-100"><Trash2 size={16} /></button>
+                    <button onClick={(e) => { e.stopPropagation(); deletePlay(play.id, play.name); }} className="p-2 text-zinc-600 hover:text-red-500 transition-colors opacity-0 group-hover:opacity-100"><Trash2 size={16} /></button>
                   )}
                 </div>
               ))
             )}
+          </div>
+        </Modal>
+      )}
+
+      {confirmDelete.id && (
+        <Modal 
+          isOpen={true} 
+          onClose={() => setConfirmDelete({ id: null, name: '' })}
+          title="Spielzug löschen?"
+          size="sm"
+        >
+          <div className="space-y-6">
+            <p className="text-sm text-zinc-400">Bist du sicher, dass du den Spielzug <span className="text-zinc-100 font-bold">"{confirmDelete.name}"</span> unwiderruflich löschen möchtest?</p>
+            <div className="flex gap-3">
+              <Button onClick={() => setConfirmDelete({ id: null, name: '' })} variant="ghost" className="flex-1">Abbrechen</Button>
+              <Button onClick={executeDelete} variant="danger" className="flex-1 bg-red-500/10 border-red-500/20 text-red-500 hover:bg-red-500 hover:text-white">Löschen</Button>
+            </div>
           </div>
         </Modal>
       )}

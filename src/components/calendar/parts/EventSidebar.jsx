@@ -17,7 +17,10 @@ import {
   Plus,
   AlertCircle,
   MoreVertical,
-  ChevronDown
+  ChevronDown,
+  Ban,
+  Clock,
+  CalendarX
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import useStore from '../../../store/useStore';
@@ -45,7 +48,7 @@ const EventSidebar = ({
   const [showGuestModal, setShowGuestModal] = useState(null); // eventId
   const [guestName, setGuestName] = useState('');
   
-  const { activeMember, squad } = useStore();
+  const { activeMember, squad, toggleEventCancellation, removeEventResponse } = useStore();
 
   const myName = activeMember?.playerName;
   const myUid = activeMember?.uid;
@@ -62,7 +65,16 @@ const EventSidebar = ({
     const deadlineHours = event.deadline !== undefined ? event.deadline : settings?.absageDeadline;
     if (!deadlineHours) return { isPast: false, deadlineDate: null };
     
-    const eventDate = new Date(event.date);
+    let eventDate;
+    if (event.date && event.time) {
+      // Combine date and time (assuming date is YYYY-MM-DD and time is HH:mm)
+      const [year, month, day] = (event.date instanceof Date ? event.date.toISOString().slice(0, 10) : String(event.date).slice(0, 10)).split('-');
+      const [hours, minutes] = (event.time || '00:00').split(':');
+      eventDate = new Date(year, month - 1, day, hours, minutes);
+    } else {
+      eventDate = new Date(event.date);
+    }
+    
     const deadlineDate = new Date(eventDate.getTime() - deadlineHours * 60 * 60 * 1000);
     return { isPast: new Date() > deadlineDate, deadlineDate };
   };
@@ -142,7 +154,15 @@ const EventSidebar = ({
             const isPending = pendingEventId === event.id;
             const { isPast, deadlineDate } = getDeadlineInfo(event);
             
-            const roster = (squad?.home || []).filter(p => !p.isInactive);
+            const roster = (squad?.home || []).filter(p => {
+              const isTemp = p.isTemporary || 
+                             p.isGuest ||
+                             p.id?.startsWith('quick_') || 
+                             p.id?.startsWith('opp_') || 
+                             p.id?.startsWith('neutral_') ||
+                             p.id?.startsWith('guest_');
+              return !p.isInactive && !isTemp;
+            });
             const responses = event.responses || {};
             const rosterNames = new Set(roster.map(p => p.name?.trim()).filter(Boolean));
             
@@ -154,7 +174,7 @@ const EventSidebar = ({
             });
 
             const guestEntries = Object.entries(responses)
-              .filter(([name]) => !rosterNames.has(name))
+              .filter(([name, data]) => !rosterNames.has(name) && data.status !== 'maybe')
               .map(([name, data]) => ({ name, ...data, isGuest: true }));
 
             const responseList = [...rosterEntries, ...guestEntries];
@@ -166,80 +186,133 @@ const EventSidebar = ({
             if (expandedEventId && !isExpanded) return null;
 
             return (
-              <div key={idx} className={`p-6 rounded-[2.5rem] bg-zinc-900/40 border border-zinc-900/50 space-y-4 transition-all duration-500 ${isExpanded ? 'bg-zinc-900/60 shadow-2xl scale-[1.02]' : ''}`}>
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-4">
-                    <div className={`p-3 rounded-2xl 
-                      ${event.type?.toUpperCase() === 'SPIEL' ? 'bg-red-500/10 text-red-500' : 
+              <div key={idx} className={`p-7 rounded-[2.5rem] bg-zinc-900/40 border border-zinc-900/50 space-y-6 transition-all duration-500 ${isExpanded ? 'bg-zinc-900/60 shadow-2xl scale-[1.02]' : ''}`}>
+                <div className="flex items-start justify-between">
+                  <div className="flex items-start gap-5">
+                    <div className={`p-4 rounded-2xl shrink-0
+                      ${event.isCancelled ? 'bg-zinc-800 text-zinc-500' :
+                        event.type?.toUpperCase() === 'SPIEL' ? 'bg-red-500/10 text-red-500' : 
                         event.type?.toUpperCase() === 'TRAINING' ? 'bg-blue-500/10 text-blue-500' : 
                         'bg-amber-500/10 text-amber-500'}`}>
-                      {event.type?.toUpperCase() === 'SPIEL' ? <Trophy size={20} /> : 
-                       event.type?.toUpperCase() === 'TRAINING' ? <Dumbbell size={20} /> : 
-                       <CalendarIcon size={20} />}
+                      {event.isCancelled ? <CalendarX size={24} /> :
+                       event.type?.toUpperCase() === 'SPIEL' ? <Trophy size={24} /> : 
+                       event.type?.toUpperCase() === 'TRAINING' ? <Dumbbell size={24} /> : 
+                       <CalendarIcon size={24} />}
                     </div>
-                    <div>
-                      <h4 className="text-base font-black tracking-tight">{event.title}</h4>
+                    <div className="space-y-1">
+                      <h4 className={`text-lg font-black tracking-tight leading-tight ${event.isCancelled ? 'text-zinc-500 line-through' : 'text-white'}`}>
+                        {event.title}
+                      </h4>
                       <div className="flex items-center gap-2">
-                        <span className="text-[9px] font-black uppercase text-zinc-600 tracking-[0.2em]">{event.type}</span>
-                        <span className="text-[9px] font-black text-brand bg-brand/10 px-1.5 py-0.5 rounded-md uppercase tracking-wider">{event.time} Uhr</span>
-                        {event.meetingTime && (
-                          <span className="text-[9px] font-black text-zinc-400 bg-zinc-800/50 px-1.5 py-0.5 rounded-md uppercase tracking-wider">Treffen: {event.meetingTime}</span>
-                        )}
+                        <span className="text-[10px] font-black uppercase text-zinc-600 tracking-[0.2em]">{event.type}</span>
                       </div>
                     </div>
                   </div>
                   {isTrainer && (
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-1 bg-black/20 p-1 rounded-xl border border-zinc-800/50">
                       <button 
                         onClick={() => {
                           setEventData({ id: event.id, title: event.title, type: event.type, date: format(new Date(event.date), 'yyyy-MM-dd'), time: event.time, meetingTime: event.meetingTime, location: event.location, repeat: 'Keine', isMandatory: event.isMandatory, isAutoGoing: event.isAutoGoing, deadline: event.deadline });
                           setActiveModal('event');
                         }}
                         className="p-2 hover:bg-zinc-800 rounded-lg text-zinc-600 hover:text-zinc-300 transition-all"
+                        title="Bearbeiten"
                       >
                         <Edit2 size={14} />
                       </button>
-                      <button onClick={() => setConfirmDelete({ type: 'event', id: event.id, title: event.title })} className="p-2 hover:bg-red-500/10 rounded-lg text-zinc-600 hover:text-red-500 transition-all"><Trash2 size={14} /></button>
+                      <button 
+                        onClick={() => toggleEventCancellation(event.id)}
+                        title={event.isCancelled ? "Aktivieren" : "Termin absagen (Entfällt)"}
+                        className={`p-2 rounded-lg transition-all ${event.isCancelled ? 'bg-brand text-black shadow-lg shadow-brand/20' : 'hover:bg-amber-500/10 text-zinc-600 hover:text-amber-500'}`}
+                      >
+                        <Ban size={14} />
+                      </button>
+                      <button 
+                        onClick={() => setConfirmDelete({ type: 'event', id: event.id, title: event.title })} 
+                        className="p-2 hover:bg-red-500/10 rounded-lg text-zinc-600 hover:text-red-500 transition-all"
+                        title="Löschen"
+                      >
+                        <Trash2 size={14} />
+                      </button>
                     </div>
                   )}
                 </div>
 
-                {isPast && (
+                <div className="flex flex-wrap gap-2">
+                  <span className={`text-[10px] font-black px-3 py-1.5 rounded-xl uppercase tracking-wider border ${event.isCancelled ? 'bg-zinc-800/50 border-zinc-800 text-zinc-600' : 'bg-brand/10 border-brand/20 text-brand'}`}>
+                    Beginn: {event.time} Uhr
+                  </span>
+                  {event.meetingTime && (
+                    <span className="text-[10px] font-black text-zinc-400 bg-zinc-800/50 border border-zinc-800/50 px-3 py-1.5 rounded-xl uppercase tracking-wider">
+                      Treffen: {event.meetingTime} Uhr
+                    </span>
+                  )}
+                </div>
+
+                {event.isCancelled ? (
+                  <div className="flex items-center gap-3 px-4 py-3 bg-red-500/10 border border-red-500/20 rounded-2xl animate-in fade-in zoom-in duration-300">
+                    <div className="p-2 bg-red-500 rounded-lg text-white">
+                      <Ban size={14} strokeWidth={3} />
+                    </div>
+                    <div>
+                      <span className="text-[10px] font-black uppercase text-red-500 tracking-widest block leading-none">Termin Entfällt</span>
+                      <span className="text-[8px] font-bold text-red-500/60 uppercase tracking-wider mt-1 block">Diese Einheit findet nicht statt</span>
+                    </div>
+                  </div>
+                ) : isPast ? (
                   <div className="flex items-center gap-2 px-3 py-2 bg-amber-500/10 border border-amber-500/20 rounded-xl">
                     <AlertCircle size={12} className="text-amber-500" />
                     <span className="text-[8px] font-black uppercase text-amber-500/80 tracking-widest">
-                      Frist abgelaufen ({format(deadlineDate, 'HH:mm')} Uhr)
+                      Frist abgelaufen
                     </span>
                   </div>
+                ) : (
+                  deadlineDate && (
+                    <div className="flex items-center gap-2 px-3 py-2 bg-blue-500/5 border border-blue-500/10 rounded-xl">
+                      <Clock size={12} className="text-blue-500" />
+                      <span className="text-[8px] font-black uppercase text-blue-500/60 tracking-widest">
+                        {(() => {
+                          const diffMs = deadlineDate.getTime() - new Date().getTime();
+                          const diffHrs = Math.floor(diffMs / (1000 * 60 * 60));
+                          const diffMins = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
+                          
+                          if (diffHrs > 48) return `Abmeldung möglich bis ${format(deadlineDate, 'dd.MM. HH:mm')} Uhr`;
+                          if (diffHrs > 24) return `Noch ca. 1 Tag Zeit zum Abmelden`;
+                          if (diffHrs > 0) return `Noch ${diffHrs}h ${diffMins}m Zeit zum Abmelden`;
+                          return `Noch ${diffMins}m Zeit zum Abmelden`;
+                        })()}
+                      </span>
+                    </div>
+                  )
                 )}
 
-                <div className="flex items-stretch gap-1 p-1 bg-black/20 rounded-[1.25rem] border border-zinc-900/50 h-16">
-                  <button onClick={() => handleStatusClick(event.id, 'going')} className={`flex-1 flex flex-col items-center justify-center rounded-xl transition-all border ${myStatus === 'going' ? 'bg-brand/10 border-brand text-brand' : 'border-transparent text-zinc-500 hover:bg-zinc-900/50'}`}>
-                    <span className="text-lg font-black leading-none">{goingCount}</span>
-                    <span className="text-[7px] font-black uppercase tracking-widest mt-1">Dabei</span>
+                <div className={`flex items-stretch gap-2 p-1.5 bg-black/20 rounded-[1.5rem] border border-zinc-900/50 h-20 ${event.isCancelled ? 'opacity-30 grayscale pointer-events-none' : ''}`}>
+                  <button onClick={() => handleStatusClick(event.id, 'going')} className={`flex-1 flex flex-col items-center justify-center rounded-2xl transition-all border ${myStatus === 'going' ? 'bg-brand/10 border-brand text-brand' : 'border-transparent text-zinc-500 hover:bg-zinc-900/50'}`}>
+                    <span className="text-xl font-black leading-none">{goingCount}</span>
+                    <span className="text-[8px] font-black uppercase tracking-widest mt-1.5">Dabei</span>
                   </button>
                   <button 
                     onClick={() => handleStatusClick(event.id, 'maybe')} 
                     disabled={isPast && !isTrainer}
-                    className={`flex-1 flex flex-col items-center justify-center rounded-xl transition-all border 
+                    className={`flex-1 flex flex-col items-center justify-center rounded-2xl transition-all border 
                       ${myStatus === 'maybe' ? 'bg-blue-500/10 border-blue-500 text-blue-500' : 'border-transparent text-zinc-500 hover:bg-zinc-900/50'}
-                      ${isPast && !isTrainer ? 'opacity-20 cursor-not-allowed' : ''}`}
+                      ${isPast && !isTrainer ? 'opacity-45 cursor-not-allowed grayscale-[0.4]' : ''}`}
                   >
-                    <span className="text-lg font-black leading-none">{maybeCount}</span>
-                    <span className="text-[7px] font-black uppercase tracking-widest mt-1">Offen</span>
+                    <span className="text-xl font-black leading-none">{maybeCount}</span>
+                    <span className="text-[8px] font-black uppercase tracking-widest mt-1.5">Offen</span>
                   </button>
                   <button 
                     onClick={() => handleStatusClick(event.id, 'declined')} 
                     disabled={isPast && !isTrainer}
-                    className={`flex-1 flex flex-col items-center justify-center rounded-xl transition-all border 
+                    className={`flex-1 flex flex-col items-center justify-center rounded-2xl transition-all border 
                       ${myStatus === 'declined' ? 'bg-red-500/10 border-red-500 text-red-500' : 'border-transparent text-zinc-500 hover:bg-zinc-900/50'}
-                      ${isPast && !isTrainer ? 'opacity-20 cursor-not-allowed' : ''}`}
+                      ${isPast && !isTrainer ? 'opacity-45 cursor-not-allowed grayscale-[0.4]' : ''}`}
                   >
-                    <span className="text-lg font-black leading-none">{declinedCount}</span>
-                    <span className="text-[7px] font-black uppercase tracking-widest mt-1">Absagen</span>
+                    <span className="text-xl font-black leading-none">{declinedCount}</span>
+                    <span className="text-[8px] font-black uppercase tracking-widest mt-1.5">Absagen</span>
                   </button>
-                  <button onClick={() => { setExpandedEventId(isExpanded ? null : event.id); setPendingEventId(null); }} className={`w-12 flex items-center justify-center rounded-xl transition-all border ${isExpanded ? 'bg-white text-black' : 'text-zinc-700 hover:bg-zinc-900/50'}`}>
-                    {isExpanded ? <X size={16} strokeWidth={3} /> : <Users size={16} />}
+                  <button onClick={() => { setExpandedEventId(isExpanded ? null : event.id); setPendingEventId(null); }} className={`w-14 flex items-center justify-center rounded-2xl transition-all border ${isExpanded ? 'bg-white text-black' : 'text-zinc-700 hover:bg-zinc-900/50'}`}>
+                    {isExpanded ? <X size={18} strokeWidth={3} /> : <Users size={18} />}
                   </button>
                 </div>
 
@@ -267,13 +340,29 @@ const EventSidebar = ({
                           </div>
                         </div>
                         {isTrainer && (
-                          <div className="flex items-center gap-2">
+                          <div className="flex items-center gap-1">
                              <button 
                                 onClick={() => setTrainerAction({ eventId: event.id, playerName: res.name, currentStatus: res.status })}
                                 className="p-1.5 opacity-0 group-hover/row:opacity-100 hover:bg-zinc-800 text-zinc-600 hover:text-white rounded-md transition-all"
+                                title="Status ändern"
                               >
                                 <ChevronDown size={12} />
                               </button>
+                              {res.isGuest && (
+                                <button 
+                                  onClick={() => {
+                                    setConfirmDelete({ 
+                                      type: 'guest', 
+                                      id: { eventId: event.id, playerName: res.name }, 
+                                      title: `Gast "${res.name}"` 
+                                    });
+                                  }}
+                                  className="p-1.5 opacity-0 group-hover/row:opacity-100 hover:bg-red-500/10 text-zinc-600 hover:text-red-500 rounded-md transition-all"
+                                  title="Gast entfernen"
+                                >
+                                  <Trash2 size={12} />
+                                </button>
+                              )}
                           </div>
                         )}
                       </div>

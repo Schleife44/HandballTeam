@@ -23,6 +23,7 @@ export const useHistory = () => {
   const [importStatus, setImportStatus] = useState({ type: '', message: '' });
   const [gameToDelete, setGameToDelete] = useState(null);
   const [isSyncing, setIsSyncing] = useState(false);
+  const [filterMode, setFilterMode] = useState('all'); // 'all' or 'own'
 
   // --- LAZY LOADING: Real-time Firestore Sync (Season-Aware) ---
   useEffect(() => {
@@ -120,10 +121,11 @@ export const useHistory = () => {
       }
 
       const matchesSeason = gameSeason === selectedSeason;
+      const matchesFilter = filterMode === 'all' || !game.isNeutral;
       
-      return matchesSearch && matchesSeason;
+      return matchesSearch && matchesSeason && matchesFilter;
     });
-  }, [allArchiveGames, searchTerm, selectedSeason, squad?.settings?.currentSeason]);
+  }, [allArchiveGames, searchTerm, selectedSeason, squad?.settings?.currentSeason, filterMode]);
 
   const importHandballNet = async () => {
     if (!importUrl) return;
@@ -211,6 +213,8 @@ export const useHistory = () => {
     setGameToDelete,
     availableSeasons,
     filteredGames,
+    filterMode,
+    setFilterMode,
     importHandballNet,
     handleJsonUpload,
     deleteGame: deleteGameFromHistory,

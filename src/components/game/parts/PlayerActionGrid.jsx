@@ -1,23 +1,53 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Search, ArrowLeftRight, Sword, Shield, AlertCircle } from 'lucide-react';
+import { Search, ArrowLeftRight, Sword, Shield, AlertCircle, UserPlus } from 'lucide-react';
 import useStore from '../../../store/useStore';
 
-const PlayerActionGrid = ({ onPlayerSelect, lineup, activeSwap, mode, suspensions }) => {
+const PlayerActionGrid = ({ onPlayerSelect, lineup, activeSwap, mode, suspensions, activeMatch, onAddPlayer }) => {
   const { squad } = useStore();
   const [searchQuery, setSearchQuery] = useState('');
 
-  const getTeamColor = (team) => team === 'home' ? (squad.settings?.homeColor || '#84cc16') : (squad.settings?.awayColor || '#3f3f46');
-  const getTeamName = (team) => team === 'home' ? (squad.settings?.homeName || 'Heim') : (squad.settings?.awayName || 'Gast');
+  const isNeutral = !!activeMatch?.customHomeName;
+
+  const getTeamColor = (team) => {
+    if (team === 'home') return activeMatch?.customHomeName ? '#6366f1' : (squad.settings?.homeColor || '#84cc16');
+    return activeMatch?.customAwayName ? '#f43f5e' : (squad.settings?.awayColor || '#3f3f46');
+  };
+
+  const getTeamName = (team) => {
+    if (team === 'home') return activeMatch?.customHomeName || squad.settings?.homeName || 'Heim';
+    return activeMatch?.customAwayName || squad.settings?.awayName || 'Gast';
+  };
 
   const renderTeamSection = (team) => {
     const teamColor = getTeamColor(team);
     const teamName = getTeamName(team);
     
-    const allTeamPlayers = (squad[team] || []).filter(p => !p.isInactive && (
+    // In Neutral Mode, don't show the own team's roster
+    const isNeutralTeam = (team === 'home' && activeMatch?.customHomeName) || (team === 'away' && activeMatch?.customAwayName);
+    
+    let allTeamPlayers = (squad[team] || []).filter(p => !p.isInactive && (
       p.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
       p.number.includes(searchQuery)
     ));
+
+    // In Neutral mode, we hide the permanent roster but show guests, quick-adds and synced opponents
+    if (isNeutralTeam) {
+      allTeamPlayers = allTeamPlayers.filter(p => 
+        p.isTemporary || 
+        p.isGuest || 
+        p.id?.startsWith('quick_') || 
+        p.id?.startsWith('opp_') || 
+        p.id?.startsWith('guest_')
+      );
+    } else if (team === 'home') {
+      // In Normal mode for HOME team, show regular roster + session-only players added THIS session
+      allTeamPlayers = allTeamPlayers.filter(p => 
+        !p.id?.startsWith('opp_') && // Never show opponents in home
+        (!p.id?.startsWith('quick_') || p.isTemporary) && // Only show quick-adds if they are marked temporary (fresh)
+        (!p.id?.startsWith('guest_') || p.isTemporary)    // Only show guests if they are marked temporary (fresh)
+      );
+    }
 
     const fieldPlayers = allTeamPlayers.filter(p => lineup[team]?.includes(p.id));
     const benchPlayers = allTeamPlayers.filter(p => !lineup[team]?.includes(p.id));
@@ -99,6 +129,21 @@ const PlayerActionGrid = ({ onPlayerSelect, lineup, activeSwap, mode, suspension
           <div className="grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-3 xl:grid-cols-4 gap-1.5">
             <AnimatePresence mode="popLayout">
               {allTeamPlayers.map(p => renderPlayerCard(p, true))}
+
+              {/* Add Player Card */}
+              <motion.button
+                key={`add_${team}`}
+                layout
+                initial={{ opacity: 0, scale: 0.9 }}
+                animate={{ opacity: 1, scale: 1 }}
+                whileTap={{ scale: 0.95 }}
+                onClick={() => onAddPlayer(team)}
+                className="flex flex-col items-center justify-center p-1.5 rounded-2xl border border-dashed border-zinc-800 bg-zinc-900/10 hover:bg-zinc-800/50 hover:border-zinc-600 transition-all w-16 h-16 lg:w-auto lg:h-auto lg:p-4 group relative"
+              >
+                <div className="absolute inset-0 bg-white/5 opacity-0 group-hover:opacity-100 transition-opacity rounded-2xl" />
+                <UserPlus size={20} className="text-zinc-600 group-hover:text-zinc-400 group-hover:scale-110 transition-all relative z-10" />
+                <span className="text-[6px] lg:text-[8px] font-black text-zinc-700 group-hover:text-zinc-500 uppercase tracking-widest mt-1 relative z-10">Hinzufügen</span>
+              </motion.button>
             </AnimatePresence>
           </div>
         ) : (

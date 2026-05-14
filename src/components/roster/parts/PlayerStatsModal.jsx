@@ -132,10 +132,11 @@ const PlayerStatsModal = ({ player, onClose, teamColor }) => {
         <div className="flex-1 overflow-y-auto p-8 space-y-8 no-scrollbar">
           
           {/* TOP STATS GRID */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
             {[
               { label: 'Spiele', value: stats.summary.totalGames, icon: Calendar, color: 'text-blue-400' },
               { label: 'Tore Gesamt', value: stats.summary.totalGoals, icon: Trophy, color: 'text-brand' },
+              { label: 'Training', value: `${stats.summary.trainingAttended}/${stats.summary.trainingTotal}`, icon: Activity, color: 'text-indigo-400' },
               { label: 'Ø Tore', value: stats.summary.avgGoals, icon: TrendingUp, color: 'text-emerald-400' },
               { label: 'Ø Quote', value: `${stats.summary.avgEfficiency}%`, icon: Target, color: 'text-orange-400' }
             ].map((s, i) => (

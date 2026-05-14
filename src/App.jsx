@@ -45,9 +45,12 @@ const TeamManagement = lazy(() => import('./components/marketing/features/TeamMa
 const LiveAnalysisDetail = lazy(() => import('./components/marketing/features/LiveAnalysisDetail.jsx'))
 const LegalPage = lazy(() => import('./components/marketing/LegalPage.jsx'))
 const AdminDashboard = lazy(() => import('./components/admin/AdminDashboard.jsx'))
+const PlayerProfilePage = lazy(() => import('./components/roster/PlayerProfilePage.jsx'))
+const AccountManager = lazy(() => import('./components/account/AccountManager.jsx'))
 const CookieConsent = lazy(() => import('./components/marketing/CookieConsent.jsx'))
 import LoginView from './components/auth/LoginView.jsx'
 import DesktopUpdateBanner from './components/ui/DesktopUpdateBanner.jsx'
+import useStore from './store/useStore'
 
 function App() {
   const isElectron = window.electronAPI?.isElectron === true;
@@ -108,6 +111,8 @@ function App() {
                     </SubscriptionGuard>
                   } />
                   <Route path="/roster" element={<RosterManager />} />
+                  <Route path="/roster/:playerName" element={<PlayerProfilePage />} />
+                  <Route path="/account" element={<AccountManager />} />
                   <Route path="/history/*" element={<ArchiveManager />} />
                   <Route path="/social" element={<SocialHub />} />
                   <Route path="/fines" element={<FinesManager />} />

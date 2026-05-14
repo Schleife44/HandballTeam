@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import useStore from '../store/useStore';
-import { getRandomTemplate } from '../data/captionTemplates';
+import { assembleCaption } from '../data/captionTemplates';
 
 const imageCache = new Map();
 
@@ -339,25 +339,22 @@ export const useResultImage = (gameData) => {
 
     const tH = (gameData?.teams?.heim || gameData?.teamNameHeim || 'HEIM').toUpperCase();
     const tG = (gameData?.teams?.gegner || gameData?.teamNameGegner || 'GEGNER').toUpperCase();
-    const diff = Math.abs(sH - sG);
-    const isWin = (sH > sG && !isA) || (sG > sH && isA);
-    const isDraw = sH === sG;
 
-    let type = 'VICTORY_HOME';
-    if (isDraw) type = 'DRAW';
-    else if (!isWin) type = 'LOSS';
-    else if (isA) type = 'VICTORY_AWAY';
-    else type = 'VICTORY_HOME';
+    const dataObj = {
+      scoreHeim: sH,
+      scoreGegner: sG,
+      isAway: isA,
+      teamHeim: tH,
+      teamGegner: tG,
+      statsSummary: gameData?.statsSummary,
+      gameLog: gameData?.gameLog || [],
+      timestamp: gameData?.timestamp || gameData?.date
+    };
 
-    // Special cases
-    if (isWin && diff <= 2) type = 'KRIMI';
-    if (isWin && diff >= 8) type = 'DEUTLICH';
-
-    const header = isDraw ? 'UNENTSCHIEDEN! 🤝' : (isWin ? 'SIEG! 🔥' : 'KAMPF GEZEIGT! 🤾‍♂️');
-    const body = getRandomTemplate(type);
-
-    return `${header}\n\n${tH} ${sH}:${sG} ${tG}\n\n${body}\n\n#handball #sechsmeter #matchday #ergebnis #teamspirit ${settings.hashtags || ''}`;
-  }, [gameData, previewMode, settings.hashtags]);
+    // Wir importieren assembleCaption dynamisch oder binden es ein.
+    // Da wir import { assembleCaption } from '../data/captionTemplates'; hinzufügen müssen:
+    return assembleCaption(dataObj, settings);
+  }, [gameData, previewMode, settings]);
 
   useEffect(() => { render(); }, [render]);
 

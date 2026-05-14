@@ -11,6 +11,7 @@ import {
   getAuth, 
   browserPopupRedirectResolver 
 } from 'firebase/auth';
+import { getStorage } from 'firebase/storage';
 
 const firebaseConfig = {
     apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
@@ -21,6 +22,10 @@ const firebaseConfig = {
     appId: import.meta.env.VITE_FIREBASE_APP_ID,
     measurementId: import.meta.env.VITE_FIREBASE_MEASUREMENT_ID
 };
+
+if (!firebaseConfig.storageBucket) {
+  console.warn('[Firebase] Warning: VITE_FIREBASE_STORAGE_BUCKET is missing. Profile picture uploads will hang!');
+}
 
 const app = initializeApp(firebaseConfig);
 
@@ -43,5 +48,7 @@ export const auth = isElectron
       popupRedirectResolver: browserPopupRedirectResolver
     })
   : getAuth(app);
+
+export const storage = getStorage(app);
 
 export default app;

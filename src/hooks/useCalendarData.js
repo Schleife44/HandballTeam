@@ -230,6 +230,11 @@ export const useCalendarData = () => {
       }
       updateSubscriptions(subscriptions.filter(s => s.id !== id));
     } else if (type === 'absence') storeRemoveAbsence(id);
+    else if (type === 'guest') {
+      const { eventId, playerName } = id;
+      const { removeEventResponse } = useStore.getState();
+      removeEventResponse(eventId, playerName);
+    }
   };
 
   const saveSeriesTitle = (id, newTitle) => {

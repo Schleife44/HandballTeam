@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Search, Users, UserPlus } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 
 // Hooks
 import { useRosterData } from '../../hooks/useRosterData';
@@ -17,7 +17,7 @@ import useStore from '../../store/useStore';
 // Parts
 import RosterHeader from './parts/RosterHeader';
 import PlayerCard from './parts/PlayerCard';
-import PlayerStatsModal from './parts/PlayerStatsModal';
+import TeamStatsTable from './parts/TeamStatsTable';
 
 const RosterManager = () => {
   const { squad, addPlayer, updatePlayer, removePlayer, toggleStatus } = useRosterData();
@@ -43,7 +43,6 @@ const RosterManager = () => {
   const [editingId, setEditingId] = useState(null);
   const [editData, setEditData] = useState({});
   const [searchQuery, setSearchQuery] = useState('');
-  const [selectedStatsPlayer, setSelectedStatsPlayer] = useState(null);
 
   const isOwner = activeMember?.uid === squad?.ownerUid;
   const isTrainer = activeMember?.role === 'trainer' || activeMember?.role === 'admin' || isOwner;
@@ -61,10 +60,19 @@ const RosterManager = () => {
     setEditingId(null);
   };
 
-  const teamPlayers = (squad?.[activeTab] || []).filter(p => 
-    (p.name || '').toLowerCase().includes(searchQuery.toLowerCase()) || 
-    (p.number || '').includes(searchQuery)
-  );
+  const teamPlayers = (squad?.[activeTab] || []).filter(p => {
+    const isTemp = p.isTemporary || 
+                   p.isGuest ||
+                   p.id?.startsWith('quick_') || 
+                   p.id?.startsWith('opp_') || 
+                   p.id?.startsWith('neutral_') ||
+                   p.id?.startsWith('guest_');
+    
+    return !isTemp && (
+      (p.name || '').toLowerCase().includes(searchQuery.toLowerCase()) || 
+      (p.number || '').includes(searchQuery)
+    );
+  });
 
   const teamName = activeTab === 'home' ? (squad?.settings?.homeName || 'Heim') : (squad?.settings?.awayName || 'Gegner');
   const teamColor = activeTab === 'home' ? (squad?.settings?.homeColor || '#84cc16') : (squad?.settings?.awayColor || '#3f3f46');
@@ -80,91 +88,109 @@ const RosterManager = () => {
       />
 
       <div className="space-y-6">
-        <Input 
-          icon={Search}
-          placeholder={`Suchen in ${teamName}...`}
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-          wrapperClassName="max-w-md"
-          className="bg-zinc-900/40 rounded-[2rem] py-5"
-        />
-
-        {teamPlayers.length === 0 ? (
-          <div className="mt-8">
-            <EmptyState 
-              icon={Users}
-              title={searchQuery ? 'Keine Treffer' : 'Kader ist leer'}
-              description={searchQuery ? 'Keine Spieler gefunden, die deiner Suche entsprechen.' : 'Dein Kader ist noch sehr übersichtlich. Füge neue Spieler hinzu oder teile deinen Einladungslink in den Einstellungen.'}
-              variant="glass"
-              action={
-                !searchQuery && isTrainer && (
-                  <Button variant="primary" onClick={handleAddPlayer} icon={UserPlus} className="w-full justify-center">
-                    Ersten Spieler hinzufügen
-                  </Button>
-                )
-              }
-            />
-          </div>
-        ) : (
-          <div className="space-y-8">
-            {activeTab === 'home' && teamPlayers.length === 1 && !searchQuery && (
-               <div className="bg-brand/5 border border-brand/20 rounded-[2.5rem] p-8 flex flex-col md:flex-row items-center justify-between gap-6 animate-in fade-in zoom-in duration-500">
-                 <div className="space-y-2 text-center md:text-left">
-                   <h4 className="text-xl font-black text-white uppercase italic">Lad dein Team ein!</h4>
-                   <p className="text-xs font-bold text-zinc-500 uppercase tracking-widest max-w-md">Du bist aktuell noch alleine. Kopiere den Einladungslink in den Einstellungen und schicke ihn deiner Mannschaft.</p>
-                 </div>
-                 <Button 
-                   variant="outline" 
-                   icon={Users}
-                   onClick={() => navigate('/settings')}
-                   className="whitespace-nowrap"
-                 >
-                   Zu den Einladungen
-                 </Button>
-               </div>
-            )}
-            
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            <AnimatePresence mode="popLayout">
-              {teamPlayers.map((player) => (
-                <PlayerCard 
-                  key={player.id}
-                  player={player}
-                  isEditing={editingId === player.id}
-                  editData={editData}
-                  onEditChange={setEditData}
-                  onSave={handleSaveEdit}
-                  onEditStart={() => {
-                    if (!isTrainer) return;
-                    setEditingId(player.id);
-                    setEditData({ ...player });
-                  }}
-                  onToggleStatus={() => {
-                    if (isTrainer) toggleStatus(activeTab, player.id);
-                  }}
-                  onRemove={() => {
-                    if (isTrainer) removePlayer(activeTab, player.id);
-                  }}
-                  onOpenStats={() => setSelectedStatsPlayer(player)}
-                  teamColor={teamColor}
-                  isTrainer={isTrainer}
-                />
-              ))}
-            </AnimatePresence>
-          </div>
-        </div>
-      )}
-      </div>
-
-      <AnimatePresence>
-        {selectedStatsPlayer && (
-          <PlayerStatsModal 
-            player={selectedStatsPlayer} 
-            teamColor={teamColor}
-            onClose={() => setSelectedStatsPlayer(null)} 
+        {activeTab !== 'stats' && (
+          <Input 
+            icon={Search}
+            placeholder={`Suchen in ${teamName}...`}
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            wrapperClassName="max-w-md"
+            className="bg-zinc-900/40 rounded-[2rem] py-5"
           />
         )}
-      </AnimatePresence>
+
+        <AnimatePresence mode="wait">
+          {activeTab === 'stats' ? (
+            <motion.div
+              key="stats-view"
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              transition={{ duration: 0.3 }}
+            >
+              <TeamStatsTable />
+            </motion.div>
+          ) : teamPlayers.length === 0 ? (
+            <motion.div 
+              key="empty-state"
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              transition={{ duration: 0.2 }}
+              className="mt-8"
+            >
+              <EmptyState 
+                icon={Users}
+                title={searchQuery ? 'Keine Treffer' : 'Kader ist leer'}
+                description={searchQuery ? 'Keine Spieler gefunden, die deiner Suche entsprechen.' : 'Dein Kader ist noch sehr übersichtlich. Füge neue Spieler hinzu oder teile deinen Einladungslink in den Einstellungen.'}
+                variant="glass"
+                action={
+                  !searchQuery && isTrainer && (
+                    <Button variant="primary" onClick={handleAddPlayer} icon={UserPlus} className="w-full justify-center">
+                      Ersten Spieler hinzufügen
+                    </Button>
+                  )
+                }
+              />
+            </motion.div>
+          ) : (
+            <motion.div 
+              key="list-view"
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              transition={{ duration: 0.3 }}
+              className="space-y-8"
+            >
+              {activeTab === 'home' && teamPlayers.length === 1 && !searchQuery && (
+                 <div className="bg-brand/5 border border-brand/20 rounded-[2.5rem] p-8 flex flex-col md:flex-row items-center justify-between gap-6 animate-in fade-in zoom-in duration-500">
+                   <div className="space-y-2 text-center md:text-left">
+                     <h4 className="text-xl font-black text-white uppercase italic">Lad dein Team ein!</h4>
+                     <p className="text-xs font-bold text-zinc-500 uppercase tracking-widest max-w-md">Du bist aktuell noch alleine. Kopiere den Einladungslink in den Einstellungen und schicke ihn deiner Mannschaft.</p>
+                   </div>
+                   <Button 
+                     variant="outline" 
+                     icon={Users}
+                     onClick={() => navigate('/settings')}
+                     className="whitespace-nowrap"
+                   >
+                     Zu den Einladungen
+                   </Button>
+                 </div>
+              )}
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                <AnimatePresence mode="popLayout">
+                  {teamPlayers.map((player) => (
+                    <PlayerCard 
+                      key={player.id}
+                      player={player}
+                      isEditing={editingId === player.id}
+                      editData={editData}
+                      onEditChange={setEditData}
+                      onSave={handleSaveEdit}
+                      onEditStart={() => {
+                        if (!isTrainer) return;
+                        setEditingId(player.id);
+                        setEditData({ ...player });
+                      }}
+                      onToggleStatus={() => {
+                        if (isTrainer) toggleStatus(activeTab, player.id);
+                      }}
+                      onRemove={() => {
+                        if (isTrainer) removePlayer(activeTab, player.id);
+                      }}
+                      onOpenStats={() => navigate(`/roster/${player.name}`)}
+                      teamColor={teamColor}
+                      isTrainer={isTrainer}
+                    />
+                  ))}
+                </AnimatePresence>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
     </div>
   );
 };

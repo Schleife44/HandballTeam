@@ -12,15 +12,6 @@ export const TeamConfig = ({ label, name, season, color, colors, onUpdateName, o
       disabled={!isTrainer}
     />
 
-    {label.includes('Dein Teamname') && (
-      <Input 
-        label="Aktuelle Saison"
-        value={season || '25/26'}
-        placeholder="z.B. 25/26"
-        onChange={(e) => onUpdateSeason?.(e.target.value)}
-        disabled={!isTrainer}
-      />
-    )}
 
     <div className="space-y-4">
       <label className="text-[10px] font-black text-zinc-500 uppercase tracking-[0.3em] px-4 block">Team Farbe</label>

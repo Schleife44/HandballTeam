@@ -8,16 +8,35 @@
   --color-brand-light: #bef264;
 }
 
+:root {
+  /* Default Dark Mode (Unchanged) */
+  --bg-app: #000000;
+  --text-main: #f4f4f5; /* zinc-100 */
+  --text-muted: #71717a; /* zinc-500 */
+  --card-bg: rgba(24, 24, 27, 0.5); /* zinc-900/50 */
+  --card-border: #27272a; /* zinc-800 */
+  --input-bg: rgba(0, 0, 0, 0.6);
+  --modal-bg: rgba(9, 9, 11, 0.9);
+  --border-subtle: #27272a;
+  --scrollbar-thumb: rgba(255, 255, 255, 0.3);
+}
+
+
+
 @layer base {
   body {
-    @apply bg-black text-zinc-100 antialiased;
+    background-color: var(--bg-app);
+    color: var(--text-main);
+    @apply antialiased transition-colors duration-300;
     font-family: 'Inter', system-ui, -apple-system, sans-serif;
   }
 }
 
 @layer components {
   .hub-card {
-    @apply bg-zinc-900/50 border border-zinc-800 rounded-3xl backdrop-blur-sm shadow-xl;
+    background-color: var(--card-bg);
+    border: 1px solid var(--card-border);
+    @apply rounded-3xl backdrop-blur-sm shadow-xl transition-all duration-300;
   }
   
   .custom-scrollbar::-webkit-scrollbar {
@@ -27,11 +46,11 @@
     background: transparent;
   }
   .custom-scrollbar::-webkit-scrollbar-thumb {
-    background: rgba(255, 255, 255, 0.3);
+    background: var(--scrollbar-thumb);
     border-radius: 10px;
   }
   .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-    background: rgba(255, 255, 255, 0.5);
+    @apply opacity-80;
   }
   .no-scrollbar::-webkit-scrollbar {
     display: none;

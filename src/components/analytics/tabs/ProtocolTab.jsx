@@ -94,8 +94,8 @@ const ProtocolTab = ({ match }) => {
                 </td>
                 <td className="px-8 py-6">
                   <div className="flex items-center gap-3">
-                    <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-[10px] font-black ${entry.team === 'home' ? 'bg-brand/10 text-brand' : 'bg-zinc-800 text-zinc-500'}`}>
-                      {entry.playerNumber}
+                    <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-[10px] font-black overflow-hidden px-1 ${entry.team === 'home' ? 'bg-brand/10 text-brand' : 'bg-zinc-800 text-zinc-500'}`}>
+                      <span className="truncate">{entry.playerNumber}</span>
                     </div>
                     <span className="text-xs font-bold text-zinc-200">{entry.playerName}</span>
                   </div>

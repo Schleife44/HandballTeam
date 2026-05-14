@@ -1,6 +1,7 @@
 import React from 'react';
 import { motion } from 'framer-motion';
 import { User, AlertTriangle, X } from 'lucide-react';
+import Button from '../../ui/Button';
 
 const OpponentSelectionOverlay = ({ players, title, subtitle, onSelect, onCancel }) => {
   return (
@@ -20,9 +21,14 @@ const OpponentSelectionOverlay = ({ players, title, subtitle, onSelect, onCancel
               <p className="text-[10px] font-black text-zinc-500 uppercase tracking-widest mt-1">{subtitle}</p>
             </div>
           </div>
-          <button onClick={onCancel} className="p-2 hover:bg-zinc-800 rounded-xl transition-colors text-zinc-500">
+          <Button 
+            variant="ghost" 
+            size="sm" 
+            onClick={onCancel} 
+            className="p-2 hover:bg-zinc-800 rounded-xl transition-colors text-zinc-500"
+          >
             <X size={20} />
-          </button>
+          </Button>
         </div>
 
         <div className="grid grid-cols-3 sm:grid-cols-4 gap-3">
@@ -42,12 +48,13 @@ const OpponentSelectionOverlay = ({ players, title, subtitle, onSelect, onCancel
           ))}
         </div>
 
-        <button 
+        <Button 
+          variant="ghost"
           onClick={onCancel}
-          className="w-full mt-8 py-4 text-[10px] font-black text-zinc-500 uppercase tracking-[0.3em] hover:text-zinc-100 transition-colors"
+          className="w-full mt-8"
         >
           Abbrechen
-        </button>
+        </Button>
       </motion.div>
     </div>
   );

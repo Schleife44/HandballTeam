@@ -1,76 +1,50 @@
 import syncService from '../../services/SyncService';
 
-export const initialMatchState = {
+export const initialActiveMatchState = {
   activeMatch: null,
-  history: [],
 };
 
-export const createMatchSlice = (set) => ({
-  ...initialMatchState,
+export const createActiveMatchSlice = (set, get) => ({
+  ...initialActiveMatchState,
 
   setActiveMatch: (match) => set({ activeMatch: match }),
   
-  initMatch: (mode, isZoneMode = false) => set(() => ({
-    activeMatch: {
-      mode,
-      isZoneMode,
-      score: { home: 0, away: 0 },
-      timer: { elapsedMs: 0, isPaused: true, phase: 'PRE_GAME' },
-      lineup: { home: [], away: [] },
-      gameLog: [],
-      suspensions: [],
-      timeouts: { home: 3, away: 3 },
-      playingTime: {},
-      isEmptyGoal: false
-    }
-  })),
+  initMatch: (mode, isZoneMode = false, additionalData = {}) => set((state) => {
+    const isNeutral = !!additionalData.customHomeName || !!additionalData.isNeutral;
+    
+    const filterFn = (p) => {
+      const isTemp = p.isTemporary || 
+                     p.id?.startsWith('quick_') || 
+                     p.id?.startsWith('opp_') || 
+                     p.id?.startsWith('neutral_') ||
+                     p.id?.startsWith('guest_');
+      return !isTemp;
+    };
 
-  // SaaS OPTIMIZATION: Helper to generate a light-weight summary of a game
-  // This summary stays in the 'history' collection for fast list/dashboard views.
-  calculateGameSummary: (game) => {
-    if (!game) return null;
-    const log = game.gameLog || game.log || [];
-    const playerStats = {};
-    const playerNames = {};
+    const cleanHome = (state.squad?.home || []).filter(filterFn);
+    const cleanAway = (state.squad?.away || []).filter(filterFn);
 
-    log.forEach(entry => {
-      if (entry.action?.startsWith('Gegner') || entry.isOpponent === true) return;
-      
-      const pId = entry.playerId || entry.playerNumber || entry.number;
-      if (!pId) return;
-
-      if (!playerStats[pId]) {
-        playerStats[pId] = { goals: 0, missed: 0, yellow: 0, suspensions: 0, red: 0, sevenMeterGoals: 0, sevenMeterTotal: 0 };
-        playerNames[pId] = entry.playerName || `Spieler #${pId}`;
+    return {
+      squad: { ...state.squad, home: cleanHome, away: cleanAway },
+      activeMatch: {
+        mode,
+        isZoneMode,
+        isNeutral,
+        score: { home: 0, away: 0 },
+        timer: { elapsedMs: 0, isPaused: true, phase: 'PRE_GAME' },
+        lineup: { home: [], away: [] },
+        gameLog: [],
+        suspensions: [],
+        timeouts: { home: 3, away: 3 },
+        playingTime: {},
+        isEmptyGoal: false,
+        ...additionalData
       }
-
-      const action = (entry.action || "").toLowerCase();
-      const type = (entry.type || "").toUpperCase();
-
-      const is7m = type.includes('7M') || action.includes('7m');
-      const isGoal = type.includes('GOAL') || action.includes('tor') || action.includes('goal');
-      const isMiss = type.includes('MISS') || type.includes('SAVE') || type.includes('BLOCKED') || 
-                     action.includes('fehlwurf') || action.includes('miss') || action.includes('verworfen') || 
-                     action.includes('gehalten') || action.includes('block');
-
-      if (isGoal) playerStats[pId].goals++;
-      else if (isMiss) playerStats[pId].missed++;
-
-      if (is7m) {
-        playerStats[pId].sevenMeterTotal++;
-        if (isGoal) playerStats[pId].sevenMeterGoals++;
-      }
-
-      if (type === 'YELLOW' || action.includes('gelbe')) playerStats[pId].yellow++;
-      else if (type === 'SUSPENSION' || action.includes('2 min')) playerStats[pId].suspensions++;
-      else if (type === 'RED' || action.includes('rote')) playerStats[pId].red++;
-    });
-
-    return { playerStats, playerNames };
-  },
+    };
+  }),
 
   tickMatch: (delta, playerIds = []) => set((state) => {
-    const { activeMatch, activeTeamId } = state;
+    const { activeMatch } = state;
     if (!activeMatch || activeMatch.timer.isPaused) return state;
 
     const newElapsedMs = activeMatch.timer.elapsedMs + delta;
@@ -84,7 +58,6 @@ export const createMatchSlice = (set) => ({
     };
 
     if (secondFlipped) {
-      // 1. Suspensions
       if (activeMatch.suspensions?.length > 0) {
         updatedMatch.suspensions = activeMatch.suspensions
           .map(s => {
@@ -94,7 +67,6 @@ export const createMatchSlice = (set) => ({
           .filter(s => s.remainingSeconds > 0);
       }
 
-      // 2. Playing Time
       if (activeMatch.mode === 'COMPLEX' && playerIds.length > 0) {
         const pt = { ...(activeMatch.playingTime || {}) };
         playerIds.forEach(id => {
@@ -191,7 +163,6 @@ export const createMatchSlice = (set) => ({
     const { activeTeamId, activeMatch } = state;
     const updatedMatch = activeMatch ? { ...activeMatch, timer: { ...activeMatch.timer, ...timerUpdate } } : null;
     
-    // SaaS OPTIMIZATION: Only save to cloud on significant state changes
     const phaseChanged = timerUpdate.phase !== undefined && timerUpdate.phase !== activeMatch?.timer?.phase;
     const pauseChanged = timerUpdate.isPaused !== undefined && timerUpdate.isPaused !== activeMatch?.timer?.isPaused;
     const isStateChange = phaseChanged || pauseChanged;
@@ -224,7 +195,6 @@ export const createMatchSlice = (set) => ({
     };
   }),
 
-  // Optimized combined action (Reduces writes and bandwidth)
   recordMatchAction: (entry, scoreUpdate = null) => set((state) => {
     const { activeTeamId, activeMatch } = state;
     if (!activeMatch) return state;
@@ -233,7 +203,6 @@ export const createMatchSlice = (set) => ({
       ...entry,
       id: entry.id || `log_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
       timestamp: entry.timestamp || new Date().toISOString(),
-      // Snapshotting for history integrity (Soft Delete support)
       playerNameSnapshot: entry.playerName || 'Unbekannt',
       playerNumberSnapshot: entry.playerNumber || '?'
     };
@@ -245,7 +214,6 @@ export const createMatchSlice = (set) => ({
     };
 
     if (activeTeamId) {
-      // ATOMIC SaaS OPTIMIZATION: Combine Log and Score into ONE write
       syncService.recordAction(activeTeamId, enrichedEntry, scoreUpdate ? updatedMatch : null);
     }
 
@@ -253,89 +221,49 @@ export const createMatchSlice = (set) => ({
   }),
 
   finishMatch: () => set((state) => {
-    const { activeTeamId, activeMatch } = state;
+    const { activeTeamId, activeMatch, history, squad } = state;
     if (!activeMatch) return state;
     const timestamp = new Date().toISOString();
     const date = timestamp.slice(0, 10);
     const gameId = activeMatch.id || `g_${Date.now()}`;
+    const currentSeason = squad?.settings?.currentSeason || '25/26';
     const archivedGame = { 
       ...activeMatch, 
       id: gameId,
       timestamp,
-      date: activeMatch.date || date
+      date: activeMatch.date || date,
+      season: activeMatch.season || currentSeason,
+      teamHome: activeMatch.customHomeName || activeMatch.teamHome || squad?.settings?.homeName || 'Heim',
+      teamAway: activeMatch.customAwayName || activeMatch.teamAway || squad?.settings?.awayName || 'Gast',
+      scoreHome: activeMatch.score.home,
+      scoreAway: activeMatch.score.away
     };
     
     if (activeTeamId) {
       syncService.saveHistoryGame(activeTeamId, archivedGame);
-      // Clear the current game so it doesn't reappear in the live dashboard
       syncService.deleteCurrentMatch(activeTeamId);
     }
 
-    // SaaS OPTIMIZATION: Only store 'Light' version in local history state
-    // Details will be fetched on-demand if needed.
-    // We include a 'statsSummary' so dashboard/season views stay fast.
-    const statsSummary = state.calculateGameSummary(archivedGame);
+    // Call calculateGameSummary from history slice
+    const statsSummary = get().calculateGameSummary(archivedGame);
     const { gameLog, lineup, playingTime, ...lightGame } = archivedGame;
 
-    return {
-      history: [{ ...lightGame, statsSummary }, ...state.history],
-      activeMatch: null
-    };
-  }),
-
-  // History Actions
-  setHistory: (history) => set({ history }),
-  addGameToHistory: (game) => set((state) => {
-    const { activeTeamId, squad } = state;
-    const currentSeason = squad?.settings?.currentSeason || '25/26';
-    
-    const gameWithSeason = { 
-      ...game, 
-      id: game.id ? String(game.id) : `h_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
-      season: game.season || currentSeason,
-      timestamp: game.timestamp || new Date().toISOString()
+    const filterFn = (p) => {
+      const isTemp = p.isTemporary || 
+                     p.id?.startsWith('quick_') || 
+                     p.id?.startsWith('opp_') || 
+                     p.id?.startsWith('neutral_') ||
+                     p.id?.startsWith('guest_');
+      return !isTemp;
     };
 
-    const statsSummary = state.calculateGameSummary(gameWithSeason);
-    const { gameLog, lineup, playingTime, ...lightGame } = gameWithSeason;
-    const finalLightGame = { ...lightGame, statsSummary };
+    const cleanHome = (squad?.home || []).filter(filterFn);
+    const cleanAway = (squad?.away || []).filter(filterFn);
 
-    if (activeTeamId) {
-      syncService.saveHistoryGame(activeTeamId, { ...gameWithSeason, statsSummary });
-    }
-
-    return { history: [finalLightGame, ...state.history].sort((a, b) => {
-      const getVal = (g) => {
-        const dateStr = g.date || g.timestamp;
-        if (dateStr) {
-          const d = new Date(dateStr).getTime();
-          if (!isNaN(d)) return d;
-        }
-        return 0;
-      };
-      return getVal(b) - getVal(a);
-    }) };
-  }),
-  deleteGameFromHistory: (idOrKey) => set((state) => {
-    const { activeTeamId } = state;
-    if (activeTeamId) {
-      syncService.deleteHistoryGame(activeTeamId, idOrKey);
-    }
     return {
-      history: state.history.filter(g => 
-        g.id !== idOrKey && 
-        g.timestamp !== idOrKey && 
-        g.date !== idOrKey
-      )
-    };
-  }),
-  updateHistoryGame: (updatedGame) => set((state) => {
-    const { activeTeamId } = state;
-    if (activeTeamId) {
-      syncService.saveHistoryGame(activeTeamId, updatedGame);
-    }
-    return {
-      history: state.history.map(g => g.id === updatedGame.id ? updatedGame : g)
+      history: [{ ...lightGame, statsSummary }, ...history],
+      activeMatch: null,
+      squad: { ...squad, home: cleanHome, away: cleanAway }
     };
   }),
 
@@ -345,23 +273,19 @@ export const createMatchSlice = (set) => ({
     const cloudOffset = (data.timer?.elapsedMs || 0) / 1000;
     const cloudStartTime = data.timer?.startTime;
 
-    // TIMER INTERPOLATION: Accurate sync without frequent writes
     let interpolatedMs = cloudOffset * 1000;
     if (cloudIsRunning && cloudStartTime) {
       const startMs = typeof cloudStartTime === 'number' ? cloudStartTime : (cloudStartTime?.toMillis ? cloudStartTime.toMillis() : new Date(cloudStartTime).getTime());
       interpolatedMs += Math.max(0, Date.now() - startMs);
     }
 
-    // RESILIENCY: If we are already running locally, don't let small cloud jitter jump the clock
     if (state.activeMatch?.timer && !state.activeMatch.timer.isPaused) {
       const diff = Math.abs(state.activeMatch.timer.elapsedMs - interpolatedMs);
       if (diff < 2000) {
-        // Keep our local precise timer
         interpolatedMs = state.activeMatch.timer.elapsedMs;
       }
     }
 
-    // PERSISTENCE: If cloud has match data but local store is empty (e.g. after reload), initialize it
     if (!state.activeMatch && !data.score && !data.timer && !data.gameLog?.length) {
       return state;
     }

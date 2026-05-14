@@ -120,15 +120,15 @@ export default function AuthGuard({ children }) {
     
     const roster = squad?.home || [];
     const idExists = playerId && roster.some(p => p.id === playerId);
-    const nameExists = effectiveName && roster.some(p => p.name === effectiveName); 
+    
+    const normalizedEffectiveName = effectiveName?.trim().toLowerCase();
+    const nameExists = normalizedEffectiveName && roster.some(p => 
+      p.name?.trim().toLowerCase() === normalizedEffectiveName
+    ); 
 
-    // SaaS STABILIZATION:
-    // Only prompt if:
-    // 1. Roster is HYDRATED (we actually have data or confirmed empty)
-    // 2. Roster is NOT empty (if it's empty, a prompt is useless and likely causes a loop)
-    // 3. We are 100% sure the name/ID doesn't exist.
     const rosterIsEmpty = roster.length === 0;
-    const shouldPrompt = !isClubMode && squad?.isRosterHydrated && !rosterIsEmpty && (!effectiveName || effectiveName === 'Gast' || (!idExists && !nameExists));
+    const isLinked = idExists || nameExists;
+    const shouldPrompt = !isClubMode && squad?.isRosterHydrated && !rosterIsEmpty && (!effectiveName || effectiveName === 'Gast' || !isLinked);
 
     if (shouldPrompt) {
       console.log('[AuthGuard] Identity invalid or lost, showing NamePromptOverlay');

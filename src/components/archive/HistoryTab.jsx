@@ -34,6 +34,8 @@ const HistoryTab = ({ onSelectGame }) => {
     setGameToDelete,
     availableSeasons,
     filteredGames,
+    filterMode,
+    setFilterMode,
     importHandballNet,
     handleJsonUpload,
     deleteGame
@@ -50,12 +52,31 @@ const HistoryTab = ({ onSelectGame }) => {
   return (
     <div className="flex flex-col gap-6 animate-in fade-in duration-500">
       
-      {/* Season Selection */}
-      <SeasonSelector 
-        seasons={availableSeasons} 
-        selectedSeason={selectedSeason} 
-        onSelect={setSelectedSeason} 
-      />
+      {/* Filter & Season Selection Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div className="flex p-1 bg-zinc-900/50 border border-zinc-800 rounded-xl w-fit">
+          <button 
+            onClick={() => setFilterMode('own')}
+            className={`px-4 py-2 rounded-lg text-[10px] font-black uppercase transition-all whitespace-nowrap
+              ${filterMode === 'own' ? 'bg-zinc-800 text-brand shadow-lg' : 'text-zinc-500 hover:text-zinc-300'}`}
+          >
+            Eigene Spiele
+          </button>
+          <button 
+            onClick={() => setFilterMode('all')}
+            className={`px-4 py-2 rounded-lg text-[10px] font-black uppercase transition-all whitespace-nowrap
+              ${filterMode === 'all' ? 'bg-zinc-800 text-brand shadow-lg' : 'text-zinc-500 hover:text-zinc-300'}`}
+          >
+            Alle Spiele
+          </button>
+        </div>
+
+        <SeasonSelector 
+          seasons={availableSeasons} 
+          selectedSeason={selectedSeason} 
+          onSelect={setSelectedSeason} 
+        />
+      </div>
 
       {/* Toolbar */}
       <div className="flex flex-col lg:flex-row lg:items-center gap-4 bg-zinc-900/50 p-4 rounded-2xl border border-zinc-800">

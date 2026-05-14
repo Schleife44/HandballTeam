@@ -70,14 +70,39 @@ const ManagementHub = ({
             <div className="flex flex-col gap-2 p-4 bg-zinc-900 border border-zinc-800 rounded-2xl">
               <div className="flex items-center gap-2 mb-1">
                 <Clock3 size={14} className="text-zinc-600" />
-                <span className="text-[8px] font-black uppercase text-zinc-500 tracking-widest">Abmeldefrist (Std.)</span>
+                <span className="text-[8px] font-black uppercase text-zinc-500 tracking-widest">Abmeldefrist</span>
               </div>
-              <input 
-                type="number" 
-                value={newAbo.deadline} 
-                onChange={(e) => setNewAbo({...newAbo, deadline: parseInt(e.target.value) || 0})} 
-                className="w-full bg-black/20 border border-zinc-800 p-2 rounded-xl text-center text-zinc-100 text-xs font-bold focus:border-brand/50 outline-none" 
-              />
+              <div className="flex items-center gap-1">
+                <div className="flex-1 flex flex-col items-center">
+                  <input 
+                    type="number" 
+                    min="0"
+                    value={Math.floor((newAbo.deadline ?? 0) / 24)} 
+                    onChange={(e) => {
+                      const d = parseInt(e.target.value) || 0;
+                      const h = (newAbo.deadline ?? 0) % 24;
+                      setNewAbo({...newAbo, deadline: d * 24 + h});
+                    }} 
+                    className="w-full bg-black/20 border border-zinc-800 p-2 rounded-xl text-center text-zinc-100 text-xs font-bold focus:border-brand/50 outline-none" 
+                  />
+                  <span className="text-[6px] font-black text-zinc-700 uppercase mt-1">Tage</span>
+                </div>
+                <div className="flex-1 flex flex-col items-center">
+                  <input 
+                    type="number" 
+                    min="0"
+                    max="23"
+                    value={(newAbo.deadline ?? 0) % 24} 
+                    onChange={(e) => {
+                      const h = parseInt(e.target.value) || 0;
+                      const d = Math.floor((newAbo.deadline ?? 0) / 24);
+                      setNewAbo({...newAbo, deadline: d * 24 + h});
+                    }} 
+                    className="w-full bg-black/20 border border-zinc-800 p-2 rounded-xl text-center text-zinc-100 text-xs font-bold focus:border-brand/50 outline-none" 
+                  />
+                  <span className="text-[6px] font-black text-zinc-700 uppercase mt-1">Std.</span>
+                </div>
+              </div>
             </div>
             <div className="flex flex-col gap-2 p-4 bg-zinc-900 border border-zinc-800 rounded-2xl">
               <div className="flex items-center gap-2 mb-1">
@@ -98,6 +123,16 @@ const ManagementHub = ({
         <section className="space-y-4 pt-6 border-t border-zinc-900">
           <h4 className="text-[10px] font-black uppercase tracking-widest text-zinc-500 ml-1">Aktive Abos & Serien</h4>
           <div className="space-y-3">
+            {subscriptions.length === 0 && series.length === 0 && (
+              <div className="py-12 text-center border-2 border-dashed border-zinc-900/50 rounded-[2.5rem] space-y-3">
+                <div className="w-12 h-12 bg-zinc-900/50 rounded-full flex items-center justify-center mx-auto text-zinc-800">
+                  <Link size={20} />
+                </div>
+                <p className="text-[10px] font-black text-zinc-700 uppercase tracking-[0.2em] italic">
+                  Noch keine aktiven Abos oder Serien vorhanden
+                </p>
+              </div>
+            )}
             {subscriptions.map(s => (
               <div key={s.id} className="p-5 bg-brand/5 border border-brand/20 rounded-3xl flex items-center justify-between shadow-lg">
                 <div className="flex items-center gap-4">
