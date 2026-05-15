@@ -101,8 +101,8 @@ const PlayerActionGrid = ({ onPlayerSelect, lineup, activeSwap, mode, suspension
           </div>
           
           <div className="text-center w-full truncate mt-auto">
-            <p className={`font-black text-zinc-100 uppercase tracking-tighter truncate ${isField || isSimple ? 'text-[7px] lg:text-[9px]' : 'text-[6px] opacity-40'}`}>
-              {(player.name || 'P').split(' ')[0]}
+            <p className={`font-black text-zinc-100 uppercase tracking-tighter truncate px-0.5 ${isField || isSimple ? 'text-[6px] lg:text-[8px]' : 'text-[5px] opacity-40'}`}>
+              {player.name || 'P'}
             </p>
           </div>
 

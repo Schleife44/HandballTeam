@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import useStore from '../store/useStore';
 import { fetchTeamTable } from '../services/handballNetService';
 import { 
@@ -9,10 +9,26 @@ import {
 } from '../utils/dashboardStatsUtils';
 
 export function useDashboardStats() {
-  const { squad, history, activeMember } = useStore();
+  const { squad, history, fines, activeMember } = useStore();
   const currentSquad = squad || { settings: {}, calendarEvents: [] };
   const settings = currentSquad.settings || {};
   const calendarEvents = currentSquad.calendarEvents || [];
+
+  // Financial Stats Calculation
+  const financialStats = useMemo(() => {
+    const historyData = fines?.history || [];
+    const paidFines = historyData.filter(h => (h.category === 'fine' || !h.category) && h.paid).reduce((sum, h) => sum + (parseFloat(h.amount) || 0), 0);
+    const unpaidFines = historyData.filter(h => (h.category === 'fine' || !h.category) && !h.paid).reduce((sum, h) => sum + (parseFloat(h.amount) || 0), 0);
+    const income = historyData.filter(h => h.category === 'income').reduce((sum, h) => sum + (parseFloat(h.amount) || 0), 0);
+    const expenses = historyData.filter(h => h.category === 'expense').reduce((sum, h) => sum + (parseFloat(h.amount) || 0), 0);
+    
+    const balance = (paidFines + income) - expenses;
+    return {
+      balance,
+      soll: balance + unpaidFines,
+      unpaidCount: historyData.filter(h => (h.category === 'fine' || !h.category) && !h.paid).length
+    };
+  }, [fines?.history]);
 
   const [stats, setStats] = useState({
     totalGoals: 0,
@@ -88,5 +104,5 @@ export function useDashboardStats() {
     loadData();
   }, [loadData]);
 
-  return { stats, settings };
+  return { stats, settings, financialStats };
 }

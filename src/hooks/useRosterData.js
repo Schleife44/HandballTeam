@@ -1,5 +1,6 @@
 import { useCallback, useEffect } from 'react';
 import useStore from '../store/useStore';
+import { normalizeText } from '../utils/dataUtils';
 
 export const useRosterData = () => {
   const { squad, addPlayer: storeAddPlayer, updatePlayer: storeUpdatePlayer, removePlayer: storeRemovePlayer } = useStore();
@@ -25,19 +26,28 @@ export const useRosterData = () => {
     }
   }, []);
 
-  const addPlayer = (team) => {
+  const addPlayer = (team, data = {}) => {
     const newPlayer = {
-      name: '',
-      number: '',
-      isGoalkeeper: false,
-      isInactive: false,
-      role: 'Spieler'
+      name: normalizeText(data.name),
+      number: data.number || '',
+      isGoalkeeper: data.isGoalkeeper || false,
+      isInactive: data.isInactive || false,
+      role: data.role || 'Spieler',
+      ...data,
+      name: normalizeText(data.name)
     };
     storeAddPlayer(team, newPlayer);
   };
 
   const updatePlayer = (team, playerId, updatedData) => {
-    storeUpdatePlayer(team, playerId, updatedData);
+    const normalized = {
+      ...updatedData,
+      name: updatedData.name !== undefined ? normalizeText(updatedData.name) : undefined
+    };
+    // Remove undefined fields
+    if (normalized.name === undefined) delete normalized.name;
+    
+    storeUpdatePlayer(team, playerId, normalized);
   };
 
   const removePlayer = (team, playerId) => {

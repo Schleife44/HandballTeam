@@ -29,7 +29,7 @@ const LiveGameDashboard = lazy(() => import('./components/game/LiveGameDashboard
 const Dashboard = lazy(() => import('./components/dashboard/Dashboard.jsx'))
 const Calendar = lazy(() => import('./components/calendar/Calendar.jsx'))
 const TacticsBoard = lazy(() => import('./components/tactics/TacticsBoard.jsx'))
-const RosterManager = lazy(() => import('./components/roster/RosterManager.jsx'))
+const Roster = lazy(() => import('./components/roster/Roster.jsx'))
 const SettingsManager = lazy(() => import('./components/settings/SettingsManager.jsx'))
 const LiveAnalytics = lazy(() => import('./components/analytics/LiveAnalytics.jsx'))
 const ArchiveManager = lazy(() => import('./components/archive/ArchiveManager.jsx'))
@@ -110,7 +110,7 @@ function App() {
                       <SettingsManager />
                     </SubscriptionGuard>
                   } />
-                  <Route path="/roster" element={<RosterManager />} />
+                  <Route path="/roster" element={<Roster />} />
                   <Route path="/roster/:playerName" element={<PlayerProfilePage />} />
                   <Route path="/account" element={<AccountManager />} />
                   <Route path="/history/*" element={<ArchiveManager />} />

@@ -1,22 +1,16 @@
-import React, { useState } from 'react';
-import { 
-  Plus, TrendingUp, TrendingDown, Wallet, History, Settings2, Users 
-} from 'lucide-react';
+import React, { useState, useMemo } from 'react';
 import { AnimatePresence } from 'framer-motion';
 
-// Store
 import useStore from '../../store/useStore';
-
-// UI
-import Button from '../ui/Button';
-import Badge from '../ui/Badge';
-
-// Hooks
 import { useFinesData } from '../../hooks/useFinesData';
+import { toNum, formatCurrency } from '../../utils/financeUtils';
 
-// Sub-components
+// Modular Components
+import FinesHeader from './components/FinesHeader';
+import FinesNavigation from './components/FinesNavigation';
 import FinesDashboard from './components/FinesDashboard';
 import FinesHistoryTable from './components/FinesHistoryTable';
+import FinesDrinksManager from './components/FinesDrinksManager';
 import FinesCatalogManager from './components/FinesCatalogManager';
 import FinesSettings from './components/FinesSettings';
 import FineTransactionModal from './components/FineTransactionModal';
@@ -28,47 +22,67 @@ const FinesManager = () => {
     issueFine, 
     addTransaction,
     togglePayment, 
-    removeHistoryEntry, 
-    addCatalogItem, 
-    removeCatalogItem, 
-    updateSettings 
+    payAllForPlayer,
+    removeHistoryEntry,
+    addCatalogItem,
+    removeCatalogItem,
+    updateDrinkAmount,
+    bulkUpdateDrinkAmounts,
+    settleDrinks,
+    setCollectiveCostsName,
+    updateSettings,
+    requestMonthlyContributions
   } = useFinesData();
 
-  const [activeView, setActiveView] = useState('dashboard');
+  // Tab State
+  const [activeTab, setActiveTab] = useState('dashboard');
+  
+  // Modal State
   const [modalType, setModalType] = useState(null); // 'fine', 'income', 'expense'
   const [error, setError] = useState('');
-  
   const [selectedPlayer, setSelectedPlayer] = useState('');
   const [selectedFineId, setSelectedFineId] = useState('');
   const [customAmount, setCustomAmount] = useState('');
   const [customNote, setCustomNote] = useState('');
 
-  const roster = squad?.home || [];
-  
   // Permissions
   const myUid = activeMember?.uid || '';
   const isOwner = myUid === (squad?.ownerUid || '');
-  const memberFunctions = Array.isArray(activeMember?.function) 
-    ? activeMember.function 
-    : (activeMember?.function ? [activeMember.function] : []);
+  const memberFunctions = Array.isArray(activeMember?.function) ? activeMember.function : (activeMember?.function ? [activeMember.function] : []);
   const isKassenwart = memberFunctions.includes('kassenwart');
   const canManageMoney = isOwner || isKassenwart;
 
-  // Calculations
-  const history = fines?.history || [];
-  const stats = {
-    finesPaid: history.filter(h => (h.category === 'fine' || !h.category) && h.paid).reduce((sum, h) => sum + (h.amount || 0), 0),
-    finesUnpaid: history.filter(h => (h.category === 'fine' || !h.category) && !h.paid).reduce((sum, h) => sum + (h.amount || 0), 0),
-    otherIncome: history.filter(h => h.category === 'income').reduce((sum, h) => sum + (h.amount || 0), 0),
-    expenses: history.filter(h => h.category === 'expense').reduce((sum, h) => sum + (h.amount || 0), 0),
-  };
-  stats.totalBalance = (stats.finesPaid + stats.otherIncome) - stats.expenses;
+  // Data Preparation
+  const roster = squad?.home || [];
+  const history = useMemo(() => [...(fines.history || [])].sort((a, b) => new Date(b.date) - new Date(a.date)), [fines.history]);
+  const sortedRoster = useMemo(() => [...roster].sort((a, b) => a.name.trim().localeCompare(b.name.trim(), 'de')), [roster]);
 
-  const playerStats = (Array.isArray(roster) ? roster : []).map(player => {
-    const playerFines = history.filter(h => h.playerId === player.name && (h.category === 'fine' || !h.category));
-    const debt = playerFines.reduce((sum, h) => sum + (h.paid ? 0 : (h.amount || 0)), 0);
-    return { name: player.name, debt, number: player.number };
-  }).sort((a, b) => b.debt - a.debt);
+  // Statistics Calculation
+  const stats = useMemo(() => {
+    const finesPaid = history.filter(h => (h.category === 'fine' || !h.category) && h.paid).reduce((sum, h) => sum + toNum(h.amount), 0);
+    const finesUnpaid = history.filter(h => (h.category === 'fine' || !h.category) && !h.paid).reduce((sum, h) => sum + toNum(h.amount), 0);
+    const otherIncome = history.filter(h => h.category === 'income').reduce((sum, h) => sum + toNum(h.amount), 0);
+    const expenses = history.filter(h => h.category === 'expense').reduce((sum, h) => sum + toNum(h.amount), 0);
+    const totalBalance = (finesPaid + otherIncome) - expenses;
+    return { finesPaid, finesUnpaid, otherIncome, expenses, totalBalance, totalSoll: totalBalance + finesUnpaid };
+  }, [history]);
+
+  const playerStats = sortedRoster.map(player => {
+    const trimmedName = player.name.trim();
+    const playerFines = history.filter(h => (h.playerId || "").trim() === trimmedName && (h.category === 'fine' || !h.category));
+    return {
+      name: player.name,
+      number: player.number,
+      totalFine: playerFines.reduce((sum, f) => sum + toNum(f.amount), 0),
+      unpaidFine: playerFines.filter(f => !f.paid).reduce((sum, f) => sum + toNum(f.amount), 0),
+      count: playerFines.length
+    };
+  });
+
+  // Handlers
+  const resetForm = () => {
+    setSelectedPlayer(''); setSelectedFineId(''); setCustomAmount(''); setCustomNote(''); setError('');
+  };
 
   const handleSubmit = () => {
     setError('');
@@ -78,86 +92,89 @@ const FinesManager = () => {
       if (selectedFineId === 'manual' && !customAmount) { setError('Gib einen Betrag ein!'); return; }
       issueFine(selectedPlayer, selectedFineId, customAmount || null, customNote);
     } else if (modalType === 'income' || modalType === 'expense') {
-      if (!customAmount) { setError('Gib einen Betrag ein!'); return; }
-      if (!customNote) { setError('Gib einen Grund an!'); return; }
+      if (!customAmount || !customNote) { setError('Betrag und Grund sind Pflichtfelder!'); return; }
       addTransaction(modalType, customAmount, customNote);
     }
-    setModalType(null);
-    resetForm();
+    setModalType(null); resetForm();
   };
-
-  const resetForm = () => {
-    setSelectedPlayer('');
-    setSelectedFineId('');
-    setCustomAmount('');
-    setCustomNote('');
-    setError('');
-  };
-
-  const formatCurrency = (val) => new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR' }).format(val);
 
   return (
-    <div className="max-w-[1200px] mx-auto pb-32 px-8 pt-4 space-y-12 animate-in fade-in duration-1000">
+    <div className="max-w-[1400px] mx-auto p-4 sm:p-8 space-y-12 animate-in fade-in duration-1000 pb-32">
       
-      {/* HEADER */}
-      <div className="flex items-center justify-between">
-        <div className="space-y-1">
-          <div className="flex items-center gap-3">
-            <h1 className="text-5xl font-black tracking-tighter uppercase italic text-zinc-100">Kasse</h1>
-            <Badge variant="brand" className="px-3 py-1 text-[10px]">Active</Badge>
-          </div>
-          <p className="text-[10px] font-black uppercase text-zinc-600 tracking-[0.4em]">Mannschaftskasse & Strafenkatalog</p>
-        </div>
+      <FinesHeader 
+        canManageMoney={canManageMoney} 
+        onOpenModal={setModalType} 
+      />
 
-        {canManageMoney && (
-          <div className="flex items-center gap-3">
-            <Button variant="outline" onClick={() => setModalType('expense')} icon={TrendingDown} className="text-red-500 border-red-500/20 hover:bg-red-500/10">Ausgabe</Button>
-            <Button variant="outline" onClick={() => setModalType('income')} icon={TrendingUp} className="text-blue-500 border-blue-500/20 hover:bg-blue-500/10">Einnahme</Button>
-            <Button variant="primary" onClick={() => setModalType('fine')} icon={Plus}>Strafe</Button>
-          </div>
-        )}
-      </div>
-
-      {/* NAVIGATION TABS */}
-      <div className="flex p-1.5 bg-zinc-900/40 rounded-[2rem] border border-zinc-800 backdrop-blur-xl w-fit">
-        {[
-          { id: 'dashboard', label: 'Übersicht', icon: Wallet },
-          { id: 'history', label: 'Historie', icon: History },
-          { id: 'catalog', label: 'Strafenkatalog', icon: Settings2, restricted: true },
-          { id: 'settings', label: 'Einstellungen', icon: Users, restricted: true }
-        ].filter(tab => !tab.restricted || canManageMoney).map(tab => (
-          <button
-            key={tab.id}
-            onClick={() => setActiveView(tab.id)}
-            className={`flex items-center gap-2 px-8 py-3 rounded-[1.5rem] text-[10px] font-black uppercase transition-all
-              ${activeView === tab.id ? 'bg-zinc-100 text-black shadow-lg' : 'text-zinc-500 hover:text-zinc-100'}`}
-          >
-            <tab.icon size={14} />
-            {tab.label}
-          </button>
-        ))}
-      </div>
+      <FinesNavigation 
+        activeTab={activeTab} 
+        setActiveTab={setActiveTab} 
+        canManageMoney={canManageMoney} 
+      />
 
       <AnimatePresence mode="wait">
-        {activeView === 'dashboard' && (
-          <FinesDashboard stats={stats} playerStats={playerStats} recentActivity={history.slice(0, 5)} formatCurrency={formatCurrency} />
+        {activeTab === 'dashboard' && (
+          <FinesDashboard 
+            key="dash" 
+            stats={stats} 
+            playerStats={playerStats} 
+            roster={sortedRoster}
+            history={history}
+            teamName={squad?.name}
+            finesSettings={fines.settings}
+            formatCurrency={formatCurrency} 
+          />
         )}
-        {activeView === 'history' && (
-          <FinesHistoryTable history={history} canManageMoney={canManageMoney} togglePayment={togglePayment} removeEntry={removeHistoryEntry} formatCurrency={formatCurrency} />
+        {activeTab === 'history' && (
+          <FinesHistoryTable 
+            key="hist" 
+            history={history} 
+            canManageMoney={canManageMoney} 
+            togglePayment={togglePayment} 
+            payAllForPlayer={payAllForPlayer} 
+            removeEntry={removeHistoryEntry} 
+            formatCurrency={formatCurrency} 
+          />
         )}
-        {activeView === 'catalog' && (
-          <FinesCatalogManager catalog={fines.catalog} onAddItem={addCatalogItem} onRemoveItem={removeCatalogItem} formatCurrency={formatCurrency} />
+        {activeTab === 'drinks' && (
+          <FinesDrinksManager 
+            key="drinks" 
+            roster={sortedRoster} 
+            pendingDrinks={fines.pendingDrinks} 
+            collectiveCostsName={fines.collectiveCostsName} 
+            onUpdateAmount={updateDrinkAmount} 
+            onBulkUpdate={bulkUpdateDrinkAmounts}
+            onUpdateName={setCollectiveCostsName} 
+            onSettle={settleDrinks} 
+            canManage={canManageMoney} 
+            formatCurrency={formatCurrency} 
+          />
         )}
-        {activeView === 'settings' && (
-          <FinesSettings settings={fines.settings} roster={roster} updateSettings={updateSettings} />
+        {activeTab === 'catalog' && (
+          <FinesCatalogManager 
+            key="cat" 
+            catalog={fines.catalog} 
+            addItem={addCatalogItem} 
+            removeItem={removeCatalogItem} 
+            formatCurrency={formatCurrency} 
+          />
+        )}
+        {activeTab === 'settings' && (
+          <FinesSettings 
+            key="set" 
+            settings={fines.settings} 
+            roster={sortedRoster} 
+            updateSettings={updateSettings} 
+            onRequestMonthly={requestMonthlyContributions} 
+          />
         )}
       </AnimatePresence>
 
       <FineTransactionModal 
         modalType={modalType}
-        onClose={() => { setModalType(null); setError(''); }}
+        onClose={() => setModalType(null)}
         error={error}
-        roster={roster}
+        roster={sortedRoster}
         catalog={fines.catalog}
         selectedPlayer={selectedPlayer}
         setSelectedPlayer={setSelectedPlayer}
@@ -170,7 +187,6 @@ const FinesManager = () => {
         onSubmit={handleSubmit}
         formatCurrency={formatCurrency}
       />
-
     </div>
   );
 };

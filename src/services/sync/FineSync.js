@@ -43,6 +43,25 @@ export class FineSync extends SyncBase {
       console.error('[Sync] saveFineEntry failed:', e);
     }
   }
+  
+  async saveBulkFineEntries(teamId, entries) {
+    if (!teamId || !entries?.length) return;
+    const { writeBatch } = await import('firebase/firestore');
+    const batch = writeBatch(db);
+    
+    entries.forEach(fine => {
+      if (!fine.id) return;
+      const ref = doc(db, 'teams', teamId, 'fines', fine.id);
+      batch.set(ref, this.stripFunctions(fine));
+    });
+    
+    try {
+      await batch.commit();
+      console.log(`[Sync] Successfully saved ${entries.length} fines in batch.`);
+    } catch (e) {
+      console.error('[Sync] Bulk save failed:', e);
+    }
+  }
 
   async deleteFineEntry(teamId, fineId) {
     if (!teamId || !fineId) return;

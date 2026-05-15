@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import { Zap, UserPlus, Target } from 'lucide-react';
 import useStore from '../../store/useStore';
 import { useLocation } from 'react-router-dom';
 import { useGameSetup } from '../../hooks/useGameSetup';
@@ -12,6 +11,8 @@ import GameModeSelector from './parts/GameModeSelector';
 import LiveGameHeader from './parts/LiveGameHeader';
 import ActionOverlayManager from './parts/ActionOverlayManager';
 import QuickAddModal from './parts/QuickAddModal';
+import GameStatusIndicators from './parts/GameStatusIndicators';
+import MatchLoadingScreen from './parts/MatchLoadingScreen';
 
 const LiveGameDashboard = () => {
   const location = useLocation();
@@ -27,16 +28,17 @@ const LiveGameDashboard = () => {
 
   const { home, away, settings: squadSettings = {} } = squad;
 
+  // Cleanup on unmount: Remove temporary players if no match is active
   useEffect(() => {
     return () => {
-      const { activeMatch, squad, setSquadData } = useStore.getState();
-      if (!activeMatch) {
-        const cleanHome = (squad.home || []).filter(p => !p.isTemporary);
-        const cleanAway = (squad.away || []).filter(p => !p.isTemporary);
-        setSquadData({ home: cleanHome, away: cleanAway });
+      const state = useStore.getState();
+      if (!state.activeMatch) {
+        const cleanHome = (state.squad.home || []).filter(p => !p.isTemporary);
+        const cleanAway = (state.squad.away || []).filter(p => !p.isTemporary);
+        state.setSquadData({ home: cleanHome, away: cleanAway });
       }
     };
-  }, [setSquadData]);
+  }, []);
 
   const handleQuickAdd = () => {
     if (!quickAdd.number) return;
@@ -51,19 +53,7 @@ const LiveGameDashboard = () => {
     setQuickAdd({ show: false, team: 'home', number: '', name: '' });
   };
 
-  if (isAutoSetupLoading) {
-    return (
-      <div className="h-[80vh] flex flex-col items-center justify-center space-y-6">
-        <div className="relative">
-          <div className="w-20 h-20 border-4 border-brand/20 border-t-brand rounded-full animate-spin" />
-          <Zap size={32} className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-brand animate-pulse" />
-        </div>
-        <div className="text-center">
-          <h2 className="text-2xl font-black text-white uppercase italic tracking-tighter">Bereite Spiel vor</h2>
-        </div>
-      </div>
-    );
-  }
+  if (isAutoSetupLoading) return <MatchLoadingScreen />;
 
   if (!activeMatch) {
     return (
@@ -91,31 +81,12 @@ const LiveGameDashboard = () => {
       <div className="grid grid-cols-1 2xl:grid-cols-12 gap-6 lg:gap-8 items-start">
         <div className="2xl:col-span-9">
           <div className="bg-zinc-900/40 border border-zinc-800 rounded-[2rem] lg:rounded-[3rem] p-4 lg:p-8 backdrop-blur-xl">
-            <div className="hidden lg:flex items-center justify-between mb-8">
-               {activeMatch.mode === 'COMPLEX' && (
-                 <div className="flex items-center gap-3">
-                    <div className={`w-10 h-6 rounded-full p-1 cursor-pointer transition-all ${activeMatch.isEmptyGoal ? 'bg-red-500' : 'bg-zinc-800'}`} onClick={() => toggleEmptyGoal()}>
-                      <div className={`w-4 h-4 bg-white rounded-full transition-all ${activeMatch.isEmptyGoal ? 'translate-x-4' : 'translate-x-0'}`} />
-                    </div>
-                    <span className="text-[10px] font-black uppercase text-zinc-100 tracking-wider">Leeres Tor</span>
-                  </div>
-               )}
-
-                <div className="flex items-center gap-4">
-                  {gameLogic.sevenMeterFlow?.step === 'shooter' && (
-                    <div className="flex items-center gap-3 px-4 py-2 bg-brand/20 border border-brand/40 rounded-2xl animate-pulse">
-                      <Target size={14} className="text-brand" />
-                      <span className="text-[10px] font-black text-brand uppercase tracking-widest">7m Schützen wählen...</span>
-                    </div>
-                  )}
-                  {gameLogic.swapPending && (
-                    <div className="flex items-center gap-3 px-4 py-2 bg-brand/10 border border-brand/20 rounded-2xl animate-pulse">
-                      <UserPlus size={14} className="text-brand" />
-                      <span className="text-[10px] font-black text-brand uppercase tracking-widest">#{gameLogic.swapPending.number} einwechseln...</span>
-                    </div>
-                  )}
-                </div>
-            </div>
+            
+            <GameStatusIndicators 
+              activeMatch={activeMatch}
+              toggleEmptyGoal={toggleEmptyGoal}
+              gameLogic={gameLogic}
+            />
 
             <PlayerActionGrid 
               onPlayerSelect={gameLogic.handlePlayerClick} 
@@ -129,6 +100,7 @@ const LiveGameDashboard = () => {
           </div>
         </div>
 
+        {/* Sidebar Log */}
         <div className="hidden lg:block 2xl:col-span-3 h-[700px]">
           <MatchLog log={activeMatch.gameLog} />
         </div>

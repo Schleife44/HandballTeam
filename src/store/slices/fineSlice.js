@@ -9,6 +9,8 @@ export const initialFineState = {
       { id: 'f4', name: 'Handy in Kabine', amount: 10 }
     ],
     history: [],
+    pendingDrinks: {},
+    collectiveCostsName: 'Getränke',
     settings: {
       enabled: true,
       amountStandard: 15,
@@ -26,6 +28,14 @@ export const createFineSlice = (set) => ({
   
   setFinesHistory: (history) => set((state) => ({
     fines: { ...state.fines, history }
+  })),
+
+  setPendingDrinks: (pendingDrinks) => set((state) => ({
+    fines: { ...state.fines, pendingDrinks }
+  })),
+
+  setCollectiveCostsName: (name) => set((state) => ({
+    fines: { ...state.fines, collectiveCostsName: name }
   })),
 
   updateFinesSettings: (newSettings) => set((state) => {
@@ -50,11 +60,18 @@ export const createFineSlice = (set) => ({
     };
   }),
 
+  bulkAddFineEntries: (entries) => set((state) => {
+    const { activeTeamId, fines } = state;
+    if (activeTeamId) {
+      entries.forEach(entry => syncService.saveFineEntry(activeTeamId, entry));
+    }
+    return {
+      fines: { ...fines, history: [...entries, ...fines.history] }
+    };
+  }),
+
   updateFineHistory: (history) => set((state) => {
     const { activeTeamId, fines } = state;
-    // SaaS OPTIMIZATION: If we update the whole list (e.g. bulk paid status), we should ideally do it granularly.
-    // For now, if activeTeamId is present, we rely on the subscription to keep us in sync,
-    // but we need to trigger the cloud updates for each changed item.
     if (activeTeamId) {
       history.forEach(entry => {
         const oldEntry = fines.history.find(h => h.id === entry.id);
@@ -90,6 +107,8 @@ export const createFineSlice = (set) => ({
       ...state.fines,
       catalog: data.catalog || state.fines.catalog,
       history: data.history || state.fines.history,
+      pendingDrinks: data.pendingDrinks || state.fines.pendingDrinks || {},
+      collectiveCostsName: data.collectiveCostsName || state.fines.collectiveCostsName || 'Getränke',
       settings: { ...state.fines.settings, ...data.settings },
       status: data.status || state.fines.status
     }

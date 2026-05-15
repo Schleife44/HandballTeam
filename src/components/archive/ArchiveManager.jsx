@@ -1,24 +1,28 @@
 import React from 'react';
 import { Routes, Route, useNavigate, useLocation, Navigate } from 'react-router-dom';
-import { History, Video, BarChart2, FolderOpen, Shield, Trophy } from 'lucide-react';
+import { History, FolderOpen, Shield, Trophy } from 'lucide-react';
+
+// Hooks
+import { useArchiveData } from '../../hooks/useArchiveData';
+
+// Tabs
 import HistoryTab from './HistoryTab';
 import VideoAnalysisTab from './VideoAnalysisTab';
 import SeasonStatsTab from './SeasonStatsTab';
 import LeagueTableTab from './LeagueTableTab';
 import GameStatsTab from './GameStatsTab';
-import useStore from '../../store/useStore';
+
+// Components
 import SubscriptionGuard from '../auth/SubscriptionGuard';
 
 const ArchiveManager = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const { history } = useStore();
-  
-  // We still need a way to pass the selected game between routes if we don't want to use IDs in URL yet.
-  // For now, let's just use the store or state if we really have to, but since we are refactoring, 
-  // maybe we should just use a simple state for 'selectedGame' in the parent or handle it via URL params.
-  // Given the complexity, let's use a local state for the game but Router for the tabs.
-  const [selectedGame, setSelectedGame] = React.useState(null);
+  const { 
+    selectedGame, 
+    isDetailLoading, 
+    handleGameSelect 
+  } = useArchiveData();
 
   const tabs = [
     { id: 'history', label: 'Spiele-Archiv', icon: History, path: '/history/list' },
@@ -26,48 +30,20 @@ const ArchiveManager = () => {
     { id: 'table', label: 'Liga-Tabelle', icon: Shield, path: '/history/table' },
   ];
 
-  const activeTabId = tabs.find(t => location.pathname.startsWith(t.path))?.id || 'history';
-
-  const [isDetailLoading, setIsDetailLoading] = React.useState(false);
-  const { activeTeamId } = useStore();
-
-  const handleGameSelect = async (game, targetTab = 'game_stats') => {
-    if (!game) return;
-    
-    // SaaS OPTIMIZATION: Check if we need to load heavy tactical details
-    // If gameLog is missing, it's a 'Light' document from the history list
-    let fullGame = { ...game };
-    if (!game.gameLog || game.gameLog.length === 0) {
-      setIsDetailLoading(true);
-      try {
-        const { default: sync } = await import('../../services/SyncService');
-        const details = await sync.fetchHistoryDetails(activeTeamId, game.id);
-        if (details) {
-          fullGame = { ...fullGame, ...details };
-        }
-      } catch (e) {
-        console.error('[Archive] Failed to load details:', e);
-      } finally {
-        setIsDetailLoading(false);
+  const onGameClick = async (game, targetTab = 'game_stats') => {
+    const loadedGame = await handleGameSelect(game);
+    if (loadedGame) {
+      if (targetTab === 'game_stats') {
+        navigate('/history/game');
+      } else {
+        navigate('/history/video');
       }
-    }
-
-    // Normalize game data for sub-components (Legacy support)
-    const normalizedGame = {
-      ...fullGame,
-      gameLog: fullGame.gameLog || fullGame.log || []
-    };
-    
-    setSelectedGame(normalizedGame);
-    if (targetTab === 'game_stats') {
-      navigate('/history/game');
-    } else {
-      navigate('/history/video');
     }
   };
 
   return (
     <div className="flex flex-col gap-6">
+      {/* Header & Navigation */}
       <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
         <div className="flex items-center gap-3 flex-shrink-0">
           <div className="p-2.5 bg-blue-500/10 border border-blue-500/20 rounded-2xl flex-shrink-0">
@@ -96,6 +72,7 @@ const ArchiveManager = () => {
         </div>
       </div>
 
+      {/* Detail Loader Overlay */}
       {isDetailLoading && (
         <div className="fixed inset-0 bg-zinc-950/80 backdrop-blur-sm z-50 flex items-center justify-center">
           <div className="flex flex-col items-center gap-4">
@@ -105,10 +82,12 @@ const ArchiveManager = () => {
         </div>
       )}
 
+      {/* Main Content Area */}
       <div className="min-h-[600px]">
         <Routes>
           <Route path="/" element={<Navigate to="list" replace />} />
-          <Route path="list" element={<HistoryTab onSelectGame={handleGameSelect} />} />
+          <Route path="list" element={<HistoryTab onSelectGame={onGameClick} />} />
+          
           <Route path="game" element={
             <GameStatsTab 
               game={selectedGame} 
@@ -116,18 +95,30 @@ const ArchiveManager = () => {
               onGoToVideo={() => navigate('/history/video')} 
             />
           } />
+
           <Route path="video" element={
-            <SubscriptionGuard title="Video-Analyse" description="Schneide Spielszenen, erstelle Playlists und analysiere dein Team im Video. Nur im Pro-Paket verfügbar.">
+            <SubscriptionGuard 
+              title="Video-Analyse" 
+              description="Schneide Spielszenen, erstelle Playlists und analysiere dein Team im Video. Nur im Pro-Paket verfügbar."
+            >
               <VideoAnalysisTab initialGame={selectedGame} onBack={() => navigate('/history/list')} />
             </SubscriptionGuard>
           } />
+
           <Route path="stats" element={
-            <SubscriptionGuard title="Saison-Statistiken" description="Behalte den Überblick über die gesamte Saison. Detaillierte Spieler-Analysen und Trends sind im Pro-Paket enthalten.">
+            <SubscriptionGuard 
+              title="Saison-Statistiken" 
+              description="Behalte den Überblick über die gesamte Saison. Detaillierte Spieler-Analysen und Trends sind im Pro-Paket enthalten."
+            >
               <SeasonStatsTab />
             </SubscriptionGuard>
           } />
+
           <Route path="table" element={
-            <SubscriptionGuard title="Liga-Tabelle" description="Archiviere deine Tabellenstände. Der Endstand jeder Saison bleibt hier dauerhaft für dich gesichert.">
+            <SubscriptionGuard 
+              title="Liga-Tabelle" 
+              description="Archiviere deine Tabellenstände. Der Endstand jeder Saison bleibt hier dauerhaft für dich gesichert."
+            >
               <LeagueTableTab />
             </SubscriptionGuard>
           } />

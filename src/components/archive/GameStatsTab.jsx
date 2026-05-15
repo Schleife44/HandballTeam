@@ -1,31 +1,25 @@
 import React, { useState, useMemo } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { 
-  ArrowLeft, Video, BarChart2, Activity, Layout, 
-  TrendingUp, Globe, RefreshCw, Clock, Target, Maximize2, Layers
-} from 'lucide-react';
+import { Layout, Activity, BarChart2, TrendingUp, Globe, AlertTriangle } from 'lucide-react';
 
-// Store
-import useStore from '../../store/useStore';
+// Hooks
+import { useGameStatsCalculations } from '../../hooks/useGameStatsCalculations';
+import { useGameSync } from '../../hooks/useGameSync';
 
 // UI
 import Button from '../ui/Button';
 import Card from '../ui/Card';
-import Badge from '../ui/Badge';
 import Input from '../ui/Input';
 import Modal from '../ui/Modal';
-
-// Hooks
-import { useGameStatsCalculations } from '../../hooks/useGameStatsCalculations';
 
 // Components
 import GameStatsSummary from './game_stats/GameStatsSummary';
 import GameStatsProtocol from './game_stats/GameStatsProtocol';
 import GameStatsHeatmap from './game_stats/GameStatsHeatmap';
 import GameStatsTorverlauf from './game_stats/GameStatsTorverlauf';
+import GameStatsHeader from './game_stats/GameStatsHeader';
 
 const GameStatsTab = ({ game, onBack, onGoToVideo }) => {
-  const { updateHistoryGame } = useStore();
+  const [currentGame, setCurrentGame] = useState(game);
   const [activeSubTab, setActiveSubTab] = useState('summary'); 
   const [viewMode, setViewMode] = useState('kombi');
   const [activeLayoutMode, setActiveLayoutMode] = useState('kombi');
@@ -33,16 +27,22 @@ const GameStatsTab = ({ game, onBack, onGoToVideo }) => {
   const [selectedPlayer, setSelectedPlayer] = useState('all');
   const [filters, setFilters] = useState({ field: true, sevenM: true, missed: true });
   
-  // Sync States
-  const [isSyncModalOpen, setIsSyncModalOpen] = useState(false);
-  const [syncUrl, setSyncUrl] = useState('');
-  const [syncStatus, setSyncStatus] = useState({ type: '', message: '' });
-  const [currentGame, setCurrentGame] = useState(game);
+  // Sync & Fix Logic
+  const {
+    isSyncModalOpen,
+    setIsSyncModalOpen,
+    syncUrl,
+    setSyncUrl,
+    syncStatus,
+    handleSync,
+    fixingEntry,
+    setFixingEntry,
+    availableOfficial,
+    handleManualFix,
+    completeManualFix
+  } = useGameSync(currentGame, setCurrentGame);
 
-  // Manual Fix States
-  const [fixingEntry, setFixingEntry] = useState(null);
-  const [availableOfficial, setAvailableOfficial] = useState([]);
-  
+  // Stats Logic
   const { progressionData, stats, filteredPoints, heatmapPlayers } = useGameStatsCalculations(
     currentGame, selectedTeam, selectedPlayer, filters
   );
@@ -56,100 +56,6 @@ const GameStatsTab = ({ game, onBack, onGoToVideo }) => {
   const handleTeamChange = (team) => {
     setSelectedTeam(team);
     setSelectedPlayer('all');
-  };
-
-  const handleManualFix = (localEntry) => {
-    const getSecsForSort = (str) => {
-        if(!str) return 0;
-        const pts = str.split(':');
-        return (parseInt(pts[0])||0)*60 + (parseInt(pts[1])||0);
-    };
-    
-    const unmatched = currentGame.syncReport?.unmatchedOfficial || [];
-    const available = unmatched.sort((a, b) => {
-        const targetSecs = getSecsForSort(localEntry.time);
-        return Math.abs(getSecsForSort(a.time) - targetSecs) - Math.abs(getSecsForSort(b.time) - targetSecs);
-    }).filter((v, i, a) => {
-        const id = v.hnetId || v.importMeta?.hnetId || v.id;
-        return a.findIndex(t => (t.hnetId || t.importMeta?.hnetId || t.id) === id) === i;
-    });
-
-    setAvailableOfficial(available);
-    setFixingEntry(localEntry);
-  };
-
-  const completeManualFix = (targetEvent) => {
-    if (!fixingEntry || !targetEvent) return;
-
-    const isFixingOfficial = fixingEntry.isOfficialOnly;
-    const localToUpdate = isFixingOfficial ? targetEvent : fixingEntry;
-    const officialDataSource = isFixingOfficial ? fixingEntry : targetEvent;
-
-    const targetHnetId = officialDataSource.importMeta?.hnetId || officialDataSource.hnetId;
-
-    let updatedLog = (currentGame?.gameLog || []).map(entry => {
-        if (entry === localToUpdate) {
-            return {
-                ...entry,
-                isSynced: true,
-                hnetId: targetHnetId,
-                officialTime: officialDataSource.time,
-                timestamp: officialDataSource.timestamp || entry.timestamp,
-                syncMeta: { officialAction: officialDataSource.action, officialPlayer: officialDataSource.playerName }
-            };
-        }
-        return entry;
-    });
-
-    const hnetIdToRemove = officialDataSource.importMeta?.hnetId || officialDataSource.hnetId;
-    updatedLog = updatedLog.filter(l => !(l.isOfficialOnly && (l.hnetId || l.importMeta?.hnetId) === hnetIdToRemove));
-
-    const updatedUnmatchedOfficial = (currentGame.syncReport?.unmatchedOfficial || []).filter(h => 
-        (h.importMeta?.hnetId || h.hnetId) !== hnetIdToRemove
-    );
-
-    const updatedGame = { 
-        ...currentGame, 
-        gameLog: updatedLog,
-        syncReport: {
-            ...currentGame.syncReport,
-            matched: (currentGame.syncReport?.matched || 0) + 1,
-            unmatched: Math.max(0, (currentGame.syncReport?.unmatched || 0) - 1),
-            unmatchedOfficial: updatedUnmatchedOfficial
-        }
-    };
-
-    setCurrentGame(updatedGame);
-    updateHistoryGame(updatedGame);
-
-    setFixingEntry(null);
-    setAvailableOfficial([]);
-  };
-
-  const handleSync = async () => {
-    if (!syncUrl) return;
-    setSyncStatus({ type: 'loading', message: 'Hole Spieldaten...' });
-    
-    try {
-      const { fetchGameData, syncGameLogs } = await import('../../services/handballNetService');
-      const officialData = await fetchGameData(syncUrl);
-      
-      if (!officialData) throw new Error("Konnte Spieldaten nicht laden");
-      
-      setSyncStatus({ type: 'loading', message: 'Synchronisiere Spielverlauf...' });
-      const { updatedGame, report } = syncGameLogs(currentGame, officialData);
-      
-      setCurrentGame(updatedGame);
-      updateHistoryGame(updatedGame);
-      
-      setSyncStatus({ 
-        type: 'success', 
-        message: `Synchronisation abgeschlossen! ${report.matched} Aktionen zugeordnet.` 
-      });
-      
-    } catch (e) {
-      setSyncStatus({ type: 'error', message: e.message });
-    }
   };
 
   const getCoordFromZone = (zone, type = 'goal') => {
@@ -209,11 +115,6 @@ const GameStatsTab = ({ game, onBack, onGoToVideo }) => {
     }
   };
 
-  if (!currentGame) return null;
-
-  const totalEfficiency = stats.length > 0 ? Math.round(stats.reduce((sum, p) => sum + p.efficiency, 0) / stats.length) : 0;
-  const isHandballNet = currentGame.isSynced || currentGame.hnetGameId;
-
   const hasCoordinates = useMemo(() => {
     if (!currentGame) return false;
     const logToUse = currentGame.gameLog || currentGame.log || [];
@@ -230,59 +131,20 @@ const GameStatsTab = ({ game, onBack, onGoToVideo }) => {
     { id: 'torfolge', label: 'Torfolge', icon: TrendingUp },
   ];
 
+  if (!currentGame) return null;
+  const totalEfficiency = stats.length > 0 ? Math.round(stats.reduce((sum, p) => sum + p.efficiency, 0) / stats.length) : 0;
+
   return (
     <div className="flex flex-col gap-6 animate-in fade-in slide-in-from-right-4 duration-500">
-      {/* Sub Header / Breadcrumb */}
-      <Card noPadding className="flex items-center justify-between p-4 bg-zinc-900/40 border border-zinc-800">
-        <div className="flex items-center gap-6">
-          <Button variant="ghost" onClick={onBack} icon={ArrowLeft} className="text-zinc-500 hover:text-zinc-100 pr-6 mr-2 border-r border-zinc-800 rounded-none h-10">
-            Zurück
-          </Button>
-          <div className="flex bg-black/40 p-1 rounded-xl border border-zinc-800/50">
-            {subTabs.map(tab => (
-              <button key={tab.id} onClick={() => setActiveSubTab(tab.id)} className={`flex items-center gap-2 px-4 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${activeSubTab === tab.id ? 'bg-zinc-100 text-black shadow-xl' : 'text-zinc-500 hover:text-zinc-300'}`}>
-                <tab.icon size={12} /> {tab.label}
-              </button>
-            ))}
-          </div>
-        </div>
-        <div className="flex items-center gap-4">
-          <div className="flex flex-col items-end mr-4">
-            <div className="flex items-center gap-2">
-              {currentGame.isSynced && !currentGame.hnetGameId?.startsWith('hnet_') ? (
-                <Badge variant="brand" className="text-[9px] py-1">
-                  <Activity size={10} className="mr-1" /> Manuell (Abgeglichen)
-                </Badge>
-              ) : isHandballNet ? (
-                <Badge variant="outline" className="text-[9px] py-1 text-blue-400 border-blue-400/20">
-                  <Globe size={10} className="mr-1" /> Handball.net
-                </Badge>
-              ) : (
-                <div className="flex items-center gap-2">
-                  <Badge variant="outline" className="text-[9px] py-1 text-orange-400 border-orange-400/20">
-                    <Activity size={10} className="mr-1" /> Manuell
-                  </Badge>
-                  <Button 
-                    variant="ghost" 
-                    size="sm" 
-                    icon={RefreshCw} 
-                    onClick={() => setIsSyncModalOpen(true)}
-                    className="text-[9px] h-auto py-1 px-2 border border-zinc-800"
-                  >
-                    Abgleich
-                  </Button>
-                </div>
-              )}
-            </div>
-            <p className="text-[10px] font-black text-zinc-500 uppercase tracking-widest mt-1">
-              {new Date(currentGame.timestamp || currentGame.id).toLocaleDateString('de-DE')}
-            </p>
-          </div>
-          <Button variant="primary" icon={Video} onClick={onGoToVideo}>
-            Video Analyse
-          </Button>
-        </div>
-      </Card>
+      <GameStatsHeader 
+        currentGame={currentGame}
+        onBack={onBack}
+        onGoToVideo={onGoToVideo}
+        activeSubTab={activeSubTab}
+        setActiveSubTab={setActiveSubTab}
+        subTabs={subTabs}
+        setIsSyncModalOpen={setIsSyncModalOpen}
+      />
 
       {activeSubTab === 'summary' && (
         <GameStatsSummary 
@@ -327,11 +189,7 @@ const GameStatsTab = ({ game, onBack, onGoToVideo }) => {
       )}
 
       {/* Manual Fix Modal */}
-      <Modal 
-        isOpen={!!fixingEntry} 
-        onClose={() => setFixingEntry(null)} 
-        title="Manueller Abgleich"
-      >
+      <Modal isOpen={!!fixingEntry} onClose={() => setFixingEntry(null)} title="Manueller Abgleich">
         <div className="flex flex-col gap-6">
           <Card className="p-4 bg-zinc-900 border border-zinc-800 rounded-2xl flex flex-col gap-2">
             <p className="text-[10px] font-black text-zinc-500 uppercase tracking-widest">Dein Eintrag</p>
@@ -368,16 +226,10 @@ const GameStatsTab = ({ game, onBack, onGoToVideo }) => {
       </Modal>
 
       {/* Sync Modal */}
-      <Modal 
-        isOpen={isSyncModalOpen} 
-        onClose={() => setIsSyncModalOpen(false)} 
-        title="Spieldaten abgleichen"
-      >
+      <Modal isOpen={isSyncModalOpen} onClose={() => setIsSyncModalOpen(false)} title="Spieldaten abgleichen">
         <div className="flex flex-col gap-8 py-2">
           <div className="flex items-center gap-4 p-4 bg-blue-500/10 border border-blue-500/20 rounded-[2rem]">
-            <div className="w-12 h-12 bg-blue-500/20 rounded-2xl flex items-center justify-center text-blue-400">
-              <Globe size={24} />
-            </div>
+            <div className="w-12 h-12 bg-blue-500/20 rounded-2xl flex items-center justify-center text-blue-400"><Globe size={24} /></div>
             <div>
               <p className="text-xs font-bold text-zinc-100 uppercase tracking-tight">Datenabgleich (Sync)</p>
               <p className="text-[10px] text-zinc-500 font-medium leading-relaxed mt-1">Verknüpfe dein selbst getracktes Spiel mit dem offiziellen Bericht, um offizielle Kaderdaten und Zeitstempel zu erhalten.</p>
@@ -385,50 +237,20 @@ const GameStatsTab = ({ game, onBack, onGoToVideo }) => {
           </div>
 
           <div className="space-y-4">
-            <Input 
-              label="Spielbericht URL"
-              placeholder="https://www.handball.net/spiele/..."
-              value={syncUrl}
-              onChange={(e) => setSyncUrl(e.target.value)}
-            />
-
+            <Input label="Spielbericht URL" placeholder="https://www.handball.net/spiele/..." value={syncUrl} onChange={(e) => setSyncUrl(e.target.value)} />
             {syncStatus.message && (
-              <Card className={`p-6 rounded-3xl space-y-3 ${
-                syncStatus.type === 'error' ? 'bg-red-500/10 border border-red-500/20' : 
-                syncStatus.type === 'success' ? 'bg-brand/10 border border-brand/20' : 'bg-blue-500/10 border border-blue-500/20'
-              }`}>
-                <p className={`text-[10px] font-black uppercase tracking-[0.2em] text-center ${
-                  syncStatus.type === 'error' ? 'text-red-500' : 
-                  syncStatus.type === 'success' ? 'text-brand' : 'text-blue-500'
-                }`}>{syncStatus.message}</p>
-                
+              <Card className={`p-6 rounded-3xl space-y-3 ${syncStatus.type === 'error' ? 'bg-red-500/10 border border-red-500/20' : syncStatus.type === 'success' ? 'bg-brand/10 border border-brand/20' : 'bg-blue-500/10 border border-blue-500/20'}`}>
+                <p className={`text-[10px] font-black uppercase tracking-[0.2em] text-center ${syncStatus.type === 'error' ? 'text-red-500' : syncStatus.type === 'success' ? 'text-brand' : 'text-blue-500'}`}>{syncStatus.message}</p>
                 {currentGame.syncReport && syncStatus.type === 'success' && (
                   <div className="grid grid-cols-3 gap-2 pt-2">
-                    <div className="text-center p-2 bg-black/20 rounded-xl">
-                      <p className="text-[8px] font-black text-zinc-500 uppercase tracking-widest">Gematched</p>
-                      <p className="text-sm font-black text-brand">{currentGame.syncReport.matched}</p>
-                    </div>
-                    <div className="text-center p-2 bg-black/20 rounded-xl">
-                      <p className="text-[8px] font-black text-zinc-500 uppercase tracking-widest">Offen</p>
-                      <p className="text-sm font-black text-orange-400">{currentGame.syncReport.unmatched}</p>
-                    </div>
-                    <div className="text-center p-2 bg-black/20 rounded-xl">
-                      <p className="text-[8px] font-black text-zinc-500 uppercase tracking-widest">Neu</p>
-                      <p className="text-sm font-black text-blue-400">{currentGame.syncReport.added}</p>
-                    </div>
+                    <div className="text-center p-2 bg-black/20 rounded-xl"><p className="text-[8px] font-black text-zinc-500 uppercase tracking-widest">Gematched</p><p className="text-sm font-black text-brand">{currentGame.syncReport.matched}</p></div>
+                    <div className="text-center p-2 bg-black/20 rounded-xl"><p className="text-[8px] font-black text-zinc-500 uppercase tracking-widest">Offen</p><p className="text-sm font-black text-orange-400">{currentGame.syncReport.unmatched}</p></div>
+                    <div className="text-center p-2 bg-black/20 rounded-xl"><p className="text-[8px] font-black text-zinc-500 uppercase tracking-widest">Neu</p><p className="text-sm font-black text-blue-400">{currentGame.syncReport.added}</p></div>
                   </div>
                 )}
               </Card>
             )}
-
-            <Button 
-              variant="primary"
-              className="w-full py-4"
-              onClick={handleSync}
-              disabled={!syncUrl || syncStatus.type === 'loading'}
-            >
-              Abgleich starten
-            </Button>
+            <Button variant="primary" className="w-full py-4" onClick={handleSync} disabled={!syncUrl || syncStatus.type === 'loading'}>Abgleich starten</Button>
           </div>
         </div>
       </Modal>

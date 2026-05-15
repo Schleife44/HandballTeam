@@ -1,16 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { motion } from 'framer-motion';
-import { 
-  Target, 
-  TrendingUp, 
-  Shield,
-  Trophy,
-  List,
-  Play,
-  Settings,
-  ChevronRight
-} from 'lucide-react';
+import { TrendingUp, Activity } from 'lucide-react';
 
 // Store
 import useStore from '../../store/useStore';
@@ -19,16 +9,17 @@ import useStore from '../../store/useStore';
 import { useDashboardStats } from '../../hooks/useDashboardStats';
 
 // UI
-import Badge from '../ui/Badge';
-import EmptyState from '../ui/EmptyState';
-import Button from '../ui/Button';
-
-// Modular Parts
-import DashboardCard from './parts/DashboardCard';
-import StatCard from './parts/StatCard';
-import EventRow from './parts/EventRow';
 import AttendanceModal from './parts/AttendanceModal';
+import DashboardCard from './parts/DashboardCard';
 import PerformanceChart from './parts/PerformanceChart';
+
+// Modular Components
+import DashboardHeader from './components/DashboardHeader';
+import UpcomingEvents from './components/UpcomingEvents';
+import LiveAnalysisCard from './components/LiveAnalysisCard';
+import TopPerformers from './components/TopPerformers';
+import StatsGrid from './components/StatsGrid';
+import LeagueTable from './components/LeagueTable';
 
 export default function Dashboard() {
   const navigate = useNavigate();
@@ -51,178 +42,43 @@ export default function Dashboard() {
     }
   };
 
-  React.useEffect(() => {
-    const handleTrackGame = (e) => {
-      navigate('/game', { state: { ...e.detail } });
-    };
-    window.addEventListener('track_game', handleTrackGame);
-    return () => window.removeEventListener('track_game', handleTrackGame);
-  }, [navigate]);
-
   return (
-    <div className="max-w-[1500px] mx-auto pb-32 px-4 lg:px-8 pt-4 space-y-8 lg:space-y-12 animate-in fade-in duration-1000">
+    <div className="max-w-[1600px] mx-auto pb-40 px-4 lg:px-12 pt-4 space-y-8 animate-in fade-in duration-1000">
       
-      {/* HEADER */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div className="space-y-1">
-          <div className="flex items-center gap-3">
-            <h1 className="text-3xl lg:text-5xl font-black tracking-tighter uppercase italic text-zinc-100">Hub</h1>
-            <Badge variant="brand" className="px-3 py-1 text-[10px]">v2.1</Badge>
-          </div>
-          <p className="text-[10px] font-black uppercase text-zinc-600 tracking-[0.4em]">{(settings && settings.homeName) || 'Lädt...'} — Official Dashboard</p>
-        </div>
-        <div className="flex items-center md:items-end gap-3 md:flex-col">
-          <span className="text-xl lg:text-2xl font-black text-zinc-100 tracking-tighter">
-            {new Date().toLocaleDateString('de-DE', { day: '2-digit', month: 'long' })}
-          </span>
-          <span className="text-[10px] font-black uppercase text-brand tracking-widest">{new Date().toLocaleDateString('de-DE', { weekday: 'long' })}</span>
-        </div>
-      </div>
+      <DashboardHeader teamName={settings?.homeName} />
 
-      <div className="grid grid-cols-1 lg:grid-cols-[340px_1fr] gap-8 lg:gap-12 items-start">
+      <div className="grid grid-cols-1 lg:grid-cols-[380px_1fr] gap-10 lg:gap-16 items-start">
         
-        {/* LEFT COLUMN: ACTION COLUMN */}
-        <div className="space-y-8 lg:space-y-12 order-1 lg:order-1">
-          <section className="space-y-6 lg:space-y-8">
-            <div className="flex items-center gap-3">
-              <div className="w-1 h-8 bg-brand rounded-full" />
-              <h3 className="text-sm font-black uppercase tracking-[0.3em] text-zinc-500">Upcoming</h3>
-            </div>
-            <div className="space-y-2">
-              {Array.isArray(stats.upcomingEvents) && stats.upcomingEvents.map(e => <EventRow key={e.id} {...e} onRsvp={handleRsvp} onDetails={openAttendance} settings={settings || {}} />)}
-            </div>
-          </section>
+        {/* LEFT COLUMN */}
+        <div className="space-y-10">
+          <UpcomingEvents 
+            events={stats.upcomingEvents} 
+            onRsvp={handleRsvp} 
+            onDetails={openAttendance} 
+            settings={settings} 
+          />
 
-          <div 
-            onClick={() => {
-              if (stats.todaysGame) {
-                navigate('/game', { state: { ...stats.todaysGame } });
-              } else {
-                navigate('/game');
-              }
-            }}
-            className={`hub-card p-8 lg:p-10 border rounded-[2.5rem] lg:rounded-[3rem] relative overflow-hidden group cursor-pointer transition-all shadow-2xl
-              ${stats.todaysGame 
-                ? 'bg-gradient-to-br from-brand/40 to-black border-brand/40 hover:border-brand/60' 
-                : 'bg-gradient-to-br from-brand/20 to-black border-brand/20 hover:border-brand/40'}`}
-          >
-            <motion.div 
-              initial={{ x: 60, y: 60, scale: 0.8, opacity: 0, rotate: 20 }}
-              animate={{ x: 0, y: 0, scale: 1.1, opacity: 1, rotate: 12 }}
-              transition={{ type: "spring", damping: 20, stiffness: 200 }}
-              className="absolute -right-10 -bottom-10 text-brand/5 group-hover:text-brand/10 transition-all group-hover:rotate-6 group-hover:scale-[1.15] duration-700 pointer-events-none"
-            >
-              <Play size={240} fill="currentColor" />
-            </motion.div>
-            <div className="relative z-10 space-y-4">
-              <div className="flex items-center gap-2">
-                <span className={`w-2.5 h-2.5 rounded-full bg-brand animate-pulse ${stats.todaysGame ? 'shadow-[0_0_15px_rgba(132,204,22,0.8)]' : 'shadow-[0_0_10px_rgba(132,204,22,0.5)]'}`} />
-                <span className="text-[10px] font-black uppercase text-brand tracking-[0.3em]">
-                  {stats.todaysGame ? 'Match Day Active' : 'System Ready'}
-                </span>
-              </div>
-              <h3 className="text-3xl lg:text-4xl font-black text-white uppercase italic leading-none tracking-tighter">
-                {stats.todaysGame ? 'Spiel' : 'Live'} <br />
-                <span className="text-brand">{stats.todaysGame ? 'starten' : 'Analyse'}</span>
-              </h3>
-              <p className="text-[10px] font-bold text-zinc-500 uppercase leading-relaxed max-w-[200px] opacity-80 group-hover:opacity-100 transition-opacity">
-                {stats.todaysGame 
-                  ? `Heute vs. ${stats.todaysGame.opponent} (${stats.todaysGame.time} Uhr)` 
-                  : 'Datenaufzeichnung in Echtzeit starten.'}
-              </p>
-              
-              {stats.todaysGame && (
-                <div className="pt-2">
-                  <div className="inline-flex items-center gap-2 px-6 py-2.5 bg-brand text-black rounded-full text-[10px] font-black uppercase tracking-widest group-hover:scale-105 transition-all shadow-lg shadow-brand/20">
-                    Tracken <ChevronRight size={14} />
-                  </div>
-                </div>
-              )}
-            </div>
-          </div>
+          <LiveAnalysisCard 
+            onClick={() => stats.todaysGame ? navigate('/game', { state: { ...stats.todaysGame } }) : navigate('/game')} 
+          />
 
-          <DashboardCard title="Top Performers" icon={Trophy}>
-            <div className="space-y-4">
-              {Array.isArray(stats.topPerformers) && stats.topPerformers.slice(0, 5).map((p, idx) => (
-                <div key={p.id || idx} className="flex items-center justify-between p-3.5 rounded-2xl lg:rounded-3xl bg-zinc-900/40 border border-zinc-800/40 hover:border-brand/30 transition-all group">
-                  <div className="flex items-center gap-3">
-                    <div className="w-7 h-7 rounded-xl lg:rounded-2xl bg-zinc-800 flex items-center justify-center text-[9px] font-black text-zinc-500 group-hover:bg-brand group-hover:text-black transition-all">
-                      {idx + 1}
-                    </div>
-                    <div>
-                      <p className="text-[10px] font-black text-zinc-100 uppercase italic leading-none">{p.name || 'Spieler'}</p>
-                      <p className="text-[6px] font-bold text-zinc-700 uppercase tracking-widest mt-1">Season 25/26</p>
-                    </div>
-                  </div>
-                  <span className="text-base font-black text-brand tabular-nums italic">{p.goals || 0}</span>
-                </div>
-              ))}
-            </div>
-          </DashboardCard>
+          <TopPerformers performers={stats.topPerformers} />
         </div>
 
-        {/* RIGHT CONTENT: ANALYTICS HUB */}
-        <div className="space-y-8 lg:space-y-12 order-2 lg:order-2">
-          
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-6">
-            <StatCard label="Tore Gesamt" value={stats.totalGoals} icon={Target} trend={stats.goalsTrend} />
-            <StatCard label="Win Rate" value={`${stats.winRate}%`} icon={Trophy} trend={stats.winRateTrend} />
-            <StatCard label="Gegentore" value={stats.totalConceded} icon={Shield} trend={stats.concededTrend} invertTrendColor />
-            <StatCard label="Ø Tore" value={stats.avgGoals} icon={TrendingUp} trend={stats.goalsTrend} />
-          </div>
+        {/* RIGHT COLUMN */}
+        <div className="space-y-10">
+          <StatsGrid stats={stats} />
 
-          <DashboardCard title="Performance Analytics" icon={TrendingUp}>
-            <PerformanceChart data={stats.chartData} />
-          </DashboardCard>
-
-          <DashboardCard title="Ligatabelle — Live Standings" icon={List}>
-            <div className="lg:mx-0">
-              <table className="w-full text-left">
-                <thead>
-                  <tr className="text-[9px] font-black text-zinc-700 uppercase tracking-[0.3em] border-b border-zinc-800/40">
-                    <th className="pb-4 px-2 md:px-6">Rank</th>
-                    <th className="pb-4 px-2 md:px-6">Team</th>
-                    <th className="pb-4 px-2 md:px-6 text-center hidden sm:table-cell">Played</th>
-                    <th className="pb-4 px-2 md:px-6 text-center hidden sm:table-cell">Diff</th>
-                    <th className="pb-4 px-2 md:px-6 text-right">Points</th>
-                  </tr>
-                </thead>
-                <tbody className="text-xs font-bold">
-                  {stats.loadingTable ? (
-                    <tr><td colSpan="5" className="py-20 text-center"><div className="w-8 h-8 border-4 border-brand/30 border-t-brand rounded-full animate-spin mx-auto" /></td></tr>
-                  ) : Array.isArray(stats.leagueTable) ? stats.leagueTable.map((t, i) => (
-                    <tr key={i} className={`border-b border-zinc-800/10 transition-colors ${t.isMyTeam ? 'bg-brand/5 text-brand' : 'text-zinc-500 hover:bg-zinc-900/30'}`}>
-                      <td className="py-5 px-2 md:px-6 font-black italic text-zinc-500">{t.rank || i + 1}</td>
-                      <td className="py-5 px-2 md:px-6 font-black uppercase italic tracking-tight text-sm truncate max-w-[140px] md:max-w-none">{t.team}</td>
-                      <td className="py-5 px-2 md:px-6 text-center tabular-nums hidden sm:table-cell">{t.games}</td>
-                      <td className="py-5 px-2 md:px-6 text-center tabular-nums hidden sm:table-cell">{t.diff}</td>
-                      <td className="py-5 px-2 md:px-6 text-right font-black tabular-nums text-sm italic">{t.points}</td>
-                    </tr>
-                  )) : (
-                    <tr>
-                      <td colSpan="5" className="py-12">
-                        <EmptyState 
-                          icon={Settings}
-                          title="Keine Liga-Daten"
-                          description="Verknüpfe dein Team mit Handball.net, um die Live-Tabelle zu sehen."
-                          variant="glass"
-                          action={
-                            <Button 
-                              variant="primary" 
-                              className="w-full"
-                              onClick={() => navigate('/settings')}
-                            >
-                              Zu den Einstellungen
-                            </Button>
-                          }
-                        />
-                      </td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
+          <DashboardCard title="Performance Intelligence" icon={TrendingUp}>
+            <div className="p-4 bg-zinc-950/20 rounded-[2rem] border border-white/5 shadow-inner">
+              <PerformanceChart data={stats.chartData} />
             </div>
           </DashboardCard>
+
+          <LeagueTable 
+            leagueTable={stats.leagueTable} 
+            loading={stats.loadingTable} 
+          />
         </div>
       </div>
 

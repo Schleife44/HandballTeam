@@ -1,6 +1,7 @@
 import { doc, collection, updateDoc } from 'firebase/firestore';
 import { db } from '../firebase';
 import { SyncBase } from './SyncBase';
+import { normalizeText } from '../../utils/dataUtils';
 
 export class CoreSync extends SyncBase {
   subscribeToCore(teamId, store) {
@@ -39,6 +40,20 @@ export class CoreSync extends SyncBase {
           homeName: teamData.settings.homeName || teamData.name || 'Mein Team'
         });
       }
+
+      // NEW: Hydrate Fines Settings & Catalog
+      if (teamData.fines) {
+        store.setFinesData?.({
+          catalog: teamData.fines.catalog || [],
+          settings: teamData.fines.settings || {
+            enabled: false,
+            amountStandard: 15,
+            amountReduced: 10,
+            playerStatus: {}
+          }
+        });
+      }
+
       store.setHydrated?.(true);
     }, store);
 
@@ -50,7 +65,14 @@ export class CoreSync extends SyncBase {
     if (!teamId || !store) return;
     const colRef = collection(db, 'teams', teamId, 'roster');
     return this._subscribe(`roster_${teamId}`, colRef, (snapshot) => {
-      const allPlayers = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      const allPlayers = snapshot.docs.map(doc => {
+        const data = doc.data();
+        return { 
+          id: doc.id, 
+          ...data,
+          name: normalizeText(data.name) 
+        };
+      });
       const home = allPlayers.filter(p => p.teamType === 'home' || !p.teamType);
       const away = allPlayers.filter(p => p.teamType === 'away');
       store.setSquadData?.({ home, away });
@@ -85,8 +107,13 @@ export class CoreSync extends SyncBase {
 
   async savePlayer(teamId, player, teamType = 'home') {
     if (!teamId || !player.id) return;
+    const normalizedPlayer = {
+      ...player,
+      name: normalizeText(player.name),
+      teamType
+    };
     const { setDoc } = await import('firebase/firestore');
-    setDoc(doc(db, 'teams', String(teamId), 'roster', String(player.id)), this.stripFunctions({ ...player, teamType }), { merge: true });
+    setDoc(doc(db, 'teams', String(teamId), 'roster', String(player.id)), this.stripFunctions(normalizedPlayer), { merge: true });
   }
 
   async deletePlayer(teamId, playerId) {

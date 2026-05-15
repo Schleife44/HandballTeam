@@ -191,13 +191,30 @@ const ShotChartsTab = ({ match, squad }) => {
                             const fPos = getCoordFromZone(rawFPos, 'field');
                             const gPos = getCoordFromZone(rawGPos, 'goal');
                             if (!fPos || !gPos || fPos.x === undefined || gPos.x === undefined) return null;
+
                             const fx = 35 + (fPos.x / 100) * 200 * 0.65;
                             const fy = 56.5 + (fPos.y / 100) * 245 * 0.65;
-                            const gx = 68 + (gPos.x / 100) * 250 * 0.25;
-                            const gy = 18 + (gPos.y / 100) * 180 * 0.25;
+
                             const isGoal = s.type?.includes('GOAL');
                             const isSave = s.type?.includes('SAVE');
+                            const isMiss = s.type?.includes('MISS');
                             const isBlocked = s.type === 'BLOCKED';
+
+                            // Coordinate Normalization:
+                            // In GoalMap entry, MISS shots use a 60% centered goal (20-80% X, 40-100% Y).
+                            // GOAL/SAVE shots use a 100% grid.
+                            // We normalize everything to the goal rectangle in the chart.
+                            let normX = gPos.x;
+                            let normY = gPos.y;
+
+                            if (isMiss) {
+                              normX = ((gPos.x - 20) / 60) * 100;
+                              normY = ((gPos.y - 40) / 60) * 100;
+                            }
+
+                            const gx = 68 + (normX / 100) * 250 * 0.25;
+                            const gy = 18 + (normY / 100) * 180 * 0.25;
+
                             return (
                               <g key={`sh-f-${s.id || sIdx}`}>
                                 {!isBlocked && (
@@ -256,8 +273,19 @@ const ShotChartsTab = ({ match, squad }) => {
                             const rawGPos = s.details?.goalPos || s.goalPos;
                             const gPos = getCoordFromZone(rawGPos, 'goal');
                             if (!gPos || gPos.x === undefined) return null;
-                            const gx = (gPos.x / 100) * 250;
-                            const gy = (gPos.y / 100) * 180;
+
+                            const isMiss = s.type?.includes('MISS');
+                            
+                            let normX = gPos.x;
+                            let normY = gPos.y;
+
+                            if (isMiss) {
+                              normX = ((gPos.x - 20) / 60) * 100;
+                              normY = ((gPos.y - 40) / 60) * 100;
+                            }
+
+                            const gx = (normX / 100) * 250;
+                            const gy = (normY / 100) * 180;
                             return renderShotMarker(gx, gy, s.type, `g7-${sIdx}`);
                           })}
                         </svg>

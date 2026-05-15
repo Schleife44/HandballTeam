@@ -75,6 +75,7 @@ class SyncService {
   // FINES
   async saveFines(teamId, fines) { return this.fines.saveFines(teamId, fines); }
   async saveFineEntry(teamId, fine) { return this.fines.saveFineEntry(teamId, fine); }
+  async saveBulkFineEntries(teamId, entries) { return this.fines.saveBulkFineEntries(teamId, entries); }
   async deleteFineEntry(teamId, id) { return this.fines.deleteFineEntry(teamId, id); }
 
   // HISTORY
