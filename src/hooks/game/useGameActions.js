@@ -6,7 +6,8 @@ export const useGameActions = (activeMatch, squad, formatTime) => {
     updateMatchLineup, 
     addMatchSuspension, 
     recordMatchAction,
-    addToMatchLog 
+    addToMatchLog,
+    setActiveGoalkeeper
   } = useStore();
 
   const { home, away } = squad;
@@ -25,6 +26,10 @@ export const useGameActions = (activeMatch, squad, formatTime) => {
       'BLUE': 'Blaue Karte', 'GET_7M': '7m rausgeholt', 'GET_7M_2MIN': '7m + 2min rausgeholt'
     };
     return labels[id] ?? id;
+  };
+
+  const handleSetActiveGoalkeeper = (playerId) => {
+    setActiveGoalkeeper(playerId);
   };
 
   const handleAction = (actionId, extraData = null) => {
@@ -61,6 +66,16 @@ export const useGameActions = (activeMatch, squad, formatTime) => {
       scoreUpdate = { home: newScore.home, away: newScore.away };
     }
 
+    let enrichedDetails = actionId.startsWith('7M') ? { ...extraData, fieldPos: { x: 50, y: 35 } } : (extraData ? { ...extraData } : {});
+
+    const activeGoalkeeperId = activeMatch.activeGoalkeeperId;
+    const isShotOnOurGoal = (!finalIsHome && ['GOAL', 'MISS', 'BLOCKED', 'SAVE', '7M_GOAL', '7M_SAVE', '7M_MISS'].includes(actionId)) || 
+                            (finalIsHome && ['SAVE', '7M_SAVE'].includes(actionId));
+
+    if (isShotOnOurGoal && activeGoalkeeperId) {
+      enrichedDetails.goalkeeperId = activeGoalkeeperId;
+    }
+
     const newLogEntry = {
       timestamp: Math.floor(Date.now() / 1000),
       time: formatTime(activeMatch.timer.elapsedMs),
@@ -73,7 +88,7 @@ export const useGameActions = (activeMatch, squad, formatTime) => {
       team: finalIsHome ? 'home' : 'away',
       action: getActionLabel(actionId),
       score: `${newScore.home}:${newScore.away}`,
-      details: actionId.startsWith('7M') ? { ...extraData, fieldPos: { x: 50, y: 35 } } : extraData,
+      details: Object.keys(enrichedDetails).length > 0 ? enrichedDetails : null,
       isEmptyGoal: activeMatch.isEmptyGoal && !finalIsHome
     };
 
@@ -183,6 +198,7 @@ export const useGameActions = (activeMatch, squad, formatTime) => {
     handlePlayerClick,
     handle7mOpponentSelected,
     handleFoulOpponentSelected,
+    handleSetActiveGoalkeeper,
     getActionLabel
   };
 };

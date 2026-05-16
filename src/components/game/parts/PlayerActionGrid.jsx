@@ -49,11 +49,19 @@ const PlayerActionGrid = ({ onPlayerSelect, lineup, activeSwap, mode, suspension
       );
     }
 
+    allTeamPlayers.sort((a, b) => {
+      const numA = parseInt(a.number) || 0;
+      const numB = parseInt(b.number) || 0;
+      return numA - numB;
+    });
+
     const fieldPlayers = allTeamPlayers.filter(p => lineup[team]?.includes(p.id));
     const benchPlayers = allTeamPlayers.filter(p => !lineup[team]?.includes(p.id));
 
     const renderPlayerCard = (player, isField) => {
       const isSelectedForSwap = activeSwap && activeSwap.id === player.id;
+      const isActiveGoalkeeper = activeMatch?.activeGoalkeeperId === player.id;
+      const isGoalkeeper = player.position === 'TW' || player.isGoalkeeper === true;
       const isSimple = mode === 'SIMPLE';
       const suspension = suspensions?.find(s => s.playerId === player.id);
 
@@ -79,8 +87,15 @@ const PlayerActionGrid = ({ onPlayerSelect, lineup, activeSwap, mode, suspension
             ${isSelectedForSwap ? 'border-brand ring-2 ring-brand/20 bg-brand/5' : 'hover:border-zinc-700'}
             ${suspension ? 'border-orange-500 bg-orange-500/10 shadow-[0_0_15px_rgba(249,115,22,0.4)]' : ''}`}
         >
+          {isGoalkeeper && (
+            <div className="absolute top-1 left-1 lg:top-2 lg:left-2 flex items-center gap-1 z-10">
+              <span className={`text-[6px] lg:text-[8px] font-black px-1.5 py-0.5 rounded-md transition-all ${isActiveGoalkeeper ? 'bg-brand text-black shadow-[0_0_12px_#84cc16] scale-110 font-black' : 'bg-zinc-800 text-zinc-400 border border-zinc-700'}`}>
+                TW
+              </span>
+            </div>
+          )}
           {suspension && (
-            <div className="absolute top-1 right-1 lg:top-2 lg:right-2 flex flex-col items-end">
+            <div className="absolute top-1 right-1 lg:top-2 lg:right-2 flex flex-col items-end z-10">
               <div className="w-1.5 h-1.5 lg:w-2 lg:h-2 rounded-full bg-orange-500 animate-pulse shadow-[0_0_8px_rgba(249,115,22,0.6)]" />
               <span className="text-[6px] lg:text-[8px] font-black text-orange-500 mt-0.5">{formatSuspensionTime(suspension.remainingSeconds)}</span>
             </div>

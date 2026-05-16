@@ -5,7 +5,8 @@ import {
   Target, 
   ShieldAlert, 
   TrendingUp,
-  BarChart2
+  BarChart2,
+  Shield
 } from 'lucide-react';
 
 const StatCard = ({ title, value, subValue, icon: Icon, colorClass = "text-zinc-100" }) => (
@@ -46,12 +47,57 @@ const OverviewTab = ({ match, squad }) => {
       .sort((a, b) => b.goals - a.goals)
       .slice(0, 3);
 
+    // Goalkeepers
+    const goalkeepers = [...(squad?.home?.filter(p => p.position === 'TW' || p.isGoalkeeper === true) || [])].sort((a,b) => parseInt(a.number || 0) - parseInt(b.number || 0));
+    const isSingleGoalkeeper = goalkeepers.length === 1;
+    const currentActiveGkId = match?.activeGoalkeeperId;
+
+    let totalSaves = 0;
+    let totalConceded = 0;
+
+    const goalkeeperStats = goalkeepers.map(gk => {
+      const gkSaves = gameLog.filter(e => {
+        const isSave = e.type === 'SAVE' || e.type === '7M_SAVE';
+        if (!isSave) return false;
+        if (e.details?.goalkeeperId) return e.details.goalkeeperId === gk.id;
+        return currentActiveGkId === gk.id || isSingleGoalkeeper;
+      }).length;
+
+      const gkConceded = gameLog.filter(e => {
+        const isGoalAgainst = (e.type === 'GOAL' || e.type === '7M_GOAL') && (e.isOpponent === true || e.team === 'away');
+        if (!isGoalAgainst) return false;
+        if (e.details?.goalkeeperId) return e.details.goalkeeperId === gk.id;
+        return currentActiveGkId === gk.id || isSingleGoalkeeper;
+      }).length;
+
+      const totalFaced = gkSaves + gkConceded;
+      const savePercentage = totalFaced > 0 ? Math.round((gkSaves / totalFaced) * 100) : 0;
+
+      totalSaves += gkSaves;
+      totalConceded += gkConceded;
+
+      return {
+        ...gk,
+        saves: gkSaves,
+        conceded: gkConceded,
+        totalFaced,
+        savePercentage
+      };
+    });
+
+    const overallFaced = totalSaves + totalConceded;
+    const overallSavePercentage = overallFaced > 0 ? Math.round((totalSaves / overallFaced) * 100) : 0;
+
     return {
       home: { shots: homeShots.length, goals: homeGoals.length, efficiency },
       away: { shots: awayShots.length, goals: awayGoals.length },
-      topScorers
+      topScorers,
+      goalkeeperStats,
+      totalSaves,
+      overallFaced,
+      overallSavePercentage
     };
-  }, [match]);
+  }, [match, squad]);
 
   if (!stats) return null;
 
@@ -68,11 +114,11 @@ const OverviewTab = ({ match, squad }) => {
           colorClass="text-brand"
         />
         <StatCard 
-          title="Gegner Quote" 
-          value={`${stats.away.shots > 0 ? Math.round((stats.away.goals / stats.away.shots) * 100) : 0}%`} 
-          subValue={`${stats.away.goals} Gegentore`}
-          icon={ShieldAlert}
-          colorClass="text-zinc-500"
+          title="Torwart Parade-Quote" 
+          value={`${stats.overallSavePercentage}%`} 
+          subValue={`${stats.totalSaves} Paraden bei ${stats.overallFaced} Würfen aufs Tor`}
+          icon={Shield}
+          colorClass="text-brand"
         />
         
         {/* Top Scorer Widget */}
@@ -102,8 +148,45 @@ const OverviewTab = ({ match, squad }) => {
         </div>
       </div>
 
-      {/* Middle & Right: Charts or more detailed blocks */}
+      {/* Middle & Right: Goalkeeper detailed list & Charts */}
       <div className="lg:col-span-2 space-y-8">
+        {/* Goalkeeper Stats Widget */}
+        <div className="bg-zinc-900/40 border border-zinc-800 p-8 rounded-[2.5rem] space-y-6">
+          <div className="flex items-center gap-3">
+            <Shield className="text-brand" size={20} />
+            <h3 className="text-lg font-black uppercase italic text-zinc-100">Torhüter-Quoten</h3>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {stats.goalkeeperStats.length > 0 ? stats.goalkeeperStats.map((gk, idx) => (
+              <div key={idx} className="bg-black/40 border border-zinc-800/50 p-6 rounded-3xl flex flex-col gap-4 shadow-xl">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-4">
+                    <div className="w-10 h-10 bg-brand/10 text-brand border border-brand/20 rounded-2xl flex items-center justify-center font-black italic shadow-inner text-sm">
+                      #{gk.number}
+                    </div>
+                    <div>
+                      <h4 className="text-xs font-black uppercase italic text-zinc-100">{gk.name || 'Torwart'}</h4>
+                      <span className="text-[9px] font-bold text-zinc-500 uppercase tracking-widest">{gk.saves} Paraden / {gk.conceded} Gegentore</span>
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <span className="text-xl font-black text-brand italic">{gk.savePercentage}%</span>
+                  </div>
+                </div>
+                {/* Save percentage progress bar */}
+                <div className="h-2 bg-zinc-800 rounded-full overflow-hidden">
+                  <div 
+                    className="h-full bg-brand transition-all shadow-[0_0_12px_#84cc16]" 
+                    style={{ width: `${gk.savePercentage}%` }}
+                  />
+                </div>
+              </div>
+            )) : (
+              <p className="text-xs font-bold text-zinc-500 uppercase text-center py-4 col-span-full">Keine Torhüter im Kader hinterlegt</p>
+            )}
+          </div>
+        </div>
+
         <div className="bg-zinc-900/40 border border-zinc-800 p-10 rounded-[2.5rem] min-h-[400px] flex flex-col items-center justify-center text-center">
           <BarChart2 className="text-zinc-800 mb-6" size={64} />
           <h3 className="text-xl font-black uppercase italic text-zinc-500">Torverlauf & Quoten</h3>

@@ -9,15 +9,15 @@ export const useArchiveData = () => {
   const handleGameSelect = async (game) => {
     if (!game) return null;
     
-    // SaaS OPTIMIZATION: Check if we need to load heavy tactical details
+    // SaaS Two-Tier Archive: Fetch heavy details on-demand and cache in Zustand
     let fullGame = { ...game };
     if (!game.gameLog || game.gameLog.length === 0) {
       setIsDetailLoading(true);
       try {
-        const { default: sync } = await import('../services/SyncService');
-        const details = await sync.fetchHistoryDetails(activeTeamId, game.id);
-        if (details) {
-          fullGame = { ...fullGame, ...details };
+        const store = useStore.getState();
+        const loadedGame = await store.fetchFullGameDetails(game.id);
+        if (loadedGame) {
+          fullGame = loadedGame;
         }
       } catch (e) {
         console.error('[Archive] Failed to load details:', e);

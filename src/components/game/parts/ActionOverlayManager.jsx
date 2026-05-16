@@ -14,6 +14,8 @@ const ActionOverlayManager = ({
   handleAction,
   handle7mOpponentSelected,
   handleFoulOpponentSelected,
+  handleSetActiveGoalkeeper,
+  activeGoalkeeperId,
   home, away, squad, squadSettings
 }) => {
   return (
@@ -23,6 +25,8 @@ const ActionOverlayManager = ({
           player={selectedPlayer} 
           onClose={() => setSelectedPlayer(null)} 
           onAction={handleAction} 
+          onSetActiveGoalkeeper={handleSetActiveGoalkeeper}
+          isActiveGoalkeeper={selectedPlayer.id === activeGoalkeeperId}
         />
       )}
       

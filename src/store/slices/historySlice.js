@@ -106,4 +106,29 @@ export const createHistorySlice = (set, get) => ({
       history: state.history.map(g => g.id === updatedGame.id ? updatedGame : g)
     };
   }),
+
+  fetchFullGameDetails: async (gameId) => {
+    const { activeTeamId, history } = get();
+    if (!activeTeamId || !gameId) return null;
+
+    const existingGame = history.find(g => g.id === String(gameId));
+    // If the game is already in state and has gameLog, return it directly
+    if (existingGame?.gameLog && existingGame.gameLog.length > 0) {
+      return existingGame;
+    }
+
+    try {
+      const details = await syncService.fetchHistoryDetails(activeTeamId, gameId);
+      if (details) {
+        const fullGame = { ...existingGame, ...details };
+        set((state) => ({
+          history: state.history.map(g => g.id === String(gameId) ? fullGame : g)
+        }));
+        return fullGame;
+      }
+    } catch (e) {
+      console.error('[Store] fetchFullGameDetails failed:', e);
+    }
+    return existingGame || null;
+  },
 });

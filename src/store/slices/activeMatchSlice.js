@@ -38,6 +38,7 @@ export const createActiveMatchSlice = (set, get) => ({
         timeouts: { home: 3, away: 3 },
         playingTime: {},
         isEmptyGoal: false,
+        activeGoalkeeperId: null,
         ...additionalData
       }
     };
@@ -96,6 +97,19 @@ export const createActiveMatchSlice = (set, get) => ({
       isEmptyGoal: !state.activeMatch.isEmptyGoal
     } : null
   })),
+
+  setActiveGoalkeeper: (playerId) => set((state) => {
+    const { activeTeamId, activeMatch } = state;
+    if (!activeMatch) return state;
+    const updatedMatch = { 
+      ...activeMatch, 
+      activeGoalkeeperId: playerId === activeMatch.activeGoalkeeperId ? null : playerId 
+    };
+    if (activeTeamId) {
+      syncService.saveMatch(activeTeamId, updatedMatch);
+    }
+    return { activeMatch: updatedMatch };
+  }),
 
   useTimeout: (team) => set((state) => {
     if (!state.activeMatch || state.activeMatch.timeouts[team] <= 0) return state;
@@ -318,8 +332,10 @@ export const createActiveMatchSlice = (set, get) => ({
         timeouts: data.timeouts || state.activeMatch?.timeouts || { home: 3, away: 3 },
         isEmptyGoal: data.isEmptyGoal ?? state.activeMatch?.isEmptyGoal ?? false,
         playingTime: data.playingTime || state.activeMatch?.playingTime || {},
-        isZoneMode: data.isZoneMode ?? state.activeMatch?.isZoneMode ?? false
+        isZoneMode: data.isZoneMode ?? state.activeMatch?.isZoneMode ?? false,
+        activeGoalkeeperId: data.activeGoalkeeperId !== undefined ? data.activeGoalkeeperId : state.activeMatch?.activeGoalkeeperId || null
       }
     };
   }),
 });
+

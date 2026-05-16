@@ -1,10 +1,13 @@
-import React from 'react';
+import React, { useState, useMemo } from 'react';
 import { motion } from 'framer-motion';
 import { TrendingUp } from 'lucide-react';
 import { FIELD_ZONES, GOAL_ZONES } from '../../../data/analyticsConstants';
 
 const ShotChartsTab = ({ match, squad }) => {
   const isZoneMode = match?.isZoneMode || false;
+  const [teamFilter, setTeamFilter] = useState('home');
+  const gameLog = match?.gameLog || match?.log || [];
+
   const getCoordFromZone = (zone, type = 'goal') => {
     if (typeof zone === 'object' && zone !== null) return zone;
     if (type === 'goal') {
@@ -50,21 +53,48 @@ const ShotChartsTab = ({ match, squad }) => {
     );
   };
 
-  const gameLog = match?.gameLog || match?.log || [];
-  const activePlayers = squad?.home?.filter(p => 
-    gameLog.some(e => String(e.playerNumber) === String(p.number) && ['GOAL', 'MISS', 'BLOCKED', 'SAVE', '7M_GOAL', '7M_SAVE', '7M_MISS'].includes(e.type))
-  ) || [];
+  const activePlayers = useMemo(() => {
+    if (teamFilter === 'home') {
+      return squad?.home?.filter(p => 
+        gameLog.some(e => (!e.isOpponent && e.team !== 'away') && String(e.playerNumber) === String(p.number) && ['GOAL', 'MISS', 'BLOCKED', 'SAVE', '7M_GOAL', '7M_SAVE', '7M_MISS'].includes(e.type))
+      ) || [];
+    } else {
+      const rosterAway = squad?.away || [];
+      const oppShots = gameLog.filter(e => (e.isOpponent || e.team === 'away') && ['GOAL', 'MISS', 'BLOCKED', 'SAVE', '7M_GOAL', '7M_SAVE', '7M_MISS'].includes(e.type));
+      const uniqueNumbers = [...new Set(oppShots.map(s => String(s.playerNumber || s.playerId?.replace('opp_','') || '??')))];
+      
+      return uniqueNumbers.map(num => {
+        const found = rosterAway.find(p => String(p.number) === num);
+        if (found) return found;
+        const firstShot = oppShots.find(s => String(s.playerNumber || s.playerId?.replace('opp_','')) === num);
+        return {
+          id: `opp-${num}`,
+          number: num,
+          name: firstShot?.playerName || `Gegner #${num}`,
+          team: 'away'
+        };
+      }).sort((a, b) => parseInt(a.number || 0) - parseInt(b.number || 0));
+    }
+  }, [squad, gameLog, teamFilter]);
 
   return (
     <div className="w-full space-y-8 pb-20">
-      <header className="flex items-center justify-between px-4">
+      <header className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 px-4">
         <div>
           <h3 className="text-xl font-black uppercase italic tracking-tighter text-zinc-100">Wurfbilder Spieler</h3>
           <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest mt-1">Individuelle Analyse</p>
         </div>
-        <div className="flex items-center gap-3 bg-zinc-900/40 px-6 py-2 rounded-2xl border border-white/5 shadow-lg">
-          <TrendingUp size={14} className="text-brand" />
-          <span className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">{activePlayers.length} Schützen</span>
+
+        <div className="flex items-center gap-4">
+          <div className="flex bg-black/40 p-1.5 rounded-2xl border border-white/5 shadow-inner">
+            <button onClick={() => setTeamFilter('home')} className={`px-6 py-2 rounded-xl text-[10px] font-bold uppercase tracking-tighter transition-all ${teamFilter === 'home' ? 'bg-brand text-black shadow-[0_0_20px_rgba(132,204,22,0.3)]' : 'text-zinc-400 hover:text-zinc-200'}`}>Heimteam</button>
+            <button onClick={() => setTeamFilter('away')} className={`px-6 py-2 rounded-xl text-[10px] font-bold uppercase tracking-tighter transition-all ${teamFilter === 'away' ? 'bg-brand text-black shadow-[0_0_20px_rgba(132,204,22,0.3)]' : 'text-zinc-400 hover:text-zinc-200'}`}>Gegner</button>
+          </div>
+
+          <div className="flex items-center gap-3 bg-zinc-900/40 px-6 py-2.5 rounded-2xl border border-white/5 shadow-lg">
+            <TrendingUp size={14} className="text-brand" />
+            <span className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">{activePlayers.length} Schützen</span>
+          </div>
         </div>
       </header>
 
@@ -93,7 +123,8 @@ const ShotChartsTab = ({ match, squad }) => {
 
         {activePlayers.map((player, pIdx) => {
           const playerShots = gameLog.filter(e => 
-            String(e.playerNumber) === String(player.number) && 
+            (teamFilter === 'home' ? (!e.isOpponent && e.team !== 'away') : (e.isOpponent || e.team === 'away')) &&
+            String(e.playerNumber || e.playerId?.replace('opp_','')) === String(player.number) && 
             ['GOAL', 'MISS', 'BLOCKED', 'SAVE', '7M_GOAL', '7M_SAVE', '7M_MISS'].includes(e.type)
           );
           const goals = playerShots.filter(s => s.type === 'GOAL' || s.type === '7M_GOAL').length;

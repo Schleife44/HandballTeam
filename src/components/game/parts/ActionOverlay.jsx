@@ -1,8 +1,8 @@
 import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Trophy, AlertTriangle, Zap } from 'lucide-react';
+import { X, Trophy, AlertTriangle, Zap, Shield } from 'lucide-react';
 
-const ActionOverlay = ({ player, onClose, onAction }) => {
+const ActionOverlay = ({ player, onClose, onAction, onSetActiveGoalkeeper, isActiveGoalkeeper }) => {
   if (!player) return null;
 
   const sections = [
@@ -79,6 +79,23 @@ const ActionOverlay = ({ player, onClose, onAction }) => {
             <X size={20} />
           </button>
         </div>
+
+        {player.team === 'home' && (player.position === 'TW' || player.isGoalkeeper === true) && onSetActiveGoalkeeper && (
+          <div className="px-6 lg:px-8 py-3 bg-zinc-950/60 border-b border-zinc-800 flex items-center justify-between">
+            <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-zinc-400">
+              <Shield size={14} className="text-brand" /> Aktiver Torwart Status
+            </div>
+            <button
+              onClick={() => {
+                onSetActiveGoalkeeper(player.id);
+                onClose();
+              }}
+              className={`px-4 py-2 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all ${isActiveGoalkeeper ? 'bg-brand text-black shadow-lg shadow-brand/20 font-black' : 'bg-zinc-800 text-zinc-300 hover:bg-zinc-700'}`}
+            >
+              {isActiveGoalkeeper ? 'Aktiviert (Klick zum Beenden)' : 'Als Aktiven Torwart setzen'}
+            </button>
+          </div>
+        )}
 
         {/* Content */}
         <div className="p-6 lg:p-8 space-y-6 lg:space-y-8 overflow-y-auto no-scrollbar pb-12 lg:pb-8">

@@ -11,57 +11,77 @@ import { FIELD_ZONES, GOAL_ZONES } from '../../../data/analyticsConstants';
 
 const HeatmapTab = ({ match, squad }) => {
   const isZoneMode = match?.isZoneMode || false;
-  const [viewMode, setViewMode] = useState('tor'); // Target for content
-  const [activeLayoutMode, setActiveLayoutMode] = useState('tor'); // Actual layout for card
-  const [teamFilter, setTeamFilter] = useState('home');
+  const [viewMode, setViewMode] = useState('tor');
+  const [activeLayoutMode, setActiveLayoutMode] = useState('tor');
+  const [teamFilter, setTeamFilter] = useState('home'); // home | away | goalkeeper
   const [selectedPlayer, setSelectedPlayer] = useState('all');
+  const [selectedGk, setSelectedGk] = useState('all');
   const [filters, setFilters] = useState({ field: true, sevenM: true, missed: true });
+
+  const goalkeepers = useMemo(() => squad?.home?.filter(p => p.position === 'TW' || p.isGoalkeeper === true) || [], [squad]);
 
   // Zone Heat Analysis
   const zoneStats = useMemo(() => {
     if (!isZoneMode) return null;
     const log = match?.log || match?.gameLog || [];
     
+    const isGkMode = teamFilter === 'goalkeeper';
+    const isSingleGk = goalkeepers.length === 1;
+    const currentActiveGk = match?.activeGoalkeeperId;
+
     const stats = { field: {}, goal: {} };
     log.forEach(e => {
-      // Apply same filters as filteredPoints
       const actionLower = e.action?.toLowerCase() || "";
       const isShot = ['GOAL', 'MISS', 'BLOCKED', 'SAVE', '7M_GOAL', '7M_SAVE', '7M_MISS'].includes(e.type);
       if (!isShot) return;
       
       const isOpponentAction = e.isOpponent === true || actionLower.includes('gegner');
-      if ((teamFilter === 'home') !== !isOpponentAction) return;
-      if (selectedPlayer !== 'all' && String(e.playerNumber) !== String(selectedPlayer)) return;
+      
+      if (isGkMode) {
+        if (!isOpponentAction) return;
+        if (selectedGk !== 'all') {
+          const gkId = e.details?.goalkeeperId;
+          if (gkId) {
+            if (gkId !== selectedGk) return;
+          } else {
+            if (currentActiveGk !== selectedGk && !isSingleGk) return;
+          }
+        }
+      } else {
+        if ((teamFilter === 'home') !== !isOpponentAction) return;
+        if (selectedPlayer !== 'all' && String(e.playerNumber) !== String(selectedPlayer)) return;
+      }
       
       const is7m = e.type.startsWith('7M') || actionLower.includes('7m');
       if (is7m && !filters.sevenM) return;
       if (!is7m && !filters.field) return;
       
       const isGoal = e.type === 'GOAL' || e.type === '7M_GOAL';
+      const isSave = e.type === 'SAVE' || e.type === '7M_SAVE';
       if (!isGoal && !filters.missed) return;
 
-      // Prioritize explicit zone data, fallback to calculated if tracked in precision mode
+      const successCondition = isGkMode ? isSave : isGoal;
+
       const fZone = e.details?.fieldZone || (typeof e.details?.fieldPos === 'string' ? e.details?.fieldPos : null) || (typeof e.fieldPos === 'string' ? e.fieldPos : null);
       const gZone = e.details?.goalZone || (typeof e.details?.goalPos === 'string' ? e.details?.goalPos : (typeof e.details?.goalPos === 'number' ? e.details?.goalPos : null)) || (typeof e.goalPos === 'string' ? e.goalPos : (typeof e.goalPos === 'number' ? e.goalPos : null));
 
       if (fZone && typeof fZone === 'string') {
         if (!stats.field[fZone]) stats.field[fZone] = { goals: 0, total: 0 };
         stats.field[fZone].total++;
-        if (isGoal) stats.field[fZone].goals++;
+        if (successCondition) stats.field[fZone].goals++;
       }
       if (gZone && (typeof gZone === 'string' || typeof gZone === 'number')) {
         if (!stats.goal[gZone]) stats.goal[gZone] = { goals: 0, total: 0 };
         stats.goal[gZone].total++;
-        if (isGoal) stats.goal[gZone].goals++;
+        if (successCondition) stats.goal[gZone].goals++;
       }
     });
 
-    // Find max for normalization
     const maxField = Math.max(0, ...Object.values(stats.field).map(s => s.total));
     const maxGoal = Math.max(0, ...Object.values(stats.goal).map(s => s.total));
 
     return { ...stats, maxField, maxGoal };
-  }, [match, teamFilter, selectedPlayer, filters, isZoneMode]);
+  }, [match, teamFilter, selectedPlayer, selectedGk, filters, isZoneMode, goalkeepers]);
 
   const getCoordFromZone = (zone, type = 'goal') => {
     if (typeof zone === 'object' && zone !== null) return zone;
@@ -87,19 +107,34 @@ const HeatmapTab = ({ match, squad }) => {
     const log = match?.log || match?.gameLog || [];
     if (!log.length) return [];
 
+    const isGkMode = teamFilter === 'goalkeeper';
+    const isSingleGk = goalkeepers.length === 1;
+    const currentActiveGk = match?.activeGoalkeeperId;
+
     return log.filter(e => {
       const actionLower = e.action?.toLowerCase() || "";
       const isShot = ['GOAL', 'MISS', 'BLOCKED', 'SAVE', '7M_GOAL', '7M_SAVE', '7M_MISS'].includes(e.type);
       if (!isShot) return false;
       
-      // Robust team check
       const isOpponentAction = e.isOpponent === true || actionLower.includes('gegner');
-      const isHomeAction = !isOpponentAction;
-      const wantsHome = teamFilter === 'home';
       
-      if (wantsHome !== isHomeAction) return false;
-      
-      if (selectedPlayer !== 'all' && String(e.playerNumber) !== String(selectedPlayer)) return false;
+      if (isGkMode) {
+        if (!isOpponentAction) return false;
+        if (selectedGk !== 'all') {
+          const gkId = e.details?.goalkeeperId;
+          if (gkId) {
+            if (gkId !== selectedGk) return false;
+          } else {
+            if (currentActiveGk !== selectedGk && !isSingleGk) return false;
+          }
+        }
+      } else {
+        const isHomeAction = !isOpponentAction;
+        const wantsHome = teamFilter === 'home';
+        if (wantsHome !== isHomeAction) return false;
+        
+        if (selectedPlayer !== 'all' && String(e.playerNumber) !== String(selectedPlayer)) return false;
+      }
       
       const pAction = String(e.details?.playerAction || e.action || '').toLowerCase();
       const is7m = pAction.includes('7m') || e.type.startsWith('7M');
@@ -113,7 +148,15 @@ const HeatmapTab = ({ match, squad }) => {
       const hasCoords = !!(e.details?.fieldPos || e.details?.goalPos || e.goalPos || e.fieldPos);
       return hasCoords;
     });
-  }, [match, teamFilter, selectedPlayer, filters]);
+  }, [match, teamFilter, selectedPlayer, selectedGk, filters, goalkeepers]);
+
+  const normalizeGoalCoords = (pos, isMiss) => {
+    if (!pos || pos.x === undefined) return null;
+    if (!isMiss) return pos;
+    const normX = ((pos.x - 20) / 60) * 100;
+    const normY = ((pos.y - 40) / 60) * 100;
+    return { x: normX, y: normY };
+  };
 
   const renderShotMarker = (x, y, type, id, isSmall = false) => {
     let color = '#ef4444'; // Default MISS
@@ -153,38 +196,49 @@ const HeatmapTab = ({ match, squad }) => {
   return (
     <div className="w-full flex flex-col items-center gap-8 py-4 overflow-hidden">
       {/* 1. HEADER */}
-      <div className="w-full max-w-5xl bg-zinc-900/40 backdrop-blur-2xl border border-white/5 p-2 rounded-[2rem] shadow-2xl flex items-center justify-between">
-        <div className="flex items-center gap-2">
+      <div className="w-full max-w-5xl bg-zinc-900/40 backdrop-blur-2xl border border-white/5 p-2 rounded-[2rem] shadow-2xl flex flex-col xl:flex-row items-center justify-between gap-4">
+        <div className="flex flex-wrap items-center gap-2">
           <div className="flex bg-black/40 p-1.5 rounded-2xl border border-white/5">
-            <button onClick={() => setTeamFilter('home')} className={`px-6 py-2 rounded-xl text-[10px] font-bold uppercase tracking-tighter transition-all ${teamFilter === 'home' ? 'bg-brand text-black shadow-[0_0_20px_rgba(132,204,22,0.3)]' : 'text-zinc-400 hover:text-zinc-200'}`}>Heimteam</button>
-            <button onClick={() => setTeamFilter('away')} className={`px-6 py-2 rounded-xl text-[10px] font-bold uppercase tracking-tighter transition-all ${teamFilter === 'away' ? 'bg-brand text-black shadow-[0_0_20px_rgba(132,204,22,0.3)]' : 'text-zinc-400 hover:text-zinc-200'}`}>Gegner</button>
+            <button onClick={() => setTeamFilter('home')} className={`px-4 py-2 rounded-xl text-[10px] font-bold uppercase tracking-tighter transition-all ${teamFilter === 'home' ? 'bg-brand text-black shadow-[0_0_20px_rgba(132,204,22,0.3)]' : 'text-zinc-400 hover:text-zinc-200'}`}>Schützen Heim</button>
+            <button onClick={() => setTeamFilter('away')} className={`px-4 py-2 rounded-xl text-[10px] font-bold uppercase tracking-tighter transition-all ${teamFilter === 'away' ? 'bg-brand text-black shadow-[0_0_20px_rgba(132,204,22,0.3)]' : 'text-zinc-400 hover:text-zinc-200'}`}>Schützen Gegner</button>
+            <button onClick={() => setTeamFilter('goalkeeper')} className={`px-4 py-2 rounded-xl text-[10px] font-bold uppercase tracking-tighter transition-all ${teamFilter === 'goalkeeper' ? 'bg-brand text-black shadow-[0_0_20px_rgba(132,204,22,0.3)]' : 'text-zinc-400 hover:text-zinc-200'}`}>Torwart Heatmap</button>
           </div>
-          <div className="h-8 w-[1px] bg-white/10 mx-2" />
+          <div className="h-8 w-[1px] bg-white/10 mx-2 hidden sm:block" />
           <div className="relative group">
-            <select value={selectedPlayer} onChange={(e) => setSelectedPlayer(e.target.value)} className="bg-black/40 border border-white/5 rounded-2xl px-6 py-2.5 text-[10px] font-bold text-zinc-100 appearance-none outline-none focus:border-brand/50 min-w-[160px] cursor-pointer">
-              <option value="all">Kader Gesamt</option>
-              {squad?.home?.map(p => <option key={`p-${p.id}`} value={p.number}>#{p.number} - {p.name}</option>)}
-            </select>
+            {teamFilter === 'goalkeeper' ? (
+              <select value={selectedGk} onChange={(e) => setSelectedGk(e.target.value)} className="bg-black/40 border border-white/5 rounded-2xl px-6 py-2.5 text-[10px] font-bold text-zinc-100 appearance-none outline-none focus:border-brand/50 min-w-[160px] cursor-pointer">
+                <option value="all">Alle Torhüter</option>
+                {goalkeepers.map(gk => <option key={`gk-${gk.id}`} value={gk.id}>#{gk.number} - {gk.name}</option>)}
+              </select>
+            ) : (
+              <select value={selectedPlayer} onChange={(e) => setSelectedPlayer(e.target.value)} className="bg-black/40 border border-white/5 rounded-2xl px-6 py-2.5 text-[10px] font-bold text-zinc-100 appearance-none outline-none focus:border-brand/50 min-w-[160px] cursor-pointer">
+                <option value="all">Kader Gesamt</option>
+                {squad?.home?.map(p => <option key={`p-${p.id}`} value={p.number}>#{p.number} - {p.name}</option>)}
+              </select>
+            )}
             <ChevronDown size={12} className="absolute right-4 top-1/2 -translate-y-1/2 text-zinc-500 pointer-events-none" />
           </div>
         </div>
-        <div className="flex bg-black/20 p-1.5 rounded-2xl border border-white/5 mx-4">
-          {[{id:'tor',l:'Tor',i:Target},{id:'feld',l:'Feld',i:Maximize2},{id:'kombi',l:'Kombi',i:Layers}].map(btn => (
-            <button key={`btn-${btn.id}`} onClick={() => setViewMode(btn.id)} className={`flex items-center gap-2 px-6 py-2 rounded-xl text-[10px] font-bold uppercase tracking-widest transition-all ${viewMode === btn.id ? 'bg-white/10 text-white border border-white/10' : 'text-zinc-500 hover:text-zinc-300'}`}>
-              <btn.i size={14} className={viewMode === btn.id ? 'text-brand' : ''} /> {btn.l}
-            </button>
-          ))}
-        </div>
-        <div className="flex items-center gap-6 pr-6">
-          {[{id:'field',l:'Feld'},{id:'sevenM',l:'7m'},{id:'missed',l:'Fehl'}].map(f => (
-            <label key={`f-${f.id}`} className="flex items-center gap-2.5 cursor-pointer group">
-              <input type="checkbox" checked={filters[f.id]} onChange={(e) => setFilters(p => ({...p,[f.id]:e.target.checked}))} className="hidden" />
-              <div className={`w-5 h-5 rounded-lg border flex items-center justify-center transition-all ${filters[f.id] ? 'bg-brand border-brand shadow-[0_0_15px_rgba(132,204,22,0.2)]' : 'border-white/10 bg-white/5'}`}>
-                {filters[f.id] && <div className="w-2 h-2 bg-black rounded-sm" />}
-              </div>
-              <span className={`text-[10px] font-bold uppercase tracking-widest ${filters[f.id] ? 'text-zinc-200' : 'text-zinc-500'}`}>{f.l}</span>
-            </label>
-          ))}
+
+        <div className="flex flex-wrap items-center gap-4">
+          <div className="flex bg-black/20 p-1.5 rounded-2xl border border-white/5">
+            {[{id:'tor',l:'Tor',i:Target},{id:'feld',l:'Feld',i:Maximize2},{id:'kombi',l:'Kombi',i:Layers}].map(btn => (
+              <button key={`btn-${btn.id}`} onClick={() => setViewMode(btn.id)} className={`flex items-center gap-2 px-6 py-2 rounded-xl text-[10px] font-bold uppercase tracking-widest transition-all ${viewMode === btn.id ? 'bg-white/10 text-white border border-white/10' : 'text-zinc-500 hover:text-zinc-300'}`}>
+                <btn.i size={14} className={viewMode === btn.id ? 'text-brand' : ''} /> {btn.l}
+              </button>
+            ))}
+          </div>
+          <div className="flex items-center gap-4 pr-2">
+            {[{id:'field',l:'Feld'},{id:'sevenM',l:'7m'},{id:'missed',l:'Fehl'}].map(f => (
+              <label key={`f-${f.id}`} className="flex items-center gap-2 cursor-pointer group">
+                <input type="checkbox" checked={filters[f.id]} onChange={(e) => setFilters(p => ({...p,[f.id]:e.target.checked}))} className="hidden" />
+                <div className={`w-5 h-5 rounded-lg border flex items-center justify-center transition-all ${filters[f.id] ? 'bg-brand border-brand shadow-[0_0_15px_rgba(132,204,22,0.2)]' : 'border-white/10 bg-white/5'}`}>
+                  {filters[f.id] && <div className="w-2 h-2 bg-black rounded-sm" />}
+                </div>
+                <span className={`text-[10px] font-bold uppercase tracking-widest ${filters[f.id] ? 'text-zinc-200' : 'text-zinc-500'}`}>{f.l}</span>
+              </label>
+            ))}
+          </div>
         </div>
       </div>
 
@@ -227,8 +281,6 @@ const HeatmapTab = ({ match, squad }) => {
           <AnimatePresence 
             mode="wait" 
             onExitComplete={() => {
-              // This fires AFTER the old content is gone.
-              // We now update the card's size.
               setActiveLayoutMode(viewMode);
             }}
           >
@@ -267,7 +319,8 @@ const HeatmapTab = ({ match, squad }) => {
                       </g>
                       {!isZoneMode && filteredPoints.map((p, idx) => {
                         const rawGoalPos = p.details?.goalPos || p.goalPos;
-                        const pos = getCoordFromZone(rawGoalPos, 'goal');
+                        const isMiss = p.type?.includes('MISS');
+                        const pos = normalizeGoalCoords(getCoordFromZone(rawGoalPos, 'goal'), isMiss);
                         if (!pos || pos.x === undefined) return null;
                         if (p.type === 'BLOCKED') return null;
                         return renderShotMarker(50 + (pos.x / 100) * 250, 40 + (pos.y / 100) * 180, p.type, `sh-goal-${p.id || idx}`);
@@ -366,11 +419,17 @@ const HeatmapTab = ({ match, squad }) => {
                         
                         const fx = 35 + (fPos.x / 100) * 200 * 0.65;
                         const fy = 56.5 + (fPos.y / 100) * 245 * 0.65;
-                        const gx = 68 + (gPos.x / 100) * 250 * 0.25;
-                        const gy = 18 + (gPos.y / 100) * 180 * 0.25;
+                        
                         const isGoal = p.type?.includes('GOAL');
                         const isSave = p.type?.includes('SAVE');
+                        const isMiss = p.type?.includes('MISS');
                         const isBlocked = p.type === 'BLOCKED';
+
+                        const normGPos = normalizeGoalCoords(gPos, isMiss);
+                        if (!normGPos || normGPos.x === undefined) return null;
+
+                        const gx = 68 + (normGPos.x / 100) * 250 * 0.25;
+                        const gy = 18 + (normGPos.y / 100) * 180 * 0.25;
 
                         return (
                           <g key={`path-kombi-${p.id || idx}`}>

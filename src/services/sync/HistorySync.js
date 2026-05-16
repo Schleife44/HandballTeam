@@ -31,10 +31,23 @@ export class HistorySync extends SyncBase {
   }
 
   async saveHistoryGame(teamId, gameData) {
-    if (!teamId) return;
+    if (!teamId || !gameData?.id) return;
     if (!this._checkRateLimit('saveHistoryGame')) return;
     try {
-      await setDoc(doc(db, 'teams', teamId, 'history', gameData.id), this.stripFunctions(gameData));
+      const cleanData = this.stripFunctions(gameData);
+      const { gameLog, lineup, playingTime, ...lightGame } = cleanData;
+      
+      // Tier 1: Save lightweight overview to main history doc
+      await setDoc(doc(db, 'teams', String(teamId), 'history', String(gameData.id)), lightGame);
+      
+      // Tier 2: Save heavy tactical/log details to subcollection
+      const heavyDetails = {
+        gameLog: gameLog || [],
+        lineup: lineup || {},
+        playingTime: playingTime || {},
+        lastUpdated: new Date().toISOString()
+      };
+      await setDoc(doc(db, 'teams', String(teamId), 'history', String(gameData.id), 'details', 'full'), heavyDetails);
     } catch (e) {
       console.error('[Sync] saveHistoryGame failed:', e);
     }
@@ -66,8 +79,17 @@ export class HistorySync extends SyncBase {
   async fetchHistoryDetails(teamId, gameId) {
     if (!teamId || !gameId) return null;
     try {
-      const snap = await getDoc(doc(db, 'teams', String(teamId), 'history', String(gameId), 'details', 'tactical'));
-      if (snap.exists()) return snap.data();
+      // First try fetching the new 'full' details doc
+      const fullSnap = await getDoc(doc(db, 'teams', String(teamId), 'history', String(gameId), 'details', 'full'));
+      if (fullSnap.exists()) {
+        return fullSnap.data();
+      }
+      
+      // Fallback for older games that might still use 'tactical'
+      const tacticalSnap = await getDoc(doc(db, 'teams', String(teamId), 'history', String(gameId), 'details', 'tactical'));
+      if (tacticalSnap.exists()) {
+        return tacticalSnap.data();
+      }
     } catch (e) {
       console.error('[Sync] fetchHistoryDetails failed:', e);
     }
@@ -78,6 +100,8 @@ export class HistorySync extends SyncBase {
     if (!teamId || !gameId) return;
     const gid = String(gameId);
     await deleteDoc(doc(db, 'teams', String(teamId), 'history', gid));
+    await deleteDoc(doc(db, 'teams', String(teamId), 'history', gid, 'details', 'full'));
     await deleteDoc(doc(db, 'teams', String(teamId), 'history', gid, 'details', 'tactical'));
   }
 }
+

@@ -22,6 +22,7 @@ export const useGameLogic = () => {
     handlePlayerClick,
     handle7mOpponentSelected,
     handleFoulOpponentSelected,
+    handleSetActiveGoalkeeper,
     getActionLabel
   } = useGameActions(activeMatch, squad, formatTime);
 
@@ -32,11 +33,13 @@ export const useGameLogic = () => {
     swapPending, setSwapPending,
     sevenMeterFlow, setSevenMeterFlow,
     foulFlow, setFoulFlow,
+    activeGoalkeeperId: activeMatch?.activeGoalkeeperId || null,
     // Handlers
     handleAction,
     handlePlayerClick,
     handle7mOpponentSelected,
     handleFoulOpponentSelected,
+    handleSetActiveGoalkeeper,
     // Utils
     formatTime,
     getActionLabel,
