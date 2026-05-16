@@ -2,8 +2,10 @@ import React, { useState, useMemo } from 'react';
 import { AnimatePresence } from 'framer-motion';
 
 import useStore from '../../store/useStore';
-import { useFinesData } from '../../hooks/useFinesData';
-import { toNum, formatCurrency } from '../../utils/financeUtils';
+import { useFines } from '../../hooks/useFines';
+import { useCollectiveCosts } from '../../hooks/useCollectiveCosts';
+import { useFinesStats } from '../../hooks/useFinesStats';
+import { formatCurrency } from '../../utils/financeUtils';
 
 // Modular Components
 import FinesHeader from './components/FinesHeader';
@@ -17,6 +19,8 @@ import FineTransactionModal from './components/FineTransactionModal';
 
 const FinesManager = () => {
   const { squad, activeMember } = useStore();
+  
+  // New Modular Hooks
   const { 
     fines, 
     issueFine, 
@@ -26,13 +30,18 @@ const FinesManager = () => {
     removeHistoryEntry,
     addCatalogItem,
     removeCatalogItem,
+    updateSettings,
+    requestMonthlyContributions
+  } = useFines();
+
+  const {
+    pendingDrinks,
+    collectiveCostsName,
     updateDrinkAmount,
     bulkUpdateDrinkAmounts,
     settleDrinks,
-    setCollectiveCostsName,
-    updateSettings,
-    requestMonthlyContributions
-  } = useFinesData();
+    setCollectiveCostsName
+  } = useCollectiveCosts();
 
   // Tab State
   const [activeTab, setActiveTab] = useState('dashboard');
@@ -55,29 +64,11 @@ const FinesManager = () => {
   // Data Preparation
   const roster = squad?.home || [];
   const history = useMemo(() => [...(fines.history || [])].sort((a, b) => new Date(b.date) - new Date(a.date)), [fines.history]);
+  
+  // Externalized Stats Logic
+  const { stats, playerStats } = useFinesStats(history, roster);
+
   const sortedRoster = useMemo(() => [...roster].sort((a, b) => a.name.trim().localeCompare(b.name.trim(), 'de')), [roster]);
-
-  // Statistics Calculation
-  const stats = useMemo(() => {
-    const finesPaid = history.filter(h => (h.category === 'fine' || !h.category) && h.paid).reduce((sum, h) => sum + toNum(h.amount), 0);
-    const finesUnpaid = history.filter(h => (h.category === 'fine' || !h.category) && !h.paid).reduce((sum, h) => sum + toNum(h.amount), 0);
-    const otherIncome = history.filter(h => h.category === 'income').reduce((sum, h) => sum + toNum(h.amount), 0);
-    const expenses = history.filter(h => h.category === 'expense').reduce((sum, h) => sum + toNum(h.amount), 0);
-    const totalBalance = (finesPaid + otherIncome) - expenses;
-    return { finesPaid, finesUnpaid, otherIncome, expenses, totalBalance, totalSoll: totalBalance + finesUnpaid };
-  }, [history]);
-
-  const playerStats = sortedRoster.map(player => {
-    const trimmedName = player.name.trim();
-    const playerFines = history.filter(h => (h.playerId || "").trim() === trimmedName && (h.category === 'fine' || !h.category));
-    return {
-      name: player.name,
-      number: player.number,
-      totalFine: playerFines.reduce((sum, f) => sum + toNum(f.amount), 0),
-      unpaidFine: playerFines.filter(f => !f.paid).reduce((sum, f) => sum + toNum(f.amount), 0),
-      count: playerFines.length
-    };
-  });
 
   // Handlers
   const resetForm = () => {
@@ -140,8 +131,8 @@ const FinesManager = () => {
           <FinesDrinksManager 
             key="drinks" 
             roster={sortedRoster} 
-            pendingDrinks={fines.pendingDrinks} 
-            collectiveCostsName={fines.collectiveCostsName} 
+            pendingDrinks={pendingDrinks} 
+            collectiveCostsName={collectiveCostsName} 
             onUpdateAmount={updateDrinkAmount} 
             onBulkUpdate={bulkUpdateDrinkAmounts}
             onUpdateName={setCollectiveCostsName} 

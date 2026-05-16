@@ -15,6 +15,7 @@ export const initialSettingsState = {
       defaultMeetingOffset: 60,
       teamId: '',
       myPlayerName: '',
+      teamLogo: null,
       currentSeason: (() => {
         const now = new Date();
         const year = now.getFullYear();

@@ -1,5 +1,5 @@
 import React from 'react';
-import { ChevronLeft } from 'lucide-react';
+import { ChevronLeft, X } from 'lucide-react';
 
 const ProfileHeader = ({ 
   playerName, 
@@ -9,18 +9,30 @@ const ProfileHeader = ({
   selectedSeason, 
   setSelectedSeason, 
   availableSeasons, 
-  onBack 
+  onBack,
+  onClose,
+  backLabel = "Zurück"
 }) => {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <button 
-          onClick={onBack}
-          className="flex items-center gap-2 text-zinc-500 hover:text-white transition-colors group"
-        >
-          <ChevronLeft size={20} className="group-hover:-translate-x-1 transition-transform" />
-          <span className="text-xs font-black uppercase tracking-widest">Zurück</span>
-        </button>
+        {onBack && (
+          <button 
+            onClick={onBack}
+            className="flex items-center gap-2 text-zinc-500 hover:text-white transition-colors group"
+          >
+            <ChevronLeft size={20} className="group-hover:-translate-x-1 transition-transform" />
+            <span className="text-xs font-black uppercase tracking-widest">{backLabel}</span>
+          </button>
+        )}
+        {onClose && (
+          <button 
+            onClick={onClose}
+            className="p-3 hover:bg-zinc-800 rounded-2xl transition-all text-zinc-400 ml-auto"
+          >
+            <X size={24} />
+          </button>
+        )}
       </div>
 
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">

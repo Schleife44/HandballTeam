@@ -1,34 +1,39 @@
-import React from 'react';
-import { User } from 'lucide-react';
+import { User, X as CloseIcon } from 'lucide-react';
 import Input from '../../ui/Input';
 import Select from '../../ui/Select';
 
-export const TeamConfig = ({ label, name, season, color, colors, onUpdateName, onUpdateSeason, onUpdateColor, isTrainer }) => (
-  <div className="space-y-6">
-    <Input 
-      label={label}
-      value={name}
-      onChange={(e) => onUpdateName(e.target.value)}
-      disabled={!isTrainer}
-    />
-
-
-    <div className="space-y-4">
-      <label className="text-[10px] font-black text-zinc-500 uppercase tracking-[0.3em] px-4 block">Team Farbe</label>
-      <div className="flex flex-nowrap gap-3 px-2 overflow-x-auto no-scrollbar">
-        {colors.map(c => (
-          <button
-            key={c}
-            onClick={() => isTrainer && onUpdateColor(c)}
+export const TeamConfig = ({ label, name, season, color, colors, onUpdateName, onUpdateSeason, onUpdateColor, isTrainer }) => {
+  return (
+    <div className="space-y-8 w-full overflow-hidden">
+      <div className="flex-1 w-full min-w-0 space-y-6">
+        <div className="w-full">
+          <Input 
+            label={label}
+            value={name}
+            onChange={(e) => onUpdateName(e.target.value)}
             disabled={!isTrainer}
-            className={`w-10 h-10 rounded-full border-2 transition-all ${color === c ? 'border-white scale-110 shadow-lg' : 'border-transparent'} ${isTrainer ? 'hover:scale-110 cursor-pointer' : 'cursor-default opacity-50'}`}
-            style={{ backgroundColor: c }}
+            className="w-full"
           />
-        ))}
+        </div>
+
+        <div className="space-y-4 w-full overflow-hidden">
+          <label className="text-[10px] font-black text-zinc-500 uppercase tracking-[0.3em] px-4 block">Team Farbe</label>
+          <div className="flex flex-nowrap gap-3 px-2 overflow-x-auto no-scrollbar pb-2">
+            {colors.map(c => (
+              <button
+                key={c}
+                onClick={() => isTrainer && onUpdateColor(c)}
+                disabled={!isTrainer}
+                className={`w-8 h-8 flex-shrink-0 rounded-full border-2 transition-all ${color === c ? 'border-white scale-110 shadow-lg' : 'border-transparent'} ${isTrainer ? 'hover:scale-110 cursor-pointer' : 'cursor-default opacity-50'}`}
+                style={{ backgroundColor: c }}
+              />
+            ))}
+          </div>
+        </div>
       </div>
     </div>
-  </div>
-);
+  );
+};
 
 export const PlayerProfile = ({ players, selectedPlayer, onUpdate }) => (
   <div className="space-y-2 border-t border-zinc-800/50 pt-6">
